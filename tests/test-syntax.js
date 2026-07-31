@@ -71,19 +71,23 @@ for (const name of dateien) {
  * Bildschirmdatei ruft sie weiter unter dem alten Namen auf. Syntaktisch ist
  * das fehlerfrei, im Browser fliegt es erst beim Klick auseinander.
  */
+globalThis.MODELL = require(pfad.join(jsOrdner, "modell.js"));
+globalThis.SCHACH = require(pfad.join(jsOrdner, "schach.js"));
+
 const bausteine = {
-    MODELL: require(pfad.join(jsOrdner, "modell.js")),
-    VERSIEGELUNG: (() => {
-        globalThis.MODELL = require(pfad.join(jsOrdner, "modell.js"));
-        return require(pfad.join(jsOrdner, "versiegelung.js"));
-    })()
+    MODELL: globalThis.MODELL,
+    SCHACH: globalThis.SCHACH,
+    SCHACH_RUNDE: require(pfad.join(jsOrdner, "schach-runde.js")),
+    VERSIEGELUNG: require(pfad.join(jsOrdner, "versiegelung.js"))
 };
 
 for (const name of dateien) {
     const quelltext = dateisystem.readFileSync(pfad.join(jsOrdner, name), "utf8");
 
     for (const baustein of Object.keys(bausteine)) {
-        const muster = new RegExp(baustein + "\\.([A-Za-z][A-Za-z0-9_]*)", "g");
+        /* Der Rückblick verhindert, dass SCHACH auch in TEAM_SCHACH trifft —
+           sonst prüft der Test Eigenschaften am falschen Baustein. */
+        const muster = new RegExp("(?<![A-Za-z0-9_])" + baustein + "\\.([A-Za-z][A-Za-z0-9_]*)", "g");
         const benutzt = new Set();
 
         let treffer = muster.exec(quelltext);

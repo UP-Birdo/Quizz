@@ -19,24 +19,31 @@
 
 class SpeicherLokal {
 
-    constructor(schluessel) {
+    /*
+     * `aufbereiten` bringt einen geladenen Stand in Form. Jeder Tab gibt seine
+     * eigene Funktion mit (MODELL.normalisieren für das Würfel-Quizz,
+     * SCHACH_RUNDE.normalisieren für das Schach) — die Speicher-Schicht selbst
+     * weiß nichts über den Inhalt.
+     */
+    constructor(schluessel, aufbereiten) {
         this.art = "lokal";
         this.beschreibung = "Nur auf diesem Gerät gespeichert";
         this.schluessel = schluessel;
+        this.aufbereiten = aufbereiten;
     }
 
     async laden() {
         try {
             const text = window.localStorage.getItem(this.schluessel);
             if (!text) {
-                return MODELL.leereDaten();
+                return this.aufbereiten(null);
             }
-            return MODELL.normalisieren(JSON.parse(text));
+            return this.aufbereiten(JSON.parse(text));
         } catch (fehler) {
             /* Kaputter oder gesperrter Browser-Speicher darf die App nicht
-               anhalten — dann eben mit leerer Tabelle starten. */
+               anhalten — dann eben leer starten. */
             console.warn("Lokaler Speicher nicht lesbar:", fehler);
-            return MODELL.leereDaten();
+            return this.aufbereiten(null);
         }
     }
 
@@ -55,11 +62,12 @@ class SpeicherLokal {
 
 class SpeicherGemeinsam {
 
-    constructor(basis, pfad) {
+    constructor(basis, pfad, aufbereiten) {
         this.art = "gemeinsam";
-        this.beschreibung = "Gemeinsame Tabelle für alle Besucher";
+        this.beschreibung = "Gemeinsamer Stand für alle Besucher";
         this.basis = String(basis).replace(/\/+$/, "");
         this.pfad = String(pfad).replace(/^\/+|\/+$/g, "");
+        this.aufbereiten = aufbereiten;
     }
 
     get adresse() {
@@ -71,7 +79,7 @@ class SpeicherGemeinsam {
         if (!antwort.ok) {
             throw new Error("Laden fehlgeschlagen (HTTP " + antwort.status + ")");
         }
-        return MODELL.normalisieren(await antwort.json());
+        return this.aufbereiten(await antwort.json());
     }
 
     async speichern(daten) {
@@ -93,26 +101,30 @@ class SpeicherGemeinsam {
 /*
  * Liefert { speicher, hinweis }. Der Hinweis ist leer, wenn alles wie
  * eingestellt läuft — sonst nennt er den Grund für den Rückfall auf "lokal".
+ *
+ * `pfad` und `lokalerSchluessel` gehören zum jeweiligen Tab, `aufbereiten` ist
+ * dessen Normalisier-Funktion. So teilen sich beide Spiele dieselbe
+ * Speicher-Schicht, ohne voneinander zu wissen.
  */
-function speicherErzeugen(konfig) {
+function speicherErzeugen(konfig, pfad, lokalerSchluessel, aufbereiten) {
     const einstellung = konfig.speicher;
 
     if (einstellung.modus === "gemeinsam") {
         if (!einstellung.firebaseBasis) {
             return {
-                speicher: new SpeicherLokal(einstellung.lokalerSchluessel),
+                speicher: new SpeicherLokal(lokalerSchluessel, aufbereiten),
                 hinweis: "Gemeinsamer Modus ist eingestellt, aber in js\\konfig.js "
                     + "steht keine Datenbank-Adresse. Es wird nur lokal gespeichert."
             };
         }
         return {
-            speicher: new SpeicherGemeinsam(einstellung.firebaseBasis, einstellung.pfad),
+            speicher: new SpeicherGemeinsam(einstellung.firebaseBasis, pfad, aufbereiten),
             hinweis: ""
         };
     }
 
     return {
-        speicher: new SpeicherLokal(einstellung.lokalerSchluessel),
+        speicher: new SpeicherLokal(lokalerSchluessel, aufbereiten),
         hinweis: ""
     };
 }

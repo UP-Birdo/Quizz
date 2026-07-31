@@ -3,6 +3,28 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v1.0 — 2026-07-31
+
+Zweites Spiel: **Team Schach** als eigener Tab.
+
+- **Zwei Teams, beliebig viele Leute je Seite.** Man tritt Weiss oder Schwarz
+  bei — auch mitten im Spiel. Sobald auf beiden Seiten jemand steht und beide
+  Seiten **bereit** gedrückt haben, beginnt die Partie.
+- **Innerhalb des Teams gibt es keine Reihenfolge.** Wer aus dem Team am Zug
+  zuerst zieht, hat gezogen. Zieht jemand gleichzeitig, gilt der erste Zug, und
+  der zweite bekommt eine Meldung statt den ersten zu überschreiben.
+- **Vollständige Schachregeln**: Rochade, en passant, Bauernumwandlung mit
+  Auswahl, Schach, Schachmatt, Patt und die Fünfzig-Züge-Regel. Gefesselte
+  Figuren bleiben stehen, der König darf nicht ins Schach ziehen.
+- **Bedienung wie gewohnt**: Figur antippen, mögliche Felder erscheinen als
+  Punkte (Schlagfelder als Ring), Zielfeld antippen. Wer für Schwarz spielt,
+  sieht das Brett gedreht.
+- Der Stand liegt in der Datenbank und wird jederzeit fortgesetzt. Dazu ein
+  Zugverlauf mit Namen, Aufgeben und Neue Partie.
+- **Wichtig beim Umstieg:** In den Firebase-Regeln muss der neue Pfad
+  `team-schach` freigegeben werden, sonst kann das Schach nichts speichern —
+  siehe `docs/DEPLOYMENT.md`, Abschnitt 2.
+
 ## v0.9 — 2026-07-31
 
 - **Neue Runde nur mit dem Verwaltungs-Passwort.** Der Knopf steht weiter bei

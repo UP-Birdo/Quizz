@@ -639,6 +639,174 @@ body {
 }
 
 /* ------------------------------------------------------------------ *
+ * Team Schach
+ * ------------------------------------------------------------------ */
+
+:root {
+    --feld-hell: #ead9be;
+    --feld-dunkel: #a97f56;
+    --feld-gewaehlt: #f2d675;
+    --figur-weiss: #ffffff;
+    --figur-schwarz: #16181c;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --feld-hell: #b99b74;
+        --feld-dunkel: #7a5738;
+        --feld-gewaehlt: #d9b64a;
+        --figur-weiss: #fdfdfd;
+        --figur-schwarz: #16181c;
+    }
+}
+
+.team-reihe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.team-karte {
+    flex: 1 1 220px;
+    margin-bottom: 0;
+}
+
+.team-karte-meine {
+    border-color: var(--haupt);
+    border-width: 2px;
+}
+
+.team-namen {
+    margin: 0;
+    color: var(--schrift-leise);
+    font-size: 0.92rem;
+}
+
+.brett-halter {
+    margin: 20px 0;
+}
+
+.brett {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    border: 2px solid var(--rahmen);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.feld {
+    appearance: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    font-size: clamp(1.4rem, 7vw, 2.6rem);
+    line-height: 1;
+}
+
+.feld:disabled {
+    cursor: default;
+}
+
+.feld-hell {
+    background: var(--feld-hell);
+}
+
+.feld-dunkel {
+    background: var(--feld-dunkel);
+}
+
+.feld-gewaehlt {
+    background: var(--feld-gewaehlt);
+}
+
+.feld-schach {
+    box-shadow: inset 0 0 0 3px var(--gefahr);
+}
+
+/* Mögliches Zielfeld: Punkt in der Mitte. */
+.feld-ziel::after {
+    content: "";
+    position: absolute;
+    width: 26%;
+    height: 26%;
+    border-radius: 50%;
+    background: rgba(31, 95, 168, 0.55);
+}
+
+/* Mögliches Schlagfeld: Ring um die Figur. */
+.feld-schlag::after {
+    content: "";
+    position: absolute;
+    inset: 8%;
+    border-radius: 50%;
+    border: 3px solid rgba(179, 38, 30, 0.65);
+}
+
+.figur {
+    position: relative;
+    z-index: 1;
+    /* Umriss, damit weisse Figuren auf hellen Feldern erkennbar bleiben. */
+    text-shadow:
+        0 0 2px rgba(0, 0, 0, 0.55),
+        0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.figur-weiss {
+    color: var(--figur-weiss);
+}
+
+.figur-schwarz {
+    color: var(--figur-schwarz);
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.zug-liste {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.zug-zeile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.9rem;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.zug-zeile:last-child {
+    border-bottom: none;
+}
+
+.zug-farbe {
+    min-width: 62px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--schrift-leise);
+}
+
+.zug-wer {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--schrift-leise);
+}
+
+/* ------------------------------------------------------------------ *
  * Dialog
  * ------------------------------------------------------------------ */
 

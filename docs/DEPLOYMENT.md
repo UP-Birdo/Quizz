@@ -102,12 +102,21 @@ speichert nur auf dem jeweiligen Gerät.
                "wuerfel-quizz": {
                    ".read": true,
                    ".write": true
+               },
+               "team-schach": {
+                   ".read": true,
+                   ".write": true
                }
            }
        }
 
-   Damit ist ausschließlich der Pfad `wuerfel-quizz` offen, der Rest der
-   Datenbank bleibt gesperrt. **Nicht** den Testmodus verwenden: der macht die
+   Damit sind ausschließlich diese beiden Pfade offen, der Rest der Datenbank
+   bleibt gesperrt.
+
+   **Jeder Tab braucht seinen eigenen Eintrag.** Kommt später ein Spiel dazu,
+   gehört sein Pfad (aus `js/konfig.js`) hier ergänzt — sonst kann es nichts
+   speichern, und die App meldet einen Fehler beim Laden. Genau das passiert
+   beim Umstieg auf v1.0, wenn `team-schach` fehlt. **Nicht** den Testmodus verwenden: der macht die
    ganze Datenbank auf und schließt sie nach 30 Tagen wieder — die App würde
    dann ohne Vorwarnung aufhören zu speichern.
 6. Oben im Reiter **Daten** steht die Adresse der Datenbank, etwa

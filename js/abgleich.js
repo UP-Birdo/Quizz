@@ -18,15 +18,28 @@ class Abgleich {
     /*
      * speicher     — Rückwand aus speicher.js
      * einstellung  — KONFIG.speicher
-     * rueckrufe    — { beiDaten(daten), beiStatus(status, text) }
+     * rueckrufe    — {
+     *                    beiDaten(daten), beiStatus(status, text),
+     *                    leereDaten(), inhaltGleich(a, b),
+     *                    zusammenfuehren(fremd, eigen, eigeneId)   // optional
+     *                }
+     *
+     * Die drei Datenfunktionen kommen von aussen, weil sich zwei Spiele diese
+     * Schicht teilen: Das Würfel-Quizz und das Team-Schach haben ganz
+     * verschiedene Stände. Fehlt `zusammenfuehren`, wird der Stand so
+     * geschrieben, wie er ist — das ist beim Schach richtig, wo ein Zug den
+     * gemeinsamen Stand ändert und die Absicherung über den Zugzähler läuft.
      */
     constructor(speicher, einstellung, rueckrufe) {
         this.speicher = speicher;
         this.einstellung = einstellung;
         this.beiDaten = rueckrufe.beiDaten;
         this.beiStatus = rueckrufe.beiStatus;
+        this.leereDaten = rueckrufe.leereDaten;
+        this.inhaltGleich = rueckrufe.inhaltGleich;
+        this.zusammenfuehren = rueckrufe.zusammenfuehren || null;
 
-        this.daten = MODELL.leereDaten();
+        this.daten = this.leereDaten();
         this.schreibZeitgeber = null;
         this.schreibtGerade = false;
         this.aenderungOffen = false;
@@ -127,10 +140,11 @@ class Abgleich {
              * Und der lokale Speicher, wo es niemanden gibt, mit dem man sich
              * abstimmen müsste.
              */
-            if (this.speicher.art === "gemeinsam" && !this.globaleAenderung && this.eigeneId) {
+            if (this.zusammenfuehren && this.speicher.art === "gemeinsam"
+                && !this.globaleAenderung && this.eigeneId) {
                 try {
                     const fremd = await this.speicher.laden();
-                    this.daten = MODELL.zusammenfuehren(fremd, this.daten, this.eigeneId);
+                    this.daten = this.zusammenfuehren(fremd, this.daten, this.eigeneId);
                 } catch (ladefehler) {
                     /* Kein Kontakt zum Server: dann eben ohne Abgleich schreiben,
                        der Versuch ist besser als gar nichts zu speichern. */
@@ -171,7 +185,7 @@ class Abgleich {
 
         try {
             const fremd = await this.speicher.laden();
-            if (!MODELL.inhaltGleich(fremd, this.daten)) {
+            if (!this.inhaltGleich(fremd, this.daten)) {
                 this.daten = fremd;
                 this.beiDaten(this.daten);
             }

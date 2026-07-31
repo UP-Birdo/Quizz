@@ -14,7 +14,7 @@
 const KONFIG = {
 
     /* Version der App. Wird im Kopf angezeigt und muss zu CHANGELOG.md passen. */
-    APP_VERSION: "0.9",
+    APP_VERSION: "1.0",
 
     speicher: {
 
@@ -30,9 +30,12 @@ const KONFIG = {
            Anleitung zum Anlegen: docs\DEPLOYMENT.md */
         firebaseBasis: "https://quizz-215bd-default-rtdb.europe-west1.firebasedatabase.app",
 
-        /* Ablage-Pfad innerhalb der Datenbank. Jeder Tab bekommt seinen eigenen
-           Pfad, damit spätere Quizze sich nicht ins Gehege kommen. */
+        /* Ablage-Pfade innerhalb der Datenbank. Jeder Tab hat seinen eigenen,
+           damit sich die Spiele nicht ins Gehege kommen.
+           ACHTUNG: Für jeden Pfad braucht es in den Firebase-Regeln einen
+           eigenen Eintrag — siehe docs\DEPLOYMENT.md, Abschnitt 2. */
         pfad: "wuerfel-quizz",
+        schachPfad: "team-schach",
 
         /* Wie oft (in Millisekunden) nach fremden Änderungen gefragt wird.
            Gefragt wird nur, solange die Seite im Vordergrund ist — im
@@ -45,8 +48,9 @@ const KONFIG = {
            bevor gespeichert wird. Verhindert einen Schreibvorgang je Tastendruck. */
         schreibVerzoegerungMs: 500,
 
-        /* Schlüssel im Browser-Speicher für den lokalen Modus. */
-        lokalerSchluessel: "quizz.wuerfel-quizz"
+        /* Schlüssel im Browser-Speicher für den lokalen Modus, je Tab einer. */
+        lokalerSchluessel: "quizz.wuerfel-quizz",
+        lokalerSchluesselSchach: "quizz.team-schach"
     },
 
     verwaltung: {

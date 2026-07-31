@@ -29,6 +29,31 @@ Einzeln geht es auch von Hand:
     $env:ELECTRON_RUN_AS_NODE = "1"
     & "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe" "tests\test-modell.js"
 
+## Was wird geprüft (`test-schach.js`)
+
+Die Schachregeln — der Bereich, in dem sich Fehler am leichtesten verstecken.
+
+| Bereich | Inhalt |
+|---|---|
+| Felder | Namen und Nummern, Grundstellung |
+| Gangarten | Bauer (ein/zwei Felder, schräg schlagen), Springer springt, Turm/Läufer/Dame bis zum Hindernis, König ein Feld |
+| Schach | Erkennung, gefesselte Figuren bleiben stehen, König darf nicht ins Schach, im Schach zählen nur rettende Züge |
+| Rochade | kurz und lang; verboten im Schach, über ein bedrohtes Feld, ohne Recht, durch besetzte Felder; Königszug nimmt beide Rechte |
+| Sonderzüge | en passant nur unmittelbar danach, Umwandlung in jede Figur |
+| Partieende | Schachmatt mit Sieger, Patt ohne |
+
+## Was wird geprüft (`test-schach-runde.js`)
+
+Teams und Ablauf einer Partie.
+
+| Bereich | Inhalt |
+|---|---|
+| Teams | beitreten, wechseln, verlassen, niemand doppelt, Beitritt auch während des Spiels |
+| Start | erst wenn beide Seiten besetzt UND bereit sind |
+| Zugrecht | nur das Team am Zug; **innerhalb des Teams jeder** — nach dem Zug eines Teammitglieds ist das ganze Team nicht mehr dran |
+| Ziehen | Zugzähler und Verlauf, abgewiesene Züge, begrenzter Verlauf |
+| Ende | Narrenmatt beendet die Partie mit Sieger, Aufgeben, neue Partie behält die Teams |
+
 ## Was wird geprüft (`test-syntax.js`)
 
 Die Bildschirm- und Speicherdateien laufen nur im Browser, lassen sich hier
@@ -39,7 +64,7 @@ Klammern und typografische Anführungszeichen sofort ab.
 |---|---|
 | Übersetzbarkeit | jede Datei in `js\` wird kompiliert |
 | Einbindung | jede Datei aus `js\` und `css\stil.css` ist in `index.html` verlinkt |
-| Aufrufe | jedes `MODELL.xyz` und `VERSIEGELUNG.xyz` im gesamten Programm gibt es wirklich — fängt umbenannte Funktionen, die anderswo unter dem alten Namen weiterleben |
+| Aufrufe | jedes `MODELL.xyz`, `SCHACH.xyz`, `SCHACH_RUNDE.xyz` und `VERSIEGELUNG.xyz` im gesamten Programm gibt es wirklich — fängt umbenannte Funktionen, die anderswo unter dem alten Namen weiterleben. Das Suchmuster braucht eine Wortgrenze, sonst trifft `SCHACH` auch mitten in `TEAM_SCHACH`. |
 | Version | `APP_VERSION` aus `js\konfig.js` kommt in `CHANGELOG.md` vor |
 
 ## Was wird geprüft (`test-modell.js`)

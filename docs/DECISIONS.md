@@ -352,6 +352,41 @@ Haus-Regel: keine Emojis. Ein Sternzeichen wäre grenzwertig, das Wort **Stern**
 ist eindeutig, wird vorgelesen und funktioniert in jeder Schriftart. Intern
 heißt der Wert `"STERN"`.
 
+## Team Schach — die Entscheidungen (v1.0)
+
+**Zweiter Tab statt eigenes Projekt.** Ausdrücklicher Wunsch. Es trägt, weil
+sich beide Spiele nur zwei Dinge teilen: die Speicher-Schicht und die Frage,
+wer am Gerät sitzt. Sonst berühren sie sich nicht — eigener Pfad in der
+Datenbank, eigener Abgleich, eigene Dateien. Wird das Schach später deutlich
+größer, lässt es sich mit den drei Dateien `schach*.js` herauslösen, ohne das
+Würfel-Quizz anzufassen.
+
+**Keine Reihenfolge im Team, wer zuerst zieht, hat gezogen.** Ebenfalls
+ausdrücklicher Wunsch, und die einfachste denkbare Regel: Es gibt nichts zu
+verwalten, keine Warteschlange, keine Absprache im Programm. Der Preis ist, dass
+zwei aus einem Team gleichzeitig ziehen können — deshalb der Zugzähler, der den
+zweiten Zug verwirft statt den ersten zu überschreiben. Ein verworfener Zug ist
+ärgerlich, ein verschluckter wäre schlimmer.
+
+**Vollständige Regeln statt Vereinfachung.** „Der Rest normales Schach" heißt
+Rochade, en passant und Umwandlung. Gerade diese drei sind die Stellen, an denen
+selbstgebaute Schachprogramme falsch liegen — deshalb hat jede davon einen
+eigenen Test, inklusive der Fälle, in denen sie NICHT erlaubt sind.
+
+**Figuren als Schriftzeichen, nicht als Bild.** Die Unicode-Schachzeichen sind
+Symbole, keine Emojis; sie skalieren mit der Schriftgröße und färben sich mit.
+Angehängt wird der Textmarkierer, damit kein Gerät sie doch bunt als Emoji
+zeichnet. Zwölf einzelne SVG-Figuren wären mehr Aufwand für kein besseres
+Ergebnis.
+
+**Brett gedreht für Schwarz.** Jeder blickt von seiner Seite auf das Brett, wie
+am echten Tisch. Kostet eine Zeile beim Zeichnen und erspart dauerndes
+Umdenken.
+
+**Kein Zug-Zurück.** Wäre bei mehreren Leuten je Team eine Quelle für Streit
+(wer darf zurücknehmen?) und müsste den ganzen Verlauf mit Ständen speichern.
+Wer sich vertan hat, gibt auf oder setzt die Partie zurück.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
@@ -391,6 +426,23 @@ Verwaltung wäre bequemer, würde aber bedeuten, dass ein Passwort im Umlauf jed
 Zugang öffnet.
 
 ## Versions-Historie
+
+### v1.0 — 2026-07-31
+
+Team Schach als zweiter Tab. Der Umbau, den es dafür brauchte, war kleiner als
+erwartet: Speicher- und Abgleich-Schicht mussten nur ihre Datenfunktionen von
+aussen bekommen (`leereDaten`, `inhaltGleich`, optional `zusammenfuehren`),
+statt fest auf `MODELL` zu zeigen. Danach war das zweite Spiel ein Zusatz und
+kein Eingriff.
+
+Die Schachregeln liegen bewusst in einer eigenen Datei ohne jede Kenntnis von
+Teams, Speicher oder Bildschirm — 25 Tests decken sie ab, die Partie mit ihren
+Teams weitere 17.
+
+Beim Aufbau ist eine Falle im eigenen Werkzeug aufgefallen: Die Aufruf-Prüfung
+in `test-syntax.js` fand `SCHACH.` auch mitten in `TEAM_SCHACH.` und meldete
+fünfzehn Fehler, die keine waren. Behoben mit einem Rückblick im Suchmuster.
+Lehre: Ein Prüfmuster auf Bezeichner braucht immer eine Wortgrenze.
 
 ### v0.9 — 2026-07-31
 

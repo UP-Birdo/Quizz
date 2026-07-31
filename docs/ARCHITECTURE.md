@@ -50,7 +50,10 @@ Speicher-Dienst kostet genau eine neue Klasse in `speicher.js`.
 | `js/dialog.js` | `DIALOG.frage()`, `DIALOG.hinweis()`, `DIALOG.eingabe()` — Ersatz für `confirm()`/`alert()`/`prompt()`. |
 | `js/tabs.js` | Offenes Tab-Register; ein Tab meldet sich mit `id`, `titel` und `aufbauen(behaelter)` an. |
 | `js/wuerfel-quizz.js` | Der Tab **Würfel Quizz**: Anmelden, eigene Karte, Vermutungen, Auflösung, Bestenliste. |
-| `js/app.js` | Startpunkt (`DOMContentLoaded`), Statusanzeige, Hinweisbalken. |
+| `js/schach.js` | Reine Schachregeln: Brett, Zugerzeugung, Bedrohung, Rochade, en passant, Umwandlung, Matt und Patt. Ohne Browser testbar. |
+| `js/schach-runde.js` | Die Partie mit ihren Teams: beitreten, bereit, Zugrecht, Verlauf, Ergebnis. Ebenfalls ohne Browser testbar. |
+| `js/team-schach.js` | Der Tab **Team Schach**: Brett zeichnen, Felder antippen, Teams, Zugversand mit Zugzähler-Prüfung. |
+| `js/app.js` | Startpunkt (`DOMContentLoaded`), Statusanzeige, Hinweisbalken; erzeugt **beide** Speicher und Abgleiche. |
 | `tests/` | Regressionstests (`test-modell.js` Spiellogik, `test-versiegelung.js` Siegel, `test-syntax.js` Übersetzbarkeit) plus Startskript. |
 | `tools/Lokal-Starten.ps1` | Kleiner Test-Server (HttpListener) für `http://localhost:8080/`; `Quizz lokal starten.cmd` startet ihn per Doppelklick. |
 | `tools/Deploy-Quizz.ps1` | Auslieferung nach GitHub ohne git: vergleicht die Dateien mit dem Stand im Repository und sendet nur die geänderten — in einem einzigen Commit. Token per DPAPI (`-SetToken`), liegt als `tools/github-token.dat` und wird nie mitgeliefert. |
@@ -322,6 +325,55 @@ und nicht in der Datenbank.
   und dort eintragen. `tests\test-versiegelung.js` prüft, dass Prüfsumme und
   vereinbartes Passwort zusammenpassen — beim Ändern also auch den Test
   anpassen.
+
+## Team Schach
+
+Das zweite Spiel liegt in drei Schichten, streng getrennt:
+
+| Datei | Weiß nichts über |
+|---|---|
+| `schach.js` — Regeln | Teams, Spieler, Speicher, Bildschirm |
+| `schach-runde.js` — Partie und Teams | Speicher, Bildschirm |
+| `team-schach.js` — Bildschirm | Regeln (fragt immer `SCHACH`) |
+
+**Eigener Pfad in der Datenbank** (`KONFIG.speicher.schachPfad`), eigener
+Abgleich, eigener Stand. Die beiden Spiele wissen nichts voneinander;
+gemeinsam ist ihnen nur `ich.js` — wer an diesem Gerät sitzt. Angemeldet wird
+im Würfel-Quizz, weil dort Namen und PINs liegen; das Schach liest den Namen
+über `WUERFEL_QUIZZ.abgleich.daten` nur zur Anzeige.
+
+### Die Hausregel: keine Reihenfolge im Team
+
+Jeder aus dem Team, das am Zug ist, darf ziehen (`SCHACH_RUNDE.darfZiehen`).
+Damit bei zwei gleichzeitigen Zügen keiner verloren geht, trägt jede Runde
+einen **Zugzähler**:
+
+1. `TEAM_SCHACH._sendenMitPruefung` lädt vor dem Schreiben den Stand vom Server.
+2. Stimmt dessen `zugZaehler` nicht mehr mit dem erwarteten überein, hat jemand
+   anders gezogen. Der eigene Zug wird **verworfen**, der fremde übernommen,
+   und der Spieler bekommt eine Meldung.
+3. Sonst wird geschrieben.
+
+Deshalb bekommt der Schach-Abgleich **kein** `zusammenfuehren`: Beim Schach gibt
+es keinen "eigenen Eintrag", ein Zug ändert den gemeinsamen Stand. Die
+Absicherung ist eine andere, aber sie hat denselben Zweck — nie einen fremden
+Stand blind überschreiben.
+
+### Brett und Felder
+
+Das Brett ist eine Zeichenkette aus 64 Zeichen, Feld 0 ist a8, Feld 63 ist h1.
+Grossbuchstabe = weiss, Kleinbuchstabe = schwarz, Punkt = leer; die Buchstaben
+sind die deutschen Anfangsbuchstaben (B, T, S, L, D, K). Eine Zeichenkette statt
+einer Liste, weil Firebase sie unverändert speichert und der Vergleich zweier
+Stände damit ein einziger Zeichenkettenvergleich ist.
+
+Die Zugerzeugung ist zweistufig: `_rohzuege` liefert, was die Gangart erlaubt,
+`zuege` filtert davon alles weg, wonach der eigene König im Schach stünde. Damit
+sind Fesselungen automatisch abgedeckt, ohne Sonderfall.
+
+`_feldBedroht` denkt bewusst rückwärts (von einem Feld aus suchen, wer es
+angreift) statt alle gegnerischen Züge zu erzeugen — sonst entstünde über die
+Rochade-Prüfung eine Endlosschleife.
 
 ## Tab-Register
 

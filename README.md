@@ -1,6 +1,12 @@
 # Quizz
 
-Eine kleine Web-Seite für ein Ratespiel unter Freunden. Jeder würfelt fünf
+Zwei Spiele auf einer Seite: **Würfel Quizz** (Ratespiel um verdeckte Würfel)
+und **Team Schach** (Schach für zwei Mannschaften). Man meldet sich einmal an
+und ist in beiden dabei.
+
+## Würfel Quizz
+
+Ein Ratespiel unter Freunden. Jeder würfelt fünf
 Würfel und hält sie geheim. Über den Tag stellt man sich gegenseitig Fragen und
 trägt hier ein, was die anderen wohl gewürfelt haben. Am Abend wird aufgelöst
 und gezählt, wer am besten geraten hat.
@@ -149,6 +155,27 @@ das Geheimhalten nicht möglich. Spiel eine Runde also auf demselben Gerät zu
 Ende. Meldest du dich unterwegs mit deiner PIN auf einem anderen Gerät an,
 kannst du dort alles außer deinem bereits festgelegten Wurf; den müsstest du neu
 eintragen, was für alle als erneutes Festlegen sichtbar wird.
+
+## Der zweite Tab: Team Schach
+
+Ein Schachspiel für zwei Mannschaften.
+
+1. **Team wählen.** Bei Weiss oder Schwarz auf **Mitspielen** — beliebig viele
+   Leute je Seite, und man darf auch mitten im Spiel dazukommen.
+2. **Bereit drücken.** Sobald auf beiden Seiten jemand steht und beide Seiten
+   bereit sind, geht es los.
+3. **Ziehen.** Figur antippen, die möglichen Felder erscheinen als Punkte
+   (Schlagfelder als Ring), dann das Zielfeld antippen. Wer für Schwarz spielt,
+   sieht das Brett gedreht.
+
+**Innerhalb eines Teams gibt es keine Reihenfolge:** Jeder aus dem Team, das am
+Zug ist, darf ziehen — wer zuerst drückt, hat gezogen. Sind zwei gleichzeitig
+dran, zählt der erste Zug; der zweite bekommt eine Meldung und wird nicht
+ausgeführt. Zwischen Weiss und Schwarz gilt normales Schach.
+
+Es sind alle Regeln umgesetzt: Rochade, en passant, Bauernumwandlung (mit
+Auswahl der Figur), Schach, Schachmatt, Patt. Der Stand liegt in der Datenbank
+— ihr könnt die Partie jederzeit liegen lassen und später weiterspielen.
 
 ## Selbst betreiben
 
