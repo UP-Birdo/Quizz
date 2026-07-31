@@ -63,12 +63,18 @@ const WUERFEL_QUIZZ = {
     /*
      * Sorgt dafür, dass es zu diesem Gerät einen Spieler gibt. Wird von app.js
      * einmal nach dem ersten Laden aufgerufen.
+     *
+     * Drei Wege hinein:
+     *   1. Das Gerät kennt seinen Spieler schon — nichts zu tun.
+     *   2. Man wählt sich aus der Liste der Mitspieler und weist sich mit der
+     *      PIN aus. Das geht von jedem Gerät aus.
+     *   3. Man meldet sich neu an: Name und PIN festlegen.
      */
     async anmelden() {
         const abgleich = WUERFEL_QUIZZ.abgleich;
         const person = ICH.person();
 
-        /* Bekanntes Gerät und der Spieler existiert noch: fertig. */
+        /* Weg 1: bekanntes Gerät, Spieler existiert noch. */
         if (person) {
             const bekannt = MODELL.spielerFinden(abgleich.daten, person.id);
             if (bekannt) {
@@ -81,51 +87,162 @@ const WUERFEL_QUIZZ = {
             }
         }
 
-        let name = "";
-        while (!name) {
-            name = await DIALOG.eingabe(
-                "Wer bist du?",
-                "Trag deinen Namen ein. Die anderen sehen ihn in der Runde, "
-                    + "und dein Gerät merkt ihn sich.",
-                person ? person.name : "",
-                "Los geht es",
-                false
-            );
-        }
+        /* Weg 2: aus der Liste der Mitspieler wählen. */
+        const spielerliste = abgleich.daten.spieler;
+        if (spielerliste.length > 0) {
+            const eintraege = spielerliste.map((spieler) => ({
+                beschriftung: spieler.name,
+                hinweis: MODELL.hatPin(spieler) ? "mit PIN gesichert" : "ohne PIN angelegt",
+                wert: spieler.id
+            }));
 
-        let spielerId = null;
-
-        /* Gibt es den Namen schon, ist das meistens dieselbe Person auf einem
-           anderen Gerät — nachfragen, statt jemanden zu übernehmen. */
-        const vorhanden = MODELL.spielerNachName(abgleich.daten, name);
-        if (vorhanden) {
-            const binIch = await DIALOG.frage(
-                "Name ist schon dabei",
-                name + " spielt bereits mit. Bist du das, zum Beispiel von einem "
-                    + "anderen Gerät aus? Wenn nicht, nimm bitte einen anderen Namen.",
-                "Ja, das bin ich"
+            const gewaehlt = await DIALOG.liste(
+                "Bist du schon dabei?",
+                "Wähle deinen Namen, wenn du schon mitspielst — mit deiner PIN "
+                    + "kommst du von jedem Gerät aus wieder hinein.",
+                eintraege,
+                "Ich bin neu hier"
             );
-            if (binIch) {
-                spielerId = vorhanden.id;
-            } else {
-                /* Anderer Name: Frage von vorn. */
-                ICH.personVergessen();
-                await WUERFEL_QUIZZ.anmelden();
+
+            if (gewaehlt) {
+                const erfolg = await WUERFEL_QUIZZ._alsBestehenderAnmelden(gewaehlt);
+                if (!erfolg) {
+                    /* Abgebrochen oder PIN falsch: von vorn fragen. */
+                    await WUERFEL_QUIZZ.anmelden();
+                }
                 return;
             }
         }
 
-        if (!spielerId) {
-            spielerId = MODELL.idErzeugen();
-            abgleich.aendern(
-                MODELL.spielerHinzufuegen(abgleich.daten, name, spielerId),
-                true
-            );
+        /* Weg 3: neu anmelden. */
+        await WUERFEL_QUIZZ._neuAnmelden();
+    },
+
+    /* Weg 2: bestehenden Spieler übernehmen, ausgewiesen durch die PIN. */
+    async _alsBestehenderAnmelden(spielerId) {
+        const abgleich = WUERFEL_QUIZZ.abgleich;
+        const spieler = MODELL.spielerFinden(abgleich.daten, spielerId);
+        if (!spieler) {
+            return false;
         }
+
+        /* Wer ohne PIN angelegt wurde, ist nicht geschützt — dann bleibt nur die
+           Nachfrage. Betrifft Spieler aus der Zeit vor v0.6. */
+        if (!MODELL.hatPin(spieler)) {
+            const binIch = await DIALOG.frage(
+                "Ohne PIN angelegt",
+                spieler.name + " hat keine PIN hinterlegt, deshalb lässt sich das "
+                    + "hier nicht prüfen. Bist du das wirklich?",
+                "Ja, das bin ich"
+            );
+            if (!binIch) {
+                return false;
+            }
+            WUERFEL_QUIZZ._uebernehmen(spieler);
+            return true;
+        }
+
+        const stellen = KONFIG.verwaltung.pinStellen;
+
+        for (let versuch = 1; versuch <= 3; versuch++) {
+            const text = (versuch === 1)
+                ? "Gib deine " + stellen + "-stellige PIN ein."
+                : "Das war nicht richtig. Noch " + (4 - versuch)
+                    + (versuch === 3 ? " Versuch." : " Versuche.");
+
+            const pin = await DIALOG.zahlen("PIN von " + spieler.name, text, stellen, "Anmelden");
+
+            if (pin === null) {
+                return false;
+            }
+            if (await VERSIEGELUNG.pinPruefen(pin, spieler.pinSalz, spieler.pinPruefwert)) {
+                WUERFEL_QUIZZ._uebernehmen(spieler);
+                return true;
+            }
+        }
+
+        await DIALOG.hinweis(
+            "Dreimal falsch",
+            "Die PIN stimmt nicht. Wenn du sie vergessen hast, muss dich jemand mit "
+                + "dem Verwaltungs-Zugang aus der Runde entfernen — danach kannst du "
+                + "dich neu anmelden."
+        );
+        return false;
+    },
+
+    /* Weg 3: neuer Spieler mit Name und PIN. */
+    async _neuAnmelden() {
+        const abgleich = WUERFEL_QUIZZ.abgleich;
+
+        /* Name — darf noch nicht vergeben sein. */
+        let name = "";
+        while (!name) {
+            name = await DIALOG.eingabe(
+                "Wie heißt du?",
+                "Diesen Namen sehen die anderen in der Runde.",
+                "",
+                "Weiter",
+                false
+            );
+
+            if (name && MODELL.spielerNachName(abgleich.daten, name)) {
+                await DIALOG.hinweis(
+                    "Name schon vergeben",
+                    name + " spielt bereits mit. Bist du das selbst, melde dich über "
+                        + "die Liste mit deiner PIN an. Sonst nimm bitte einen anderen "
+                        + "Namen."
+                );
+                name = "";
+            }
+        }
+
+        /* PIN — zweimal eingeben, damit ein Vertipper nicht später aussperrt. */
+        const stellen = KONFIG.verwaltung.pinStellen;
+        let pin = null;
+
+        while (pin === null) {
+            const eingabe = await DIALOG.zahlen(
+                "PIN festlegen",
+                "Denk dir " + stellen + " Ziffern aus. Damit kommst du auch von einem "
+                    + "anderen Handy wieder als du selbst hinein.",
+                stellen, "Weiter", false
+            );
+            const wiederholung = await DIALOG.zahlen(
+                "PIN wiederholen",
+                "Noch einmal dieselben " + stellen + " Ziffern.",
+                stellen, "Fertig", false
+            );
+
+            if (eingabe === wiederholung) {
+                pin = eingabe;
+            } else {
+                await DIALOG.hinweis(
+                    "Die beiden stimmen nicht überein",
+                    "Damit du dich später nicht aussperrst, muss die PIN zweimal "
+                        + "gleich eingegeben werden. Noch einmal."
+                );
+            }
+        }
+
+        const salz = VERSIEGELUNG.verfuegbar() ? VERSIEGELUNG.salzErzeugen() : "";
+        const pinPruefwert = await VERSIEGELUNG.pinPruefwertBilden(pin, salz);
+
+        const spielerId = MODELL.idErzeugen();
+        let neu = MODELL.spielerHinzufuegen(abgleich.daten, name, spielerId);
+        neu = MODELL.pinSetzen(neu, spielerId, pinPruefwert, salz);
+        abgleich.aendern(neu, true);
 
         WUERFEL_QUIZZ.ichId = spielerId;
         ICH.personSetzen(spielerId, name);
         WUERFEL_QUIZZ.zeichnen(abgleich.daten);
+    },
+
+    /* Ab jetzt ist dieses Gerät dieser Spieler. */
+    _uebernehmen(spieler) {
+        WUERFEL_QUIZZ.ichId = spieler.id;
+        ICH.personSetzen(spieler.id, spieler.name);
+        WUERFEL_QUIZZ.wuerfelSichtbar = false;
+        WUERFEL_QUIZZ.zeichnen(WUERFEL_QUIZZ.abgleich.daten);
     },
 
     /* ---------------------------------------------------------------- *
@@ -186,6 +303,11 @@ const WUERFEL_QUIZZ = {
         leiste.appendChild(WUERFEL_QUIZZ._element("span", "phasen-text",
             festgelegt + " festgelegt, " + aufgedeckt + " aufgedeckt"));
 
+        if (ICH.verwaltungAktiv()) {
+            leiste.appendChild(WUERFEL_QUIZZ._element("span", "chip chip-verwaltung",
+                "Verwaltung aktiv"));
+        }
+
         return leiste;
     },
 
@@ -203,8 +325,8 @@ const WUERFEL_QUIZZ = {
         if (!ich.aufgedeckt) {
             kopf.appendChild(WUERFEL_QUIZZ._augeKnopfBauen());
         }
-        kopf.appendChild(WUERFEL_QUIZZ._knopf("Name ändern", "knopf-still knopf-klein",
-            () => WUERFEL_QUIZZ.namenAendern(ich)));
+        kopf.appendChild(WUERFEL_QUIZZ._knopf("Profil", "knopf-still knopf-klein",
+            () => WUERFEL_QUIZZ.profilOeffnen(ich)));
 
         karte.appendChild(kopf);
 
@@ -243,7 +365,8 @@ const WUERFEL_QUIZZ = {
             karte.appendChild(WUERFEL_QUIZZ._wuerfelZeileBauen(
                 werte,
                 "meinwurf",
-                (spalte, wert) => WUERFEL_QUIZZ.meinenWuerfelSetzen(ich, spalte, wert)
+                (spalte, wert) => WUERFEL_QUIZZ.meinenWuerfelSetzen(ich, spalte, wert),
+                "Deine Würfel"
             ));
         }
 
@@ -450,8 +573,15 @@ const WUERFEL_QUIZZ = {
         karte.appendChild(WUERFEL_QUIZZ._wuerfelZeileBauen(
             tipp,
             "tipp-" + ziel.id,
-            (spalte, wert) => WUERFEL_QUIZZ.tippSetzen(ziel.id, spalte, wert)
+            (spalte, wert) => WUERFEL_QUIZZ.tippSetzen(ziel.id, spalte, wert),
+            "Vermutung für " + ziel.name
         ));
+
+        if (ICH.verwaltungAktiv()) {
+            const leiste = WUERFEL_QUIZZ._element("div", "karte-fuss");
+            leiste.appendChild(WUERFEL_QUIZZ._entfernenKnopfBauen(ziel));
+            karte.appendChild(leiste);
+        }
 
         return karte;
     },
@@ -505,6 +635,12 @@ const WUERFEL_QUIZZ = {
             }
 
             karte.appendChild(liste);
+        }
+
+        if (ICH.verwaltungAktiv()) {
+            const leiste = WUERFEL_QUIZZ._element("div", "karte-fuss");
+            leiste.appendChild(WUERFEL_QUIZZ._entfernenKnopfBauen(ziel));
+            karte.appendChild(leiste);
         }
 
         return karte;
@@ -594,7 +730,80 @@ const WUERFEL_QUIZZ = {
         leiste.appendChild(WUERFEL_QUIZZ._knopf("Ich bin raus", "knopf-still knopf-klein",
             () => WUERFEL_QUIZZ.austreten()));
 
+        leiste.appendChild(WUERFEL_QUIZZ._knopf(
+            ICH.verwaltungAktiv() ? "Verwaltung beenden" : "Verwaltung",
+            "knopf-still knopf-klein",
+            () => WUERFEL_QUIZZ.verwaltungUmschalten()
+        ));
+
         return leiste;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Verwaltung
+     *
+     * Ein Zugang für denjenigen, der die Runde betreut: Er darf Spieler aus
+     * der Runde entfernen — etwa jemanden, der sich doppelt angemeldet oder
+     * seine PIN vergessen hat. Mehr kann die Verwaltung nicht; insbesondere
+     * sieht auch sie keine fremden Würfel, denn die liegen auf fremden Geräten.
+     * ---------------------------------------------------------------- */
+
+    async verwaltungUmschalten() {
+        if (ICH.verwaltungAktiv()) {
+            ICH.verwaltungSetzen(false);
+            WUERFEL_QUIZZ.zeichnen(WUERFEL_QUIZZ.abgleich.daten);
+            return;
+        }
+
+        const passwort = await DIALOG.zahlen(
+            "Verwaltung",
+            "Passwort eingeben. Damit lassen sich Spieler aus der Runde entfernen.",
+            KONFIG.verwaltung.passwortStellen,
+            "Anmelden"
+        );
+
+        if (passwort === null) {
+            return;
+        }
+
+        const richtig = await VERSIEGELUNG.verwaltungPruefen(
+            passwort, KONFIG.verwaltung.pruefwert
+        );
+
+        if (!richtig) {
+            await DIALOG.hinweis("Passwort falsch", "Das war nicht das richtige Passwort.");
+            return;
+        }
+
+        ICH.verwaltungSetzen(true);
+        WUERFEL_QUIZZ.zeichnen(WUERFEL_QUIZZ.abgleich.daten);
+    },
+
+    /* Knopf zum Entfernen eines Spielers; nur in der Verwaltung sichtbar. */
+    _entfernenKnopfBauen(ziel) {
+        return WUERFEL_QUIZZ._knopf(
+            "Spieler entfernen",
+            "knopf-gefahr knopf-klein",
+            () => WUERFEL_QUIZZ.spielerEntfernen(ziel)
+        );
+    },
+
+    async spielerEntfernen(ziel) {
+        const ja = await DIALOG.frage(
+            "Spieler entfernen?",
+            ziel.name + " wird aus der Runde entfernt, mit Würfeln und Vermutungen. "
+                + "Die Person kann sich danach neu anmelden — auch mit neuer PIN.",
+            "Entfernen",
+            true
+        );
+        if (!ja) {
+            return;
+        }
+
+        WUERFEL_QUIZZ.abgleich.aendern(
+            MODELL.spielerEntfernen(WUERFEL_QUIZZ.abgleich.daten, ziel.id),
+            true
+        );
     },
 
     /* ---------------------------------------------------------------- *
@@ -710,6 +919,40 @@ const WUERFEL_QUIZZ = {
         );
     },
 
+    /* ---------------------------------------------------------------- *
+     * Profil — Name und PIN ändern
+     * ---------------------------------------------------------------- */
+
+    async profilOeffnen(ich) {
+        const stellen = KONFIG.verwaltung.pinStellen;
+
+        const wahl = await DIALOG.liste(
+            "Dein Profil",
+            "Was möchtest du ändern?",
+            [
+                {
+                    beschriftung: "Name ändern",
+                    hinweis: "Zurzeit: " + ich.name,
+                    wert: "name"
+                },
+                {
+                    beschriftung: "PIN ändern",
+                    hinweis: MODELL.hatPin(ich)
+                        ? stellen + " Ziffern für die Anmeldung auf anderen Geräten"
+                        : "Noch keine PIN hinterlegt",
+                    wert: "pin"
+                }
+            ],
+            "Schließen"
+        );
+
+        if (wahl === "name") {
+            await WUERFEL_QUIZZ.namenAendern(ich);
+        } else if (wahl === "pin") {
+            await WUERFEL_QUIZZ.pinAendern(ich);
+        }
+    },
+
     async namenAendern(ich) {
         const name = await DIALOG.eingabe(
             "Name ändern",
@@ -718,7 +961,18 @@ const WUERFEL_QUIZZ = {
             "Übernehmen",
             true
         );
-        if (!name) {
+        if (!name || name === ich.name) {
+            return;
+        }
+
+        /* Der Name ist zugleich das, woran man sich beim Anmelden wiedererkennt —
+           doppelte Namen würden die Liste unbrauchbar machen. */
+        const vorhanden = MODELL.spielerNachName(WUERFEL_QUIZZ.abgleich.daten, name);
+        if (vorhanden && vorhanden.id !== ich.id) {
+            await DIALOG.hinweis(
+                "Name schon vergeben",
+                name + " spielt bereits mit. Nimm bitte einen anderen Namen."
+            );
             return;
         }
 
@@ -726,6 +980,78 @@ const WUERFEL_QUIZZ = {
         WUERFEL_QUIZZ.abgleich.aendern(
             MODELL.nameSetzen(WUERFEL_QUIZZ.abgleich.daten, ich.id, name),
             true
+        );
+    },
+
+    /*
+     * PIN ändern. Wer schon eine hat, muss sie zuerst eingeben — sonst könnte
+     * jemand an einem kurz unbeaufsichtigten Handy die PIN austauschen und den
+     * Zugang übernehmen.
+     */
+    async pinAendern(ich) {
+        const stellen = KONFIG.verwaltung.pinStellen;
+
+        if (MODELL.hatPin(ich)) {
+            const alte = await DIALOG.zahlen(
+                "Bisherige PIN",
+                "Zur Sicherheit zuerst deine bisherige PIN.",
+                stellen, "Weiter"
+            );
+            if (alte === null) {
+                return;
+            }
+            if (!await VERSIEGELUNG.pinPruefen(alte, ich.pinSalz, ich.pinPruefwert)) {
+                await DIALOG.hinweis(
+                    "PIN stimmt nicht",
+                    "Die bisherige PIN war falsch. Es wurde nichts geändert."
+                );
+                return;
+            }
+        }
+
+        let neue = null;
+        while (neue === null) {
+            const eingabe = await DIALOG.zahlen(
+                "Neue PIN",
+                "Denk dir " + stellen + " Ziffern aus.",
+                stellen, "Weiter"
+            );
+            if (eingabe === null) {
+                return;
+            }
+
+            const wiederholung = await DIALOG.zahlen(
+                "Neue PIN wiederholen",
+                "Noch einmal dieselben " + stellen + " Ziffern.",
+                stellen, "Speichern"
+            );
+            if (wiederholung === null) {
+                return;
+            }
+
+            if (eingabe === wiederholung) {
+                neue = eingabe;
+            } else {
+                await DIALOG.hinweis(
+                    "Die beiden stimmen nicht überein",
+                    "Damit du dich nicht aussperrst, muss die neue PIN zweimal "
+                        + "gleich eingegeben werden. Noch einmal."
+                );
+            }
+        }
+
+        /* Neues Salz zur neuen PIN — sonst bliebe der alte Prüfwert vergleichbar. */
+        const salz = VERSIEGELUNG.verfuegbar() ? VERSIEGELUNG.salzErzeugen() : "";
+        const pinPruefwert = await VERSIEGELUNG.pinPruefwertBilden(neue, salz);
+
+        WUERFEL_QUIZZ.abgleich.aendern(
+            MODELL.pinSetzen(WUERFEL_QUIZZ.abgleich.daten, ich.id, pinPruefwert, salz),
+            true
+        );
+
+        await DIALOG.hinweis(
+            "PIN geändert",
+            "Ab sofort meldest du dich auf anderen Geräten mit der neuen PIN an."
         );
     },
 
@@ -758,17 +1084,30 @@ const WUERFEL_QUIZZ = {
      * Bausteine
      * ---------------------------------------------------------------- */
 
-    /* Eine Reihe aus fünf Auswahlfeldern. `beiAenderung(spalte, wert)`. */
-    _wuerfelZeileBauen(werte, schluessel, beiAenderung) {
+    /*
+     * Eine Reihe aus fünf Auswahlfeldern. `beiAenderung(spalte, wert)`.
+     *
+     * Die Felder tragen ABSICHTLICH keine sichtbare Nummer. Eine Beschriftung
+     * wie "Würfel 1" legt nahe, man müsse Platz für Platz richtig raten — das
+     * Gegenteil ist der Fall: Gezählt wird, welche Werte vorkommen, nicht wo
+     * sie stehen (siehe MODELL.treffer). Für Vorleseprogramme steht die Nummer
+     * weiterhin im aria-label.
+     */
+    _wuerfelZeileBauen(werte, schluessel, beiAenderung, titel) {
+        const halter = WUERFEL_QUIZZ._element("div", "wuerfel-block");
+        halter.appendChild(WUERFEL_QUIZZ._element("p", "reihenfolge-hinweis",
+            "Reihenfolge egal — es zählt nur, welche Werte vorkommen."));
+
         const reihe = WUERFEL_QUIZZ._element("div", "wuerfel-reihe");
 
         for (let spalte = 0; spalte < MODELL.WUERFEL_ANZAHL; spalte++) {
             const feld = WUERFEL_QUIZZ._element("label", "wuerfel-feld-halter");
-            feld.appendChild(WUERFEL_QUIZZ._element("span", "wuerfel-nummer", "Würfel " + (spalte + 1)));
 
             const auswahl = document.createElement("select");
             auswahl.className = "wuerfel-feld";
             auswahl.dataset.schluessel = schluessel + "-" + spalte;
+            auswahl.setAttribute("aria-label", (titel || "Würfel") + ", Feld "
+                + (spalte + 1) + " von " + MODELL.WUERFEL_ANZAHL);
 
             const leer = document.createElement("option");
             leer.value = MODELL.WERT_LEER;
@@ -789,7 +1128,8 @@ const WUERFEL_QUIZZ = {
             reihe.appendChild(feld);
         }
 
-        return reihe;
+        halter.appendChild(reihe);
+        return halter;
     },
 
     /* Fünf Würfelwerte als Marken, sortiert. */

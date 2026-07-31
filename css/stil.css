@@ -283,6 +283,12 @@ body {
     background: var(--fehler-flaeche);
 }
 
+.chip-verwaltung {
+    color: var(--warnung);
+    border-color: var(--warnung);
+    background: var(--warnung-flaeche);
+}
+
 .meldung {
     margin: 10px 0 0 0;
     padding: 8px 12px;
@@ -323,10 +329,10 @@ body {
     gap: 4px;
 }
 
-.wuerfel-nummer {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+/* Steht über jeder Eingabereihe: die Felder tragen bewusst keine Nummern. */
+.reihenfolge-hinweis {
+    margin: 0 0 8px 0;
+    font-size: 0.82rem;
     color: var(--schrift-leise);
 }
 
@@ -628,6 +634,58 @@ body {
     border-radius: 6px;
 }
 
+/* PIN-Eingabe: wenige Ziffern, groß und gut lesbar. */
+.dialog-feld-zahlen {
+    font-size: 1.6rem;
+    letter-spacing: 0.5em;
+    text-align: center;
+    font-family: "Consolas", "Courier New", monospace;
+}
+
+/* Auswahlliste (Bist du schon dabei?) */
+.dialog-liste {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.dialog-listeneintrag {
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 12px 14px;
+    font: inherit;
+    text-align: left;
+    color: var(--schrift);
+    background: var(--karte-leise);
+    border: 1px solid var(--rahmen);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.dialog-listeneintrag:hover {
+    border-color: var(--haupt);
+}
+
+.dialog-listeneintrag:focus {
+    outline: 2px solid var(--haupt);
+    outline-offset: 1px;
+}
+
+.dialog-listenname {
+    font-weight: 600;
+}
+
+.dialog-listenhinweis {
+    font-size: 0.8rem;
+    color: var(--schrift-leise);
+}
+
 .dialog-knopfleiste {
     display: flex;
     justify-content: flex-end;
@@ -648,12 +706,8 @@ body {
     }
 
     .wuerfel-feld-halter {
-        flex-basis: 60px;
-        min-width: 60px;
-    }
-
-    .wuerfel-nummer {
-        font-size: 0.65rem;
+        flex-basis: 56px;
+        min-width: 56px;
     }
 
     .treffer {

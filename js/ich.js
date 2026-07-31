@@ -17,6 +17,7 @@ const ICH = {
 
     SCHLUESSEL_PERSON: "quizz.ich",
     SCHLUESSEL_WURF: "quizz.wurf.",
+    SCHLUESSEL_VERWALTUNG: "quizz.verwaltung",
 
     /* ---------------------------------------------------------------- *
      * Wer bin ich
@@ -67,6 +68,27 @@ const ICH = {
 
     wurfVergessen(spielerId) {
         ICH._loeschen(ICH.SCHLUESSEL_WURF + spielerId);
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Verwaltung
+     *
+     * Merkt sich auf DIESEM Gerät, dass das Verwaltungs-Passwort einmal richtig
+     * eingegeben wurde. Es steht bewusst nur ein Schalter hier und nirgends das
+     * Passwort — wer den Gerätespeicher liest, gewinnt nichts, was er nicht
+     * ohnehin schon hätte.
+     * ---------------------------------------------------------------- */
+
+    verwaltungAktiv() {
+        return ICH._lesen(ICH.SCHLUESSEL_VERWALTUNG) === true;
+    },
+
+    verwaltungSetzen(aktiv) {
+        if (aktiv) {
+            ICH._schreiben(ICH.SCHLUESSEL_VERWALTUNG, true);
+        } else {
+            ICH._loeschen(ICH.SCHLUESSEL_VERWALTUNG);
+        }
     },
 
     /* ---------------------------------------------------------------- *

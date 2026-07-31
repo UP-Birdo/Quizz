@@ -21,6 +21,8 @@
  *             {
  *                 "id": "3f2c…",             // eindeutig, unveränderlich
  *                 "name": "Anna",
+ *                 "pinPruefwert": "7c1f…",   // Prüfsumme der PIN, "" = keine
+ *                 "pinSalz": "a91b…",        // offen; jedes Gerät muss prüfen können
  *                 "pruefwert": "9ab3…",      // Siegel der eigenen Würfel, "" = offen
  *                 "festgelegtAm": 1750…,     // wann zuletzt festgelegt
  *                 "festlegungen": 1,         // wie oft festgelegt (Transparenz)
@@ -145,6 +147,8 @@ const MODELL = {
         return {
             id: id || MODELL.idErzeugen(),
             name: (name === undefined || name === null) ? "" : String(name),
+            pinPruefwert: "",
+            pinSalz: "",
             pruefwert: "",
             festgelegtAm: 0,
             festlegungen: 0,
@@ -204,6 +208,12 @@ const MODELL = {
                 (typeof roh.id === "string" && roh.id !== "") ? roh.id : undefined
             );
 
+            if (typeof roh.pinPruefwert === "string") {
+                spieler.pinPruefwert = roh.pinPruefwert;
+            }
+            if (typeof roh.pinSalz === "string") {
+                spieler.pinSalz = roh.pinSalz;
+            }
             if (typeof roh.pruefwert === "string") {
                 spieler.pruefwert = roh.pruefwert;
             }
@@ -281,6 +291,30 @@ const MODELL = {
         }
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
+    },
+
+    /*
+     * Hinterlegt die PIN eines Spielers — gespeichert wird nur die Prüfsumme
+     * und das zugehörige Salz, nie die Ziffern selbst (siehe versiegelung.js).
+     * Damit kann sich dieselbe Person später von einem anderen Gerät aus wieder
+     * als sie selbst anmelden.
+     */
+    pinSetzen(daten, id, pinPruefwert, pinSalz, zeitpunkt) {
+        const neu = MODELL.kopieren(daten);
+        for (const spieler of neu.spieler) {
+            if (spieler.id === id) {
+                spieler.pinPruefwert = String(pinPruefwert || "");
+                spieler.pinSalz = String(pinSalz || "");
+            }
+        }
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        return neu;
+    },
+
+    /* Hat der Spieler eine PIN hinterlegt? Nur dann ist er von einem fremden
+       Gerät aus erreichbar. */
+    hatPin(spieler) {
+        return !!(spieler && spieler.pinPruefwert && spieler.pinSalz);
     },
 
     nameSetzen(daten, id, name, zeitpunkt) {
@@ -500,6 +534,7 @@ const MODELL = {
 
             if (spielerA.id !== spielerB.id
                 || spielerA.name !== spielerB.name
+                || spielerA.pinPruefwert !== spielerB.pinPruefwert
                 || spielerA.pruefwert !== spielerB.pruefwert
                 || spielerA.festlegungen !== spielerB.festlegungen
                 || spielerA.aufgedeckt !== spielerB.aufgedeckt

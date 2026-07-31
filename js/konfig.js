@@ -14,7 +14,7 @@
 const KONFIG = {
 
     /* Version der App. Wird im Kopf angezeigt und muss zu CHANGELOG.md passen. */
-    APP_VERSION: "0.4",
+    APP_VERSION: "0.7",
 
     speicher: {
 
@@ -47,5 +47,35 @@ const KONFIG = {
 
         /* Schlüssel im Browser-Speicher für den lokalen Modus. */
         lokalerSchluessel: "quizz.wuerfel-quizz"
+    },
+
+    verwaltung: {
+
+        /*
+         * Prüfsumme des Verwaltungs-Passworts (SHA-256 über
+         * "quizz-admin|<passwort>"). Das Passwort selbst steht bewusst NIRGENDWO
+         * in den Dateien — diese Seite ist öffentlich, jeder könnte es sonst
+         * abschreiben.
+         *
+         * Passwort ändern: In PowerShell die neue Prüfsumme rechnen und den
+         * Wert unten ersetzen. Der Text vor dem Passwort gehört dazu.
+         *
+         *     $text  = "quizz-admin|<neues Passwort>"
+         *     $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+         *     $summe = [System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes)
+         *     ($summe | ForEach-Object { $_.ToString("x2") }) -join ""
+         *
+         * Was die Verwaltung darf, steht in docs\ARCHITECTURE.md; was sie NICHT
+         * leistet (eine sechsstellige Zahl ist durchprobierbar), in
+         * docs\DECISIONS.md.
+         */
+        pruefwert: "6341494aa67a35049595256753abb8a68fd073311907f75a6cdb9b2d4804cc7e",
+
+        /* Wie viele Ziffern das Verwaltungs-Passwort hat. Muss zur Prüfsumme
+           oben passen, sonst lässt sich der Dialog nicht bestätigen. */
+        passwortStellen: 6,
+
+        /* Wie viele Ziffern eine Spieler-PIN hat. */
+        pinStellen: 4
     }
 };

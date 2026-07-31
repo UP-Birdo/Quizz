@@ -52,10 +52,7 @@ const VERSIEGELUNG = {
             return "";
         }
 
-        const text = VERSIEGELUNG._textBilden(wuerfel, salz);
-        const daten = new TextEncoder().encode(text);
-        const summe = await globalThis.crypto.subtle.digest("SHA-256", daten);
-        return VERSIEGELUNG._alsHex(new Uint8Array(summe));
+        return VERSIEGELUNG._summeBilden(VERSIEGELUNG._textBilden(wuerfel, salz));
     },
 
     /* Passen Würfel und Salz zur veröffentlichten Prüfsumme? */
@@ -68,6 +65,54 @@ const VERSIEGELUNG = {
     },
 
     /* ---------------------------------------------------------------- *
+     * Zahlenwörter (Spieler-PIN und Verwaltungs-Passwort)
+     *
+     * Dasselbe Verfahren, anderer Zweck: Gespeichert wird nie die Zahl selbst,
+     * sondern nur ihre Prüfsumme. Wer die Datenbank oder den Quelltext liest,
+     * findet keine Zahl zum Abtippen.
+     *
+     * Grenze, die man kennen muss: Vier Ziffern sind nur zehntausend
+     * Möglichkeiten. Wer Prüfsumme und Salz hat und sich hinsetzt, probiert sie
+     * mit einem kleinen Programm in Sekunden durch. Das ist ein Türschloss
+     * unter Freunden, kein Tresor — es hält jemanden ab, der mal eben schauen
+     * will, mehr nicht. Siehe docs\DECISIONS.md.
+     * ---------------------------------------------------------------- */
+
+    /* Prüfsumme einer Spieler-PIN. Das Salz steht offen in der Datenbank,
+       damit jedes Gerät die PIN prüfen kann. */
+    async pinPruefwertBilden(pin, salz) {
+        if (!VERSIEGELUNG.verfuegbar()) {
+            return "";
+        }
+        return VERSIEGELUNG._summeBilden("quizz-pin|" + String(pin || "") + "|" + String(salz || ""));
+    },
+
+    async pinPruefen(pin, salz, pruefwert) {
+        if (!pruefwert) {
+            return false;
+        }
+        const gerechnet = await VERSIEGELUNG.pinPruefwertBilden(pin, salz);
+        return gerechnet !== "" && gerechnet === pruefwert;
+    },
+
+    /* Prüfsumme des Verwaltungs-Passworts. Kein Salz: Der Vergleichswert steht
+       fest in js\konfig.js, es gibt nur dieses eine Passwort. */
+    async verwaltungPruefwertBilden(passwort) {
+        if (!VERSIEGELUNG.verfuegbar()) {
+            return "";
+        }
+        return VERSIEGELUNG._summeBilden("quizz-admin|" + String(passwort || ""));
+    },
+
+    async verwaltungPruefen(passwort, erwartet) {
+        if (!erwartet) {
+            return false;
+        }
+        const gerechnet = await VERSIEGELUNG.verwaltungPruefwertBilden(passwort);
+        return gerechnet !== "" && gerechnet === erwartet;
+    },
+
+    /* ---------------------------------------------------------------- *
      * Innereien
      * ---------------------------------------------------------------- */
 
@@ -76,6 +121,13 @@ const VERSIEGELUNG = {
     _textBilden(wuerfel, salz) {
         const sortiert = MODELL.wuerfelSortiert(wuerfel);
         return "wuerfel-quizz|" + sortiert.join(",") + "|" + String(salz || "");
+    },
+
+    /* SHA-256 über eine beliebige Zeichenkette, als Hex. */
+    async _summeBilden(text) {
+        const daten = new TextEncoder().encode(text);
+        const summe = await globalThis.crypto.subtle.digest("SHA-256", daten);
+        return VERSIEGELUNG._alsHex(new Uint8Array(summe));
     },
 
     _alsHex(bytes) {
