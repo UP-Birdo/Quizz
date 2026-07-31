@@ -70,6 +70,14 @@ const WUERFEL_QUIZZ = {
         behaelter.appendChild(WUERFEL_QUIZZ.wurzelEl);
     },
 
+    /* Bei jedem Wechsel auf diesen Tab den aktuellen Stand zeichnen
+       (Begründung im Kopf von tabs.js). */
+    beimOeffnen() {
+        if (WUERFEL_QUIZZ.abgleich) {
+            WUERFEL_QUIZZ.zeichnen(WUERFEL_QUIZZ.abgleich.daten);
+        }
+    },
+
     /* ---------------------------------------------------------------- *
      * Anmelden
      * ---------------------------------------------------------------- */

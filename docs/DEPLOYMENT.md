@@ -58,6 +58,13 @@ sonst teilen sich beide denselben Gerätespeicher):
    Trefferzahl — und **keine Eingabefelder mehr** für diese Person.
 9. Die andere Person bleibt weiter betippbar, solange sie nicht aufgedeckt hat.
 10. **Neue Runde** setzt alles zurück, die Mitspieler bleiben.
+11. **Tab Team Schach anklicken:** Das Brett muss **sofort** erscheinen, mit
+    beiden Team-Karten. Bleibt der Bereich leer, zeichnet der Tab beim Öffnen
+    nicht — das war der Fehler aus v1.2. Danach in einem Team **Mitspielen**,
+    im zweiten Fenster das andere Team, beide **Bereit**: Die Partie startet.
+    Eine Figur antippen zeigt Punkte auf den möglichen Feldern.
+12. Zurück auf **Würfel Quizz** und wieder auf **Team Schach**: Beide zeigen
+    weiterhin ihren aktuellen Stand.
 
 Zusätzlich mit einer echten Datenbank: Eine Änderung muss innerhalb weniger
 Sekunden im anderen Fenster erscheinen.

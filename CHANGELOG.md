@@ -3,6 +3,16 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v1.2 — 2026-07-31
+
+- **Fehler behoben: Der Tab Team Schach blieb leer.** Ein Tab wird erst beim
+  ersten Anklicken aufgebaut; sein Stand war da aber längst geladen, und der
+  Zeichen-Auftrag von damals lief ins Leere. Neu gezeichnet wurde danach nur
+  bei Änderungen — und es änderte sich nichts. Jetzt zeichnet jeder Tab beim
+  Öffnen seinen aktuellen Stand.
+- Das gilt für beide Tabs: Auch das Würfel Quizz zeigt beim Zurückwechseln
+  sofort den neuesten Stand.
+
 ## v1.1 — 2026-07-31
 
 - **Eigenes Zeichen für die App**: eine Würfelfläche mit vier Augen und dem

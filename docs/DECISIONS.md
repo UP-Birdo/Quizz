@@ -32,6 +32,34 @@ man erst in eine überprüfbare Beobachtung übersetzen (hier: dieselbe Person m
 wechselnden Kennungen in der Datenbank), bevor man am Code sucht. Der Blick in
 die Datenbank hat die Ursache gezeigt, nicht das Lesen des Startcodes.
 
+### Der Tab Team Schach blieb leer (v1.2)
+
+**Was zu sehen war:** Der neue Tab zeigte gar nichts — kein Brett, keine Teams,
+keine Meldung. Die Datenbank war korrekt freigegeben, die Dateien wurden
+ausgeliefert, die Tests grün.
+
+**Die Ursache liegt im Zusammenspiel zweier für sich richtiger Regeln:**
+
+1. `tabs.js` baut das Gerüst eines Tabs erst auf, wenn er zum ersten Mal
+   geöffnet wird (spart Arbeit für nie geöffnete Tabs).
+2. `abgleich.js` zeichnet nur, wenn sich Daten ändern (spart Neuaufbauten).
+
+Beim Start lädt der Schach-Abgleich seinen Stand und ruft `zeichnen` — zu einem
+Zeitpunkt, an dem `wurzelEl` noch `null` ist, weil der Tab nie geöffnet wurde.
+Der Aufruf verpufft folgenlos. Klickt man den Tab später an, entsteht zwar das
+Gerüst, aber niemand zeichnet mehr hinein: Es ändert sich ja nichts.
+
+**Die Lehre:** Wo ein Bereich verzögert entsteht, braucht er einen eigenen
+Anlass zum Zeichnen — es reicht nicht, sich auf Datenänderungen zu verlassen.
+Dafür gibt es jetzt `beimOeffnen()`; `tabs.js` ruft es bei **jedem** Wechsel,
+nicht nur beim ersten. Beim Würfel-Quizz fiel das nie auf, weil er der erste Tab
+ist und deshalb schon aufgebaut war, bevor die Daten kamen.
+
+**Zweite Lehre:** Automatische Tests hätten das nicht gefunden — sie decken
+Regeln und Daten ab, nicht die Reihenfolge, in der Bildschirmteile entstehen.
+Genau dafür gibt es die Prüfliste in `docs\DEPLOYMENT.md`; ein neuer Tab gehört
+dort mit einem eigenen Punkt hinein.
+
 ### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam

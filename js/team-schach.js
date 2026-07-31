@@ -46,6 +46,17 @@ const TEAM_SCHACH = {
         behaelter.appendChild(TEAM_SCHACH.wurzelEl);
     },
 
+    /*
+     * Wird bei jedem Wechsel auf diesen Tab gerufen. Nötig, weil der Stand
+     * längst geladen sein kann, bevor es diesen Bereich überhaupt gibt — dann
+     * bliebe der Tab sonst leer (siehe tabs.js).
+     */
+    beimOeffnen() {
+        if (TEAM_SCHACH.abgleich) {
+            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+        }
+    },
+
     /* Wer sitzt an diesem Gerät? Die Anmeldung läuft über den Würfel-Quizz. */
     _ich() {
         return ICH.person();

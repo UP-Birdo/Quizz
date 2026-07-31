@@ -1,16 +1,22 @@
 /*
  * tabs.js — die Tab-Leiste.
  *
- * Heute gibt es genau einen Tab (Würfel Quizz). Die Leiste ist trotzdem ein
- * eigenes, offenes Register, damit ein zweites Quizz später nur noch
- * registriert werden muss — ohne Umbau an dieser Datei.
+ * Ein offenes Register: Ein weiteres Spiel muss nur registriert werden, ohne
+ * Umbau an dieser Datei.
  *
  * Ein Tab ist ein Objekt:
  *     {
  *         id:        "wuerfel-quizz",          // eindeutig, auch für die Adresse
- *         titel:     "Wuerfel Quizz",          // Beschriftung in der Leiste
- *         aufbauen(behaelter)                  // zeichnet den Inhalt einmalig
+ *         titel:     "Würfel Quizz",           // Beschriftung in der Leiste
+ *         aufbauen(behaelter),                 // legt das Gerüst einmalig an
+ *         beimOeffnen()                        // optional: bei jedem Wechsel
  *     }
+ *
+ * Warum es `beimOeffnen` braucht: Das Gerüst eines Tabs entsteht erst, wenn er
+ * zum ersten Mal geöffnet wird. Seine Daten können lange vorher geladen worden
+ * sein — der Zeichen-Aufruf lief dann ins Leere, weil es den Bereich noch nicht
+ * gab. Ohne diesen Haken bliebe ein Tab leer, bis sich zufällig etwas ändert.
+ * Genau das war der Fehler, mit dem Team Schach in v1.1 nichts anzeigte.
  */
 
 const TABS = {
@@ -65,7 +71,7 @@ const TABS = {
             bereich.hidden = bereich.dataset.tabId !== id;
         }
 
-        /* Inhalt wird beim ersten Öffnen einmal aufgebaut. */
+        /* Das Gerüst wird beim ersten Öffnen einmal aufgebaut. */
         if (!TABS.aufgebaut[id]) {
             const bereich = document.createElement("section");
             bereich.className = "tab-bereich";
@@ -74,6 +80,12 @@ const TABS = {
             tab.aufbauen(bereich);
             TABS.aufgebaut[id] = true;
             bereich.hidden = false;
+        }
+
+        /* Danach zeichnet der Tab seinen aktuellen Stand — jedes Mal, nicht nur
+           beim ersten Öffnen. Siehe Erklärung im Kopf dieser Datei. */
+        if (typeof tab.beimOeffnen === "function") {
+            tab.beimOeffnen();
         }
     }
 };
