@@ -300,10 +300,16 @@ mehreren" gibt.
 
 ## Verwaltung
 
-Ein Zugang für denjenigen, der die Runde betreut. Er kann genau eines:
-**Spieler aus der Runde entfernen** — bei doppelter Anmeldung oder vergessener
-PIN. Fremde Würfel sieht auch die Verwaltung nicht; die liegen auf fremden
-Geräten und nicht in der Datenbank.
+Ein Zugang für denjenigen, der die Runde betreut. Zwei Befugnisse:
+
+- **Spieler aus der Runde entfernen** — bei doppelter Anmeldung oder
+  vergessener PIN.
+- **Neue Runde starten** (seit v0.9). Der Knopf steht bei jedem, verlangt aber
+  das Passwort, solange die Verwaltung nicht offen ist. Grund: Eine neue Runde
+  löscht bei ALLEN Würfel und Vermutungen und ist nicht rückgängig zu machen.
+
+Fremde Würfel sieht auch die Verwaltung nicht; die liegen auf fremden Geräten
+und nicht in der Datenbank.
 
 - Passwort-Prüfung: `VERSIEGELUNG.verwaltungPruefen` gegen
   `KONFIG.verwaltung.pruefwert` (`SHA-256("quizz-admin|" + Passwort)`). Das

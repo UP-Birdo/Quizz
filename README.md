@@ -28,7 +28,8 @@ Aufrufen, Namen eintragen, loslegen — keine Anmeldung, keine Installation.
    Tipps aller anderen und die erreichten Punkte. Der Punktestand unten wächst
    mit jedem, der aufdeckt.
 
-**Neue Runde** löscht Würfel und Vermutungen, die Mitspieler bleiben.
+**Neue Runde** löscht Würfel und Vermutungen, die Mitspieler bleiben. Weil das
+bei allen gleichzeitig passiert, ist dafür das Verwaltungs-Passwort nötig.
 
 ## Das Auge: eigene Zahlen verstecken
 
@@ -132,8 +133,13 @@ entfernen; danach meldest du dich einfach neu an.
 
 ## Verwaltung
 
-Unten steht der Knopf **Verwaltung**. Wer das Passwort kennt, kann Spieler aus
-der Runde entfernen — praktisch bei doppelten Anmeldungen oder vergessenen PINs.
+Unten steht der Knopf **Verwaltung**. Wer das Passwort kennt, kann
+
+- Spieler aus der Runde entfernen — praktisch bei doppelten Anmeldungen oder
+  vergessenen PINs,
+- eine **neue Runde** starten (danach wird auch ohne offene Verwaltung nicht
+  erneut gefragt, solange sie aktiv ist).
+
 Mehr kann die Verwaltung nicht: Fremde Würfel sieht auch sie nicht.
 
 ## Ein Gerät je Person, solange die Runde läuft

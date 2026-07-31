@@ -3,6 +3,18 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.9 — 2026-07-31
+
+- **Neue Runde nur mit dem Verwaltungs-Passwort.** Der Knopf steht weiter bei
+  jedem, fragt aber nach dem Passwort — eine neue Runde löscht schließlich bei
+  allen Mitspielern Würfel und Vermutungen. Wer die Verwaltung ohnehin offen
+  hat, wird nicht noch einmal gefragt.
+- **Jeder hat eine PIN.** Wer sich als Spieler ohne PIN anmeldet (aus der Zeit
+  vor v0.6), muss jetzt direkt danach eine vergeben. Damit ist die letzte Lücke
+  zu, durch die man ohne Ausweis in ein fremdes Konto kam.
+- Das PIN-Feld lässt sich nach wie vor nicht leer bestätigen: Der Knopf bleibt
+  gesperrt, bis vier Ziffern dastehen.
+
 ## v0.8 — 2026-07-31
 
 Punktestand mit Teilpunkten, und ein behobener Fehler, der Mitspieler

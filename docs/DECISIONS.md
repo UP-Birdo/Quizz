@@ -32,6 +32,20 @@ man erst in eine überprüfbare Beobachtung übersetzen (hier: dieselbe Person m
 wechselnden Kennungen in der Datenbank), bevor man am Code sucht. Der Blick in
 die Datenbank hat die Ursache gezeigt, nicht das Lesen des Startcodes.
 
+### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
+
+Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam
+`The input string ' ' was not in a correct format`. Der Schlüssel war korrekt
+abgelegt (812 Hex-Zeichen), aber `Set-Content` hängt beim Schreiben einen
+Zeilenumbruch an — und `ConvertTo-SecureString` kann damit beim Lesen nichts
+anfangen.
+
+**Lehre:** Für Werte, die zeichengenau zurückgelesen werden müssen, nie
+`Set-Content` verwenden, sondern `[System.IO.File]::WriteAllText(...)`. Beim
+Lesen zusätzlich `.Trim()`, damit ältere oder von Hand erzeugte Ablagen weiter
+funktionieren. Dieselbe Falle ist im Haus schon einmal beim Schreiben von
+LF-Dateien aufgetreten.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 
@@ -147,6 +161,29 @@ sofort, wer dieselbe Zahl benutzt.
 
 Das Verwaltungs-Passwort steht aus demselben Grund nicht in `js/konfig.js` —
 nur seine Prüfsumme. Die Datei liegt öffentlich auf GitHub.
+
+## Warum die neue Runde ans Passwort gebunden ist
+
+Der Knopf löscht bei jedem Mitspieler Würfel und Vermutungen — mitten im Spiel
+ein Fehlgriff, den nichts zurückholt. Bis v0.8 durfte ihn jeder drücken; das war
+eine Einladung zum Versehen, besonders weil er nach dem Aufdecken die blaue
+Hauptaktion ist.
+
+Die Alternative wäre gewesen, den Knopf ganz zu verstecken, solange die
+Verwaltung nicht offen ist. Dagegen sprach: Dann sucht jemand die Funktion und
+findet sie nicht. Jetzt sieht man sie, und die Passwortabfrage erklärt beim
+Antippen, warum sie geschützt ist.
+
+## Warum jeder eine PIN haben muss
+
+Bis v0.8 gab es einen Weg ohne Ausweis: Spieler aus der Zeit vor der PIN
+(v0.6) ließen sich mit einer bloßen Rückfrage übernehmen. Wer diesen Weg ging,
+blieb ohne PIN — die Lücke blieb also offen und wanderte mit. Seit v0.9 wird
+unmittelbar nach der Übernahme eine PIN verlangt, ohne Abbruch-Möglichkeit.
+
+Damit gilt ausnahmslos: **Jeder Spieler hat eine PIN.** Das Eingabefeld lässt
+sich nicht leer bestätigen, der Knopf bleibt bis zur vollständigen Ziffernfolge
+gesperrt (`dialog.js`).
 
 ## Warum die Verwaltung nur löschen darf
 
@@ -354,6 +391,12 @@ Verwaltung wäre bequemer, würde aber bedeuten, dass ein Passwort im Umlauf jed
 Zugang öffnet.
 
 ## Versions-Historie
+
+### v0.9 — 2026-07-31
+
+Zwei Absicherungen: Die neue Runde verlangt das Verwaltungs-Passwort, und jeder
+Spieler muss eine PIN haben. Beides schließt Wege, auf denen jemand ohne
+Berechtigung etwas Unumkehrbares auslösen konnte.
 
 ### v0.8 — 2026-07-31
 

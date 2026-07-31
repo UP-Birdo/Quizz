@@ -153,8 +153,14 @@ const WUERFEL_QUIZZ = {
             return false;
         }
 
-        /* Wer ohne PIN angelegt wurde, ist nicht geschützt — dann bleibt nur die
-           Nachfrage. Betrifft Spieler aus der Zeit vor v0.6. */
+        /*
+         * Wer ohne PIN angelegt wurde, ist nicht geschützt — dann bleibt nur die
+         * Nachfrage. Betrifft Spieler aus der Zeit vor v0.6.
+         *
+         * Damit die Lücke sich nicht fortsetzt, MUSS anschließend eine PIN
+         * vergeben werden: Ab v0.9 hat jeder eine, und das Feld lässt sich
+         * nicht leer lassen.
+         */
         if (!MODELL.hatPin(spieler)) {
             const binIch = await DIALOG.frage(
                 "Ohne PIN angelegt",
@@ -165,7 +171,13 @@ const WUERFEL_QUIZZ = {
             if (!binIch) {
                 return false;
             }
+
             WUERFEL_QUIZZ._uebernehmen(spieler);
+            await WUERFEL_QUIZZ._pinVergeben(
+                spieler.id,
+                "Jetzt fehlt nur noch deine PIN. Damit kommst du künftig von jedem "
+                    + "Gerät wieder als du selbst hinein."
+            );
             return true;
         }
 
@@ -223,16 +235,39 @@ const WUERFEL_QUIZZ = {
             }
         }
 
-        /* PIN — zweimal eingeben, damit ein Vertipper nicht später aussperrt. */
+        const spielerId = MODELL.idErzeugen();
+
+        /* Erst bekannt machen, wer wir sind — die Abgleich-Schicht braucht das
+           beim Schreiben, um den eigenen Eintrag zu erkennen. */
+        WUERFEL_QUIZZ._ichIdSetzen(spielerId);
+        ICH.personSetzen(spielerId, name);
+
+        WUERFEL_QUIZZ.abgleich.aendern(
+            MODELL.spielerHinzufuegen(abgleich.daten, name, spielerId), true
+        );
+
+        await WUERFEL_QUIZZ._pinVergeben(
+            spielerId,
+            "Denk dir " + KONFIG.verwaltung.pinStellen + " Ziffern aus. Damit kommst "
+                + "du auch von einem anderen Handy wieder als du selbst hinein."
+        );
+    },
+
+    /*
+     * Vergibt eine PIN und hinterlegt sie. Bewusst OHNE Abbruch-Möglichkeit:
+     * Eine PIN ist Pflicht, sonst könnte sich jeder als jeder ausgeben. Das
+     * Feld lässt sich auch nicht leer bestätigen — der Knopf bleibt gesperrt,
+     * bis die geforderte Anzahl Ziffern dasteht (siehe dialog.js).
+     *
+     * Zweimal eingeben, damit ein Vertipper nicht später aussperrt.
+     */
+    async _pinVergeben(spielerId, einleitung) {
         const stellen = KONFIG.verwaltung.pinStellen;
         let pin = null;
 
         while (pin === null) {
             const eingabe = await DIALOG.zahlen(
-                "PIN festlegen",
-                "Denk dir " + stellen + " Ziffern aus. Damit kommst du auch von einem "
-                    + "anderen Handy wieder als du selbst hinein.",
-                stellen, "Weiter", false
+                "PIN festlegen", einleitung, stellen, "Weiter", false
             );
             const wiederholung = await DIALOG.zahlen(
                 "PIN wiederholen",
@@ -254,16 +289,10 @@ const WUERFEL_QUIZZ = {
         const salz = VERSIEGELUNG.verfuegbar() ? VERSIEGELUNG.salzErzeugen() : "";
         const pinPruefwert = await VERSIEGELUNG.pinPruefwertBilden(pin, salz);
 
-        const spielerId = MODELL.idErzeugen();
-
-        /* Erst bekannt machen, wer wir sind — die Abgleich-Schicht braucht das
-           beim Schreiben, um den eigenen Eintrag zu erkennen. */
-        WUERFEL_QUIZZ._ichIdSetzen(spielerId);
-        ICH.personSetzen(spielerId, name);
-
-        let neu = MODELL.spielerHinzufuegen(abgleich.daten, name, spielerId);
-        neu = MODELL.pinSetzen(neu, spielerId, pinPruefwert, salz);
-        abgleich.aendern(neu, true);
+        WUERFEL_QUIZZ.abgleich.aendern(
+            MODELL.pinSetzen(WUERFEL_QUIZZ.abgleich.daten, spielerId, pinPruefwert, salz),
+            true
+        );
     },
 
     /* Ab jetzt ist dieses Gerät dieser Spieler. */
@@ -961,7 +990,41 @@ const WUERFEL_QUIZZ = {
         );
     },
 
+    /*
+     * Neue Runde — nur mit dem Verwaltungs-Passwort.
+     *
+     * Der Knopf steht bei jedem, aber er löscht bei ALLEN die Würfel und
+     * Vermutungen. Ein Fehlgriff mitten im Spiel wäre nicht rückgängig zu
+     * machen, deshalb muss man sich vorher ausweisen. Wer die Verwaltung ohnehin
+     * offen hat, wird nicht noch einmal gefragt.
+     */
     async neueRunde() {
+        if (!ICH.verwaltungAktiv()) {
+            const passwort = await DIALOG.zahlen(
+                "Neue Runde",
+                "Eine neue Runde löscht Würfel und Vermutungen bei allen Mitspielern. "
+                    + "Das darf nur, wer das Passwort kennt.",
+                KONFIG.verwaltung.passwortStellen,
+                "Weiter"
+            );
+
+            if (passwort === null) {
+                return;
+            }
+
+            const richtig = await VERSIEGELUNG.verwaltungPruefen(
+                passwort, KONFIG.verwaltung.pruefwert
+            );
+
+            if (!richtig) {
+                await DIALOG.hinweis(
+                    "Passwort falsch",
+                    "Das war nicht das richtige Passwort. Die Runde läuft weiter."
+                );
+                return;
+            }
+        }
+
         const ja = await DIALOG.frage(
             "Neue Runde starten?",
             "Alle Würfel und Vermutungen werden gelöscht, die Mitspieler bleiben. "
