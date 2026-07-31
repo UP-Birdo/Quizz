@@ -346,6 +346,22 @@ Praktisch heißt das: Wenn zwei im selben Moment tippen, kann ein Tipp verloren
 gehen. Beim Festlegen und Aufdecken ist das unkritisch, weil jeder nur seinen
 eigenen Eintrag anfasst.
 
+## Warum das App-Zeichen so aussieht
+
+Vier Augen und ein Stern in der Mitte: Das sind genau die Werte des Würfel
+Quizz (1 bis 5 und Stern) in einem Bild, und es funktioniert auch als kleines
+Lesezeichen noch. Gezeichnet, kein Emoji — Haus-Regel.
+
+Der erste Entwurf war zu gedrängt: Bei 32 Pixeln verschmolzen Stern und Augen zu
+einem Fleck. Deshalb sitzen die Augen weiter aussen und der Stern ist kleiner.
+**Wer das Zeichen ändert, prüft es in 32 Pixeln nach** — in 512 sieht fast alles
+gut aus.
+
+Zwei Quellen (`icon.svg` und die Koordinaten in `tools\Icons-Erzeugen.ps1`) sind
+eine bewusste Doppelung: PowerShell kann ohne Zusatzprogramm kein SVG zeichnen,
+und eine Fremdbibliothek nur fürs Icon wäre unverhältnismässig. Beide Dateien
+tragen einen Hinweis aufeinander.
+
 ## Warum der Wert „Stern" als Wort erscheint
 
 Haus-Regel: keine Emojis. Ein Sternzeichen wäre grenzwertig, das Wort **Stern**

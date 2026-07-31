@@ -3,6 +3,19 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v1.1 — 2026-07-31
+
+- **Eigenes Zeichen für die App**: eine Würfelfläche mit vier Augen und dem
+  Stern in der Mitte — beide Werte des Würfel Quizz in einem Bild. Gezeichnet,
+  kein Emoji.
+- Es erscheint als Lesezeichen im Browser und, dank Manifest, beim Ablegen auf
+  dem Startbildschirm von Handy oder Tablet. Dort öffnet sich die Seite dann
+  ohne Browserleiste wie eine App.
+- Quelle ist `icon.svg`; die PNG-Fassungen erzeugt `tools\Icons-Erzeugen.ps1`
+  aus denselben Koordinaten.
+- `tools\Deploy-Quizz.ps1` kann jetzt auch Bilder ausliefern — die müssen als
+  eigener Datenklumpen hochgeladen werden, sonst kämen sie beschädigt an.
+
 ## v1.0 — 2026-07-31
 
 Zweites Spiel: **Team Schach** als eigener Tab.

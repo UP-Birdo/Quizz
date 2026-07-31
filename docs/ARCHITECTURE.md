@@ -56,6 +56,10 @@ Speicher-Dienst kostet genau eine neue Klasse in `speicher.js`.
 | `js/app.js` | Startpunkt (`DOMContentLoaded`), Statusanzeige, Hinweisbalken; erzeugt **beide** Speicher und Abgleiche. |
 | `tests/` | Regressionstests (`test-modell.js` Spiellogik, `test-versiegelung.js` Siegel, `test-syntax.js` Übersetzbarkeit) plus Startskript. |
 | `tools/Lokal-Starten.ps1` | Kleiner Test-Server (HttpListener) für `http://localhost:8080/`; `Quizz lokal starten.cmd` startet ihn per Doppelklick. |
+| `icon.svg` | Das Zeichen der App als Vektor: Würfelfläche, vier Augen, Stern in der Mitte. **Quelle** für alle Bildgrössen. |
+| `icons/` | Die PNG-Fassungen (512, 192, 180, 32) — erzeugt von `tools/Icons-Erzeugen.ps1`, nicht von Hand bearbeiten. |
+| `manifest.webmanifest` | Macht die Seite auf dem Startbildschirm zur App (Name, Farben, Zeichen). |
+| `tools/Icons-Erzeugen.ps1` | Zeichnet die PNG-Fassungen. Enthält dieselben Koordinaten wie `icon.svg` — beide zusammen ändern und das Ergebnis in 32 Pixeln prüfen. |
 | `tools/Deploy-Quizz.ps1` | Auslieferung nach GitHub ohne git: vergleicht die Dateien mit dem Stand im Repository und sendet nur die geänderten — in einem einzigen Commit. Token per DPAPI (`-SetToken`), liegt als `tools/github-token.dat` und wird nie mitgeliefert. |
 | `docs/` | Diese Dokumentation. |
 

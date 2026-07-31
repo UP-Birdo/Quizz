@@ -177,6 +177,12 @@ Es sind alle Regeln umgesetzt: Rochade, en passant, Bauernumwandlung (mit
 Auswahl der Figur), Schach, Schachmatt, Patt. Der Stand liegt in der Datenbank
 — ihr könnt die Partie jederzeit liegen lassen und später weiterspielen.
 
+## Auf den Startbildschirm legen
+
+Die Seite lässt sich wie eine App ablegen: im Browser das Teilen- oder
+Menü-Zeichen antippen und **Zum Startbildschirm hinzufügen** wählen. Danach gibt
+es ein eigenes Zeichen, und die Seite öffnet sich ohne Browserleiste.
+
 ## Selbst betreiben
 
 Die Einrichtung — eigenes Repository, GitHub Pages und die gemeinsame Datenbank —

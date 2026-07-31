@@ -58,9 +58,15 @@ $Zweig      = "main"
 # Zugriffsschluessel.
 # ---------------------------------------------------------------------
 
-$freigegebeneDateien = @("index.html", "README.md", "CHANGELOG.md")
-$freigegebeneOrdner  = @("css", "js", "docs", "tests", "tools")
+$freigegebeneDateien = @("index.html", "README.md", "CHANGELOG.md",
+                         "manifest.webmanifest", "icon.svg")
+$freigegebeneOrdner  = @("css", "js", "icons", "docs", "tests", "tools")
 $gesperrteDateien    = @("TODO.md", "ROADMAP.md", "CLAUDE.md", "github-token.dat")
+
+# Diese Endungen sind KEIN Text. Sie muessen als eigener Datenklumpen (Blob)
+# hochgeladen werden - wuerde man sie als Text lesen und senden, kaeme auf der
+# anderen Seite eine kaputte Datei an.
+$binaerEndungen = @(".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp")
 
 # ---------------------------------------------------------------------
 # Zugriffsschluessel hinterlegen
@@ -140,10 +146,11 @@ function Invoke-GitHub {
 
 # Git-Kennung einer Datei (so, wie Git sie selbst bildet). Damit erkennt das
 # Skript ohne Hochladen, ob sich eine Datei ueberhaupt geaendert hat.
+# Gerechnet wird ueber die rohen Bytes - das gilt fuer Text und Bilder gleich.
 function Get-BlobKennung {
-    param([string]$Inhalt)
+    param([byte[]]$Bytes)
 
-    $bytes  = [System.Text.Encoding]::UTF8.GetBytes($Inhalt)
+    $bytes  = $Bytes
     $kopf   = [System.Text.Encoding]::ASCII.GetBytes("blob $($bytes.Length)" + [char]0)
     $gesamt = New-Object byte[] ($kopf.Length + $bytes.Length)
     [Array]::Copy($kopf, 0, $gesamt, 0, $kopf.Length)
@@ -167,12 +174,19 @@ function Add-Datei {
     }
 
     $relativ = $Datei.FullName.Substring($projektOrdner.Length + 1).Replace("\", "/")
-    $inhalt  = [System.IO.File]::ReadAllText($Datei.FullName, [System.Text.UTF8Encoding]::new($false))
+    $bytes   = [System.IO.File]::ReadAllBytes($Datei.FullName)
+    $istText = -not ($binaerEndungen -contains $Datei.Extension.ToLowerInvariant())
 
     $dateien.Add([pscustomobject]@{
         Pfad    = $relativ
-        Inhalt  = $inhalt
-        Kennung = Get-BlobKennung -Inhalt $inhalt
+        Bytes   = $bytes
+        IstText = $istText
+        Inhalt  = if ($istText) {
+                      [System.Text.Encoding]::UTF8.GetString($bytes)
+                  } else {
+                      [System.Convert]::ToBase64String($bytes)
+                  }
+        Kennung = Get-BlobKennung -Bytes $bytes
     })
 }
 
@@ -266,11 +280,29 @@ Write-Host "Wird gesendet ..." -ForegroundColor Cyan
 
 $baumEintraege = @()
 foreach ($eintrag in $geaendert) {
-    $baumEintraege += @{
-        path    = $eintrag.Datei.Pfad
-        mode    = "100644"
-        type    = "blob"
-        content = $eintrag.Datei.Inhalt
+
+    if ($eintrag.Datei.IstText) {
+        # Text darf direkt im Baum stehen.
+        $baumEintraege += @{
+            path    = $eintrag.Datei.Pfad
+            mode    = "100644"
+            type    = "blob"
+            content = $eintrag.Datei.Inhalt
+        }
+    } else {
+        # Bilder zuerst als eigener Datenklumpen anlegen, dann im Baum nur
+        # darauf verweisen. Direkt im Baum ginge nur Text.
+        $blob = Invoke-GitHub -Pfad "/git/blobs" -Methode "POST" -Koerper @{
+            content  = $eintrag.Datei.Inhalt
+            encoding = "base64"
+        }
+        $baumEintraege += @{
+            path = $eintrag.Datei.Pfad
+            mode = "100644"
+            type = "blob"
+            sha  = $blob.sha
+        }
+        Write-Host ("   Bild vorbereitet: {0}" -f $eintrag.Datei.Pfad)
     }
 }
 
