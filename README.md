@@ -9,8 +9,11 @@ Aufrufen, Namen eintragen, loslegen — keine Anmeldung, keine Installation.
 
 ## So läuft eine Runde
 
-1. **Anmelden.** Beim ersten Besuch fragt die Seite nach deinem Namen. Damit
-   bist du in der Runde; dein Gerät merkt sich, wer du bist.
+1. **Anmelden.** Beim ersten Besuch fragt die Seite: *Bist du schon dabei?* —
+   und zeigt die Mitspieler. Bist du neu, wählst du unten **Ich bin neu hier**,
+   gibst deinen Namen ein und denkst dir eine **vierstellige PIN** aus. Spielst
+   du schon mit, wählst du deinen Namen und gibst die PIN ein — so kommst du von
+   **jedem Gerät** wieder als du selbst hinein.
 2. **Würfel festlegen.** Trag ein, was du gewürfelt hast, und drücke
    **Würfel festlegen**. Die anderen sehen nur, DASS du festgelegt hast — nicht,
    was.
@@ -22,8 +25,8 @@ Aufrufen, Namen eintragen, loslegen — keine Anmeldung, keine Installation.
    anderen raten weiter, bis sie selbst aufdecken. Ab dem Moment kann niemand
    mehr auf dich tippen.
 5. **Ergebnis.** Bei jedem, der aufgedeckt hat, stehen die echten Würfel, die
-   Tipps aller anderen und die Trefferzahlen. Die Bestenliste unten wächst mit
-   jedem, der aufdeckt.
+   Tipps aller anderen und die erreichten Punkte. Der Punktestand unten wächst
+   mit jedem, der aufdeckt.
 
 **Neue Runde** löscht Würfel und Vermutungen, die Mitspieler bleiben.
 
@@ -38,16 +41,27 @@ Damit kannst du dein Handy weiterreichen oder daneben liegen lassen, ohne dass
 jemand deinen Wurf mitliest. Zum Eintragen der Würfel machst du das Auge kurz
 auf.
 
-## Wie gezählt wird
+## Wie die Punkte vergeben werden
 
-Ein Treffer ist jeder Würfelwert, den du richtig geraten hast. Die Reihenfolge
-spielt keine Rolle, und ein Wert zählt nur so oft, wie er wirklich vorkommt:
-
-| | Würfel |
+| Was | Punkte |
 |---|---|
-| Echt | 1, 1, 3, 5, Stern |
-| Dein Tipp | 1, 3, 3, 5, 5 |
-| Treffer | **3** (eine 1, eine 3, eine 5) |
+| Würfel genau richtig geraten | **10** |
+| Würfel um 1 danebengelegen | **4** |
+| Würfel um 2 danebengelegen | **2** |
+| Weiter daneben | 0 |
+| Bester Tipp auf eine Person (Bonus) | **5** |
+
+Die Reihenfolge zählt nie. Zuerst werden die genau richtigen Werte verrechnet,
+der Rest wird der Größe nach gepaart — immer so, wie es für dich am besten
+ausgeht. Ein Wert zählt nur so oft, wie er wirklich vorkommt. Der Stern ist
+keine Zahl und hat zu keiner Zahl einen Abstand: für ihn gibt es Punkte nur bei
+einem genauen Treffer.
+
+**Beispiel:** Der Wurf ist 1, 2, 3, 4, 5 und du tippst 1, 2, 3, 4, 4. Vier
+Würfel sitzen genau (40 Punkte), die 4 liegt um 1 neben der 5 (4 Punkte) — macht
+44 Punkte. Lag niemand näher dran, kommen 5 Bonuspunkte dazu.
+
+Dieselbe Erklärung steht in der App hinter dem **i** neben dem Punktestand.
 
 ## Warum niemand spicken kann
 
@@ -93,12 +107,42 @@ Geschützt sind allein die eigenen Würfel vor der Auflösung (siehe oben). Es
 werden keine Zugriffe protokolliert, keine Cookies gesetzt und keine Daten für
 andere Zwecke ausgewertet.
 
-## Ein Gerät je Person
+## Dein Profil
 
-Deine Würfel liegen auf dem Gerät, auf dem du sie eingetragen hast. Spiel eine
-Runde also auf demselben Gerät zu Ende. Öffnest du die Seite doch auf einem
-anderen Gerät, sagt sie dir das und du kannst den Wurf dort neu eintragen — das
-zählt dann als erneutes Festlegen und wird für alle sichtbar.
+Im Kopf deiner Karte sitzt der Knopf **Profil**. Dahinter kannst du
+
+- **deinen Namen ändern** — die anderen sehen sofort den neuen (schon vergebene
+  Namen werden abgewiesen);
+- **deine PIN ändern** — dafür gibst du zuerst die bisherige ein, dann zweimal
+  die neue.
+
+## Deine PIN
+
+Die vier Ziffern sind dein Ausweis: Damit meldest du dich auf jedem Gerät wieder
+als du selbst an. Auch sie wird nicht im Klartext gespeichert, sondern nur als
+Prüfsumme — nachschlagen kann sie niemand.
+
+Ehrlich dazu gesagt: Vier Ziffern sind zehntausend Möglichkeiten. Wer sich
+hinsetzt und alle durchprobiert, kommt durch. Das ist ein Türschloss unter
+Freunden, kein Tresor. Deine Würfel schützt ohnehin etwas anderes — die liegen
+gar nicht erst im Netz.
+
+Vergessen? Dann muss dich jemand mit dem Verwaltungs-Zugang aus der Runde
+entfernen; danach meldest du dich einfach neu an.
+
+## Verwaltung
+
+Unten steht der Knopf **Verwaltung**. Wer das Passwort kennt, kann Spieler aus
+der Runde entfernen — praktisch bei doppelten Anmeldungen oder vergessenen PINs.
+Mehr kann die Verwaltung nicht: Fremde Würfel sieht auch sie nicht.
+
+## Ein Gerät je Person, solange die Runde läuft
+
+Deine Würfel liegen auf dem Gerät, auf dem du sie eingetragen hast — anders wäre
+das Geheimhalten nicht möglich. Spiel eine Runde also auf demselben Gerät zu
+Ende. Meldest du dich unterwegs mit deiner PIN auf einem anderen Gerät an,
+kannst du dort alles außer deinem bereits festgelegten Wurf; den müsstest du neu
+eintragen, was für alle als erneutes Festlegen sichtbar wird.
 
 ## Selbst betreiben
 

@@ -469,34 +469,167 @@ const MODELL = {
         return anzahl;
     },
 
+    /* ---------------------------------------------------------------- *
+     * Punkte
+     *
+     * Die Regeln stehen an genau dieser Stelle im Code und werden in der App
+     * unter dem i-Knopf im selben Wortlaut angezeigt (siehe PUNKTE_ERKLAERUNG).
+     * Wer hier etwas ändert, ändert dort mit.
+     * ---------------------------------------------------------------- */
+
+    /* Punkte für einen exakt geratenen Würfelwert. */
+    PUNKTE_EXAKT: 10,
+
+    /*
+     * Punkte für einen knapp danebenliegenden Wert, nach Abstand.
+     * Stelle 0 ist der Abstand 1, Stelle 1 der Abstand 2 und so weiter.
+     */
+    PUNKTE_NAH: [4, 2],
+
+    /* Bonus für den besten Tipp auf eine aufgedeckte Person. */
+    PUNKTE_BONUS: 5,
+
+    /* Höchstpunktzahl für eine einzelne Person (fünf exakte Würfel + Bonus). */
+    punkteMaximum() {
+        return MODELL.WUERFEL_ANZAHL * MODELL.PUNKTE_EXAKT + MODELL.PUNKTE_BONUS;
+    },
+
+    /*
+     * Bewertet eine einzelne Vermutung gegen den echten Wurf.
+     * Liefert { exakt, nah, punkte } — ohne den Bonus, der erst im Vergleich
+     * mit den anderen Ratern entsteht.
+     *
+     * Vorgehen:
+     *   1. Exakte Übereinstimmungen als Multimenge herausrechnen (Reihenfolge
+     *      spielt nie eine Rolle).
+     *   2. Was übrig bleibt, wird der Größe nach gepaart: kleinster Restwert
+     *      zum kleinsten, zweitkleinster zum zweitkleinsten. Bei sortierten
+     *      Listen ist diese Paarung nachweislich die mit dem kleinsten
+     *      Gesamtabstand — sie bewertet den Rater also so gut wie möglich.
+     *   3. Jedes Paar bringt Punkte nach seinem Abstand.
+     *
+     * Der Stern ist keine Zahl und hat deshalb zu nichts einen Abstand: Er
+     * zählt nur, wenn er exakt getroffen wurde.
+     */
+    punkte(echteWuerfel, tipp) {
+        const echt = MODELL.wuerfelNormalisieren(echteWuerfel);
+        const geraten = MODELL.wuerfelNormalisieren(tipp);
+
+        /* Schritt 1: exakte Paare herausnehmen. */
+        const vorrat = {};
+        for (const wert of echt) {
+            if (wert !== MODELL.WERT_LEER) {
+                vorrat[wert] = (vorrat[wert] || 0) + 1;
+            }
+        }
+
+        let exakt = 0;
+        const restTipp = [];
+        for (const wert of geraten) {
+            if (wert !== MODELL.WERT_LEER && vorrat[wert] > 0) {
+                vorrat[wert] = vorrat[wert] - 1;
+                exakt++;
+            } else if (wert !== MODELL.WERT_LEER && wert !== "STERN") {
+                restTipp.push(Number(wert));
+            }
+        }
+
+        /* Was vom echten Wurf übrig blieb — Sterne zählen nicht mit. */
+        const restEcht = [];
+        for (const wert of Object.keys(vorrat)) {
+            for (let i = 0; i < vorrat[wert]; i++) {
+                if (wert !== "STERN") {
+                    restEcht.push(Number(wert));
+                }
+            }
+        }
+
+        /* Schritt 2 und 3: der Größe nach paaren und nach Abstand bewerten. */
+        restEcht.sort((a, b) => a - b);
+        restTipp.sort((a, b) => a - b);
+
+        let nah = 0;
+        let nahPunkte = 0;
+        const paare = Math.min(restEcht.length, restTipp.length);
+
+        for (let i = 0; i < paare; i++) {
+            const abstand = Math.abs(restEcht[i] - restTipp[i]);
+            const punkte = MODELL.PUNKTE_NAH[abstand - 1] || 0;
+            if (punkte > 0) {
+                nah++;
+                nahPunkte += punkte;
+            }
+        }
+
+        return {
+            exakt: exakt,
+            nah: nah,
+            punkte: exakt * MODELL.PUNKTE_EXAKT + nahPunkte
+        };
+    },
+
     /*
      * Ergebnis der Runde, nach Punkten absteigend sortiert (bei Gleichstand
      * alphabetisch). Gezählt wird nur gegen Spieler, die bereits aufgedeckt
-     * haben — solange nicht alle aufgedeckt sind, ist die Liste ein Zwischenstand.
+     * haben — solange nicht alle aufgedeckt sind, ist es ein Zwischenstand.
+     *
+     * Der Bonus geht an den besten Tipp auf eine Person; liegen mehrere gleich
+     * vorn, bekommen ihn alle. Wer null Punkte hat, bekommt keinen Bonus —
+     * sonst würde in einer Runde ohne jeden Treffer der Bonus verlost.
      */
     ergebnis(daten) {
         const stand = MODELL.normalisieren(daten);
         const aufgedeckte = stand.spieler.filter((spieler) => spieler.aufgedeckt);
 
-        const liste = stand.spieler.map((rater) => {
-            let punkte = 0;
-            let moeglich = 0;
+        /* Erst je aufgedeckter Person alle Vermutungen bewerten. */
+        const bewertung = {};
+        for (const rater of stand.spieler) {
+            bewertung[rater.id] = { punkte: 0, exakt: 0, nah: 0, bonus: 0, moeglich: 0 };
+        }
 
-            for (const ziel of aufgedeckte) {
-                if (ziel.id === rater.id) {
+        for (const ziel of aufgedeckte) {
+            let bestpunkte = 0;
+
+            for (const rater of stand.spieler) {
+                if (rater.id === ziel.id) {
                     continue;
                 }
-                moeglich += MODELL.WUERFEL_ANZAHL;
-                punkte += MODELL.treffer(ziel.wuerfel, rater.tipps[ziel.id]);
+                const einzeln = MODELL.punkte(ziel.wuerfel, rater.tipps[ziel.id]);
+                const eintrag = bewertung[rater.id];
+
+                eintrag.punkte += einzeln.punkte;
+                eintrag.exakt += einzeln.exakt;
+                eintrag.nah += einzeln.nah;
+                eintrag.moeglich += MODELL.punkteMaximum();
+
+                if (einzeln.punkte > bestpunkte) {
+                    bestpunkte = einzeln.punkte;
+                }
             }
 
-            return {
-                id: rater.id,
-                name: rater.name,
-                punkte: punkte,
-                moeglich: moeglich
-            };
-        });
+            /* Bonus an alle, die auf diese Person am besten lagen. */
+            if (bestpunkte > 0) {
+                for (const rater of stand.spieler) {
+                    if (rater.id === ziel.id) {
+                        continue;
+                    }
+                    if (MODELL.punkte(ziel.wuerfel, rater.tipps[ziel.id]).punkte === bestpunkte) {
+                        bewertung[rater.id].bonus += MODELL.PUNKTE_BONUS;
+                        bewertung[rater.id].punkte += MODELL.PUNKTE_BONUS;
+                    }
+                }
+            }
+        }
+
+        const liste = stand.spieler.map((rater) => ({
+            id: rater.id,
+            name: rater.name,
+            punkte: bewertung[rater.id].punkte,
+            exakt: bewertung[rater.id].exakt,
+            nah: bewertung[rater.id].nah,
+            bonus: bewertung[rater.id].bonus,
+            moeglich: bewertung[rater.id].moeglich
+        }));
 
         liste.sort((a, b) => {
             if (b.punkte !== a.punkte) {
@@ -506,6 +639,86 @@ const MODELL = {
         });
 
         return liste;
+    },
+
+    /*
+     * Die Punkteregeln im Wortlaut, für den i-Knopf im Punktestand.
+     * Steht hier, damit Anzeige und Rechnung nicht auseinanderlaufen können.
+     */
+    punkteErklaerung() {
+        const nah = MODELL.PUNKTE_NAH;
+        return "So werden die Punkte vergeben:\n\n"
+            + "Für jeden Würfel, den du genau richtig geraten hast: "
+                + MODELL.PUNKTE_EXAKT + " Punkte.\n"
+            + "Für jeden Würfel, der um 1 danebenlag: " + nah[0] + " Punkte.\n"
+            + "Für jeden Würfel, der um 2 danebenlag: " + nah[1] + " Punkte.\n"
+            + "Weiter daneben: keine Punkte.\n\n"
+            + "Wer auf eine Person am besten getippt hat, bekommt zusätzlich "
+                + MODELL.PUNKTE_BONUS + " Punkte. Liegen mehrere gleichauf, "
+                + "bekommen sie den Bonus alle.\n\n"
+            + "Die Reihenfolge der Würfel zählt nie. Zuerst werden die genau "
+            + "richtigen Werte verrechnet, der Rest wird der Größe nach gepaart — "
+            + "immer so, wie es für dich am besten ist.\n\n"
+            + "Der Stern ist keine Zahl und hat zu keiner Zahl einen Abstand: "
+            + "Für ihn gibt es Punkte nur, wenn du ihn genau getroffen hast.\n\n"
+            + "Beispiel: Der Wurf ist 1, 2, 3, 4, 5 und du tippst 1, 2, 3, 4, 4. "
+            + "Vier Würfel sitzen genau (" + (4 * MODELL.PUNKTE_EXAKT) + " Punkte), "
+            + "die 4 liegt um 1 neben der 5 (" + nah[0] + " Punkte) — macht "
+            + (4 * MODELL.PUNKTE_EXAKT + nah[0]) + " Punkte.\n\n"
+            + "Gezählt wird nur gegen Mitspieler, die schon aufgedeckt haben. "
+            + "Der Punktestand wächst also mit jeder Person, die aufdeckt.";
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Zusammenführen — der Schutz gegen gegenseitiges Überschreiben
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Fügt den eigenen Stand in den fremden ein, statt ihn zu überschreiben.
+     *
+     * Warum das nötig ist: Geschrieben wird immer der GANZE Stand. Ohne
+     * Zusammenführung verschwindet jeder, der sich anmeldet, während ein
+     * anderes Gerät noch den alten Stand im Speicher hat — dessen nächster
+     * Schreibvorgang löscht ihn wieder. Auf dem betroffenen Gerät merkt die App
+     * dann, dass es sich selbst nicht mehr gibt, meldet ab und fragt erneut nach
+     * dem Namen. Das war der Fehler, der wie ein mehrfaches Neuladen der Seite
+     * aussah (siehe docs\DECISIONS.md).
+     *
+     * Die Regel dagegen ist einfach und passt genau zum Spiel:
+     * **Jeder ist Herr über seinen eigenen Eintrag, alles andere kommt vom
+     * Server.** Jeder ändert ohnehin nur sich selbst — auch die eigenen
+     * Vermutungen stehen im eigenen Eintrag.
+     *
+     * Ausnahmen sind Aktionen, die absichtlich fremde Einträge ändern (neue
+     * Runde, Spieler entfernen). Die schreiben ohne Zusammenführung; siehe
+     * abgleich.js.
+     */
+    zusammenfuehren(fremd, eigen, eigeneId) {
+        const fremdStand = MODELL.normalisieren(fremd);
+        const eigenStand = MODELL.normalisieren(eigen);
+
+        const meiner = eigenStand.spieler.find((spieler) => spieler.id === eigeneId) || null;
+
+        const ergebnis = MODELL.leereDaten(eigenStand.geaendertAm);
+        ergebnis.phase = eigenStand.phase;
+
+        let selbstGefunden = false;
+
+        for (const spieler of fremdStand.spieler) {
+            if (meiner && spieler.id === eigeneId) {
+                ergebnis.spieler.push(meiner);
+                selbstGefunden = true;
+            } else {
+                ergebnis.spieler.push(spieler);
+            }
+        }
+
+        /* Gerade erst angemeldet: den eigenen Eintrag anhängen. */
+        if (meiner && !selbstGefunden) {
+            ergebnis.spieler.push(meiner);
+        }
+
+        return ergebnis;
     },
 
     /* ---------------------------------------------------------------- *

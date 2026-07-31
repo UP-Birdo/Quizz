@@ -25,8 +25,22 @@ Fenstern, damit zwei Mitspieler entstehen (zweites Fenster im privaten Modus,
 sonst teilen sich beide denselben Gerätespeicher):
 
 1. Seite lädt, im Kopf stehen Titel, Versionsnummer und ein Statuspunkt.
-2. Beim ersten Aufruf fragt ein eigener Dialog nach dem Namen (kein
-   Browser-Fenster). Ohne Eingabe lässt er sich nicht bestätigen.
+2. Beim ersten Aufruf fragt ein eigener Dialog **Bist du schon dabei?** mit der
+   Liste der Mitspieler (leer bei leerer Runde). Über **Ich bin neu hier**:
+   Name eingeben, dann zweimal die PIN — bei ungleichen Eingaben kommt eine
+   Meldung und die Abfrage von vorn. Der Weiter-Knopf bleibt gesperrt, solange
+   nicht genau vier Ziffern eingegeben sind.
+2a. **Anmeldung von einem fremden Gerät:** Im zweiten Fenster den Namen aus der
+   Liste wählen und die PIN eingeben — man ist derselbe Spieler. Mit falscher
+   PIN dreimal probieren: es muss abbrechen, ohne hineinzulassen.
+2c. **Profil:** Knopf **Profil** im Kopf der eigenen Karte. Name ändern muss
+   sofort in beiden Fenstern sichtbar sein; PIN ändern muss zuerst die alte
+   verlangen und eine falsche abweisen. Danach mit der NEUEN PIN im zweiten
+   Fenster anmelden.
+2b. **Verwaltung:** Knopf **Verwaltung** unten, Passwort eingeben. Danach steht
+   oben *Verwaltung aktiv* und bei jedem Mitspieler erscheint
+   **Spieler entfernen**. **Verwaltung beenden** schaltet zurück; nach dem
+   Neuladen der Seite ist sie noch aktiv (sie hängt am Gerät).
 3. Nach dem Anmelden steht oben die eigene Karte — die Würfel sind **verdeckt**
    (fünf Fragezeichen), das Auge im Kartenkopf ist geschlossen.
 4. Auge antippen: Die fünf Auswahlfelder erscheinen, jedes mit `—`, `1` bis `5`
@@ -63,8 +77,9 @@ im Browser öffnen:
     https://<deine-datenbank>.europe-west1.firebasedatabase.app/wuerfel-quizz.json
 
 Dort darf bei keinem Spieler ein `wuerfel`-Eintrag mit Werten stehen — nur
-`pruefwert`. Steht dort ein Wurf, ist das Spiel kaputt und die Auslieferung
-muss warten.
+`pruefwert`. Ebenso wenig darf dort eine PIN als Zahl auftauchen, sondern nur
+`pinPruefwert` und `pinSalz`. Steht dort ein Wurf oder eine lesbare PIN, ist das
+Spiel kaputt und die Auslieferung muss warten.
 
 ---
 
@@ -172,7 +187,53 @@ das nicht zu bemerken.
 > erfahrungsgemäß oft vorübergehend: unter **Actions** den Lauf öffnen und
 > **Re-run all jobs** drücken.
 
-## 6. Neue Version ausliefern
+## 6. Neue Version ausliefern — mit dem Skript
+
+Seit v0.8 gibt es `tools\Deploy-Quizz.ps1`. Es vergleicht die Dateien mit dem
+Stand im Repository und sendet **nur die geänderten, in einem einzigen Commit**.
+Das ist wichtig: GitHub Pages baut nach jedem Commit neu und erlaubt nur wenige
+Bauvorgänge je Stunde.
+
+### Einmalig: Zugriffsschlüssel hinterlegen
+
+1. Auf `https://github.com/settings/personal-access-tokens/new` einen
+   **Fine-grained token** anlegen:
+   - **Repository access** → *Only select repositories* → `Quizz`
+   - **Permissions** → *Repository permissions* → **Contents: Read and write**
+   - Mehr Rechte werden nicht gebraucht. Laufzeit nach Geschmack.
+2. Token kopieren und im Projektordner ausführen:
+
+       powershell -ExecutionPolicy Bypass -File "tools\Deploy-Quizz.ps1" -SetToken
+
+   Der Schlüssel wird mit Windows-Bordmitteln verschlüsselt in
+   `tools\github-token.dat` abgelegt und lässt sich nur von **diesem**
+   Windows-Konto auf **diesem** Rechner wieder lesen. Er steht in keiner Datei
+   im Klartext und wird nie mit hochgeladen (er steht auf der Sperrliste im
+   Skript).
+
+### Jedes Mal
+
+1. Version in [../js/konfig.js](../js/konfig.js) um 0.1 erhöhen.
+2. [../CHANGELOG.md](../CHANGELOG.md) ergänzen.
+3. Tests laufen lassen: `powershell -ExecutionPolicy Bypass -File "tests\Tests-Ausfuehren.ps1"`
+   — erwartet `N ok, 0 Fehler`.
+4. Prüfliste aus Abschnitt 1 durchgehen.
+5. Erst ansehen, was gesendet würde:
+
+       powershell -ExecutionPolicy Bypass -File "tools\Deploy-Quizz.ps1" -NurAnzeigen
+
+6. Dann senden:
+
+       powershell -ExecutionPolicy Bypass -File "tools\Deploy-Quizz.ps1"
+
+7. Bei jedem halben Schritt (v0.5, v1.0, v1.5 …) im Dev-Ordner das Voll-Backup
+   ziehen: `tools\Backup-Projekt.ps1 -Projekt Quizz`.
+
+Nach ein bis zwei Minuten ist die Seite aktuell. Was hochgeladen wird, steht als
+Freigabeliste oben im Skript; `TODO.md`, `ROADMAP.md`, `CLAUDE.md` und der
+Schlüssel bleiben immer liegen.
+
+## 6b. Neue Version ausliefern — von Hand
 
 1. Version in [../js/konfig.js](../js/konfig.js) um 0.1 erhöhen.
 2. [../CHANGELOG.md](../CHANGELOG.md) ergänzen.

@@ -5,8 +5,35 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 
 ## Teuer erkaufte Erkenntnisse
 
-Noch keine aus diesem Projekt. Jede nicht offensichtliche Bug-Ursache gehört
-hierher, bevor die Sitzung endet.
+### Mitspieler verschwanden wieder aus der Runde (v0.8)
+
+**Was zu sehen war:** Beim Betreten der Seite kam der Anmelde-Dialog mehrfach
+hintereinander — es sah aus, als lade die Seite zwei- bis dreimal neu. In der
+Datenbank tauchte derselbe Name mit wechselnden Kennungen auf.
+
+**Die Ursache lag woanders als das Symptom.** Geschrieben wird immer der GANZE
+Stand, und der zuletzt geschriebene gewinnt. Meldete sich jemand an, während ein
+zweites Gerät noch den alten Stand im Speicher hatte, löschte dessen nächster
+Schreibvorgang den neuen Spieler wieder. Auf dem betroffenen Gerät fand
+`zeichnen()` den eigenen Spieler nicht mehr, meldete ab und startete die
+Anmeldung neu — bei mehreren Geräten reihum, also mehrfach.
+
+**Die Lehre:** „Letzter gewinnt" ist für ein Feld harmlos, für eine Liste von
+Teilnehmern nicht. Sobald mehrere Geräte denselben Datensatz schreiben, braucht
+es eine Regel, wem welcher Teil gehört. Hier: **Jeder ist Herr über seinen
+eigenen Eintrag, alles andere kommt vom Server** (`MODELL.zusammenfuehren`,
+angewandt in `abgleich.js` unmittelbar vor dem Schreiben). Das passt, weil jeder
+ohnehin nur sich selbst ändert — auch die eigenen Vermutungen stehen im eigenen
+Eintrag. Ausgenommen sind Aktionen, die absichtlich fremde Einträge ändern
+(neue Runde, Spieler entfernen); die schreiben mit `global = true`.
+
+**Zweite Lehre aus demselben Fehler:** Ein Symptom wie „lädt dreimal neu" muss
+man erst in eine überprüfbare Beobachtung übersetzen (hier: dieselbe Person mit
+wechselnden Kennungen in der Datenbank), bevor man am Code sucht. Der Blick in
+die Datenbank hat die Ursache gezeigt, nicht das Lesen des Startcodes.
+
+Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
+Sitzung endet.
 
 Diese Fallen aus anderen Projekten des Hauses gelten hier von Anfang an:
 
@@ -77,6 +104,62 @@ in der Schriftfarbe darstellen, skaliert sauber und sieht auf jedem Gerät gleic
 aus. Zwei Zustände: offenes Auge mit Pupille (Zahlen sichtbar), geschlossenes
 Lid mit Wimpern (verdeckt).
 
+### Anmeldung und Verwaltung (2026-07-31, zu v0.6)
+
+| Wunsch | Umsetzung |
+|---|---|
+| Verwaltungs-Zugang mit Passwort 660932, der Spieler löschen darf | Knopf **Verwaltung** in der Fußleiste; im Quelltext steht nur die Prüfsumme des Passworts. |
+| Beim Namen eine vierstellige PIN vergeben | Bei der Neuanmeldung, zweimal einzugeben. |
+| Beim ersten Besuch zuerst fragen: Bist du einer dieser Spieler? Liste zeigen, PIN prüfen, dann hinein — von jedem Gerät | Genau so gebaut (`anmelden()` Weg 2). |
+
+## Was die PIN leistet — und was nicht
+
+Das muss man wissen, bevor man sich darauf verlässt:
+
+**Sie leistet:** Anmelden als man selbst von einem beliebigen Gerät, ohne Konto
+und ohne Server. Sie hält einen Mitspieler davon ab, sich mal eben als jemand
+anders auszugeben.
+
+**Sie leistet nicht:** Schutz gegen jemanden, der es darauf anlegt. Vier Ziffern
+sind zehntausend Möglichkeiten; Prüfsumme und Salz stehen öffentlich in der
+Datenbank, ein kleines Programm probiert sie in Sekunden durch. Dasselbe gilt
+für das sechsstellige Verwaltungs-Passwort — eine Million Möglichkeiten sind für
+einen Rechner nichts.
+
+Warum das trotzdem so gebaut ist: Ein echter Schutz bräuchte einen Server, der
+Anmeldeversuche zählt und bremst — also genau das, was dieses Projekt bewusst
+nicht hat. Für ein Spiel unter Freunden ist ein Türschloss richtig, ein Tresor
+wäre falsch investierte Mühe.
+
+**Wichtig ist, was NICHT an der PIN hängt:** Die echten Würfel. Die liegen im
+Gerätespeicher ihres Besitzers und stehen zu keinem Zeitpunkt in der Datenbank.
+Wer eine PIN knackt, kann sich als jemand ausgeben und dessen Tipps ändern — er
+sieht dadurch keinen einzigen fremden Würfel. Das Spiel selbst bleibt heil.
+
+## Warum die PIN im Klartext nirgends steht
+
+Dieselbe Überlegung wie beim Würfel-Siegel: Alles, was in der Datenbank steht,
+ist öffentlich lesbar. Gespeichert werden deshalb nur `pinPruefwert` und
+`pinSalz`. Das Salz muss offen liegen — sonst könnte ein fremdes Gerät die PIN
+nicht prüfen, und genau das ist ja der Zweck. Zwei Spieler mit derselben PIN
+bekommen dadurch verschiedene Prüfwerte; ohne Salz sähe man in der Datenbank
+sofort, wer dieselbe Zahl benutzt.
+
+Das Verwaltungs-Passwort steht aus demselben Grund nicht in `js/konfig.js` —
+nur seine Prüfsumme. Die Datei liegt öffentlich auf GitHub.
+
+## Warum die Verwaltung nur löschen darf
+
+Naheliegend wären auch: PIN zurücksetzen, Namen ändern, Wurf ansehen. Gebaut ist
+nur das Entfernen, weil es alle vorkommenden Fälle löst (doppelte Anmeldung,
+vergessene PIN, jemand ist raus) und weil jede weitere Befugnis erklärt und
+geprüft werden müsste. Den Wurf ansehen ginge ohnehin nicht — er liegt nicht in
+der Datenbank.
+
+Der Zustand steckt im Gerätespeicher, nicht im gemeinsamen Stand: Verwaltung ist
+eine Eigenschaft des Geräts, an dem jemand sitzt, nicht der Runde. So sehen die
+anderen auch nicht, dass gerade jemand als Verwalter unterwegs ist.
+
 ## Warum ein Siegel statt einfacher Geheimhaltung
 
 Das Spiel steht und fällt damit, dass niemand die Würfel der anderen vorher
@@ -108,6 +191,45 @@ Ein Verbot wäre technisch leicht, in der Praxis aber lästig: Wer sich vertippt
 sitzt sonst den ganzen Abend auf einem falschen Wurf. Stattdessen ist Ändern
 erlaubt und wird **sichtbar gemacht** — mit Anzahl und Uhrzeit, für alle. Die
 soziale Kontrolle erledigt den Rest, ganz ohne Regelwerk.
+
+## Warum die Eingabefelder keine Nummern tragen
+
+Bis v0.4 stand über jedem Auswahlfeld **Würfel 1** bis **Würfel 5**. Der Nutzer
+fragte daraufhin nach, ob ein umsortierter Tipp überhaupt zählt — die Zählung
+war schon immer richtig, aber die Beschriftung erzählte etwas anderes. Eine
+Oberfläche, die man erklären muss, ist falsch beschriftet.
+
+Seit v0.5 tragen die Felder keine sichtbare Nummer mehr; darüber steht der Satz
+*Reihenfolge egal — es zählt nur, welche Werte vorkommen.* Für Vorleseprogramme
+bleibt die Nummer im `aria-label`, sonst wäre nicht unterscheidbar, in welchem
+Feld man steht.
+
+## Warum die Punkte so verteilt werden
+
+Gewünscht war ein Punktestand mit Teilpunkten für knappe Tipps. Die Zahlen
+stehen in `modell.js` (`PUNKTE_EXAKT`, `PUNKTE_NAH`, `PUNKTE_BONUS`) und
+ergeben sich aus drei Überlegungen:
+
+- **Genau richtig muss deutlich mehr wert sein als knapp daneben**, sonst lohnt
+  sich das Nachdenken nicht. Verhältnis 10 zu 4: Zweieinhalb knappe Tipps wiegen
+  einen genauen auf.
+- **Abstand 3 bringt nichts.** Bei Werten von 1 bis 5 wäre sonst fast jeder
+  Tipp irgendwie „nah" — dann wäre die Skala wertlos.
+- **Der Bonus belohnt den Vergleich mit den Mitspielern**, nicht nur die eigene
+  Leistung. Genau das war der Wunsch: Punkte auch dafür, näher dran gewesen zu
+  sein als die anderen. Bei null Punkten gibt es keinen Bonus, sonst würde er in
+  einer Runde ohne jeden Treffer verlost.
+
+Die Restwerte werden **der Größe nach gepaart** (beide Listen sortiert, dann
+Stelle für Stelle). Bei sortierten Listen ist das nachweislich die Paarung mit
+dem kleinsten Gesamtabstand — der Rater wird also immer so gut bewertet, wie es
+überhaupt möglich ist. Eine schlechtere Paarung wäre schwer zu erklären und
+würde als Willkür wahrgenommen.
+
+Die Erklärung im i-Knopf wird aus denselben Konstanten erzeugt
+(`MODELL.punkteErklaerung()`). Damit kann die angezeigte Regel nicht von der
+gerechneten abweichen — der übliche Weg, wie Spielregeln und Code auseinander
+laufen, ist hier baulich versperrt.
 
 ## Warum die Reihenfolge der Würfel nicht zählt
 
@@ -219,7 +341,66 @@ Register kostet wenige Zeilen und erspart später den Umbau der Seite.
 - Ob es eine **Runden-Historie** geben soll (heute überschreibt eine neue Runde
   die alte).
 
+## Warum das Ändern der PIN die alte verlangt
+
+Ohne diese Rückfrage wäre die PIN wertlos: Wer ein kurz unbeaufsichtigtes Handy
+in die Hand bekommt, ist dort ohnehin schon angemeldet — er könnte einfach eine
+neue PIN setzen und den Zugang dauerhaft übernehmen. Mit der Rückfrage bleibt
+der ursprüngliche Besitzer der Einzige, der sie ändern kann.
+
+Wer seine PIN wirklich vergessen hat, wird von der Verwaltung entfernt und
+meldet sich neu an. Das ist der bewusst einzige Weg — ein Zurücksetzen durch die
+Verwaltung wäre bequemer, würde aber bedeuten, dass ein Passwort im Umlauf jeden
+Zugang öffnet.
+
 ## Versions-Historie
+
+### v0.8 — 2026-07-31
+
+Drei Dinge auf einmal: Punktesystem mit Teilpunkten samt Erklärung unter dem
+i-Knopf, die Behebung des Überschreib-Fehlers (siehe „Teuer erkaufte
+Erkenntnisse") und ein Auslieferungs-Skript.
+
+Das Punktesystem und der Fehler hängen enger zusammen, als es scheint: Beide
+drehen sich darum, dass mehrere Leute gleichzeitig an einem Datensatz arbeiten.
+Beim Punktestand ist das gewollt (jeder sieht denselben Stand), beim Schreiben
+war es der Fehler.
+
+Das Deploy-Skript folgt dem Haus-Muster (PowerShell, GitHub-Schnittstelle,
+Token per DPAPI) und schreibt bewusst **einen einzigen Commit** für alle
+Dateien: GitHub Pages baut nach jedem Commit neu und erlaubt nur wenige
+Bauvorgänge je Stunde.
+
+### v0.7 — 2026-07-31
+
+Profil-Knopf für Name und PIN. Klein, aber er schließt eine Lücke aus v0.6: Wer
+sich vertippt hatte oder anders heißen wollte, musste bis dahin von der
+Verwaltung entfernt werden.
+
+Wiederverwendet wurde `DIALOG.liste` aus der Anmeldung — dieselbe Bauform für
+„wähle eines von mehreren", statt eines zweiten Menü-Musters.
+
+### v0.6 — 2026-07-31
+
+Beide TODO-Punkte des Nutzers umgesetzt: PIN je Spieler mit Anmeldung über eine
+Mitspieler-Liste, dazu ein Verwaltungs-Zugang, der Spieler entfernen darf.
+
+Technisch war der Kniff, dass sich das Verfahren des Würfel-Siegels
+wiederverwenden ließ — dieselbe Prüfsummen-Idee, anderer Zweck. Neu ist nur,
+dass das Salz hier offen liegen MUSS: Beim Siegel bleibt es geheim, weil nur der
+Besitzer prüft; bei der PIN muss jedes fremde Gerät prüfen können.
+
+Die Grenzen sind oben unter „Was die PIN leistet" ehrlich festgehalten, damit
+sich niemand — auch kein späterer Claude — darauf verlässt, was sie nicht kann.
+
+### v0.5 — 2026-07-31
+
+Keine Regeländerung, sondern eine Korrektur der Beschriftung: Die Nummern an den
+Eingabefeldern widersprachen der Zählregel. Merksatz für später — wenn der
+Nutzer nachfragt, ob eine Regel wirklich so gilt, liegt der Fehler meist nicht
+in der Regel, sondern in ihrer Darstellung.
+
+Meilenstein: Voll-Backup unter `Backup\Quizz\v0.5\`.
 
 ### v0.4 — 2026-07-31
 

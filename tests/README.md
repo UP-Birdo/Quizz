@@ -50,10 +50,13 @@ Klammern und typografische Anführungszeichen sofort ab.
 | Grundstrukturen | leere Runde, neuer Spieler, eindeutige Kennungen |
 | `normalisieren()` | Unsinn-Eingaben, Übernahme eines Standes der Fassung 1, **Würfel erscheinen nur bei aufgedeckten Spielern**, Tipps bereinigen, fehlende Kennung |
 | Spieler | hinzufügen, suchen (Kennung und Name), austreten samt Tipps auf ihn, umbenennen |
+| PIN | wird nur als Prüfsumme mit Salz hinterlegt, nie als Ziffern; unvollständige Angaben gelten als keine PIN; eine neue Runde löscht sie NICHT |
 | Festlegen | Siegel wird veröffentlicht, Würfel nicht; erneutes Festlegen wird gezählt und macht ein früheres Aufdecken ungültig |
 | Tipps | landen beim Rater, nicht beim Ziel; ungültige Werte, Spalten, Selbst-Tipps und Tipps auf Unbekannte werden abgewiesen; **wer aufgedeckt hat, kann nicht mehr betippt werden** |
 | Aufdecken | schreibt Würfel und Siegel-Ergebnis; neue Runde behält die Spieler |
 | Auswertung | Trefferzählung als Multimenge, Reihenfolge egal, doppelte Werte, leere Felder, Ergebnis nur gegen Aufgedeckte, Sortierung |
+| Punkte | genau/knapp/zu weit daneben, beste Paarung der Restwerte, Stern nur exakt, doppelte Werte, Bonus für den besten Tipp (auch bei Gleichstand, nicht bei null Punkten), Erklärungstext nennt die geltenden Zahlen |
+| Zusammenführen | fremde Spieler bleiben erhalten, der eigene Eintrag gewinnt, ein frisch angelegter eigener Eintrag wird angehängt, fremde Änderungen werden übernommen — der Schutz gegen den v0.8-Fehler |
 | Vergleich | `inhaltGleich()` ignoriert den Zeitstempel, erkennt jede echte Änderung |
 
 ## Was wird geprüft (`test-versiegelung.js`)
@@ -67,6 +70,8 @@ der anderen in der Datenbank nachschlagen.
 | Prüfwert | gleiche Eingabe ergibt gleichen Wert, Reihenfolge der Würfel egal, anderer Wurf oder anderes Salz ergibt anderen Wert |
 | Prüfung | erkennt den richtigen Wurf (auch umsortiert), weist geänderten Wurf, falsches Salz und fehlendes Siegel ab |
 | Geheimhaltung | der veröffentlichte Wert enthält keinen Klartext |
+| Spieler-PIN | richtige PIN wird erkannt, falsche nicht; gleiche PIN bei zwei Spielern ergibt dank Salz verschiedene Prüfwerte; der Prüfwert enthält die Ziffern nicht |
+| Verwaltung | die Prüfsumme in `js\konfig.js` passt zum vereinbarten Passwort — schlägt der Test fehl, käme niemand mehr in die Verwaltung |
 
 ## Eine neue Testdatei anlegen
 

@@ -105,6 +105,54 @@ pruefe("Aus dem Prüfwert lässt sich der Wurf nicht ablesen", async () => {
     wahr(/^[0-9a-f]{64}$/.test(pruefwert), "reine Hex-Zeichenkette");
 });
 
+/* ------------------------------------------------------------------ *
+ * Spieler-PIN
+ * ------------------------------------------------------------------ */
+
+pruefe("Die richtige PIN wird erkannt, eine falsche nicht", async () => {
+    const salz = VERSIEGELUNG.salzErzeugen();
+    const pruefwert = await VERSIEGELUNG.pinPruefwertBilden("1234", salz);
+
+    wahr(await VERSIEGELUNG.pinPruefen("1234", salz, pruefwert), "richtige PIN");
+    wahr(!await VERSIEGELUNG.pinPruefen("1235", salz, pruefwert), "falsche PIN");
+    wahr(!await VERSIEGELUNG.pinPruefen("1234", "anderes-salz", pruefwert), "anderes Salz");
+    wahr(!await VERSIEGELUNG.pinPruefen("1234", salz, ""), "ohne Pruefwert");
+});
+
+pruefe("Gleiche PIN bei zwei Spielern ergibt verschiedene Pruefwerte", async () => {
+    /* Dafuer ist das Salz da: Sonst sähe man in der Datenbank sofort, wer
+       dieselbe PIN benutzt. */
+    const eins = await VERSIEGELUNG.pinPruefwertBilden("1234", VERSIEGELUNG.salzErzeugen());
+    const zwei = await VERSIEGELUNG.pinPruefwertBilden("1234", VERSIEGELUNG.salzErzeugen());
+    wahr(eins !== zwei, "unterschiedlich");
+});
+
+pruefe("Der Pruefwert einer PIN enthaelt die Ziffern nicht", async () => {
+    const pruefwert = await VERSIEGELUNG.pinPruefwertBilden("1234", "salz");
+    wahr(pruefwert.indexOf("1234") === -1, "keine Ziffernfolge");
+    wahr(/^[0-9a-f]{64}$/.test(pruefwert), "reine Hex-Zeichenkette");
+});
+
+/* ------------------------------------------------------------------ *
+ * Verwaltungs-Passwort
+ * ------------------------------------------------------------------ */
+
+pruefe("Der hinterlegte Verwaltungs-Pruefwert passt zum vereinbarten Passwort", async () => {
+    /* Der Wert stammt aus js\konfig.js. Stimmt er nicht mehr, kommt niemand
+       mehr in die Verwaltung — genau das soll dieser Test verhindern. */
+    const dateisystem = require("fs");
+    const konfig = dateisystem.readFileSync(pfad.join(__dirname, "..", "js", "konfig.js"), "utf8");
+    const treffer = konfig.match(/pruefwert:\s*"([0-9a-f]{64})"/);
+    wahr(treffer !== null, "Pruefwert in konfig.js gefunden");
+
+    wahr(await VERSIEGELUNG.verwaltungPruefen("660932", treffer[1]), "vereinbartes Passwort passt");
+    wahr(!await VERSIEGELUNG.verwaltungPruefen("660933", treffer[1]), "anderes Passwort passt nicht");
+});
+
+pruefe("Ohne hinterlegten Pruefwert kommt niemand in die Verwaltung", async () => {
+    wahr(!await VERSIEGELUNG.verwaltungPruefen("660932", ""), "leerer Pruefwert");
+});
+
 /* ------------------------------------------------------------------ */
 
 (async () => {

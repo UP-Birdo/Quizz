@@ -31,6 +31,19 @@ class Abgleich {
         this.schreibtGerade = false;
         this.aenderungOffen = false;
         this.abfrageZeitgeber = null;
+
+        /* Kennung des eigenen Spielers — nötig, um beim Schreiben zu wissen,
+           welcher Eintrag der eigene ist. Wird von wuerfel-quizz.js gesetzt. */
+        this.eigeneId = null;
+
+        /* Steht eine Änderung an, die absichtlich fremde Einträge betrifft
+           (neue Runde, Spieler entfernen)? Dann wird nicht zusammengeführt. */
+        this.globaleAenderung = false;
+    }
+
+    /* Wird gesetzt, sobald feststeht, wer an diesem Gerät sitzt. */
+    eigeneIdSetzen(id) {
+        this.eigeneId = id;
     }
 
     /* Erstes Laden; danach läuft die regelmäßige Abfrage. */
@@ -71,10 +84,17 @@ class Abgleich {
      * (Tippen, Auswahl umstellen) — würde man dabei neu zeichnen, entstünde
      * genau unter den Fingern des Nutzers ein neues Feld.
      * neuZeichnen = true bei Struktur-Änderungen (Zeile hinzu oder weg).
+     *
+     * `global` = true nur für Aktionen, die absichtlich fremde Einträge ändern
+     * (neue Runde, Spieler entfernen). Dann wird der Stand geschrieben wie er
+     * ist; sonst wird er in den Stand vom Server eingefügt.
      */
-    aendern(neueDaten, neuZeichnen) {
+    aendern(neueDaten, neuZeichnen, global) {
         this.daten = neueDaten;
         this.aenderungOffen = true;
+        if (global === true) {
+            this.globaleAenderung = true;
+        }
         if (neuZeichnen !== false) {
             this.beiDaten(this.daten);
         }
@@ -97,8 +117,31 @@ class Abgleich {
         this.melden("schreibt", "Wird gespeichert …");
 
         try {
+            /*
+             * Vor dem Schreiben den Stand vom Server holen und den eigenen
+             * Eintrag hineinsetzen, statt alles zu überschreiben. Sonst löscht
+             * ein Gerät mit veraltetem Stand die Mitspieler weg, die sich
+             * inzwischen angemeldet haben (siehe MODELL.zusammenfuehren).
+             *
+             * Ausgenommen: Aktionen, die absichtlich fremde Einträge ändern.
+             * Und der lokale Speicher, wo es niemanden gibt, mit dem man sich
+             * abstimmen müsste.
+             */
+            if (this.speicher.art === "gemeinsam" && !this.globaleAenderung && this.eigeneId) {
+                try {
+                    const fremd = await this.speicher.laden();
+                    this.daten = MODELL.zusammenfuehren(fremd, this.daten, this.eigeneId);
+                } catch (ladefehler) {
+                    /* Kein Kontakt zum Server: dann eben ohne Abgleich schreiben,
+                       der Versuch ist besser als gar nichts zu speichern. */
+                    console.warn("Zusammenführen übersprungen:", ladefehler);
+                }
+            }
+
             await this.speicher.speichern(this.daten);
             this.aenderungOffen = false;
+            this.globaleAenderung = false;
+            this.beiDaten(this.daten);
             this.melden("bereit", this.speicher.beschreibung);
         } catch (fehler) {
             /* Die Änderung bleibt offen und wird beim nächsten Versuch erneut

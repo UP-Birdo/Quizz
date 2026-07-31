@@ -211,6 +211,50 @@ pruefe("Namen setzen ändert nur den gemeinten Spieler", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * PIN (Anmeldung von einem anderen Gerät)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein neuer Spieler hat noch keine PIN", () => {
+    const daten = rundeMitAnnaUndBert();
+    wahr(!MODELL.hatPin(MODELL.spielerFinden(daten, "id-anna")), "ohne PIN");
+});
+
+pruefe("Die PIN wird als Pruefsumme mit Salz hinterlegt, nie als Ziffern", () => {
+    const daten = MODELL.pinSetzen(rundeMitAnnaUndBert(), "id-anna", "abc123", "salz", 5000);
+    const anna = MODELL.spielerFinden(daten, "id-anna");
+
+    gleich(anna.pinPruefwert, "abc123", "Pruefwert");
+    gleich(anna.pinSalz, "salz", "Salz");
+    wahr(MODELL.hatPin(anna), "hat jetzt eine PIN");
+    /* Der Spieler-Eintrag darf kein Feld mit der PIN selbst bekommen. */
+    wahr(Object.keys(anna).indexOf("pin") === -1, "kein Feld pin");
+});
+
+pruefe("Ohne Salz oder ohne Pruefwert gilt die PIN als nicht gesetzt", () => {
+    const nurWert = MODELL.pinSetzen(rundeMitAnnaUndBert(), "id-anna", "abc", "", 5000);
+    const nurSalz = MODELL.pinSetzen(rundeMitAnnaUndBert(), "id-anna", "", "salz", 5000);
+
+    wahr(!MODELL.hatPin(MODELL.spielerFinden(nurWert, "id-anna")), "ohne Salz");
+    wahr(!MODELL.hatPin(MODELL.spielerFinden(nurSalz, "id-anna")), "ohne Pruefwert");
+});
+
+pruefe("Eine neue Runde loescht die PIN NICHT", () => {
+    /* Sonst muesste sich nach jeder Runde jeder neu anmelden. */
+    let daten = MODELL.pinSetzen(rundeMitAnnaUndBert(), "id-anna", "abc", "salz", 5000);
+    daten = MODELL.neueRunde(daten, 6000);
+
+    wahr(MODELL.hatPin(MODELL.spielerFinden(daten, "id-anna")), "PIN bleibt");
+});
+
+pruefe("PIN-Angaben ueberleben das Normalisieren", () => {
+    const roh = { spieler: [{ id: "a", name: "Anna", pinPruefwert: "abc", pinSalz: "salz" }] };
+    const daten = MODELL.normalisieren(roh);
+
+    gleich(daten.spieler[0].pinPruefwert, "abc", "Pruefwert");
+    gleich(daten.spieler[0].pinSalz, "salz", "Salz");
+});
+
+/* ------------------------------------------------------------------ *
  * Festlegen (Siegel)
  * ------------------------------------------------------------------ */
 
@@ -338,6 +382,111 @@ pruefe("Leere Felder zählen nie als Treffer", () => {
     gleich(MODELL.treffer([], ["1", "2", "3", "4", "5"]), 0, "nichts aufgedeckt");
 });
 
+/* ------------------------------------------------------------------ *
+ * Punkte
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein genau getroffener Würfel bringt volle Punkte", () => {
+    const alles = MODELL.punkte(["1", "2", "3", "4", "5"], ["5", "4", "3", "2", "1"]);
+    gleich(alles.exakt, 5, "fünf genau");
+    gleich(alles.nah, 0, "nichts knapp");
+    gleich(alles.punkte, 5 * MODELL.PUNKTE_EXAKT, "volle Punktzahl");
+});
+
+pruefe("Knapp daneben bringt Teilpunkte nach Abstand", () => {
+    /* Wurf 1,2,3,4,5 gegen Tipp 1,2,3,4,4: vier genau, die 4 liegt um 1 neben der 5. */
+    const knapp = MODELL.punkte(["1", "2", "3", "4", "5"], ["1", "2", "3", "4", "4"]);
+    gleich(knapp.exakt, 4, "vier genau");
+    gleich(knapp.nah, 1, "einer knapp");
+    gleich(knapp.punkte, 4 * MODELL.PUNKTE_EXAKT + MODELL.PUNKTE_NAH[0], "Beispiel aus der Erklärung");
+
+    /* Abstand 2 bringt weniger. */
+    const zwei = MODELL.punkte(["5", "", "", "", ""], ["3", "", "", "", ""]);
+    gleich(zwei.punkte, MODELL.PUNKTE_NAH[1], "Abstand 2");
+
+    /* Abstand 3 bringt nichts mehr. */
+    const drei = MODELL.punkte(["5", "", "", "", ""], ["2", "", "", "", ""]);
+    gleich(drei.punkte, 0, "Abstand 3");
+});
+
+pruefe("Die Restwerte werden so gepaart, wie es fuer den Rater am besten ist", () => {
+    /* Echt 1 und 5, getippt 2 und 4: die richtige Paarung ist 1-2 und 5-4
+       (zweimal Abstand 1), nicht 1-4 und 5-2. */
+    const wertung = MODELL.punkte(["1", "5", "", "", ""], ["2", "4", "", "", ""]);
+    gleich(wertung.exakt, 0, "nichts genau");
+    gleich(wertung.nah, 2, "zwei knapp");
+    gleich(wertung.punkte, 2 * MODELL.PUNKTE_NAH[0], "beste Paarung");
+});
+
+pruefe("Der Stern zaehlt nur genau getroffen", () => {
+    const genau = MODELL.punkte(["STERN", "", "", "", ""], ["STERN", "", "", "", ""]);
+    gleich(genau.punkte, MODELL.PUNKTE_EXAKT, "Stern auf Stern");
+
+    const daneben = MODELL.punkte(["STERN", "", "", "", ""], ["5", "", "", "", ""]);
+    gleich(daneben.punkte, 0, "Zahl statt Stern");
+
+    const andersrum = MODELL.punkte(["5", "", "", "", ""], ["STERN", "", "", "", ""]);
+    gleich(andersrum.punkte, 0, "Stern statt Zahl");
+});
+
+pruefe("Doppelte Werte zaehlen nur so oft, wie sie vorkommen", () => {
+    const wertung = MODELL.punkte(["1", "1", "3", "5", "STERN"], ["1", "3", "3", "5", "5"]);
+    gleich(wertung.exakt, 3, "eine 1, eine 3, eine 5");
+    /* Rest echt: 1 und Stern (Stern zaehlt nicht) -> [1]
+       Rest Tipp: 3 und 5 -> [3, 5]; gepaart wird 1 mit 3 = Abstand 2. */
+    gleich(wertung.nah, 1, "ein Paar knapp");
+    gleich(wertung.punkte, 3 * MODELL.PUNKTE_EXAKT + MODELL.PUNKTE_NAH[1], "Summe");
+});
+
+pruefe("Ein leerer Tipp bringt keine Punkte", () => {
+    gleich(MODELL.punkte(["1", "2", "3", "4", "5"], ["", "", "", "", ""]).punkte, 0, "leer");
+});
+
+pruefe("Der Bonus geht an den besten Tipp auf eine Person", () => {
+    let daten = rundeMitAnnaUndBert();
+    daten = MODELL.spielerHinzufuegen(daten, "Cem", "id-cem", 1000);
+
+    /* Bert wuerfelt 2,2,2,2,2. Anna tippt dreimal die 2, Cem einmal. */
+    for (let spalte = 0; spalte < 3; spalte++) {
+        daten = MODELL.tippSetzen(daten, "id-anna", "id-bert", spalte, "2", 2000);
+    }
+    daten = MODELL.tippSetzen(daten, "id-cem", "id-bert", 0, "2", 2000);
+    daten = MODELL.aufdecken(daten, "id-bert", ["2", "2", "2", "2", "2"], true, 3000);
+
+    const ergebnis = MODELL.ergebnis(daten);
+    const anna = ergebnis.find((eintrag) => eintrag.id === "id-anna");
+    const cem = ergebnis.find((eintrag) => eintrag.id === "id-cem");
+
+    gleich(anna.bonus, MODELL.PUNKTE_BONUS, "Anna lag am besten");
+    gleich(cem.bonus, 0, "Cem nicht");
+    gleich(anna.punkte, 3 * MODELL.PUNKTE_EXAKT + MODELL.PUNKTE_BONUS, "mit Bonus");
+});
+
+pruefe("Bei Gleichstand bekommen alle den Bonus, bei null Punkten niemand", () => {
+    let daten = rundeMitAnnaUndBert();
+    daten = MODELL.spielerHinzufuegen(daten, "Cem", "id-cem", 1000);
+
+    daten = MODELL.tippSetzen(daten, "id-anna", "id-bert", 0, "2", 2000);
+    daten = MODELL.tippSetzen(daten, "id-cem", "id-bert", 0, "2", 2000);
+    daten = MODELL.aufdecken(daten, "id-bert", ["2", "2", "2", "2", "2"], true, 3000);
+
+    const gleichstand = MODELL.ergebnis(daten);
+    gleich(gleichstand.find((e) => e.id === "id-anna").bonus, MODELL.PUNKTE_BONUS, "Anna");
+    gleich(gleichstand.find((e) => e.id === "id-cem").bonus, MODELL.PUNKTE_BONUS, "Cem");
+
+    /* Niemand hat getippt: kein Bonus zu verteilen. */
+    let leer = rundeMitAnnaUndBert();
+    leer = MODELL.aufdecken(leer, "id-bert", ["2", "2", "2", "2", "2"], true, 3000);
+    gleich(MODELL.ergebnis(leer).find((e) => e.id === "id-anna").bonus, 0, "kein Bonus");
+});
+
+pruefe("Die Punkteerklaerung nennt die geltenden Werte", () => {
+    const text = MODELL.punkteErklaerung();
+    wahr(text.indexOf(String(MODELL.PUNKTE_EXAKT)) !== -1, "Punkte fuer genau");
+    wahr(text.indexOf(String(MODELL.PUNKTE_NAH[0])) !== -1, "Punkte fuer Abstand 1");
+    wahr(text.indexOf(String(MODELL.PUNKTE_BONUS)) !== -1, "Bonus");
+});
+
 pruefe("Das Ergebnis zählt nur gegen aufgedeckte Spieler", () => {
     let daten = rundeMitAnnaUndBert();
     daten = MODELL.spielerHinzufuegen(daten, "Cem", "id-cem", 1000);
@@ -347,13 +496,15 @@ pruefe("Das Ergebnis zählt nur gegen aufgedeckte Spieler", () => {
         daten = MODELL.tippSetzen(daten, "id-anna", "id-bert", spalte, "2", 2000);
         daten = MODELL.tippSetzen(daten, "id-anna", "id-cem", spalte, "4", 2000);
     }
-    daten = MODELL.aufdecken(daten, "id-bert", ["2", "2", "1", "1", "1"], true, 3000);
+    daten = MODELL.aufdecken(daten, "id-bert", ["2", "2", "2", "2", "2"], true, 3000);
 
     const ergebnis = MODELL.ergebnis(daten);
     const anna = ergebnis.find((eintrag) => eintrag.id === "id-anna");
 
-    gleich(anna.punkte, 2, "zwei Zweien getroffen");
-    gleich(anna.moeglich, 5, "nur Bert zählt mit");
+    /* Fuenf genau auf Bert plus Bonus; Cem ist nicht aufgedeckt und zaehlt nicht. */
+    gleich(anna.exakt, 5, "fuenf genau auf Bert");
+    gleich(anna.punkte, 5 * MODELL.PUNKTE_EXAKT + MODELL.PUNKTE_BONUS, "Punkte");
+    gleich(anna.moeglich, MODELL.punkteMaximum(), "nur Bert zählt mit");
 });
 
 pruefe("Das Ergebnis steht nach Punkten sortiert", () => {
@@ -369,11 +520,69 @@ pruefe("Das Ergebnis steht nach Punkten sortiert", () => {
 
     const ergebnis = MODELL.ergebnis(daten);
     gleich(ergebnis[0].name, "Cem", "Bester zuerst");
-    gleich(ergebnis[0].punkte, 3, "drei Treffer");
+    gleich(ergebnis[0].exakt, 3, "drei genau");
+    gleich(ergebnis[0].punkte, 3 * MODELL.PUNKTE_EXAKT + MODELL.PUNKTE_BONUS, "mit Bonus");
     gleich(ergebnis[1].name, "Anna", "danach Anna");
-    gleich(ergebnis[1].punkte, 1, "ein Treffer");
+    gleich(ergebnis[1].punkte, MODELL.PUNKTE_EXAKT, "ein genauer Treffer");
     gleich(ergebnis[2].name, "Bert", "Bert hat nicht getippt");
-    gleich(ergebnis[2].punkte, 0, "null Treffer");
+    gleich(ergebnis[2].punkte, 0, "keine Punkte");
+});
+
+/* ------------------------------------------------------------------ *
+ * Zusammenführen — der Schutz gegen gegenseitiges Überschreiben
+ * ------------------------------------------------------------------ */
+
+pruefe("Fremde Spieler bleiben erhalten, der eigene Eintrag gewinnt", () => {
+    /* Auf dem Server hat sich Cem angemeldet; das eigene Geraet weiss davon
+       nichts und hat inzwischen den eigenen Namen geaendert. */
+    const fremd = MODELL.spielerHinzufuegen(rundeMitAnnaUndBert(), "Cem", "id-cem", 3000);
+    const eigen = MODELL.nameSetzen(rundeMitAnnaUndBert(), "id-anna", "Anne", 4000);
+
+    const vereint = MODELL.zusammenfuehren(fremd, eigen, "id-anna");
+
+    gleich(vereint.spieler.length, 3, "Cem bleibt erhalten");
+    gleich(MODELL.spielerFinden(vereint, "id-anna").name, "Anne", "eigener Eintrag gewinnt");
+    wahr(MODELL.spielerFinden(vereint, "id-cem") !== null, "Cem ist dabei");
+});
+
+pruefe("Ein gerade angelegter eigener Eintrag wird angehaengt", () => {
+    /* Genau der Fall, der frueher zum Rauswurf fuehrte: Der Server kennt mich
+       noch nicht, weil ich mich gerade erst angemeldet habe. */
+    const fremd = MODELL.spielerHinzufuegen(MODELL.leereDaten(), "Bert", "id-bert", 1000);
+    const eigen = MODELL.spielerHinzufuegen(MODELL.leereDaten(), "Anna", "id-anna", 2000);
+
+    const vereint = MODELL.zusammenfuehren(fremd, eigen, "id-anna");
+
+    gleich(vereint.spieler.length, 2, "beide da");
+    wahr(MODELL.spielerFinden(vereint, "id-anna") !== null, "ich bin dabei");
+    wahr(MODELL.spielerFinden(vereint, "id-bert") !== null, "Bert auch");
+});
+
+pruefe("Fremde Aenderungen an fremden Eintraegen werden uebernommen", () => {
+    /* Bert hat auf dem Server aufgedeckt; mein Stand ist aelter. */
+    const fremd = MODELL.aufdecken(rundeMitAnnaUndBert(), "id-bert",
+        ["1", "1", "1", "1", "1"], true, 3000);
+    const eigen = rundeMitAnnaUndBert();
+
+    const vereint = MODELL.zusammenfuehren(fremd, eigen, "id-anna");
+    const bert = MODELL.spielerFinden(vereint, "id-bert");
+
+    gleich(bert.aufgedeckt, true, "Bert ist aufgedeckt");
+    gleich(bert.wuerfel.join("|"), "1|1|1|1|1", "mit seinen Wuerfeln");
+});
+
+pruefe("Meine eigenen Tipps ueberleben das Zusammenfuehren", () => {
+    const fremd = rundeMitAnnaUndBert();
+    const eigen = MODELL.tippSetzen(rundeMitAnnaUndBert(), "id-anna", "id-bert", 0, "3", 2000);
+
+    const vereint = MODELL.zusammenfuehren(fremd, eigen, "id-anna");
+    gleich(MODELL.tippLesen(vereint, "id-anna", "id-bert").join("|"), "3||||", "Tipp bleibt");
+});
+
+pruefe("Ohne eigenen Eintrag bleibt der fremde Stand unveraendert", () => {
+    const fremd = rundeMitAnnaUndBert();
+    const vereint = MODELL.zusammenfuehren(fremd, MODELL.leereDaten(), "gibt-es-nicht");
+    gleich(vereint.spieler.length, 2, "nichts verloren");
 });
 
 /* ------------------------------------------------------------------ *

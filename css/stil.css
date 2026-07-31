@@ -511,6 +511,59 @@ body {
     color: var(--haupt);
 }
 
+/* Zweite Zeile in der Namensspalte: woraus die Punkte entstanden sind. */
+.ergebnis-detail {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--schrift-leise);
+}
+
+.ergebnis-punkte {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.punkte-zahl {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.punkte-von {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--schrift-leise);
+}
+
+/* Der i-Knopf neben der Überschrift des Punktestands. */
+.info-knopf {
+    appearance: none;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--rahmen);
+    background: var(--karte);
+    color: var(--schrift-leise);
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.info-knopf:hover {
+    color: var(--haupt);
+    border-color: var(--haupt);
+}
+
+.info-knopf:focus {
+    outline: 2px solid var(--haupt);
+    outline-offset: 1px;
+}
+
 /* ------------------------------------------------------------------ *
  * Knöpfe
  * ------------------------------------------------------------------ */
@@ -621,6 +674,10 @@ body {
 .dialog-kasten p {
     margin: 0 0 16px 0;
     color: var(--schrift-leise);
+    /* Zeilenumbrüche im Text zählen — die Punkteregeln kommen mehrzeilig. */
+    white-space: pre-line;
+    max-height: 60vh;
+    overflow-y: auto;
 }
 
 .dialog-feld {

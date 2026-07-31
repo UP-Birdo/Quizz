@@ -46,8 +46,22 @@ const WUERFEL_QUIZZ = {
      */
     wuerfelSichtbar: false,
 
+    /*
+     * Läuft gerade eine Anmeldung? Solange ja, darf keine zweite starten —
+     * sonst öffnen sich mehrere Dialoge übereinander, von denen nur der letzte
+     * sichtbar ist, und es sieht aus, als lade die Seite immer wieder neu.
+     */
+    anmeldenLaeuft: false,
+
     verbinden(abgleich) {
         WUERFEL_QUIZZ.abgleich = abgleich;
+    },
+
+    /* Setzt an einer Stelle, wer an diesem Gerät sitzt — die Abgleich-Schicht
+       braucht das, um beim Schreiben den eigenen Eintrag zu erkennen. */
+    _ichIdSetzen(id) {
+        WUERFEL_QUIZZ.ichId = id;
+        WUERFEL_QUIZZ.abgleich.eigeneIdSetzen(id);
     },
 
     aufbauen(behaelter) {
@@ -71,6 +85,19 @@ const WUERFEL_QUIZZ = {
      *   3. Man meldet sich neu an: Name und PIN festlegen.
      */
     async anmelden() {
+        /* Nur eine Anmeldung gleichzeitig. */
+        if (WUERFEL_QUIZZ.anmeldenLaeuft) {
+            return;
+        }
+        WUERFEL_QUIZZ.anmeldenLaeuft = true;
+        try {
+            await WUERFEL_QUIZZ._anmeldenAblauf();
+        } finally {
+            WUERFEL_QUIZZ.anmeldenLaeuft = false;
+        }
+    },
+
+    async _anmeldenAblauf() {
         const abgleich = WUERFEL_QUIZZ.abgleich;
         const person = ICH.person();
 
@@ -78,7 +105,7 @@ const WUERFEL_QUIZZ = {
         if (person) {
             const bekannt = MODELL.spielerFinden(abgleich.daten, person.id);
             if (bekannt) {
-                WUERFEL_QUIZZ.ichId = bekannt.id;
+                WUERFEL_QUIZZ._ichIdSetzen(bekannt.id);
                 if (bekannt.name !== person.name) {
                     ICH.personSetzen(bekannt.id, bekannt.name);
                 }
@@ -108,7 +135,7 @@ const WUERFEL_QUIZZ = {
                 const erfolg = await WUERFEL_QUIZZ._alsBestehenderAnmelden(gewaehlt);
                 if (!erfolg) {
                     /* Abgebrochen oder PIN falsch: von vorn fragen. */
-                    await WUERFEL_QUIZZ.anmelden();
+                    await WUERFEL_QUIZZ._anmeldenAblauf();
                 }
                 return;
             }
@@ -228,18 +255,20 @@ const WUERFEL_QUIZZ = {
         const pinPruefwert = await VERSIEGELUNG.pinPruefwertBilden(pin, salz);
 
         const spielerId = MODELL.idErzeugen();
+
+        /* Erst bekannt machen, wer wir sind — die Abgleich-Schicht braucht das
+           beim Schreiben, um den eigenen Eintrag zu erkennen. */
+        WUERFEL_QUIZZ._ichIdSetzen(spielerId);
+        ICH.personSetzen(spielerId, name);
+
         let neu = MODELL.spielerHinzufuegen(abgleich.daten, name, spielerId);
         neu = MODELL.pinSetzen(neu, spielerId, pinPruefwert, salz);
         abgleich.aendern(neu, true);
-
-        WUERFEL_QUIZZ.ichId = spielerId;
-        ICH.personSetzen(spielerId, name);
-        WUERFEL_QUIZZ.zeichnen(abgleich.daten);
     },
 
     /* Ab jetzt ist dieses Gerät dieser Spieler. */
     _uebernehmen(spieler) {
-        WUERFEL_QUIZZ.ichId = spieler.id;
+        WUERFEL_QUIZZ._ichIdSetzen(spieler.id);
         ICH.personSetzen(spieler.id, spieler.name);
         WUERFEL_QUIZZ.wuerfelSichtbar = false;
         WUERFEL_QUIZZ.zeichnen(WUERFEL_QUIZZ.abgleich.daten);
@@ -267,11 +296,15 @@ const WUERFEL_QUIZZ = {
 
         const ich = MODELL.spielerFinden(daten, WUERFEL_QUIZZ.ichId);
         if (!ich) {
-            /* Der eigene Spieler wurde entfernt (z. B. weil jemand die Runde
-               neu gestartet hat). Neu anmelden. */
-            WUERFEL_QUIZZ.ichId = null;
-            ICH.personVergessen();
-            WUERFEL_QUIZZ.anmelden();
+            /* Den eigenen Spieler gibt es nicht mehr — er wurde über die
+               Verwaltung entfernt. Neu anmelden.
+               (Dass er durch ein Überschreiben verschwindet, verhindert seit
+               v0.8 MODELL.zusammenfuehren.) */
+            if (!WUERFEL_QUIZZ.anmeldenLaeuft) {
+                WUERFEL_QUIZZ._ichIdSetzen(null);
+                ICH.personVergessen();
+                WUERFEL_QUIZZ.anmelden();
+            }
             return;
         }
 
@@ -624,11 +657,13 @@ const WUERFEL_QUIZZ = {
                 const tipp = MODELL.wuerfelNormalisieren(person.tipps[ziel.id]);
                 zeile.appendChild(WUERFEL_QUIZZ._wuerfelAnzeigeBauen(tipp, "wuerfel-tipp"));
 
-                const treffer = MODELL.treffer(ziel.wuerfel, tipp);
+                const wertung = MODELL.punkte(ziel.wuerfel, tipp);
                 zeile.appendChild(WUERFEL_QUIZZ._element(
                     "span",
-                    "treffer " + (treffer > 0 ? "treffer-gut" : ""),
-                    treffer + " von " + MODELL.WUERFEL_ANZAHL
+                    "treffer " + (wertung.punkte > 0 ? "treffer-gut" : ""),
+                    wertung.punkte + " Punkte"
+                        + " (" + wertung.exakt + " genau"
+                        + (wertung.nah > 0 ? ", " + wertung.nah + " knapp" : "") + ")"
                 ));
 
                 liste.appendChild(zeile);
@@ -652,22 +687,27 @@ const WUERFEL_QUIZZ = {
 
     _bestenlisteBauen(daten) {
         const bereich = WUERFEL_QUIZZ._element("section", "karte karte-ergebnis");
-        bereich.appendChild(WUERFEL_QUIZZ._element("h3", "", "Wer hat am besten geraten?"));
+
+        /* Überschrift mit dem i-Knopf, der die Punkteregeln erklärt. */
+        const kopf = WUERFEL_QUIZZ._element("div", "karte-kopf");
+        kopf.appendChild(WUERFEL_QUIZZ._element("h3", "", "Punktestand"));
+        kopf.appendChild(WUERFEL_QUIZZ._infoKnopfBauen());
+        bereich.appendChild(kopf);
 
         const ergebnis = MODELL.ergebnis(daten);
 
         const tabelle = document.createElement("table");
         tabelle.className = "ergebnis-tabelle";
 
-        const kopf = document.createElement("thead");
+        const tabellenkopf = document.createElement("thead");
         const kopfzeile = document.createElement("tr");
-        for (const titel of ["Platz", "Name", "Treffer"]) {
+        for (const titel of ["Platz", "Name", "Punkte"]) {
             const zelle = document.createElement("th");
             zelle.textContent = titel;
             kopfzeile.appendChild(zelle);
         }
-        kopf.appendChild(kopfzeile);
-        tabelle.appendChild(kopf);
+        tabellenkopf.appendChild(kopfzeile);
+        tabelle.appendChild(tabellenkopf);
 
         const koerper = document.createElement("tbody");
         let platz = 0;
@@ -691,11 +731,20 @@ const WUERFEL_QUIZZ = {
             zeile.appendChild(platzZelle);
 
             const nameZelle = document.createElement("td");
-            nameZelle.textContent = eintrag.name;
+            nameZelle.appendChild(WUERFEL_QUIZZ._element("span", "", eintrag.name));
+            nameZelle.appendChild(WUERFEL_QUIZZ._element(
+                "span", "ergebnis-detail",
+                eintrag.exakt + " genau, " + eintrag.nah + " knapp daneben"
+                    + (eintrag.bonus > 0 ? ", " + eintrag.bonus + " Bonus" : "")
+            ));
             zeile.appendChild(nameZelle);
 
             const punkteZelle = document.createElement("td");
-            punkteZelle.textContent = eintrag.punkte + " von " + eintrag.moeglich;
+            punkteZelle.className = "ergebnis-punkte";
+            punkteZelle.appendChild(WUERFEL_QUIZZ._element("span", "punkte-zahl",
+                String(eintrag.punkte)));
+            punkteZelle.appendChild(WUERFEL_QUIZZ._element("span", "punkte-von",
+                "von " + eintrag.moeglich));
             zeile.appendChild(punkteZelle);
 
             koerper.appendChild(zeile);
@@ -704,11 +753,24 @@ const WUERFEL_QUIZZ = {
 
         bereich.appendChild(tabelle);
         bereich.appendChild(WUERFEL_QUIZZ._element("p", "erklaerung",
-            "Gezählt wird jeder Würfelwert, den du richtig geraten hast — die "
-            + "Reihenfolge spielt keine Rolle. Mitgezählt wird nur, wer schon "
-            + "aufgedeckt hat; die Liste wächst also mit."));
+            "Mitgezählt wird nur, wer schon aufgedeckt hat — der Stand wächst "
+            + "also mit. Wie die Punkte zustande kommen, steht hinter dem i."));
 
         return bereich;
+    },
+
+    /* Der i-Knopf: erklärt die Punkteregeln im Wortlaut aus modell.js. */
+    _infoKnopfBauen() {
+        const knopf = document.createElement("button");
+        knopf.type = "button";
+        knopf.className = "info-knopf";
+        knopf.textContent = "i";
+        knopf.setAttribute("aria-label", "Wie werden die Punkte vergeben?");
+        knopf.title = "Wie werden die Punkte vergeben?";
+        knopf.addEventListener("click", () => {
+            DIALOG.hinweis("Punkte", MODELL.punkteErklaerung());
+        });
+        return knopf;
     },
 
     /* ---------------------------------------------------------------- *
@@ -800,8 +862,10 @@ const WUERFEL_QUIZZ = {
             return;
         }
 
+        /* Betrifft absichtlich einen fremden Eintrag: ohne Zusammenführung. */
         WUERFEL_QUIZZ.abgleich.aendern(
             MODELL.spielerEntfernen(WUERFEL_QUIZZ.abgleich.daten, ziel.id),
+            true,
             true
         );
     },
@@ -913,8 +977,10 @@ const WUERFEL_QUIZZ = {
         ICH.wurfVergessen(WUERFEL_QUIZZ.ichId);
         WUERFEL_QUIZZ.wuerfelSichtbar = false;
 
+        /* Betrifft absichtlich alle Einträge: ohne Zusammenführung schreiben. */
         WUERFEL_QUIZZ.abgleich.aendern(
             MODELL.neueRunde(WUERFEL_QUIZZ.abgleich.daten),
+            true,
             true
         );
     },
@@ -1070,11 +1136,12 @@ const WUERFEL_QUIZZ = {
         const id = WUERFEL_QUIZZ.ichId;
         ICH.wurfVergessen(id);
         ICH.personVergessen();
-        WUERFEL_QUIZZ.ichId = null;
+        WUERFEL_QUIZZ._ichIdSetzen(null);
         WUERFEL_QUIZZ.wuerfelSichtbar = false;
 
         WUERFEL_QUIZZ.abgleich.aendern(
             MODELL.spielerEntfernen(WUERFEL_QUIZZ.abgleich.daten, id),
+            true,
             true
         );
         WUERFEL_QUIZZ.anmelden();

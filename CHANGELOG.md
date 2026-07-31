@@ -3,6 +3,29 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.8 — 2026-07-31
+
+Punktestand mit Teilpunkten, und ein behobener Fehler, der Mitspieler
+hinauswarf.
+
+- **Punkte statt bloßer Trefferzahl.** Ein genau geratener Würfel bringt 10
+  Punkte, einer der um 1 danebenlag 4 Punkte, um 2 danebenliegend 2 Punkte.
+  Wer auf eine Person am besten getippt hat, bekommt 5 Punkte Bonus; bei
+  Gleichstand alle. Der Stern zählt nur genau getroffen.
+- **Der i-Knopf** neben dem Punktestand erklärt die Rechnung im Wortlaut,
+  mit Beispiel. Die Erklärung stammt aus derselben Datei wie die Rechnung und
+  kann deshalb nicht veralten.
+- Der Punktestand zeigt je Person, woraus die Punkte entstanden sind:
+  wie viele genau, wie viele knapp daneben, wie viel Bonus.
+- **Fehler behoben: Mitspieler verschwanden wieder aus der Runde.** Wer sich
+  anmeldete, während ein anderes Gerät noch den alten Stand im Speicher hatte,
+  wurde von dessen nächstem Schreibvorgang gelöscht — die App meldete ihn dann
+  ab und fragte erneut nach dem Namen, was wie ein mehrfaches Neuladen der
+  Seite aussah. Jetzt wird der eigene Eintrag in den Stand vom Server
+  eingefügt, statt alles zu überschreiben.
+- **Ausliefern per Skript:** `tools\Deploy-Quizz.ps1` lädt alle geänderten
+  Dateien in einem einzigen Commit hoch, ohne git und ohne Weboberfläche.
+
 ## v0.7 — 2026-07-31
 
 - **Profil-Knopf** im Kopf der eigenen Karte. Dahinter liegen beide Änderungen
