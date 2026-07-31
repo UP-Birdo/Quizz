@@ -1,0 +1,662 @@
+/*
+ * stil.css — das gesamte Aussehen der App.
+ *
+ * Farben stehen ausschließlich als Variablen im :root, damit sie an einer
+ * Stelle änderbar bleiben. Dunkle Darstellung folgt der Systemeinstellung.
+ *
+ * Farbregel (Haus-Stil): genau EINE Hauptaktion je Bildschirm in Blau,
+ * Löschen und Zurücksetzen in Rot, alles andere zurückhaltend grau.
+ */
+
+:root {
+    --flaeche: #f5f6f8;
+    --karte: #ffffff;
+    --karte-leise: #eef0f4;
+    --rahmen: #d8dbe0;
+    --schrift: #1c1f23;
+    --schrift-leise: #5c636e;
+    --haupt: #1f5fa8;
+    --haupt-schrift: #ffffff;
+    --gefahr: #b3261e;
+    --gut: #1e7d43;
+    --gut-flaeche: #e4f4ea;
+    --warnung: #8a5a00;
+    --warnung-flaeche: #fff4d6;
+    --fehler-flaeche: #fbe6e5;
+    --abstand: 16px;
+    --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --flaeche: #16181c;
+        --karte: #1f2228;
+        --karte-leise: #262a31;
+        --rahmen: #363b44;
+        --schrift: #e9ebef;
+        --schrift-leise: #a3abb8;
+        --haupt: #4a8fd6;
+        --haupt-schrift: #0d1116;
+        --gefahr: #e05a52;
+        --gut: #4cb87a;
+        --gut-flaeche: #1d3327;
+        --warnung: #e0b458;
+        --warnung-flaeche: #3a3016;
+        --fehler-flaeche: #3a1e1d;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--flaeche);
+    color: var(--schrift);
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------ *
+ * Kopf
+ * ------------------------------------------------------------------ */
+
+.kopf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: var(--abstand);
+    background: var(--karte);
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.kopf-titel {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.kopf h1 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.version {
+    color: var(--schrift-leise);
+    font-size: 0.85rem;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--schrift-leise);
+}
+
+.status-punkt {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--schrift-leise);
+    flex: none;
+}
+
+.status[data-status="bereit"] .status-punkt {
+    background: var(--gut);
+}
+
+.status[data-status="schreibt"] .status-punkt,
+.status[data-status="laedt"] .status-punkt {
+    background: var(--warnung);
+}
+
+.status[data-status="fehler"] .status-punkt {
+    background: var(--gefahr);
+}
+
+.hinweis {
+    margin: 0;
+    padding: 12px var(--abstand);
+    background: var(--warnung-flaeche);
+    color: var(--warnung);
+    border-bottom: 1px solid var(--rahmen);
+    font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Tabs
+ * ------------------------------------------------------------------ */
+
+.tab-leiste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 var(--abstand);
+    background: var(--karte);
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.tab-knopf {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 12px 16px;
+    font: inherit;
+    color: var(--schrift-leise);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-knopf:hover {
+    color: var(--schrift);
+}
+
+.tab-knopf-aktiv {
+    color: var(--haupt);
+    border-bottom-color: var(--haupt);
+    font-weight: 600;
+}
+
+.tab-inhalt {
+    padding: var(--abstand);
+    max-width: 820px;
+    margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------ *
+ * Phasenleiste
+ * ------------------------------------------------------------------ */
+
+.phasen-leiste {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: var(--abstand);
+}
+
+.phasen-text {
+    color: var(--schrift-leise);
+    font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Karten
+ * ------------------------------------------------------------------ */
+
+.karte {
+    background: var(--karte);
+    border: 1px solid var(--rahmen);
+    border-radius: var(--radius);
+    padding: var(--abstand);
+    margin-bottom: 12px;
+}
+
+.karte-ich {
+    border-color: var(--haupt);
+    border-width: 2px;
+}
+
+.karte-ergebnis {
+    background: var(--karte-leise);
+}
+
+/* Wer aufgedeckt hat, ist optisch abgeschlossen. */
+.karte-aufgedeckt {
+    border-left: 4px solid var(--gut);
+}
+
+.karte-kopf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.karte-kopf h2,
+.karte-kopf h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    flex: 1 1 auto;
+}
+
+.karte-fuss {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.bereich {
+    margin-top: 24px;
+}
+
+.bereich-titel {
+    font-size: 1.1rem;
+    margin: 0 0 8px 0;
+}
+
+.erklaerung {
+    margin: 0 0 12px 0;
+    color: var(--schrift-leise);
+    font-size: 0.92rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Marken (Chips) und Meldungen
+ * ------------------------------------------------------------------ */
+
+.chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--rahmen);
+    color: var(--schrift-leise);
+    background: var(--karte-leise);
+    white-space: nowrap;
+}
+
+.chip-fertig {
+    color: var(--gut);
+    border-color: var(--gut);
+    background: var(--gut-flaeche);
+}
+
+.chip-laeuft {
+    color: var(--haupt);
+    border-color: var(--haupt);
+    background: transparent;
+}
+
+.chip-fehler {
+    color: var(--gefahr);
+    border-color: var(--gefahr);
+    background: var(--fehler-flaeche);
+}
+
+.meldung {
+    margin: 10px 0 0 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+}
+
+.meldung-gut {
+    background: var(--gut-flaeche);
+    color: var(--gut);
+}
+
+.meldung-warnung {
+    background: var(--warnung-flaeche);
+    color: var(--warnung);
+}
+
+.meldung-fehler {
+    background: var(--fehler-flaeche);
+    color: var(--gefahr);
+}
+
+/* ------------------------------------------------------------------ *
+ * Würfel: Eingabe und Anzeige
+ * ------------------------------------------------------------------ */
+
+.wuerfel-reihe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.wuerfel-feld-halter {
+    flex: 1 1 90px;
+    min-width: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wuerfel-nummer {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--schrift-leise);
+}
+
+.wuerfel-feld {
+    width: 100%;
+    padding: 10px;
+    font: inherit;
+    color: var(--schrift);
+    background: var(--karte);
+    border: 1px solid var(--rahmen);
+    border-radius: 6px;
+}
+
+.wuerfel-anzeige {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.wuerfel-marke {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--rahmen);
+    background: var(--karte-leise);
+    font-weight: 600;
+}
+
+.wuerfel-marke-stern {
+    border-color: var(--haupt);
+    color: var(--haupt);
+}
+
+.wuerfel-marke-leer {
+    color: var(--schrift-leise);
+    font-weight: 400;
+}
+
+/* Platzhalter, solange die eigenen Zahlen verdeckt sind. */
+.wuerfel-marke-verdeckt {
+    color: var(--schrift-leise);
+    background: repeating-linear-gradient(
+        45deg,
+        var(--karte-leise),
+        var(--karte-leise) 5px,
+        var(--flaeche) 5px,
+        var(--flaeche) 10px
+    );
+    min-width: 52px;
+    font-size: 1.1rem;
+}
+
+.verdeckt-hinweis {
+    margin: 8px 0 0 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * Augen-Knopf (eigene Würfel verstecken)
+ * ------------------------------------------------------------------ */
+
+.auge-knopf {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    flex: none;
+    border-radius: 8px;
+    border: 1px solid var(--rahmen);
+    background: var(--karte-leise);
+    color: var(--schrift-leise);
+    cursor: pointer;
+}
+
+.auge-knopf:hover {
+    color: var(--schrift);
+}
+
+/* Offenes Auge heißt: die Zahlen sind gerade sichtbar. */
+.auge-knopf-offen {
+    color: var(--haupt);
+    border-color: var(--haupt);
+    background: transparent;
+}
+
+.auge-knopf:focus {
+    outline: 2px solid var(--haupt);
+    outline-offset: 1px;
+}
+
+.wuerfel-echt .wuerfel-marke {
+    font-size: 1.1rem;
+    min-width: 52px;
+    border-color: var(--haupt);
+}
+
+.wuerfel-tipp .wuerfel-marke {
+    font-size: 0.85rem;
+    min-width: 34px;
+    padding: 3px 8px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Tipp-Liste in der Auflösung
+ * ------------------------------------------------------------------ */
+
+.tipp-liste {
+    margin-top: 14px;
+    border-top: 1px solid var(--rahmen);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tipp-zeile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.tipp-name {
+    min-width: 110px;
+    color: var(--schrift-leise);
+    font-size: 0.9rem;
+}
+
+.treffer {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--schrift-leise);
+    white-space: nowrap;
+}
+
+.treffer-gut {
+    color: var(--gut);
+    font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ *
+ * Ergebnistabelle
+ * ------------------------------------------------------------------ */
+
+.ergebnis-tabelle {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.ergebnis-tabelle th,
+.ergebnis-tabelle td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.ergebnis-tabelle th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--schrift-leise);
+}
+
+.ergebnis-tabelle tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.zeile-ich {
+    font-weight: 600;
+    color: var(--haupt);
+}
+
+/* ------------------------------------------------------------------ *
+ * Knöpfe
+ * ------------------------------------------------------------------ */
+
+.fussleiste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: var(--abstand);
+    border-top: 1px solid var(--rahmen);
+}
+
+.knopf {
+    appearance: none;
+    font: inherit;
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+.knopf:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.knopf-klein {
+    padding: 6px 12px;
+    font-size: 0.88rem;
+}
+
+.knopf-haupt {
+    background: var(--haupt);
+    color: var(--haupt-schrift);
+    font-weight: 600;
+}
+
+.knopf-still {
+    background: transparent;
+    color: var(--schrift-leise);
+    border-color: var(--rahmen);
+}
+
+.knopf-gefahr {
+    background: transparent;
+    color: var(--gefahr);
+    border-color: var(--gefahr);
+}
+
+.knopf-gefahr:hover {
+    background: var(--gefahr);
+    color: var(--karte);
+}
+
+.wuerfel-feld:focus,
+.knopf:focus,
+.tab-knopf:focus,
+.dialog-feld:focus {
+    outline: 2px solid var(--haupt);
+    outline-offset: 1px;
+}
+
+/* Nur für Vorleseprogramme sichtbar. */
+.nur-vorlesen {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ *
+ * Dialog
+ * ------------------------------------------------------------------ */
+
+.dialog-hintergrund {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--abstand);
+    z-index: 10;
+}
+
+.dialog-hintergrund[hidden] {
+    display: none;
+}
+
+.dialog-kasten {
+    background: var(--karte);
+    border-radius: var(--radius);
+    border: 1px solid var(--rahmen);
+    padding: 20px;
+    max-width: 420px;
+    width: 100%;
+}
+
+.dialog-kasten h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+}
+
+.dialog-kasten p {
+    margin: 0 0 16px 0;
+    color: var(--schrift-leise);
+}
+
+.dialog-feld {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    font: inherit;
+    color: var(--schrift);
+    background: var(--karte);
+    border: 1px solid var(--rahmen);
+    border-radius: 6px;
+}
+
+.dialog-knopfleiste {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Kleine Bildschirme
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+    .tab-inhalt {
+        padding: 12px;
+    }
+
+    .kopf {
+        padding: 12px;
+    }
+
+    .wuerfel-feld-halter {
+        flex-basis: 60px;
+        min-width: 60px;
+    }
+
+    .wuerfel-nummer {
+        font-size: 0.65rem;
+    }
+
+    .treffer {
+        margin-left: 0;
+    }
+}

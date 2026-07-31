@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quizz</title>
+    <link rel="stylesheet" href="css/stil.css">
+</head>
+<body>
+
+    <header class="kopf">
+        <div class="kopf-titel">
+            <h1>Quizz</h1>
+            <span class="version" id="app-version"></span>
+        </div>
+        <div class="status" id="status" data-status="laedt">
+            <span class="status-punkt" aria-hidden="true"></span>
+            <span id="status-text">Wird geladen …</span>
+        </div>
+    </header>
+
+    <p class="hinweis" id="hinweis" hidden></p>
+
+    <nav class="tab-leiste" id="tab-leiste" role="tablist"></nav>
+
+    <main class="tab-inhalt" id="tab-inhalt"></main>
+
+    <div class="dialog-hintergrund" id="dialog" hidden></div>
+
+    <!-- Reihenfolge zählt: erst Einstellungen und Datenlogik, dann die
+         Bausteine, zuletzt der Startpunkt. -->
+    <script src="js/konfig.js"></script>
+    <script src="js/modell.js"></script>
+    <script src="js/versiegelung.js"></script>
+    <script src="js/ich.js"></script>
+    <script src="js/speicher.js"></script>
+    <script src="js/abgleich.js"></script>
+    <script src="js/dialog.js"></script>
+    <script src="js/tabs.js"></script>
+    <script src="js/wuerfel-quizz.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
