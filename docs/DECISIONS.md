@@ -513,6 +513,27 @@ Zwei sind genug, um die Spielart interessant zu machen. Eine dritte kostet
 heute einen Eintrag in `SCHACH_VARIANTEN.FAEHIGKEITEN`, eine Wirkung in
 `schach.js` und einen Test — der Weg ist also offen.
 
+> **Nachtrag vom 2026-08-02: Diese Ablehnung ist aufgehoben.** Der Nutzer will
+> ausdrücklich genau die Fähigkeiten, die oben verworfen wurden — Schutzschild,
+> Teleport, Erdbeben — dazu fünf Seltenheitsstufen und ein zufälliges Erscheinen
+> über die Partie hinweg. Die Begründung von oben bleibt trotzdem richtig; sie
+> ist jetzt kein Gegenargument mehr, sondern die **Arbeitsliste**: Für jede
+> dieser Fähigkeiten muss geklärt werden, was sie mit Schach, Matt und Rochade
+> macht. Die Vorschläge dazu stehen in `../ROADMAP.md`, Punkt 2b. Wer das baut,
+> liest sie zuerst.
+>
+> Zwei Festlegungen sind dabei schon gefallen, weil sie sonst jeder neu
+> erfinden würde:
+>
+> - **Der Zufall wird gerechnet, nicht gewürfelt.** Feld und Seltenheit ergeben
+>   sich aus Partie-Kennung und Zugzähler. `Math.random()` im Modell hieße: jedes
+>   Gerät sieht ein anderes Brett, und die Tests wären wertlos. Dieselbe
+>   Überlegung wie beim Auge und beim Siegel — was alle sehen sollen, muss aus
+>   dem gemeinsamen Stand folgen.
+> - **Eine Fähigkeit ist erst fertig, wenn alle sie sehen.** Die Animation
+>   gehört zu jeder einzelnen Fähigkeit, nicht in einen Sammelschritt am Ende.
+>   Das ist die Lehre aus v1.3, wo dasselbe für die Zugbewegung galt.
+
 ### Warum die Bewegung im Verlauf steht und nicht im Bildschirm
 
 Der Wunsch war ausdrücklich, dass **andere den Zug auch sehen**. Eine Animation,
@@ -548,6 +569,68 @@ wegzuschnappen.
 | Die verbliebenen Bonusfelder speichern | Firebase wirft leere Listen weg — „alle eingesammelt" käme als „noch keins eingesammelt" zurück. Gespeichert werden deshalb die eingesammelten. |
 | Löschen einer Partie ans Verwaltungs-Passwort binden | Eine Partie betrifft nur die, die darin spielen, und die Rückfrage nennt ihren Namen. Die neue Runde im Würfel-Quizz löscht dagegen bei ALLEN etwas — deshalb ist nur sie geschützt. |
 | Beim Doppelbrett zwei getrennte Bretter mit Übergangsfeldern | Zweites Regelwerk für denselben Nutzen; ein breites Brett erfüllt den Wunsch wörtlich. |
+
+## Bedienung des Brettes (2026-08-02, v1.6 bis v1.9)
+
+| Wunsch | Umsetzung |
+|---|---|
+| Die Zugvorhersage hebt sich zu schlecht vom Hintergrund ab | Jede Markierung ist jetzt zweifarbig (heller Rand, dunkler Kern) und markiert zusätzlich das ganze Feld, nicht nur einen Punkt. |
+| Vorschaubild je Spielart | Miniaturbrett aus derselben Aufstellung wie das echte Brett, in einer eigenen Auswahl-Ansicht. |
+| Die Regel mit König und Turm muss richtig funktionieren | Die Regel war richtig. Neu ist die Bedienung (Turm antippen) und eine Begründung, wenn die Rochade gesperrt ist. |
+| Ein Pfeil soll die letzte Bewegung anzeigen | SVG über dem Brett, aus `von`/`nach` des Verlaufs. |
+
+### Der blaue Punkt auf dem blauen Brett — ein selbstgemachter Fehler
+
+Als das Brett in v1.3 von Braun auf Blau umgestellt wurde, blieb die
+Zielmarkierung, wie sie war: ein blauer Punkt. Auf den blauen Feldern war sie
+damit praktisch unsichtbar. Aufgefallen ist es nicht beim Bauen, sondern erst
+beim Spielen.
+
+**Die Lehre:** Wer eine Grundfarbe ändert, muss ALLES prüfen, was auf dieser
+Farbe liegt. Ein Test hätte das nicht gefunden — Farbkontrast ist genau das, was
+`test-bildschirm.js` ausdrücklich nicht kann.
+
+Daraus ist eine Regel geworden, die für jede künftige Markierung auf dem Brett
+gilt: **heller Rand, dunkler Kern.** Dieselbe Doppel-Kontur trug schon die
+Figuren, aus demselben Grund. Eine einzelne Farbe reicht auf einem Brett mit
+hellen und dunklen Feldern nie.
+
+### Warum die Rochade jetzt auch über den Turm geht
+
+Gemeldet war: „die Regel mit dem König und dem Turm tauschen muss richtig
+funktionieren". Geprüft wurde zuerst die Regel — an der Stellung, die zu diesem
+Zeitpunkt wirklich in der Datenbank stand. Ergebnis: Die Regel war korrekt.
+Weiß hatte bereits rochiert (König g1, Turm f1), und bei Schwarz standen Läufer
+und Dame noch zwischen König und Turm.
+
+Der Fehler lag also nicht in der Regel, sondern darin, dass die App dazu
+schwieg. Zwei Änderungen folgen daraus:
+
+1. **Ein zweiter Weg zur Rochade.** Am echten Brett fasst man beide Figuren an;
+   deshalb tippen viele den Turm an. Das geht jetzt — der König zwei Felder zur
+   Seite bleibt zusätzlich möglich.
+2. **Eine Begründung, wenn es nicht geht.** `SCHACH.rochadeLage` nennt den
+   Grund, der Bildschirm zeigt ihn. Die Begründung steht im Regelwerk, nicht im
+   Bildschirm-Code — sonst gäbe es die Bedingungen zweimal, und ein Test prüft
+   deshalb, dass beide Auskünfte übereinstimmen.
+
+**Die allgemeine Lehre:** Wenn eine Regel korrekt ist und trotzdem als Fehler
+gemeldet wird, liegt der Fehler in der Darstellung. Das ist im Projekt bereits
+zum zweiten Mal so — beim ersten Mal waren es die Nummern an den
+Würfel-Eingabefeldern (v0.5). Damals wie heute war die Antwort nicht, die Regel
+zu ändern, sondern sie zu erklären.
+
+### Warum der Pfeil und die Bewegung beide bleiben
+
+Beide zeigen denselben Zug, und beide kommen aus derselben Quelle (`von` und
+`nach` im Verlauf, seit v1.3). Sie beantworten aber zwei verschiedene Fragen:
+Die Bewegung zeigt, **dass** gerade etwas passiert ist, und ist nach einer
+Viertelsekunde vorbei. Der Pfeil zeigt, **was** zuletzt passiert ist, und bleibt
+stehen — auch für den, der die Seite Stunden später wieder öffnet. Bei einem
+Spiel, das über den ganzen Tag läuft, ist die zweite Frage die häufigere.
+
+Gezeichnet wird in Feldkoordinaten statt in Pixeln. Damit stimmt der Pfeil auf
+dem 6er-Brett genauso wie auf dem Doppelbrett, ohne einen einzigen Sonderfall.
 
 ## Warum es von Anfang an Tabs gibt
 
@@ -588,6 +671,21 @@ Verwaltung wäre bequemer, würde aber bedeuten, dass ein Passwort im Umlauf jed
 Zugang öffnet.
 
 ## Versions-Historie
+
+### v1.6 bis v1.9 — 2026-08-02
+
+Vier kleine Bauten an der Bedienung des Brettes, alle aus der Praxis gemeldet:
+sichtbare Zugvorhersage (v1.6), Vorschaubilder der Spielarten (v1.7), Rochade
+über den Turm samt Begründung (v1.8), Pfeil für den letzten Zug (v1.9).
+
+Bemerkenswert daran ist, wie wenig neuer Code nötig war: Die Vorschaubilder
+entstehen aus der vorhandenen Aufstellung, der Pfeil aus den vorhandenen
+Verlaufsangaben. Beides sind Sachen, die es nur deshalb fast umsonst gab, weil
+die Daten schon an der richtigen Stelle lagen — die Spielarten als Tabelle,
+der Zugweg im Verlauf.
+
+Einziger echter Regeleingriff: `SCHACH.rochadeLage`. Und der war nötig, weil
+eine korrekte Regel als Fehler gemeldet wurde.
 
 ### v1.5 — 2026-08-01
 

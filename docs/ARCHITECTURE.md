@@ -431,6 +431,25 @@ sind Fesselungen automatisch abgedeckt, ohne Sonderfall.
 angreift) statt alle gegnerischen Züge zu erzeugen — sonst entstünde über die
 Rochade-Prüfung eine Endlosschleife.
 
+### Warum die Rochade sich erklären kann
+
+`SCHACH.rochadeLage(stand, farbe)` liefert für beide Seiten, ob rochiert werden
+darf — und wenn nicht, **warum nicht** (Recht verfallen, Figuren im Weg, König
+im Schach, bedrohtes Feld auf dem Weg). Der Bildschirm zeigt diesen Satz an,
+wenn der König angetippt ist.
+
+Warum das ins Regelwerk gehört: Die Frage „warum darf ich gerade nicht
+rochieren" ist eine **Regelfrage**. Beantwortete der Bildschirm sie selbst,
+stünden die Bedingungen zweimal im Programm, und die zweite Fassung liefe der
+ersten früher oder später hinterher. Ein Test prüft deshalb ausdrücklich, dass
+`rochadeLage` und `zuege` dasselbe sagen.
+
+Anlass war eine Meldung aus der Praxis, die Rochade sei kaputt. Sie war es
+nicht: In der gemeldeten Stellung hatte Weiß längst rochiert, und bei Schwarz
+standen noch Figuren im Weg. Eine korrekt gesperrte Rochade, die niemand
+erklärt, sieht aber genauso aus wie ein Fehler — deshalb erklärt sie sich jetzt.
+Die Stellung liegt als Test in `tests\test-schach.js`.
+
 ### Spielarten
 
 Eine Spielart ist ein Eintrag in `SCHACH_VARIANTEN.liste` mit vier Schaltern,
@@ -481,6 +500,41 @@ hat. Zwei Dinge sind dabei wichtig:
 
 Wer im Betriebssystem weniger Bewegung eingestellt hat
 (`prefers-reduced-motion`), bekommt keine.
+
+Aus denselben Angaben entsteht seit v1.9 der **Pfeil des letzten Zuges**
+(`_pfeilBauen`). Unterschied zur Bewegung: Die Bewegung läuft einmal, der Pfeil
+bleibt stehen, bis der nächste Zug kommt. Er ist ein SVG über dem Brett und
+zeichnet in **Feldkoordinaten** (das Koordinatenfeld ist so breit, wie das Brett
+Spalten hat). Deshalb stimmt er auf jeder Brettgröße und jeder Bildschirmbreite,
+ohne dass irgendwo Pixel gerechnet werden.
+
+### Zwei Farben für jede Markierung
+
+Das Brett hat helle **und** dunkle Felder. Jede einfarbige Markierung
+verschwindet deshalb zwangsläufig auf einer der beiden — genau das ist in v1.5
+passiert: Der Punkt auf einem möglichen Zielfeld war blau und lag damit
+unsichtbar auf den blauen Feldern.
+
+Seither gilt für alles, was auf dem Brett liegt, dieselbe Regel wie schon für
+die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder, der
+Rochade-Turm und der Pfeil sind so gebaut. Wer eine neue Markierung ergänzt,
+hält sich daran — eine einzelne Farbe reicht auf diesem Brett nie.
+
+### Die Auswahl der Spielart
+
+Beim Anlegen einer Partie erscheint eine **eigene Ansicht** im Tab (nicht
+`DIALOG.liste`), mit einer Kachel je Spielart. Jede Kachel trägt ein
+**Vorschaubild**: ein Miniaturbrett, gezeichnet aus derselben `aufstellung`, aus
+der auch das echte Brett entsteht — inklusive der Bonusfelder.
+
+Das ist der Grund für diese Bauweise: Ein gezeichnetes Bild je Spielart wäre
+eine zweite Wahrheit, die irgendwann von der ersten abweicht. So ändert sich das
+Bild automatisch mit, wenn jemand eine Aufstellung anpasst, und eine neue
+Spielart bringt ihr Bild von selbst mit.
+
+Umgeschaltet wird über `TEAM_SCHACH.auswahlOffen`; die Ansicht liegt vor der
+Übersicht. Mehr Zustand braucht es nicht, weil jede Ansicht bei jeder Änderung
+vollständig neu entsteht.
 
 ## Rangliste
 

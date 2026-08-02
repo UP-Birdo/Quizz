@@ -43,11 +43,23 @@ const TEAM_SCHACH = {
     /* Kennung der geöffneten Partie; "" heißt Übersicht. */
     offeneId: "",
 
+    /* Ist die Auswahl der Spielart offen? Sie liegt VOR der Übersicht. */
+    auswahlOffen: false,
+
     /* Gerade angetipptes Feld (Feldnummer) oder -1. */
     gewaehltesFeld: -1,
 
     /* Zielfelder zum gewählten Feld, als Feldnummern. */
     moeglicheZiele: [],
+
+    /*
+     * Rochade über den Turm: Turmfeld -> Zielfeld des Königs.
+     *
+     * Am echten Brett fasst man beide Figuren an, deshalb tippen viele den Turm
+     * an, wenn sie rochieren wollen. Der König zwei Felder zur Seite bleibt
+     * möglich; das hier ist der zweite Weg zum selben Zug.
+     */
+    rochadeZiele: {},
 
     /* Verhindert zwei Züge gleichzeitig vom selben Gerät. */
     ziehtGerade: false,
@@ -108,6 +120,11 @@ const TEAM_SCHACH = {
             return;
         }
 
+        if (TEAM_SCHACH.auswahlOffen) {
+            TEAM_SCHACH._auswahlZeichnen(wurzel);
+            return;
+        }
+
         const offene = TEAM_SCHACH.offeneId
             ? SCHACH_TAFEL.partie(tafel, TEAM_SCHACH.offeneId)
             : null;
@@ -119,6 +136,91 @@ const TEAM_SCHACH = {
             TEAM_SCHACH.offeneId = "";
             TEAM_SCHACH._uebersichtZeichnen(wurzel, tafel, person);
         }
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Auswahl der Spielart
+     *
+     * Eine eigene Ansicht statt eines Dialogs: Zu jeder Spielart gehört ein
+     * Vorschaubild, und dafür ist eine Auswahlliste der falsche Ort. Auf dem
+     * Handy ist eine volle Seite mit Kacheln ohnehin besser zu treffen als ein
+     * Dialog mit fünf Zeilen.
+     * ---------------------------------------------------------------- */
+
+    _auswahlZeichnen(wurzel) {
+        const kopf = TEAM_SCHACH._element("div", "partie-kopf");
+        kopf.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still knopf-klein",
+            () => TEAM_SCHACH.auswahlSchliessen()));
+        kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Welche Spielart?"));
+        wurzel.appendChild(kopf);
+
+        wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            "Die Spielart steht mit dem Anlegen fest und lässt sich später nicht "
+            + "mehr wechseln. Das Bild zeigt die Startaufstellung."));
+
+        const feld = TEAM_SCHACH._element("div", "spielart-feld");
+
+        for (const variante of SCHACH_VARIANTEN.liste) {
+            feld.appendChild(TEAM_SCHACH._spielartKachelBauen(variante));
+        }
+
+        wurzel.appendChild(feld);
+    },
+
+    _spielartKachelBauen(variante) {
+        const kachel = document.createElement("button");
+        kachel.type = "button";
+        kachel.className = "spielart-kachel";
+        kachel.addEventListener("click", () => TEAM_SCHACH.spielartGewaehlt(variante.id));
+
+        kachel.appendChild(TEAM_SCHACH._vorschauBauen(variante));
+
+        const kopf = TEAM_SCHACH._element("div", "spielart-kopf");
+        kopf.appendChild(TEAM_SCHACH._element("span", "spielart-titel", variante.titel));
+        kopf.appendChild(TEAM_SCHACH._element("span", "spielart-masse",
+            variante.breite + " mal " + variante.hoehe));
+        kachel.appendChild(kopf);
+
+        kachel.appendChild(TEAM_SCHACH._element("span", "spielart-text", variante.beschreibung));
+
+        return kachel;
+    },
+
+    /*
+     * Das Vorschaubild: ein Miniaturbrett aus DERSELBEN Aufstellung, aus der
+     * auch das echte Brett entsteht. Deshalb kann es nicht veralten — wer eine
+     * Spielart ändert, ändert ihr Bild automatisch mit. Eine gezeichnete Datei
+     * je Spielart wäre die zweite Wahrheit, die irgendwann von der ersten
+     * abweicht.
+     */
+    _vorschauBauen(variante) {
+        const vorschau = TEAM_SCHACH._element("div", "vorschau");
+        vorschau.style.setProperty("--vorschau-spalten", String(variante.breite));
+
+        const felder = variante.breite * variante.hoehe;
+
+        for (let feld = 0; feld < felder; feld++) {
+            const reihe = Math.floor(feld / variante.breite);
+            const spalte = feld % variante.breite;
+
+            const zelle = TEAM_SCHACH._element("div",
+                "vorschau-feld " + (((reihe + spalte) % 2 === 0) ? "feld-hell" : "feld-dunkel"));
+
+            const figur = variante.aufstellung[feld];
+            if (figur !== ".") {
+                zelle.appendChild(TEAM_SCHACH._element("span",
+                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz"),
+                    TEAM_SCHACH._figurZeichen(figur)));
+            }
+
+            if (variante.bonusFelder.some((eintrag) => eintrag.feld === feld)) {
+                zelle.classList.add("feld-bonus");
+            }
+
+            vorschau.appendChild(zelle);
+        }
+
+        return vorschau;
     },
 
     /* ---------------------------------------------------------------- *
@@ -398,6 +500,12 @@ const TEAM_SCHACH = {
             if (TEAM_SCHACH.moeglicheZiele.indexOf(feld) !== -1) {
                 zelle.classList.add(figur === "." ? "feld-ziel" : "feld-schlag");
             }
+            /* Der eigene Turm als zweiter Weg zur Rochade — kein Schlagfeld,
+               deshalb eine eigene Marke. */
+            if (TEAM_SCHACH.rochadeZiele[feld] !== undefined) {
+                zelle.classList.add("feld-rochade");
+                zelle.title = "Rochade: hier tippen";
+            }
 
             /* Königsfeld hervorheben, wenn es im Schach steht. */
             if (partie.laeuft && SCHACH.artVon(figur) === "K"
@@ -410,6 +518,12 @@ const TEAM_SCHACH = {
             zelle.addEventListener("click", () => TEAM_SCHACH.feldAngetippt(partie, person, feld));
 
             brett.appendChild(zelle);
+        }
+
+        /* Pfeil über dem Brett: zeigt den zuletzt gezogenen Weg. */
+        const pfeil = TEAM_SCHACH._pfeilBauen(partie, gedreht);
+        if (pfeil) {
+            brett.appendChild(pfeil);
         }
 
         halter.appendChild(brett);
@@ -429,7 +543,131 @@ const TEAM_SCHACH = {
                 + "zuerst zieht, hat gezogen."));
         }
 
+        const rochade = TEAM_SCHACH._rochadeHinweis(partie);
+        if (rochade) {
+            halter.appendChild(TEAM_SCHACH._element("p", "erklaerung erklaerung-rochade", rochade));
+        }
+
         return halter;
+    },
+
+    /*
+     * Erklärt beim gewählten König, was mit der Rochade ist.
+     *
+     * Ohne diesen Satz sieht es aus, als wäre die Rochade kaputt: Man tippt den
+     * König an, es erscheint kein Feld, und niemand sagt warum. Die Gründe
+     * kommen aus dem Regelwerk (SCHACH.rochadeLage) — der Bildschirm rechnet
+     * nichts selbst nach.
+     */
+    _rochadeHinweis(partie) {
+        if (TEAM_SCHACH.gewaehltesFeld === -1) {
+            return "";
+        }
+        const figur = SCHACH.figurAuf(partie.stand, TEAM_SCHACH.gewaehltesFeld);
+        if (SCHACH.artVon(figur) !== "K") {
+            return "";
+        }
+
+        const lage = SCHACH.rochadeLage(partie.stand, partie.stand.amZug);
+        const moegliche = lage.filter((eintrag) => eintrag.moeglich);
+
+        if (moegliche.length > 0) {
+            return "Rochade möglich: den Turm antippen, oder den König zwei Felder "
+                + "zur Seite.";
+        }
+
+        /* Ist es überhaupt eine Spielart mit Rochade? Dann keine Belehrung. */
+        if (lage.every((eintrag) => eintrag.grund.indexOf("Spielart") !== -1)) {
+            return "";
+        }
+
+        return "Rochade gerade nicht möglich. Kurz: " + lage[0].grund
+            + " Lang: " + lage[1].grund;
+    },
+
+    /*
+     * Der Pfeil des letzten Zuges, als Zeichnung über dem Brett.
+     *
+     * Er beantwortet die Frage „was hat der andere gerade gemacht", ohne dass
+     * man den Verlauf aufklappen muss — und er bleibt stehen, während die
+     * Bewegung nur einmal läuft. Gezeichnet wird in Feldkoordinaten (das
+     * Koordinatenfeld ist so breit wie das Brett Spalten hat), deshalb passt er
+     * ohne Umrechnung auf jede Brettgröße und jede Bildschirmbreite.
+     *
+     * Zwei Lagen: ein breiter heller Strich darunter, ein schmaler farbiger
+     * darüber. Dieselbe Doppel-Kontur wie bei Figuren und Zielfeldern — sonst
+     * verschwände der Pfeil auf einer der beiden Feldfarben.
+     */
+    _pfeilBauen(partie, gedreht) {
+        const letzter = partie.verlauf[partie.verlauf.length - 1];
+
+        if (!letzter || !Number.isInteger(letzter.von) || letzter.von < 0
+            || !Number.isInteger(letzter.nach) || letzter.nach < 0
+            || letzter.von === letzter.nach) {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(partie.stand);
+        const hoehe = SCHACH.hoeheVon(partie.stand);
+        const felder = breite * hoehe;
+
+        /* Mittelpunkt eines Feldes in der ANZEIGE (gedrehtes Brett beachten). */
+        const mitte = (feld) => {
+            const anzeige = gedreht ? (felder - 1 - feld) : feld;
+            return {
+                x: (anzeige % breite) + 0.5,
+                y: Math.floor(anzeige / breite) + 0.5
+            };
+        };
+
+        const start = mitte(letzter.von);
+        const ende = mitte(letzter.nach);
+
+        const dx = ende.x - start.x;
+        const dy = ende.y - start.y;
+        const laenge = Math.sqrt(dx * dx + dy * dy);
+        if (laenge === 0) {
+            return null;
+        }
+
+        const ex = dx / laenge;
+        const ey = dy / laenge;
+
+        /* Die Spitze sitzt am Zielfeld, der Strich endet davor. */
+        const spitzeLaenge = 0.38;
+        const spitzeBreite = 0.22;
+        const strichEndeX = ende.x - ex * spitzeLaenge;
+        const strichEndeY = ende.y - ey * spitzeLaenge;
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "zug-pfeil");
+        svg.setAttribute("viewBox", "0 0 " + breite + " " + hoehe);
+        svg.setAttribute("preserveAspectRatio", "none");
+        svg.setAttribute("aria-hidden", "true");
+
+        const spitzePunkte = [
+            ende.x + "," + ende.y,
+            (strichEndeX - ey * spitzeBreite) + "," + (strichEndeY + ex * spitzeBreite),
+            (strichEndeX + ey * spitzeBreite) + "," + (strichEndeY - ex * spitzeBreite)
+        ].join(" ");
+
+        /* Erst die helle Unterlage, dann die farbige Lage darüber. */
+        for (const lage of ["zug-pfeil-unten", "zug-pfeil-oben"]) {
+            const strich = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            strich.setAttribute("class", lage);
+            strich.setAttribute("x1", String(start.x));
+            strich.setAttribute("y1", String(start.y));
+            strich.setAttribute("x2", String(strichEndeX));
+            strich.setAttribute("y2", String(strichEndeY));
+            svg.appendChild(strich);
+
+            const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            spitze.setAttribute("class", lage);
+            spitze.setAttribute("points", spitzePunkte);
+            svg.appendChild(spitze);
+        }
+
+        return svg;
     },
 
     /*
@@ -672,6 +910,14 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /* Tipp auf den eigenen Turm, während der König gewählt ist: rochieren. */
+        if (TEAM_SCHACH.gewaehltesFeld !== -1
+            && TEAM_SCHACH.rochadeZiele[feld] !== undefined) {
+            TEAM_SCHACH.zugAusfuehren(partie, TEAM_SCHACH.gewaehltesFeld,
+                TEAM_SCHACH.rochadeZiele[feld]);
+            return;
+        }
+
         const figur = SCHACH.figurAuf(partie.stand, feld);
 
         /* Eigene Figur antippen: auswählen (oder Auswahl aufheben). */
@@ -679,10 +925,7 @@ const TEAM_SCHACH = {
             if (TEAM_SCHACH.gewaehltesFeld === feld) {
                 TEAM_SCHACH._auswahlAufheben();
             } else {
-                TEAM_SCHACH.gewaehltesFeld = feld;
-                TEAM_SCHACH.moeglicheZiele = SCHACH.zuege(partie.stand, feld)
-                    .map((zug) => zug.nach)
-                    .filter((ziel, stelle, alle) => alle.indexOf(ziel) === stelle);
+                TEAM_SCHACH._auswaehlen(partie, feld);
             }
         } else {
             TEAM_SCHACH._auswahlAufheben();
@@ -691,9 +934,33 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
+    /* Merkt sich die angetippte Figur samt ihren Zielen. */
+    _auswaehlen(partie, feld) {
+        const zuege = SCHACH.zuege(partie.stand, feld);
+
+        TEAM_SCHACH.gewaehltesFeld = feld;
+        TEAM_SCHACH.moeglicheZiele = zuege
+            .map((zug) => zug.nach)
+            .filter((ziel, stelle, alle) => alle.indexOf(ziel) === stelle);
+
+        /* Zu jedem möglichen Rochadezug auch das Turmfeld anklickbar machen. */
+        TEAM_SCHACH.rochadeZiele = {};
+
+        if (SCHACH.artVon(SCHACH.figurAuf(partie.stand, feld)) === "K") {
+            const lage = SCHACH.rochadeLage(partie.stand, partie.stand.amZug);
+
+            for (const eintrag of lage) {
+                if (eintrag.moeglich) {
+                    TEAM_SCHACH.rochadeZiele[eintrag.turmFeld] = eintrag.zielFeld;
+                }
+            }
+        }
+    },
+
     _auswahlAufheben() {
         TEAM_SCHACH.gewaehltesFeld = -1;
         TEAM_SCHACH.moeglicheZiele = [];
+        TEAM_SCHACH.rochadeZiele = {};
     },
 
     /*
@@ -806,26 +1073,26 @@ const TEAM_SCHACH = {
      * Aktionen rund um die Partie
      * ---------------------------------------------------------------- */
 
-    async partieAnlegen() {
-        const person = TEAM_SCHACH._ich();
-        if (!person) {
+    /* Der Knopf "Neue Partie" führt in die Auswahl der Spielart. */
+    partieAnlegen() {
+        if (!TEAM_SCHACH._ich()) {
             return;
         }
+        TEAM_SCHACH.auswahlOffen = true;
+        TEAM_SCHACH.offeneId = "";
+        TEAM_SCHACH._auswahlAufheben();
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
 
-        const eintraege = SCHACH_VARIANTEN.liste.map((variante) => ({
-            beschriftung: variante.titel,
-            hinweis: variante.beschreibung,
-            wert: variante.id
-        }));
+    auswahlSchliessen() {
+        TEAM_SCHACH.auswahlOffen = false;
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
 
-        const varianteId = await DIALOG.liste(
-            "Welche Spielart?",
-            "Die Spielart einer Partie steht mit dem Anlegen fest und lässt sich "
-                + "später nicht mehr wechseln.",
-            eintraege,
-            "Abbrechen"
-        );
-        if (!varianteId) {
+    /* Eine Kachel wurde angetippt: Namen erfragen und die Partie anlegen. */
+    async spielartGewaehlt(varianteId) {
+        const person = TEAM_SCHACH._ich();
+        if (!person || !SCHACH_VARIANTEN.gibtEs(varianteId)) {
             return;
         }
 

@@ -304,6 +304,113 @@ pruefe("Ein kaputter Stand wird zu einem gueltigen", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Rochade: warum sie geht oder nicht geht
+ *
+ * `rochadeLage` beantwortet dem Bildschirm die Frage, warum gerade nicht
+ * rochiert werden kann. Ohne diese Antwort sieht eine regelkonform gesperrte
+ * Rochade wie ein Fehler aus.
+ * ------------------------------------------------------------------ */
+
+pruefe("In der Grundstellung steht die Rochade noch nicht offen", () => {
+    const lage = SCHACH.rochadeLage(SCHACH.neuerStand(), SCHACH.WEISS);
+
+    gleich(lage.length, 2, "zwei Seiten");
+    gleich(lage[0].seite, "kurz", "erst kurz");
+    gleich(lage[0].moeglich, false, "kurz gesperrt");
+    wahr(lage[0].grund.indexOf("steht noch eine Figur") !== -1, "Grund: Figuren im Weg");
+    gleich(lage[1].moeglich, false, "lang gesperrt");
+});
+
+pruefe("Bei freier Bahn ist die Rochade moeglich und nennt Turm und Zielfeld", () => {
+    const stand = standAus({ "e1": "K", "h1": "T", "a1": "T", "e8": "k" },
+        SCHACH.WEISS, { rochade: "KD" });
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+
+    gleich(lage[0].moeglich, true, "kurz moeglich");
+    gleich(lage[0].turmFeld, SCHACH.feldNummer("h1"), "Turmfeld kurz");
+    gleich(lage[0].zielFeld, SCHACH.feldNummer("g1"), "Zielfeld kurz");
+
+    gleich(lage[1].moeglich, true, "lang moeglich");
+    gleich(lage[1].turmFeld, SCHACH.feldNummer("a1"), "Turmfeld lang");
+    gleich(lage[1].zielFeld, SCHACH.feldNummer("c1"), "Zielfeld lang");
+});
+
+pruefe("Ohne Recht nennt die Lage den verfallenen Anspruch", () => {
+    const stand = standAus({ "e1": "K", "h1": "T", "e8": "k" }, SCHACH.WEISS, { rochade: "" });
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+
+    gleich(lage[0].moeglich, false, "gesperrt");
+    wahr(lage[0].grund.indexOf("verfallen") !== -1, "Grund: Recht verfallen");
+});
+
+pruefe("Im Schach nennt die Lage genau das", () => {
+    const stand = standAus({ "e1": "K", "h1": "T", "e8": "k", "e2": "t" },
+        SCHACH.WEISS, { rochade: "K" });
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+
+    gleich(lage[0].moeglich, false, "gesperrt");
+    wahr(lage[0].grund.indexOf("im Schach") !== -1, "Grund: Koenig im Schach");
+});
+
+pruefe("Ein bedrohtes Feld auf dem Weg wird als solches benannt", () => {
+    const stand = standAus({ "e1": "K", "h1": "T", "e8": "k", "f8": "t" },
+        SCHACH.WEISS, { rochade: "K" });
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+
+    gleich(lage[0].moeglich, false, "gesperrt");
+    wahr(lage[0].grund.indexOf("bedrohtes Feld") !== -1, "Grund: bedrohtes Feld");
+});
+
+pruefe("Spielarten ohne Rochade sagen das auch so", () => {
+    const lage = SCHACH.rochadeLage(SCHACH.neuerStand("klein"), SCHACH.WEISS);
+
+    gleich(lage[0].moeglich, false, "gesperrt");
+    wahr(lage[0].grund.indexOf("Spielart") !== -1, "Grund: Spielart ohne Rochade");
+});
+
+pruefe("Die Lage passt zu den Zuegen, die es wirklich gibt", () => {
+    /* Beides muss dasselbe sagen — sonst zeigt der Bildschirm etwas an, das
+       das Regelwerk gar nicht erlaubt. */
+    const stand = standAus({ "e1": "K", "h1": "T", "a1": "T", "e8": "k" },
+        SCHACH.WEISS, { rochade: "KD" });
+
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+    const zuege = SCHACH.zuege(stand, SCHACH.feldNummer("e1"));
+
+    for (const eintrag of lage) {
+        const gibtEs = zuege.some((zug) => zug.rochade === eintrag.seite);
+        gleich(gibtEs, eintrag.moeglich, "Rochade " + eintrag.seite);
+    }
+});
+
+pruefe("Aus einer echten Partie: Weiss hat rochiert, Schwarz kann noch nicht", () => {
+    /*
+     * Genau diese Stellung stand am 2026-08-02 in der Datenbank, als der Fehler
+     * gemeldet wurde, die Rochade funktioniere nicht. Sie funktionierte: Weiss
+     * hatte bereits rochiert (Koenig g1, Turm f1), und bei Schwarz standen
+     * Laeufer und Dame noch im Weg.
+     */
+    const stand = SCHACH.standNormalisieren({
+        brett: "t.ldkl.t.bb..bbb...b....s...b.......B.B..LSB.S..B.B..BB.T.LD.TK.",
+        amZug: "schwarz",
+        rochade: "kd"
+    });
+
+    gleich(SCHACH.figurAuf(stand, SCHACH.feldNummer("g1")), "K", "weisser Koenig steht auf g1");
+    gleich(SCHACH.figurAuf(stand, SCHACH.feldNummer("f1")), "T", "weisser Turm steht auf f1");
+
+    const weiss = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+    gleich(weiss[0].moeglich, false, "Weiss kann nicht mehr");
+    wahr(weiss[0].grund.indexOf("Startfeld") !== -1, "Grund: Koenig nicht mehr am Start");
+
+    const schwarz = SCHACH.rochadeLage(stand, SCHACH.SCHWARZ);
+    gleich(schwarz[0].moeglich, false, "Schwarz kurz nicht");
+    wahr(schwarz[0].grund.indexOf("steht noch eine Figur") !== -1, "Grund kurz: Figur im Weg");
+    gleich(schwarz[1].moeglich, false, "Schwarz lang nicht");
+    wahr(schwarz[1].grund.indexOf("steht noch eine Figur") !== -1, "Grund lang: Figur im Weg");
+});
+
+/* ------------------------------------------------------------------ *
  * Spielarten: andere Brettmaße
  *
  * Die Regeln müssen mit jedem Brett zurechtkommen. Geprüft wird deshalb

@@ -632,6 +632,80 @@ const SCHACH = {
         return false;
     },
 
+    /* ---------------------------------------------------------------- *
+     * Rochade: warum sie geht oder nicht geht
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Liefert für beide Seiten, ob die Rochade möglich ist — und wenn nicht,
+     * warum nicht:
+     *
+     *     [ { seite: "kurz", turmFeld: 63, zielFeld: 62,
+     *         moeglich: false, grund: "Zwischen König und Turm steht noch eine Figur." } ]
+     *
+     * Warum das ins Regelwerk gehört und nicht in den Bildschirm: Die Frage
+     * „warum darf ich gerade nicht rochieren" ist eine REGELFRAGE. Würde der
+     * Bildschirm sie selbst beantworten, gäbe es die Bedingungen zweimal — und
+     * die zweite Fassung liefe irgendwann der ersten hinterher. Der Bildschirm
+     * zeigt nur an, was hier steht.
+     */
+    rochadeLage(stand, farbe) {
+        const variante = SCHACH.varianteVon(stand);
+        const breite = SCHACH.breiteVon(stand);
+        const grundreihe = (farbe === SCHACH.WEISS) ? SCHACH.hoeheVon(stand) - 1 : 0;
+        const koenigStart = SCHACH._feld(stand, grundreihe, 4);
+        const rechte = (farbe === SCHACH.WEISS) ? { kurz: "K", lang: "D" } : { kurz: "k", lang: "d" };
+
+        const seiten = [
+            { seite: "kurz", turmFeld: grundreihe * breite + 7, zielFeld: koenigStart + 2,
+                frei: [koenigStart + 1, koenigStart + 2], ueber: koenigStart + 1 },
+            { seite: "lang", turmFeld: grundreihe * breite, zielFeld: koenigStart - 2,
+                frei: [koenigStart - 1, koenigStart - 2, koenigStart - 3], ueber: koenigStart - 1 }
+        ];
+
+        return seiten.map((eintrag) => {
+            const antwort = {
+                seite: eintrag.seite,
+                turmFeld: eintrag.turmFeld,
+                zielFeld: eintrag.zielFeld,
+                moeglich: false,
+                grund: ""
+            };
+
+            if (!variante.rochade) {
+                antwort.grund = "In dieser Spielart gibt es keine Rochade.";
+                return antwort;
+            }
+            if (SCHACH.figurAuf(stand, koenigStart) !== ((farbe === SCHACH.WEISS) ? "K" : "k")) {
+                antwort.grund = "Der König steht nicht mehr auf seinem Startfeld.";
+                return antwort;
+            }
+            if (stand.rochade.indexOf(rechte[eintrag.seite]) === -1) {
+                antwort.grund = "Das Recht ist verfallen: König oder Turm haben sich schon bewegt.";
+                return antwort;
+            }
+            if (eintrag.frei.some((feld) => SCHACH.figurAuf(stand, feld) !== ".")) {
+                antwort.grund = "Zwischen König und Turm steht noch eine Figur.";
+                return antwort;
+            }
+            if (SCHACH.imSchach(stand, farbe)) {
+                antwort.grund = "Der König steht im Schach.";
+                return antwort;
+            }
+            if (SCHACH._feldBedroht(stand, eintrag.ueber, SCHACH.gegner(farbe))) {
+                antwort.grund = "Der König müsste über ein bedrohtes Feld ziehen.";
+                return antwort;
+            }
+            if (SCHACH._feldBedroht(stand, eintrag.zielFeld, SCHACH.gegner(farbe))) {
+                antwort.grund = "Der König stünde danach im Schach.";
+                return antwort;
+            }
+
+            antwort.moeglich = true;
+            return antwort;
+        });
+    },
+
     /*
      * Steht der König dieser Farbe im Schach?
      * Auf Brettern mit schlagbarem König gibt es kein Schach — dort ist der

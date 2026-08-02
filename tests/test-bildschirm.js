@@ -128,6 +128,9 @@ const umgebung = {
     console: console,
     document: {
         createElement: neuesElement,
+        /* Für den Pfeil des letzten Zuges (SVG). Der Namensraum spielt hier
+           keine Rolle — geprüft wird, dass der Code durchläuft. */
+        createElementNS(namensraum, tag) { return neuesElement(tag); },
         addEventListener() { /* wird beim Zeichnen nicht gebraucht */ },
         hidden: false
     },
@@ -231,10 +234,133 @@ pruefe("Das Brett hat so viele Felder wie die Spielart Stellen", () => {
         const brett = halter.kinder[0];
         const erwartet = variante.breite * variante.hoehe;
 
-        if (brett.kinder.length !== erwartet) {
+        /* Neben den Feldern kann der Pfeil des letzten Zuges im Brett liegen —
+           gezählt werden nur Felder. */
+        const felder = brett.kinder.filter((kind) => kind.dataset
+            && kind.dataset.feld !== undefined).length;
+
+        if (felder !== erwartet) {
             throw new Error(variante.id + ": erwartet " + erwartet
-                + " Felder, waren " + brett.kinder.length);
+                + " Felder, waren " + felder);
         }
+    }
+});
+
+pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
+    TEAM_SCHACH.partieAnlegen();
+
+    if (!TEAM_SCHACH.auswahlOffen) {
+        throw new Error("Auswahl nicht geoeffnet");
+    }
+
+    /* Kopfzeile, Erklärung, Kachelfeld. */
+    const feld = TEAM_SCHACH.wurzelEl.kinder[2];
+    if (feld.kinder.length !== SCHACH_VARIANTEN.liste.length) {
+        throw new Error("erwartet " + SCHACH_VARIANTEN.liste.length
+            + " Kacheln, waren " + feld.kinder.length);
+    }
+
+    /* Jedes Vorschaubild hat so viele Felder wie das Brett der Spielart. */
+    for (let stelle = 0; stelle < SCHACH_VARIANTEN.liste.length; stelle++) {
+        const variante = SCHACH_VARIANTEN.liste[stelle];
+        const vorschau = feld.kinder[stelle].kinder[0];
+        const erwartet = variante.breite * variante.hoehe;
+
+        if (vorschau.kinder.length !== erwartet) {
+            throw new Error(variante.id + ": Vorschau mit " + vorschau.kinder.length
+                + " statt " + erwartet + " Feldern");
+        }
+    }
+
+    TEAM_SCHACH.auswahlSchliessen();
+    if (TEAM_SCHACH.auswahlOffen) {
+        throw new Error("Auswahl nicht geschlossen");
+    }
+});
+
+pruefe("Der Koenig macht den eigenen Turm zum Rochade-Ziel", () => {
+    /* Eine eigene Partie mit freier Grundreihe. */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Rochade", 4000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 4000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 4000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 4000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 4000);
+
+    /* Freie Grundreihe: Koenig auf e1, Tuerme auf a1 und h1. */
+    partie.stand = SCHACH.standNormalisieren({
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K..T",
+        amZug: "weiss",
+        rochade: "KD"
+    });
+
+    const tafel = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 4000);
+    TEAM_SCHACH.abgleich.daten = tafel;
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const person = { id: "id-anna", name: "Anna" };
+    const offene = SCHACH_TAFEL.partie(tafel, partie.id);
+
+    TEAM_SCHACH.feldAngetippt(offene, person, SCHACH.feldNummer("e1"));
+
+    const turmKurz = SCHACH.feldNummer("h1");
+    if (TEAM_SCHACH.rochadeZiele[turmKurz] !== SCHACH.feldNummer("g1")) {
+        throw new Error("der Turm h1 fuehrt nicht auf g1");
+    }
+
+    const turmLang = SCHACH.feldNummer("a1");
+    if (TEAM_SCHACH.rochadeZiele[turmLang] !== SCHACH.feldNummer("c1")) {
+        throw new Error("der Turm a1 fuehrt nicht auf c1");
+    }
+});
+
+/* Sucht den Pfeil im gerade gezeichneten Brett. */
+function pfeilImBrett() {
+    const halter = TEAM_SCHACH.wurzelEl.kinder[3];
+    const brett = halter.kinder[0];
+    return brett.kinder.find((kind) => kind.attribute
+        && kind.attribute["class"] === "zug-pfeil") || null;
+}
+
+pruefe("Ohne Zug gibt es keinen Pfeil, nach einem Zug schon", () => {
+    /* Eine eigene Partie, damit der Test nicht von der Reihenfolge abhaengt. */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Pfeil", 5000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 5000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 5000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 5000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 5000);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 5000);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    if (pfeilImBrett()) {
+        throw new Error("ohne Zug darf kein Pfeil da sein");
+    }
+
+    const gezogen = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 5100);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        TEAM_SCHACH.abgleich.daten, gezogen, 5100);
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    const pfeil = pfeilImBrett();
+    if (!pfeil) {
+        throw new Error("kein Pfeil gezeichnet");
+    }
+    /* Zwei Lagen aus je Strich und Spitze. */
+    if (pfeil.kinder.length !== 4) {
+        throw new Error("Pfeil hat " + pfeil.kinder.length + " Teile statt 4");
     }
 });
 

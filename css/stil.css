@@ -657,6 +657,23 @@ body {
     --figur-umriss-hell: #ffffff;
     --figur-umriss-dunkel: #16181c;
     --bonus-feld: #1e7d43;
+
+    /*
+     * Zugvorhersage. Jede Markierung hat ZWEI Farben: einen dunklen Kern und
+     * einen hellen Rand. Grund: Das Brett hat helle UND dunkle Felder, und
+     * eine einzelne Farbe verschwindet immer auf einer der beiden. Bis v1.5
+     * war der Zielpunkt blau — auf den blauen Feldern also praktisch
+     * unsichtbar. Dieselbe Doppel-Kontur trägt schon die Figuren.
+     */
+    --ziel-kern: #10233a;
+    --ziel-rand: #ffffff;
+    --schlag-kern: #b3261e;
+    --schlag-rand: #ffffff;
+
+    /* Pfeil des letzten Zuges — eine eigene Farbe, damit er nicht mit den
+       Zielmarkierungen verwechselt wird. */
+    --pfeil: #d97400;
+    --pfeil-rand: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -669,6 +686,14 @@ body {
         --figur-umriss-hell: #e9ebef;
         --figur-umriss-dunkel: #14161a;
         --bonus-feld: #4cb87a;
+
+        --ziel-kern: #0b1420;
+        --ziel-rand: #f4f7fb;
+        --schlag-kern: #8f1c16;
+        --schlag-rand: #ffd9d6;
+
+        --pfeil: #ff9f1a;
+        --pfeil-rand: #1b2430;
     }
 }
 
@@ -713,6 +738,39 @@ body {
     border: 2px solid var(--rahmen);
     border-radius: 6px;
     overflow: hidden;
+    /* Der Pfeil des letzten Zuges liegt darüber. */
+    position: relative;
+}
+
+/*
+ * Der Pfeil zeichnet in Feldkoordinaten (so viele Einheiten, wie das Brett
+ * Spalten und Reihen hat) und wird auf die volle Fläche gezogen. Deshalb
+ * stimmt er auf jeder Brettgröße, ohne dass irgendwo Pixel gerechnet werden.
+ */
+.zug-pfeil {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.85;
+}
+
+.zug-pfeil-unten {
+    stroke: var(--pfeil-rand);
+    fill: var(--pfeil-rand);
+    stroke-width: 0.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.zug-pfeil-oben {
+    stroke: var(--pfeil);
+    fill: var(--pfeil);
+    stroke-width: 0.12;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .feld {
@@ -744,31 +802,67 @@ body {
     background: var(--feld-dunkel);
 }
 
+/* Die angetippte Figur: gelbes Feld plus dunkler Rahmen, damit sie sich auch
+   vom hellen Feld absetzt. */
 .feld-gewaehlt {
     background: var(--feld-gewaehlt);
+    box-shadow: inset 0 0 0 3px var(--ziel-kern);
 }
 
 .feld-schach {
     box-shadow: inset 0 0 0 3px var(--gefahr);
 }
 
-/* Mögliches Zielfeld: Punkt in der Mitte. */
+/*
+ * Mögliches Zielfeld: das ganze Feld bekommt einen Rahmen, dazu ein kräftiger
+ * Punkt in der Mitte. Beides zweifarbig — außen hell, innen dunkel —, damit es
+ * auf hellen wie auf dunklen Feldern steht. Das ist der Unterschied zu v1.5,
+ * wo ein einzelner blauer Punkt auf blauem Grund verschwand.
+ */
+.feld-ziel {
+    box-shadow:
+        inset 0 0 0 2px var(--ziel-rand),
+        inset 0 0 0 4px var(--ziel-kern);
+}
+
 .feld-ziel::after {
     content: "";
     position: absolute;
-    width: 26%;
-    height: 26%;
+    width: 32%;
+    height: 32%;
     border-radius: 50%;
-    background: rgba(31, 95, 168, 0.55);
+    background: var(--ziel-kern);
+    border: 2px solid var(--ziel-rand);
 }
 
-/* Mögliches Schlagfeld: Ring um die Figur. */
+/*
+ * Der eigene Turm, wenn der König gewählt ist: Rochade auf Antippen. Dieselbe
+ * Kontur wie ein Zielfeld, aber ohne Punkt in der Mitte — dort steht der Turm.
+ */
+.feld-rochade {
+    box-shadow:
+        inset 0 0 0 2px var(--ziel-rand),
+        inset 0 0 0 4px var(--ziel-kern);
+}
+
+.erklaerung-rochade {
+    font-weight: 600;
+}
+
+/* Mögliches Schlagfeld: derselbe Aufbau in Rot, dazu ein Ring um die Figur. */
+.feld-schlag {
+    box-shadow:
+        inset 0 0 0 2px var(--schlag-rand),
+        inset 0 0 0 5px var(--schlag-kern);
+}
+
 .feld-schlag::after {
     content: "";
     position: absolute;
-    inset: 8%;
+    inset: 10%;
     border-radius: 50%;
-    border: 3px solid rgba(179, 38, 30, 0.65);
+    border: 3px solid var(--schlag-kern);
+    box-shadow: 0 0 0 2px var(--schlag-rand);
 }
 
 /* Feld, dessen Figur gerade wandert: liegt über seinen Nachbarn. */
@@ -887,6 +981,90 @@ body {
 .verlauf-titel:focus {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Auswahl der Spielart
+ * ------------------------------------------------------------------ */
+
+.spielart-feld {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-top: var(--abstand);
+}
+
+.spielart-kachel {
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    font: inherit;
+    text-align: left;
+    color: var(--schrift);
+    background: var(--karte);
+    border: 1px solid var(--rahmen);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.spielart-kachel:hover {
+    border-color: var(--haupt);
+}
+
+.spielart-kachel:focus {
+    outline: 2px solid var(--haupt);
+    outline-offset: 1px;
+}
+
+.spielart-kopf {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.spielart-titel {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.spielart-masse {
+    font-size: 0.8rem;
+    color: var(--schrift-leise);
+    white-space: nowrap;
+}
+
+.spielart-text {
+    font-size: 0.85rem;
+    color: var(--schrift-leise);
+}
+
+/*
+ * Das Vorschaubild. Dieselben Feldfarben und Figurenzeichen wie das echte
+ * Brett — nur klein und ohne Bedienung. Die Spaltenzahl kommt aus der Spielart,
+ * deshalb sieht man dem Bild die Brettform sofort an (6 mal 6 quadratisch,
+ * Doppelbrett breit).
+ */
+.vorschau {
+    display: grid;
+    grid-template-columns: repeat(var(--vorschau-spalten, 8), 1fr);
+    width: 100%;
+    border: 1px solid var(--rahmen);
+    border-radius: 4px;
+    overflow: hidden;
+    /* Die Figuren sollen im Kleinen noch erkennbar bleiben. */
+    font-size: calc(min(260px, 70vw) / var(--vorschau-spalten, 8) * 0.8);
+    line-height: 1;
+}
+
+.vorschau-feld {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
 /* ------------------------------------------------------------------ *

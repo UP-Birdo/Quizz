@@ -3,6 +3,46 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v1.9 — 2026-08-02
+
+- **Ein Pfeil zeigt den letzten Zug.** Er bleibt auf dem Brett stehen, bis der
+  nächste Zug kommt — man sieht also auch nach Stunden noch, was zuletzt
+  passiert ist, ohne den Zugverlauf aufzuklappen. Gezeichnet wird er in
+  Feldkoordinaten und passt damit auf jede Brettgröße.
+
+## v1.8 — 2026-08-02
+
+- **Rochade auch über den Turm.** Bisher ging sie nur, indem man den König zwei
+  Felder zur Seite zog. Jetzt reicht es, mit gewähltem König den **eigenen Turm**
+  anzutippen — so, wie man es am echten Brett macht. Der Turm bekommt dabei
+  denselben Rahmen wie ein Zielfeld.
+- **Die App sagt jetzt, warum die Rochade nicht geht.** Wer den König antippt
+  und kein Feld angeboten bekommt, liest darunter den Grund: Figuren im Weg,
+  Recht verfallen, König im Schach oder ein bedrohtes Feld auf dem Weg. Die
+  Gründe kommen aus dem Regelwerk, nicht aus dem Bildschirm-Code.
+- An den Regeln selbst hat sich **nichts** geändert — sie waren richtig. Eine
+  Stellung aus einer echten Partie ist jetzt als Test hinterlegt.
+
+## v1.7 — 2026-08-02
+
+- **Die Spielart wird ausgewählt, nicht mehr aus einer Liste gepickt.** Beim
+  Anlegen einer Partie erscheint eine eigene Seite mit einer Kachel je Spielart:
+  Name, Brettmaße, ein Satz zur Besonderheit — und ein **Vorschaubild**.
+- Das Vorschaubild ist ein Miniaturbrett aus **derselben Aufstellung**, aus der
+  auch das echte Brett entsteht. Es kann deshalb nicht veralten, und man sieht
+  einer Spielart ihre Form sofort an: das kleine Brett quadratisch, das
+  Doppelbrett breit, die Fähigkeiten als Punkte auf dem Feld.
+
+## v1.6 — 2026-08-02
+
+- **Die Zugvorhersage ist deutlich zu sehen.** Bis v1.5 war der Punkt auf einem
+  möglichen Zielfeld blau — auf den blauen Feldern des Brettes also fast
+  unsichtbar. Jetzt bekommt jedes mögliche Feld einen Rahmen und einen kräftigen
+  Punkt, beides zweifarbig (außen hell, innen dunkel), damit es auf hellen wie
+  auf dunklen Feldern steht. Schlagfelder ebenso in Rot.
+- Auch die **angetippte Figur** ist besser zu erkennen: gelbes Feld mit dunklem
+  Rahmen statt nur gelbem Feld.
+
 ## v1.5 — 2026-08-01
 
 Fähigkeiten zum Aufsammeln und eine Rangliste über beide Spiele.
