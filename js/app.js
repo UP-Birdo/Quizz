@@ -3,11 +3,15 @@
  *
  * Es gibt zwei Spiele mit je eigenem Stand in der Datenbank:
  *   Würfel Quizz  ->  KONFIG.speicher.pfad
- *   Team Schach   ->  KONFIG.speicher.schachPfad
+ *   Team Schach   ->  KONFIG.speicher.schachPfad (seit v1.4 mehrere Partien)
  *
  * Beide teilen sich die Speicher- und Abgleich-Schicht, wissen aber nichts
  * voneinander. Gemeinsam ist ihnen nur, wer an diesem Gerät sitzt (ich.js) —
  * angemeldet wird im Würfel Quizz, weil dort die Namen und PINs stehen.
+ *
+ * Dazu kommt der Tab Rangliste. Er hat KEINEN eigenen Stand: Er liest die
+ * beiden vorhandenen nur und zeigt sie zusammen. Deshalb wird er nach jeder
+ * Änderung an einem der beiden Spiele neu gezeichnet.
  *
  * Reihenfolge beim Start:
  *   1. Dialoge bereitstellen,
@@ -44,7 +48,10 @@ const APP = {
         }
 
         const quizzAbgleich = new Abgleich(quizzSpeicher.speicher, KONFIG.speicher, {
-            beiDaten: (daten) => WUERFEL_QUIZZ.zeichnen(daten),
+            beiDaten: (daten) => {
+                WUERFEL_QUIZZ.zeichnen(daten);
+                RANGLISTE.zeichnen();
+            },
             beiStatus: (status, text) => APP.statusZeigen(status, text),
             leereDaten: () => MODELL.leereDaten(),
             inhaltGleich: (a, b) => MODELL.inhaltGleich(a, b),
@@ -58,18 +65,23 @@ const APP = {
             KONFIG,
             KONFIG.speicher.schachPfad,
             KONFIG.speicher.lokalerSchluesselSchach,
-            (roh) => SCHACH_RUNDE.normalisieren(roh)
+            (roh) => SCHACH_TAFEL.normalisieren(roh)
         );
 
         /* Ohne `zusammenfuehren`: Beim Schach ändert ein Zug den gemeinsamen
-           Stand, es gibt keinen "eigenen Eintrag". Gegen zwei gleichzeitige
-           Züge sichert stattdessen der Zugzähler ab, siehe
-           TEAM_SCHACH._sendenMitPruefung. */
+           Stand, es gibt keinen "eigenen Eintrag" je Person. Geschrieben wird
+           deshalb nicht über den Abgleich, sondern über
+           TEAM_SCHACH._sendenMitPruefung — dort wird der Stand vom Server
+           geholt, der Zugzähler geprüft und nur die eine geänderte Partie
+           eingesetzt. */
         const schachAbgleich = new Abgleich(schachSpeicher.speicher, KONFIG.speicher, {
-            beiDaten: (runde) => TEAM_SCHACH.zeichnen(runde),
+            beiDaten: (tafel) => {
+                TEAM_SCHACH.zeichnen(tafel);
+                RANGLISTE.zeichnen();
+            },
             beiStatus: () => { /* Der Kopf zeigt den Stand des Würfel-Quizz. */ },
-            leereDaten: () => SCHACH_RUNDE.leereRunde(),
-            inhaltGleich: (a, b) => SCHACH_RUNDE.inhaltGleich(a, b)
+            leereDaten: () => SCHACH_TAFEL.leereTafel(),
+            inhaltGleich: (a, b) => SCHACH_TAFEL.inhaltGleich(a, b)
         });
 
         TEAM_SCHACH.verbinden(schachAbgleich);
@@ -77,6 +89,7 @@ const APP = {
         /* ---- Tabs ---- */
         TABS.registrieren(WUERFEL_QUIZZ);
         TABS.registrieren(TEAM_SCHACH);
+        TABS.registrieren(RANGLISTE);
         TABS.starten(
             document.getElementById("tab-leiste"),
             document.getElementById("tab-inhalt")

@@ -9,6 +9,12 @@
  */
 
 const pfad = require("path");
+
+/* schach.js liest die Spielarten (Brettmaße, Sonderregeln) aus dieser Tabelle
+   und erwartet sie als globale Größe — genau wie im Browser, wo sie davor
+   eingebunden ist. */
+globalThis.SCHACH_VARIANTEN = require(pfad.join(__dirname, "..", "js", "schach-varianten.js"));
+const SCHACH_VARIANTEN = globalThis.SCHACH_VARIANTEN;
 const SCHACH = require(pfad.join(__dirname, "..", "js", "schach.js"));
 
 let anzahlOk = 0;
@@ -295,6 +301,113 @@ pruefe("Ein kaputter Stand wird zu einem gueltigen", () => {
     gleich(stand.brett, SCHACH.GRUNDSTELLUNG, "Grundstellung");
     gleich(stand.amZug, SCHACH.WEISS, "Weiss");
     gleich(SCHACH.standNormalisieren(null).brett, SCHACH.GRUNDSTELLUNG, "null");
+});
+
+/* ------------------------------------------------------------------ *
+ * Spielarten: andere Brettmaße
+ *
+ * Die Regeln müssen mit jedem Brett zurechtkommen. Geprüft wird deshalb
+ * jede Größe einmal komplett durch — Umrechnung der Felder, Bauernzüge,
+ * Umwandlung und das Ende der Partie.
+ * ------------------------------------------------------------------ */
+
+pruefe("Jede Spielart hat ein Brett in der angegebenen Groesse", () => {
+    for (const variante of SCHACH_VARIANTEN.liste) {
+        gleich(variante.aufstellung.length, variante.breite * variante.hoehe,
+            "Feldanzahl von " + variante.id);
+        wahr(variante.aufstellung.indexOf("K") !== -1, "weisser Koenig in " + variante.id);
+        wahr(variante.aufstellung.indexOf("k") !== -1, "schwarzer Koenig in " + variante.id);
+    }
+});
+
+pruefe("Feldnamen rechnen auf jedem Brett richtig", () => {
+    /* Klassisch bleibt alles wie bisher. */
+    gleich(SCHACH.feldNummer("a8"), 0, "a8");
+    gleich(SCHACH.feldNummer("h1"), 63, "h1");
+
+    /* Kleines Brett: 6 mal 6. */
+    gleich(SCHACH.feldNummer("a6", 6, 6), 0, "a6 klein");
+    gleich(SCHACH.feldNummer("f1", 6, 6), 35, "f1 klein");
+    gleich(SCHACH.feldName(0, 6, 6), "a6", "Feld 0 klein");
+    gleich(SCHACH.feldName(35, 6, 6), "f1", "Feld 35 klein");
+
+    /* Doppelbrett: 16 Spalten, also bis p. */
+    gleich(SCHACH.feldName(15, 16, 8), "p8", "Feld 15 doppelt");
+    gleich(SCHACH.feldNummer("p1", 16, 8), 127, "p1 doppelt");
+
+    /* Ausserhalb des Brettes gibt es kein Feld. */
+    gleich(SCHACH.feldNummer("i1"), -1, "i gibt es auf 8 Spalten nicht");
+    gleich(SCHACH.feldNummer("a1", 6, 6), 30, "a1 auf dem kleinen Brett");
+    gleich(SCHACH.feldNummer("a7", 6, 6), -1, "a7 gibt es auf 6 Reihen nicht");
+    gleich(SCHACH.feldNummer("g1", 6, 6), -1, "g gibt es auf 6 Spalten nicht");
+});
+
+pruefe("Auf dem kleinen Brett zieht der Bauer wie erwartet", () => {
+    const stand = SCHACH.neuerStand("klein");
+    gleich(stand.breite, 6, "Breite");
+    gleich(stand.brett.length, 36, "Felder");
+
+    /* c2 auf dem 6er-Brett ist die Bauernreihe. */
+    const von = SCHACH.feldNummer("c2", 6, 6);
+    const ziele = SCHACH.zuege(stand, von)
+        .map((zug) => SCHACH.feldName(zug.nach, 6, 6)).sort().join(",");
+    gleich(ziele, "c3,c4", "Einzel- und Doppelschritt");
+});
+
+pruefe("Auf dem kleinen Brett gibt es keine Rochade", () => {
+    const stand = SCHACH.neuerStand("klein");
+    gleich(stand.rochade, "", "keine Rechte");
+});
+
+/* Baut ein leeres Brett der Spielart und setzt einzelne Figuren hinein:
+   { 11: "B", 70: "K" } — die Zahlen sind Feldnummern. */
+function brettDer(varianteId, belegung) {
+    const variante = SCHACH_VARIANTEN.holen(varianteId);
+    const felder = new Array(variante.breite * variante.hoehe).fill(".");
+
+    for (const feld of Object.keys(belegung)) {
+        felder[Number(feld)] = belegung[feld];
+    }
+    return felder.join("");
+}
+
+pruefe("Auf dem grossen Brett wandelt der Bauer auf der letzten Reihe um", () => {
+    /* 10 Spalten, 8 Reihen: Feld 11 ist b7, Feld 1 ist b8. */
+    const stand = SCHACH.standNormalisieren({
+        variante: "gross",
+        brett: brettDer("gross", { 11: "B", 70: "K", 9: "k" }),
+        amZug: "weiss"
+    });
+
+    gleich(stand.breite, 10, "Breite");
+    gleich(SCHACH.feldName(11, 10, 8), "b7", "Feld 11 ist b7");
+
+    const zuege = SCHACH.zuege(stand, 11).filter((zug) => zug.umwandlung !== "");
+    gleich(zuege.length, 4, "vier Umwandlungen");
+    gleich(zuege[0].nach, 1, "auf die letzte Reihe");
+});
+
+pruefe("Auf dem Doppelbrett gibt es kein Schach, aber schlagbare Koenige", () => {
+    const stand = SCHACH.neuerStand("doppelbrett");
+
+    gleich(stand.breite, 16, "Breite");
+    gleich(SCHACH.koenigFelder(stand, SCHACH.WEISS).length, 2, "zwei weisse Koenige");
+    gleich(SCHACH.imSchach(stand, SCHACH.WEISS), false, "kein Schach-Begriff");
+    gleich(SCHACH.lage(stand).art, "laeuft", "die Partie laeuft");
+});
+
+pruefe("Auf dem Doppelbrett gewinnt, wer beide Koenige uebrig behaelt", () => {
+    /* Schwarz hat nur noch einen Koenig (Feld 0), und der wird geschlagen. */
+    const stand = SCHACH.standNormalisieren({
+        variante: "doppelbrett",
+        brett: brettDer("doppelbrett", { 0: "k", 16: "D", 127: "K" }),
+        amZug: "weiss"
+    });
+
+    const ergebnis = SCHACH.ziehen(stand, 16, 0);
+    wahr(ergebnis !== null, "die Dame darf den Koenig schlagen");
+    gleich(SCHACH.lage(ergebnis.stand).art, "matt", "Partie vorbei");
+    gleich(SCHACH.lage(ergebnis.stand).sieger, SCHACH.WEISS, "Weiss gewinnt");
 });
 
 /* ------------------------------------------------------------------ *

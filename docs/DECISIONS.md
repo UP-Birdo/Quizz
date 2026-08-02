@@ -431,6 +431,114 @@ Umdenken.
 (wer darf zurücknehmen?) und müsste den ganzen Verlauf mit Ständen speichern.
 Wer sich vertan hat, gibt auf oder setzt die Partie zurück.
 
+## Team Schach — der Ausbau (2026-08-01, v1.3 bis v1.5)
+
+Der Auftrag war eine Liste von Wünschen auf einmal, mit einer Bedingung:
+**„und die derzeitigen Spiele, die noch laufen, gehen weiterhin."** Diese
+Bedingung hat die Reihenfolge und mehrere Entwürfe bestimmt.
+
+| Wunsch | Umsetzung |
+|---|---|
+| Erst eine Liste offener Partien | Der Tab zeigt die Übersicht; eine Partie wird daraus geöffnet (`TEAM_SCHACH.offeneId`). |
+| Brett blau-weiß statt braun | Farbvariablen in `stil.css`, dazu ein voller Umriss an den Figuren. |
+| Bessere Zug-Animation, die alle sehen | `von`/`nach` im Verlauf, Bewegung beim Zeichnen — dadurch auf jedem Gerät. |
+| Handy-Ansicht der Partie | Eine Spalte, Brett über die volle Breite, Teams nebeneinander, Verlauf eingeklappt. |
+| Verschiedene Spielarten, größeres/kleineres Brett | `schach-varianten.js`; die Regeln rechnen mit `breite`/`hoehe` statt mit 8. |
+| Mehrere Spieler auf zwei Brettern nebeneinander | Als Spielart **Doppelbrett** (16 mal 8) gebaut, siehe unten. |
+| Fähigkeiten zum Aufsammeln | Spielart **Fähigkeiten sammeln** mit vier Feldern auf dem Brett. |
+| Spielmodus beim Anlegen wählen | Auswahlliste beim Anlegen; danach fest. |
+| Übergreifendes Scoreboard mit Platzierung | Dritter Tab **Rangliste**. |
+
+### Warum die laufende Partie nicht umzieht, sondern bleibt
+
+Der einfachste Weg zu mehreren Partien wäre gewesen, den Pfad in der Datenbank
+zu wechseln und neu anzufangen. Das hätte die Bedingung des Auftrags gebrochen:
+Eine angefangene Partie wäre verschwunden.
+
+Stattdessen bleibt der Pfad `team-schach` derselbe, und der alte Stand wird beim
+ersten Laden erkannt und zur Partie `start` gemacht
+(`SCHACH_TAFEL._istEinzelnePartie`). Zwei angenehme Nebenwirkungen: Es ist keine
+neue Firebase-Regel nötig, und niemand muss etwas tun — beim nächsten Öffnen der
+Seite steht die Partie einfach in der Übersicht.
+
+Erkannt wird der alte Stand an seinem Inhalt (`stand`, `teams`, `verlauf`,
+`zugZaehler`), nicht an `datenVersion`. Eine Versionsnummer allein hätte sich
+auch in einer leeren Ablage finden lassen; der Inhalt lügt nicht.
+
+### Warum das Doppelbrett keine zwei Bretter ist
+
+Gewünscht waren „zwei Bretter nebeneinander, wo die Figuren überall hinziehen".
+Zwei getrennte Bretter mit Übergängen wären ein zweites Regelwerk gewesen:
+eigene Nachbarschaft, eigene Bedrohungsrechnung, eigene Zugerzeugung.
+
+Gebaut ist deshalb **ein** Brett mit 16 mal 8 Feldern und zwei Armeen je Seite.
+Das erfüllt den Wunsch wörtlich (die Figuren ziehen über beide Hälften), kostet
+keine einzige Sonderregel — und war ohnehin nötig, weil auch „größeres Brett"
+gewünscht war.
+
+Was es doch erzwungen hat: **zwei Könige je Seite.** Schach und Matt sind auf
+genau einen König gebaut; bei zweien ist „im Schach" nicht mehr eindeutig.
+Deshalb gilt dort der Schalter `koenigSchlagbar`: kein Schach, kein Matt, der
+König wird geschlagen wie jede andere Figur, und wer keinen mehr hat, verliert.
+Das ist eine ehrliche eigene Regel statt einer halben Schachregel, die in
+Sonderfällen falsch läge.
+
+### Warum die Spielart fest zur Partie gehört
+
+Ein Wechsel mitten in der Partie müsste das Brett umrechnen — bei anderer Größe
+schlicht unmöglich. Die Spielart wird deshalb beim Anlegen gewählt und steht
+danach fest. Wer anders spielen will, legt eine neue Partie an; das kostet zwei
+Tipper und lässt die alte in Ruhe.
+
+### Warum es nur zwei Fähigkeiten gibt
+
+Gewünscht waren „Fähigkeiten, die das Schachspielen verändern". Gebaut sind
+**Sprung** und **Doppelzug** — beide verändern das Spiel spürbar, beide lassen
+sich in je einem Feld des Standes ausdrücken, und beide sind vollständig
+testbar. Verworfen wurden Fähigkeiten, die zusätzliche Zustände über mehrere
+Züge bräuchten (Schutzschild, gesperrte Felder, Figuren tauschen): Jede davon
+hätte eigene Regeln für Schach, Matt und Rochade nach sich gezogen.
+
+Zwei sind genug, um die Spielart interessant zu machen. Eine dritte kostet
+heute einen Eintrag in `SCHACH_VARIANTEN.FAEHIGKEITEN`, eine Wirkung in
+`schach.js` und einen Test — der Weg ist also offen.
+
+### Warum die Bewegung im Verlauf steht und nicht im Bildschirm
+
+Der Wunsch war ausdrücklich, dass **andere den Zug auch sehen**. Eine Animation,
+die nur der Ziehende sieht, wäre der halbe Weg gewesen. Da der Verlauf ohnehin
+zu jedem Zug gespeichert wird, tragen seine Einträge jetzt `von` und `nach`.
+Jedes Gerät, das den neuen Stand holt, kann die Bewegung damit nachzeichnen —
+ohne eine einzige zusätzliche Übertragung.
+
+Der Preis ist ein Merker im Bildschirm (`animiertBis`): Gezeichnet wird alle
+drei Sekunden, gezogen viel seltener. Ohne ihn liefe dieselbe Bewegung
+endlos in Schleife.
+
+### Warum die Rangliste die Spiele nicht vermischt
+
+Hausregel ist: kein Zustand zwischen den Spielen. Ein Punktestand über beides
+scheint dagegen zu verstoßen. Er tut es nicht, weil die Richtung stimmt: Die
+Rangliste **liest** beide Stände und schreibt nie. Sie hat keinen eigenen Pfad,
+keine eigenen Daten und kein Recht, irgendetwas zu ändern. Entfernt man den Tab,
+ändert sich an keinem Spiel etwas.
+
+Die Punkte fürs Schach (Sieg 30, Unentschieden 10, Dabeigewesen 2) sind so
+gewählt, dass eine gewonnene Partie ungefähr drei genau geratene Würfel wert ist
+— spürbar, aber nicht erdrückend. Alle aus dem Siegerteam bekommen dasselbe:
+Wer wie viele Züge gemacht hat, wird bewusst nicht gezählt, denn im Team gibt es
+keine Reihenfolge. Alles andere wäre eine Einladung, dem Mitspieler den Zug
+wegzuschnappen.
+
+### Abgelehnt beim Ausbau
+
+| Idee | Warum nicht |
+|---|---|
+| Partien in einer Liste statt in einem Objekt speichern | Firebase macht aus Listen mit Lücken ohnehin Objekte, und das Einsetzen einer einzelnen Partie wäre eine Suche statt einer Zuweisung. |
+| Die verbliebenen Bonusfelder speichern | Firebase wirft leere Listen weg — „alle eingesammelt" käme als „noch keins eingesammelt" zurück. Gespeichert werden deshalb die eingesammelten. |
+| Löschen einer Partie ans Verwaltungs-Passwort binden | Eine Partie betrifft nur die, die darin spielen, und die Rückfrage nennt ihren Namen. Die neue Runde im Würfel-Quizz löscht dagegen bei ALLEN etwas — deshalb ist nur sie geschützt. |
+| Beim Doppelbrett zwei getrennte Bretter mit Übergangsfeldern | Zweites Regelwerk für denselben Nutzen; ein breites Brett erfüllt den Wunsch wörtlich. |
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
@@ -470,6 +578,51 @@ Verwaltung wäre bequemer, würde aber bedeuten, dass ein Passwort im Umlauf jed
 Zugang öffnet.
 
 ## Versions-Historie
+
+### v1.5 — 2026-08-01
+
+Fähigkeiten und die Rangliste. Die Fähigkeiten waren der Teil mit den meisten
+Fallen: Sie greifen mitten in die Zugerzeugung ein, und der Sprung musste auch
+in `_feldBedroht` nachgetragen werden — sonst hätte der König in ein Feld ziehen
+dürfen, das eine gesprungene Figur bedroht. Genau dafür gibt es dort einen Test.
+
+Die Rangliste war dagegen klein, weil beide Spiele ihre Punkte schon selbst
+rechnen konnten. Sie musste nur addieren und sortieren.
+
+**Neu ist eine Art Test, die es hier vorher nicht gab:** `test-bildschirm.js`
+baut ein winziges DOM nach und zeichnet jeden Bildschirm einmal. Anlass war der
+Umfang — fünf Spielarten, zwei Ansichten, eine neue Tabelle —, den von Hand
+durchzuklicken bei jeder Änderung zu viel ist. Er hat sich beim Bauen sofort
+bezahlt gemacht.
+
+Seine Grenze steht ausdrücklich in seinem Kopf: Er sagt nichts über das
+Aussehen. Ein Test, dessen Grenzen nicht dabeistehen, verleitet dazu, sich mehr
+auf ihn zu verlassen, als er trägt.
+
+Meilenstein: Voll-Backup unter `Backup\Quizz\v1.5\`.
+
+### v1.4 — 2026-08-01
+
+Mehrere Partien nebeneinander und die Spielarten — der größte Umbau seit v1.0.
+
+Zwei Dinge haben ihn getragen: Erstens die Trennung der Schichten aus v1.0. Die
+Regeln mussten nur lernen, mit anderen Maßen zu rechnen; von Partien, Teams und
+Tafel wissen sie weiterhin nichts. Zweitens die Vorgabe, dass laufende Partien
+weiterlaufen — sie hat den Entwurf auf den einzig richtigen Weg gezwungen:
+denselben Pfad behalten und den alten Stand erkennen, statt daneben etwas Neues
+aufzumachen.
+
+Die Umrechnungen `feldNummer`, `feldName`, `spalteVon`, `reiheVon` haben die
+Maße als wahlfreie Parameter mit Vorgabe 8 bekommen. Dadurch blieb jeder
+bestehende Aufruf gültig, und die 25 Regeltests aus v1.0 liefen unverändert
+weiter — sie sind der Beweis, dass das klassische Schach unangetastet blieb.
+
+### v1.3 — 2026-08-01
+
+Aussehen und Bedienung: blaues Brett, gleitende Züge, Handy-Ansicht. Klein im
+Umfang, aber mit einer Erkenntnis, die bleibt: Eine Bewegung, die nur der
+Auslöser sieht, ist keine halbe Lösung, sondern eine falsche. Erst weil der Weg
+im gespeicherten Verlauf steht, sehen alle dasselbe.
 
 ### v1.0 — 2026-07-31
 

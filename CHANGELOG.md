@@ -3,6 +3,63 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v1.5 — 2026-08-01
+
+Fähigkeiten zum Aufsammeln und eine Rangliste über beide Spiele.
+
+- **Neue Spielart „Fähigkeiten sammeln".** Auf dem klassischen Brett liegen
+  vier Fähigkeiten (auf c5, f5, c4 und f4, für beide Seiten gleich weit weg).
+  Wer mit einer Figur daraufzieht, sammelt sie für sein Team ein.
+- **Zwei Fähigkeiten:** **Sprung** — beim nächsten Zug darf eine beliebige
+  eigene Figur zusätzlich wie ein Springer ziehen. **Doppelzug** — nach dem
+  nächsten Zug ist das eigene Team sofort noch einmal am Zug. Beide sind nach
+  einem Einsatz verbraucht und für alle sichtbar, solange sie wirken.
+- **Neuer Tab „Rangliste".** Ein Punktestand über beide Spiele: die Punkte aus
+  dem Würfel Quizz plus die Punkte aus beendeten Schachpartien (Sieg 30,
+  Unentschieden 10, Dabeigewesen 2). Hinter dem i-Knopf steht die Rechnung im
+  Wortlaut — erzeugt aus denselben Zahlen, mit denen gerechnet wird.
+- Der neue Tab hat **keinen eigenen Stand** in der Datenbank: Er liest die
+  beiden vorhandenen nur und zeigt sie zusammen.
+
+## v1.4 — 2026-08-01
+
+Mehrere Schachpartien nebeneinander, mit Spielarten zur Auswahl.
+
+- **Übersicht statt einem einzigen Brett.** Der Tab Team Schach zeigt jetzt
+  zuerst eine Liste aller Partien mit ihrem Stand, den Teams und der Spielart.
+  Von dort wird eine Partie geöffnet; ein Zurück-Knopf führt wieder heraus.
+- **Beliebig viele Partien gleichzeitig.** Jede hat einen eigenen Namen, eigene
+  Teams und einen eigenen Verlauf. Anlegen, umbenennen und löschen geht aus der
+  Übersicht heraus.
+- **Spielart beim Anlegen wählen** — und danach fest:
+  - **Klassisch** (8 mal 8) wie bisher, mit allen Regeln;
+  - **Kleines Brett** (6 mal 6), ohne Läufer und ohne Rochade;
+  - **Großes Brett** (10 mal 8) mit je zwei Läuferpaaren;
+  - **Doppelbrett** (16 mal 8) mit zwei Armeen je Seite. Die Figuren ziehen
+    über beide Hälften. Dort gibt es kein Schach und kein Matt: Wer zuerst
+    beide Könige verliert, verliert die Partie.
+- **Angefangene Partien laufen weiter.** Der bisherige Stand wird beim ersten
+  Laden zur Partie **Erste Partie** — Brett, Teams, Bereitschaft, Verlauf und
+  Zugzähler bleiben unverändert. Es geht nichts verloren und es ist nichts zu
+  tun.
+- Geschrieben wird immer nur die eine geänderte Partie in den Stand vom Server.
+  So kann niemand mehr fremde Partien überschreiben, während er selbst zieht.
+
+## v1.3 — 2026-08-01
+
+Das Schachbrett sieht besser aus und lässt sich auf dem Handy bedienen.
+
+- **Blau-weißes Brett** statt braun, in derselben Blaufamilie wie der Rest der
+  Seite. Die Figuren haben einen vollen Umriss bekommen — sonst verschwände
+  eine weiße Figur auf einem weißen Feld.
+- **Züge gleiten.** Eine gezogene Figur wandert von ihrem alten Feld zum neuen,
+  statt zu springen. **Das sehen alle**, nicht nur derjenige, der gezogen hat:
+  Der Weg steht im Zugverlauf, und jedes Gerät zeichnet ihn nach. Wer in seinem
+  Betriebssystem weniger Bewegung eingestellt hat, bekommt keine.
+- **Handy-Ansicht der Partie.** Das Brett zieht sich über die volle Breite, die
+  beiden Teamkarten stehen nebeneinander statt untereinander, der Zugverlauf ist
+  eingeklappt (mit Anzahl in der Überschrift) und die Knöpfe sind größer.
+
 ## v1.2 — 2026-07-31
 
 - **Fehler behoben: Der Tab Team Schach blieb leer.** Ein Tab wird erst beim

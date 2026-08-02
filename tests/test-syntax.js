@@ -72,12 +72,18 @@ for (const name of dateien) {
  * das fehlerfrei, im Browser fliegt es erst beim Klick auseinander.
  */
 globalThis.MODELL = require(pfad.join(jsOrdner, "modell.js"));
+globalThis.SCHACH_VARIANTEN = require(pfad.join(jsOrdner, "schach-varianten.js"));
 globalThis.SCHACH = require(pfad.join(jsOrdner, "schach.js"));
+globalThis.SCHACH_RUNDE = require(pfad.join(jsOrdner, "schach-runde.js"));
+globalThis.SCHACH_TAFEL = require(pfad.join(jsOrdner, "schach-tafel.js"));
 
 const bausteine = {
     MODELL: globalThis.MODELL,
     SCHACH: globalThis.SCHACH,
-    SCHACH_RUNDE: require(pfad.join(jsOrdner, "schach-runde.js")),
+    SCHACH_VARIANTEN: globalThis.SCHACH_VARIANTEN,
+    SCHACH_RUNDE: globalThis.SCHACH_RUNDE,
+    SCHACH_TAFEL: globalThis.SCHACH_TAFEL,
+    RANGLISTE: require(pfad.join(jsOrdner, "rangliste.js")),
     VERSIEGELUNG: require(pfad.join(jsOrdner, "versiegelung.js"))
 };
 

@@ -27,10 +27,22 @@ Schichten mit je einer Aufgabe. Keine Schicht greift an einer anderen vorbei:
     abgleich.js      Vermittlung: laden, verzögert schreiben, fremde Änderungen holen
         |
     wuerfel-quizz.js Bildschirm: der Spiel-Tab
+    team-schach.js   Bildschirm: Übersicht und Brett des zweiten Spiels
+    rangliste.js     Bildschirm: Punkte aus beiden Spielen (liest nur)
     tabs.js          Bildschirm: Tab-Leiste
     dialog.js        Bildschirm: eigene Rückfragen und Eingaben
         |
     app.js           Startpunkt: verdrahtet alles in fester Reihenfolge
+
+Das Schach hängt als eigener Turm daneben, nach demselben Muster:
+
+    schach-varianten.js  Spielarten als reine Tabelle (Maße, Sonderregeln)
+        |
+    schach.js            Regeln: Brett beliebiger Größe, Züge, Matt
+        |
+    schach-runde.js      eine Partie: Teams, Zugrecht, Verlauf, Fähigkeiten
+        |
+    schach-tafel.js      alle Partien nebeneinander
 
 Der Gewinn: Spiellogik und Siegel sind ohne Browser testbar, und ein anderer
 Speicher-Dienst kostet genau eine neue Klasse in `speicher.js`.
@@ -50,11 +62,14 @@ Speicher-Dienst kostet genau eine neue Klasse in `speicher.js`.
 | `js/dialog.js` | `DIALOG.frage()`, `DIALOG.hinweis()`, `DIALOG.eingabe()` — Ersatz für `confirm()`/`alert()`/`prompt()`. |
 | `js/tabs.js` | Offenes Tab-Register; ein Tab meldet sich mit `id`, `titel` und `aufbauen(behaelter)` an. |
 | `js/wuerfel-quizz.js` | Der Tab **Würfel Quizz**: Anmelden, eigene Karte, Vermutungen, Auflösung, Bestenliste. |
-| `js/schach.js` | Reine Schachregeln: Brett, Zugerzeugung, Bedrohung, Rochade, en passant, Umwandlung, Matt und Patt. Ohne Browser testbar. |
-| `js/schach-runde.js` | Die Partie mit ihren Teams: beitreten, bereit, Zugrecht, Verlauf, Ergebnis. Ebenfalls ohne Browser testbar. |
-| `js/team-schach.js` | Der Tab **Team Schach**: Brett zeichnen, Felder antippen, Teams, Zugversand mit Zugzähler-Prüfung. |
+| `js/schach-varianten.js` | Datentabelle der Spielarten: Brettmaße, Startaufstellung, Rochade ja/nein, schlagbarer König, Bonusfelder. Keine Logik. |
+| `js/schach.js` | Reine Schachregeln: Brett **beliebiger Größe**, Zugerzeugung, Bedrohung, Rochade, en passant, Umwandlung, Matt und Patt, Wirkung der Fähigkeiten. Ohne Browser testbar. |
+| `js/schach-runde.js` | EINE Partie mit ihren Teams: beitreten, bereit, Zugrecht, Verlauf, Fähigkeiten einsammeln und einsetzen, Ergebnis. Ebenfalls ohne Browser testbar. |
+| `js/schach-tafel.js` | Die Sammlung aller Partien: anlegen, einsetzen, entfernen, sortieren — und der Umstieg von der früheren Einzelpartie. Ohne Browser testbar. |
+| `js/team-schach.js` | Der Tab **Team Schach**: Übersicht der Partien, Brett zeichnen, Felder antippen, Teams, Zugbewegung, Zugversand mit Zugzähler-Prüfung. |
+| `js/rangliste.js` | Der Tab **Rangliste**: Punkte aus beiden Spielen zusammengezählt. Rechnender Teil ohne Browser testbar. |
 | `js/app.js` | Startpunkt (`DOMContentLoaded`), Statusanzeige, Hinweisbalken; erzeugt **beide** Speicher und Abgleiche. |
-| `tests/` | Regressionstests (`test-modell.js` Spiellogik, `test-versiegelung.js` Siegel, `test-syntax.js` Übersetzbarkeit) plus Startskript. |
+| `tests/` | Regressionstests (`test-modell.js` Spiellogik, `test-versiegelung.js` Siegel, `test-schach.js` Regeln, `test-schach-runde.js` Partie, `test-schach-tafel.js` Sammlung und Umstieg, `test-rangliste.js` Gesamtwertung, `test-bildschirm.js` Bildschirm gegen ein nachgebautes DOM, `test-syntax.js` Übersetzbarkeit) plus Startskript. |
 | `tools/Lokal-Starten.ps1` | Kleiner Test-Server (HttpListener) für `http://localhost:8080/`; `Quizz lokal starten.cmd` startet ihn per Doppelklick. |
 | `icon.svg` | Das Zeichen der App als Vektor: Würfelfläche, vier Augen, Stern in der Mitte. **Quelle** für alle Bildgrössen. |
 | `icons/` | Die PNG-Fassungen (512, 192, 180, 32) — erzeugt von `tools/Icons-Erzeugen.ps1`, nicht von Hand bearbeiten. |
@@ -332,13 +347,16 @@ und nicht in der Datenbank.
 
 ## Team Schach
 
-Das zweite Spiel liegt in drei Schichten, streng getrennt:
+Das zweite Spiel liegt in fünf Schichten, streng getrennt. Jede weiß nur, was
+sie wissen muss:
 
-| Datei | Weiß nichts über |
-|---|---|
-| `schach.js` — Regeln | Teams, Spieler, Speicher, Bildschirm |
-| `schach-runde.js` — Partie und Teams | Speicher, Bildschirm |
-| `team-schach.js` — Bildschirm | Regeln (fragt immer `SCHACH`) |
+| Datei | Aufgabe | Weiß nichts über |
+|---|---|---|
+| `schach-varianten.js` — Spielarten | Maße und Sonderregeln als reine Tabelle | alles Übrige |
+| `schach.js` — Regeln | Brett, Züge, Schach, Matt | Teams, Spieler, Speicher, Bildschirm |
+| `schach-runde.js` — eine Partie | Teams, Zugrecht, Verlauf, Fähigkeiten | Sammlung, Speicher, Bildschirm |
+| `schach-tafel.js` — alle Partien | anlegen, einsetzen, entfernen, sortieren | Regeln, Bildschirm |
+| `team-schach.js` — Bildschirm | Übersicht, Brett, Bedienung | Regeln (fragt immer `SCHACH`) |
 
 **Eigener Pfad in der Datenbank** (`KONFIG.speicher.schachPfad`), eigener
 Abgleich, eigener Stand. Die beiden Spiele wissen nichts voneinander;
@@ -346,30 +364,64 @@ gemeinsam ist ihnen nur `ich.js` — wer an diesem Gerät sitzt. Angemeldet wird
 im Würfel-Quizz, weil dort Namen und PINs liegen; das Schach liest den Namen
 über `WUERFEL_QUIZZ.abgleich.daten` nur zur Anzeige.
 
+### Mehrere Partien nebeneinander (seit v1.4)
+
+Unter dem Schach-Pfad liegt nicht mehr eine Partie, sondern eine **Tafel**:
+
+    {
+        "datenVersion": 2,
+        "geaendertAm": 1750000000000,
+        "partien": {
+            "start":  { … eine Partie … },
+            "p-l3k9": { … }
+        }
+    }
+
+Die Partien sind ein **Objekt mit Kennungen als Schlüssel**, keine Liste:
+Firebase macht aus einer Liste mit Lücken ohnehin ein Objekt, und das Einsetzen
+einer einzelnen Partie ist so eine einzige Zuweisung.
+
+**Der Umstieg ist die wichtigste Eigenschaft dieser Schicht.** Ein Stand von
+früher sieht aus wie eine Partie (er hat `stand` und `teams` an der Wurzel, aber
+kein `partien`). `SCHACH_TAFEL.normalisieren()` erkennt das und macht daraus die
+Partie mit der Kennung `start` und dem Titel *Erste Partie*. Eine angefangene
+Partie läuft damit ohne Bruch weiter. `tests\test-schach-tafel.js` prüft das
+Feld für Feld — wer daran etwas ändert, bricht laufende Partien.
+
 ### Die Hausregel: keine Reihenfolge im Team
 
 Jeder aus dem Team, das am Zug ist, darf ziehen (`SCHACH_RUNDE.darfZiehen`).
-Damit bei zwei gleichzeitigen Zügen keiner verloren geht, trägt jede Runde
+Damit bei zwei gleichzeitigen Zügen keiner verloren geht, trägt jede Partie
 einen **Zugzähler**:
 
 1. `TEAM_SCHACH._sendenMitPruefung` lädt vor dem Schreiben den Stand vom Server.
-2. Stimmt dessen `zugZaehler` nicht mehr mit dem erwarteten überein, hat jemand
-   anders gezogen. Der eigene Zug wird **verworfen**, der fremde übernommen,
-   und der Spieler bekommt eine Meldung.
-3. Sonst wird geschrieben.
+2. Stimmt der `zugZaehler` **dieser Partie** nicht mehr mit dem erwarteten
+   überein, hat jemand anders gezogen. Der eigene Zug wird **verworfen**, der
+   fremde übernommen, und der Spieler bekommt eine Meldung.
+3. Sonst wird die eigene Partie in den Stand vom Server eingesetzt
+   (`SCHACH_TAFEL.partieEinsetzen`) und geschrieben.
 
-Deshalb bekommt der Schach-Abgleich **kein** `zusammenfuehren`: Beim Schach gibt
-es keinen "eigenen Eintrag", ein Zug ändert den gemeinsamen Stand. Die
-Absicherung ist eine andere, aber sie hat denselben Zweck — nie einen fremden
-Stand blind überschreiben.
+Schritt 3 ist die zweite Hälfte derselben Regel: **Geschrieben wird nie die
+eigene Tafel als Ganzes.** Sonst verschwänden Partien, die inzwischen woanders
+angelegt oder gezogen wurden — genau der Fehler, der im Würfel-Quizz einmal
+Mitspieler gelöscht hat (siehe DECISIONS.md).
+
+Deshalb bekommt der Schach-Abgleich **kein** `zusammenfuehren`: Er schreibt gar
+nicht. Alles Schreiben läuft über `TEAM_SCHACH._sendenMitPruefung`.
 
 ### Brett und Felder
 
-Das Brett ist eine Zeichenkette aus 64 Zeichen, Feld 0 ist a8, Feld 63 ist h1.
-Grossbuchstabe = weiss, Kleinbuchstabe = schwarz, Punkt = leer; die Buchstaben
-sind die deutschen Anfangsbuchstaben (B, T, S, L, D, K). Eine Zeichenkette statt
-einer Liste, weil Firebase sie unverändert speichert und der Vergleich zweier
-Stände damit ein einziger Zeichenkettenvergleich ist.
+Das Brett ist eine Zeichenkette aus `breite * hoehe` Zeichen, Feld 0 ist die
+linke obere Ecke. Grossbuchstabe = weiss, Kleinbuchstabe = schwarz, Punkt =
+leer; die Buchstaben sind die deutschen Anfangsbuchstaben (B, T, S, L, D, K).
+Eine Zeichenkette statt einer Liste, weil Firebase sie unverändert speichert und
+der Vergleich zweier Stände damit ein einziger Zeichenkettenvergleich ist.
+
+**Die Maße stehen im Stand** (`breite`, `hoehe`), abgeleitet aus der Spielart.
+Fehlen sie, gilt 8 mal 8 — deshalb rechnen alte Stände unverändert weiter. Die
+Umrechnungen `feldNummer`, `feldName`, `spalteVon` und `reiheVon` nehmen die
+Maße als **wahlfreie** Parameter mit Vorgabe 8; jeder Aufruf aus der Zeit vor
+den Spielarten bleibt damit gültig.
 
 Die Zugerzeugung ist zweistufig: `_rohzuege` liefert, was die Gangart erlaubt,
 `zuege` filtert davon alles weg, wonach der eigene König im Schach stünde. Damit
@@ -379,12 +431,79 @@ sind Fesselungen automatisch abgedeckt, ohne Sonderfall.
 angreift) statt alle gegnerischen Züge zu erzeugen — sonst entstünde über die
 Rochade-Prüfung eine Endlosschleife.
 
+### Spielarten
+
+Eine Spielart ist ein Eintrag in `SCHACH_VARIANTEN.liste` mit vier Schaltern,
+die die Regeln lesen:
+
+| Feld | Wirkung in `schach.js` |
+|---|---|
+| `breite`, `hoehe` | Maße des Bretts; alle Umrechnungen hängen daran. |
+| `aufstellung` | Startbrett. |
+| `rochade` | `false` schaltet die Rochade ganz ab (sie hängt an den festen Plätzen von König und Turm). |
+| `koenigSchlagbar` | `true` heißt: kein Schach, kein Matt, kein Zugfilter. Der König ist eine Figur wie jede andere, und wer keinen mehr hat, verliert. Nötig für Bretter mit **zwei Königen je Seite** (Doppelbrett). |
+| `bonusFelder` | Felder, auf denen Fähigkeiten liegen. |
+
+Die Spielart steht in der Partie **und** im Brett-Stand. Die Partie ist die
+Wahrheit; `SCHACH_RUNDE.normalisieren()` schreibt sie in den Stand, damit die
+Regeln allein aus dem Stand arbeiten können.
+
+### Fähigkeiten
+
+Nur in der Spielart `faehigkeiten`. Die Wirkung liegt in zwei Feldern des
+Standes und ist damit für alle sichtbar und gespeichert:
+
+| Feld | Fähigkeit | Wirkung |
+|---|---|---|
+| `sprungAktiv` | Sprung | `_rohzuege` hängt für jede eigene Figur zusätzlich Springerzüge an; `_feldBedroht` rechnet sie mit, sonst könnte der König in ein bedrohtes Feld ziehen. Nach dem nächsten Zug gelöscht. |
+| `extraZug` | Doppelzug | `_ausfuehren` lässt `amZug` stehen, statt zu wechseln, und löscht das Feld. |
+
+**Eingesammelt** wird in `schach-runde.js` (dort sind die Teams bekannt), nicht
+in `schach.js`. Gespeichert wird `bonusGesammelt` — die schon **eingesammelten**
+Felder, nicht die verbliebenen. Grund: Firebase wirft leere Listen weg. Eine
+leere Liste „verbliebene Felder" käme als *nicht vorhanden* zurück, und die
+Nachrüstung würde sie wieder mit allen Feldern füllen. Bei den eingesammelten
+bedeutet *nicht vorhanden* genau das Richtige: noch keins.
+
+### Die Zugbewegung
+
+Jeder Verlaufseintrag trägt seit v1.3 zusätzlich `von` und `nach` (Feldnummern).
+Daraus lässt `TEAM_SCHACH._zugAnimieren` die zuletzt gezogene Figur von ihrem
+alten Feld herüberwandern — **auf jedem Gerät**, nicht nur bei dem, der gezogen
+hat. Zwei Dinge sind dabei wichtig:
+
+- Der Merker `animiertBis` (je Partie der zuletzt animierte Zugzähler)
+  verhindert, dass dieselbe Bewegung bei jedem Neuzeichnen erneut läuft.
+  Gezeichnet wird oft (alle drei Sekunden), gezogen selten.
+- Die Verschiebung wird gesetzt, und erst **zwei Bilder später** wird der
+  Übergang eingeschaltet und die Verschiebung zurückgenommen. Ohne diese Pause
+  fasst der Browser beides zu einem Sprung zusammen.
+
+Wer im Betriebssystem weniger Bewegung eingestellt hat
+(`prefers-reduced-motion`), bekommt keine.
+
+## Rangliste
+
+Der dritte Tab hat **keinen eigenen Stand**: Er liest die beiden vorhandenen und
+zeigt sie zusammen. Das ist die einzige Stelle, an der sich die Spiele berühren,
+und sie ist bewusst einseitig — die Rangliste schreibt nichts. Nähme man den Tab
+weg, änderte sich an keinem Spiel etwas.
+
+Die Punkte des Würfel-Quizz kommen unverändert aus `MODELL.ergebnis()`. Die
+Schachpunkte rechnet `RANGLISTE.schachPunkte()` aus den **beendeten** Partien;
+Zahlen, Rechnung und Erklärungstext stehen wie überall im Haus in derselben
+Datei, damit die angezeigte Regel nicht von der gerechneten abweichen kann.
+
+Grundlage der Namen ist der Würfel-Quizz — dort steht, wer mitspielt. Wer dort
+entfernt wurde, verschwindet auch aus der Rangliste; sonst stünden Kennungen
+ohne Namen darin.
+
 ## Tab-Register
 
 Ein Tab ist ein Objekt mit `id`, `titel` und `aufbauen(behaelter)`. `app.js`
 registriert ihn, `TABS.starten(...)` zeichnet die Leiste und baut den Inhalt
-beim ersten Öffnen einmalig auf. Ein zweiter Tab kostet eine neue Datei und eine
-Zeile in `app.js`.
+beim ersten Öffnen einmalig auf. Ein weiterer Tab kostet eine neue Datei und eine
+Zeile in `app.js`. Heute sind es drei: Würfel Quizz, Team Schach, Rangliste.
 
 ## Code-Konventionen
 

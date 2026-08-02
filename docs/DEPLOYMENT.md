@@ -58,13 +58,42 @@ sonst teilen sich beide denselben Gerätespeicher):
    Trefferzahl — und **keine Eingabefelder mehr** für diese Person.
 9. Die andere Person bleibt weiter betippbar, solange sie nicht aufgedeckt hat.
 10. **Neue Runde** setzt alles zurück, die Mitspieler bleiben.
-11. **Tab Team Schach anklicken:** Das Brett muss **sofort** erscheinen, mit
-    beiden Team-Karten. Bleibt der Bereich leer, zeichnet der Tab beim Öffnen
-    nicht — das war der Fehler aus v1.2. Danach in einem Team **Mitspielen**,
-    im zweiten Fenster das andere Team, beide **Bereit**: Die Partie startet.
-    Eine Figur antippen zeigt Punkte auf den möglichen Feldern.
-12. Zurück auf **Würfel Quizz** und wieder auf **Team Schach**: Beide zeigen
+11. **Tab Team Schach anklicken:** Die **Übersicht der Partien** muss
+    **sofort** erscheinen — bei leerer Ablage mit dem Hinweis, dass noch keine
+    Partie läuft, sonst mit den vorhandenen. Bleibt der Bereich leer, zeichnet
+    der Tab beim Öffnen nicht — das war der Fehler aus v1.2.
+11a. **Laufende Partie von früher (nur beim Umstieg auf v1.4):** Lag vorher eine
+    Partie in der Datenbank, muss sie hier als **Erste Partie** stehen — mit
+    denselben Teams, demselben Brett und demselben Stand wie vorher. Fehlt sie
+    oder steht sie auf der Grundstellung, **nicht ausliefern**.
+12. **Neue Partie** anlegen: Es kommt erst die Auswahl der Spielart, dann die
+    Frage nach dem Namen. Danach öffnet sich die Partie selbst.
+13. In einem Team **Mitspielen**, im zweiten Fenster das andere Team, beide
+    **Bereit**: Die Partie startet. Eine Figur antippen zeigt Punkte auf den
+    möglichen Feldern.
+14. **Ziehen:** Die Figur muss vom alten Feld zum neuen **gleiten**, nicht
+    springen — und zwar auch im **zweiten Fenster**, das den Zug nur über die
+    Datenbank mitbekommt. Beim bloßen Warten (die Seite fragt alle drei
+    Sekunden nach) darf sich die Bewegung nicht wiederholen.
+15. **Zurück** führt in die Übersicht; die Partie steht dort mit ihrem neuen
+    Stand. Eine zweite Partie anlegen und darin ziehen: Die erste muss
+    unverändert bleiben.
+16. **Jede Spielart einmal öffnen:** Kleines Brett (6 mal 6), Großes Brett
+    (10 mal 8), Doppelbrett (16 mal 8), Fähigkeiten. Jedes Brett muss
+    vollständig sichtbar sein, ohne dass die Seite seitlich scrollt.
+17. **Fähigkeiten:** In der Spielart *Fähigkeiten sammeln* liegen vier grüne
+    Punkte auf dem Brett. Mit einem Bauern auf c4 ziehen — die Fähigkeit
+    erscheint unter dem Brett, der grüne Punkt verschwindet und kommt nach dem
+    Neuladen der Seite **nicht** zurück. Einsetzen und die Wirkung prüfen.
+18. **Löschen** einer Partie fragt nach und entfernt sie in beiden Fenstern.
+19. **Tab Rangliste:** Zeigt alle Mitspieler mit Gesamtpunkten; hinter dem
+    **i** steht die Rechnung. Nach einer beendeten Schachpartie muss der Sieger
+    dort mehr Punkte haben.
+20. Zurück auf **Würfel Quizz** und wieder auf **Team Schach**: Beide zeigen
     weiterhin ihren aktuellen Stand.
+21. **Auf dem Handy** (oder im schmalen Fenster unter 600 Pixeln): Das Brett
+    reicht bis an die Ränder, die beiden Teamkarten stehen nebeneinander, der
+    Zugverlauf ist eingeklappt.
 
 Zusätzlich mit einer echten Datenbank: Eine Änderung muss innerhalb weniger
 Sekunden im anderen Fenster erscheinen.
@@ -120,12 +149,17 @@ speichert nur auf dem jeweiligen Gerät.
    Damit sind ausschließlich diese beiden Pfade offen, der Rest der Datenbank
    bleibt gesperrt.
 
-   **Jeder Tab braucht seinen eigenen Eintrag.** Kommt später ein Spiel dazu,
-   gehört sein Pfad (aus `js/konfig.js`) hier ergänzt — sonst kann es nichts
-   speichern, und die App meldet einen Fehler beim Laden. Genau das passiert
-   beim Umstieg auf v1.0, wenn `team-schach` fehlt. **Nicht** den Testmodus verwenden: der macht die
-   ganze Datenbank auf und schließt sie nach 30 Tagen wieder — die App würde
-   dann ohne Vorwarnung aufhören zu speichern.
+   **Jeder Tab mit eigenem Stand braucht seinen eigenen Eintrag.** Kommt später
+   ein Spiel dazu, gehört sein Pfad (aus `js/konfig.js`) hier ergänzt — sonst
+   kann es nichts speichern, und die App meldet einen Fehler beim Laden. Genau
+   das passiert beim Umstieg auf v1.0, wenn `team-schach` fehlt. **Nicht** den
+   Testmodus verwenden: der macht die ganze Datenbank auf und schließt sie nach
+   30 Tagen wieder — die App würde dann ohne Vorwarnung aufhören zu speichern.
+
+   > **Für v1.4 und v1.5 ist hier nichts zu tun.** Die mehreren Partien liegen
+   > unter demselben Pfad `team-schach` wie bisher, und der Tab **Rangliste**
+   > hat gar keinen eigenen Stand — er liest nur die beiden vorhandenen. Diese
+   > zwei Einträge genügen also weiterhin.
 6. Oben im Reiter **Daten** steht die Adresse der Datenbank, etwa
    `https://quizz-12345-default-rtdb.europe-west1.firebasedatabase.app/`.
 7. Diese Adresse **ohne den Schrägstrich am Ende** in [../js/konfig.js](../js/konfig.js)

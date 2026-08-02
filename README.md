@@ -1,8 +1,9 @@
 # Quizz
 
 Zwei Spiele auf einer Seite: **Würfel Quizz** (Ratespiel um verdeckte Würfel)
-und **Team Schach** (Schach für zwei Mannschaften). Man meldet sich einmal an
-und ist in beiden dabei.
+und **Team Schach** (Schach für zwei Mannschaften, in mehreren Spielarten und
+beliebig vielen Partien gleichzeitig). Man meldet sich einmal an und ist in
+beiden dabei. Ein dritter Tab, die **Rangliste**, zählt beides zusammen.
 
 ## Würfel Quizz
 
@@ -158,15 +159,21 @@ eintragen, was für alle als erneutes Festlegen sichtbar wird.
 
 ## Der zweite Tab: Team Schach
 
-Ein Schachspiel für zwei Mannschaften.
+Ein Schachspiel für zwei Mannschaften. Der Tab zeigt zuerst eine **Übersicht
+aller Partien** — offene, laufende und beendete. Von dort öffnet man eine
+Partie oder legt eine neue an.
 
-1. **Team wählen.** Bei Weiss oder Schwarz auf **Mitspielen** — beliebig viele
+1. **Partie öffnen oder anlegen.** Beim Anlegen wählt man die Spielart (siehe
+   unten) und gibt der Partie einen Namen. Es dürfen beliebig viele Partien
+   gleichzeitig laufen.
+2. **Team wählen.** Bei Weiss oder Schwarz auf **Mitspielen** — beliebig viele
    Leute je Seite, und man darf auch mitten im Spiel dazukommen.
-2. **Bereit drücken.** Sobald auf beiden Seiten jemand steht und beide Seiten
+3. **Bereit drücken.** Sobald auf beiden Seiten jemand steht und beide Seiten
    bereit sind, geht es los.
-3. **Ziehen.** Figur antippen, die möglichen Felder erscheinen als Punkte
+4. **Ziehen.** Figur antippen, die möglichen Felder erscheinen als Punkte
    (Schlagfelder als Ring), dann das Zielfeld antippen. Wer für Schwarz spielt,
-   sieht das Brett gedreht.
+   sieht das Brett gedreht. Der Zug gleitet über das Brett — bei allen, nicht
+   nur bei demjenigen, der gezogen hat.
 
 **Innerhalb eines Teams gibt es keine Reihenfolge:** Jeder aus dem Team, das am
 Zug ist, darf ziehen — wer zuerst drückt, hat gezogen. Sind zwei gleichzeitig
@@ -176,6 +183,48 @@ ausgeführt. Zwischen Weiss und Schwarz gilt normales Schach.
 Es sind alle Regeln umgesetzt: Rochade, en passant, Bauernumwandlung (mit
 Auswahl der Figur), Schach, Schachmatt, Patt. Der Stand liegt in der Datenbank
 — ihr könnt die Partie jederzeit liegen lassen und später weiterspielen.
+
+### Die Spielarten
+
+Die Spielart wird beim Anlegen gewählt und bleibt für diese Partie fest.
+
+| Spielart | Brett | Besonderheit |
+|---|---|---|
+| **Klassisch** | 8 mal 8 | Das gewohnte Schach mit allen Regeln. |
+| **Kleines Brett** | 6 mal 6 | Ohne Läufer und ohne Rochade — kurze Partien. |
+| **Großes Brett** | 10 mal 8 | Je zwei Läuferpaare, mehr Platz. |
+| **Doppelbrett** | 16 mal 8 | Zwei Bretter nebeneinander, zwei Armeen je Seite. Die Figuren ziehen über beide Hälften. **Kein Schach und kein Matt:** Wer zuerst beide Könige verliert, verliert. |
+| **Fähigkeiten sammeln** | 8 mal 8 | Auf vier Feldern liegen Fähigkeiten. Wer mit einer Figur darauf zieht, sammelt sie für sein Team ein. |
+
+### Die Fähigkeiten
+
+In der Spielart **Fähigkeiten sammeln** liegen vier Fähigkeiten auf dem Brett
+(erkennbar am grünen Punkt in der Ecke des Feldes), für beide Seiten gleich
+weit entfernt. Eingesetzt werden sie über den Knopf unter dem Brett, solange
+das eigene Team am Zug ist:
+
+- **Sprung** — beim nächsten Zug darf eine beliebige eigene Figur zusätzlich
+  wie ein Springer ziehen;
+- **Doppelzug** — nach dem nächsten Zug ist das eigene Team sofort noch einmal
+  am Zug.
+
+Eine eingesetzte Fähigkeit ist verbraucht. Solange sie wirkt, steht sie oben in
+der Leiste — auch für die Gegenseite sichtbar.
+
+## Der dritte Tab: Rangliste
+
+Ein Punktestand über **beide Spiele**. Gezählt werden die Punkte aus dem Würfel
+Quizz plus die Punkte aus beendeten Schachpartien:
+
+| Was | Punkte |
+|---|---|
+| Schachpartie gewonnen | **30** |
+| Schachpartie unentschieden | **10** |
+| Bei einer beendeten Partie dabeigewesen | **2** |
+
+Alle aus dem Siegerteam bekommen dieselben Punkte — im Team gibt es schließlich
+keine Reihenfolge. Laufende Partien zählen nicht mit. Die Rechnung steht in der
+App hinter dem **i** neben der Gesamtwertung.
 
 ## Auf den Startbildschirm legen
 

@@ -6,9 +6,9 @@
  * (tests\test-schach.js).
  *
  * BRETT
- * Das Brett ist eine Zeichenkette aus 64 Zeichen, Feld 0 ist a8 (oben links
- * aus Sicht von Weiß), Feld 63 ist h1. Damit liest sich die Kette wie das
- * Brett von oben nach unten.
+ * Das Brett ist eine Zeichenkette aus breite * hoehe Zeichen, Feld 0 ist die
+ * linke obere Ecke (a8 auf dem klassischen Brett), das letzte Zeichen die
+ * rechte untere. Damit liest sich die Kette wie das Brett von oben nach unten.
  *
  *     GROSSBUCHSTABE = weiss, kleinbuchstabe = schwarz, Punkt = leeres Feld
  *
@@ -18,15 +18,29 @@
  * Die Buchstaben sind die deutschen Anfangsbuchstaben — im ganzen Projekt wird
  * deutsch benannt, auch hier.
  *
+ * SPIELARTEN
+ * Wie groß das Brett ist und welche Sonderregeln gelten, steht NICHT hier,
+ * sondern in schach-varianten.js. Jeder Stand trägt seine Spielart mit sich
+ * (`variante`), damit die Regeln aus dem Stand allein arbeiten können. Ohne
+ * Angabe gilt das klassische Brett — so laufen alle Partien aus der Zeit vor
+ * den Spielarten unverändert weiter.
+ *
  * STAND (das, was gespeichert wird)
  *
  *     {
- *         "brett": "tsldklst...",      // 64 Zeichen
+ *         "variante": "standard",      // Kennung aus schach-varianten.js
+ *         "breite": 8,                 // aus der Variante abgeleitet
+ *         "hoehe": 8,
+ *         "brett": "tsldklst...",      // breite * hoehe Zeichen
  *         "amZug": "weiss",            // "weiss" | "schwarz"
  *         "rochade": "KDkd",           // welche Rochaden noch erlaubt sind
  *         "enPassant": "",             // Zielfeld wie "e3", sonst ""
  *         "halbzuege": 0,              // seit letztem Schlag oder Bauernzug
- *         "zugNummer": 1
+ *         "zugNummer": 1,
+ *         "extraZug": "",              // Fähigkeit: diese Farbe zieht gleich
+ *                                      // noch einmal
+ *         "sprungAktiv": ""            // Fähigkeit: diese Farbe darf mit einer
+ *                                      // Figur zusätzlich wie ein Springer
  *     }
  */
 
@@ -35,7 +49,10 @@ const SCHACH = {
     WEISS: "weiss",
     SCHWARZ: "schwarz",
 
-    /* Die Grundstellung, Zeile für Zeile von a8 bis h1. */
+    /* Spaltenbuchstaben — reicht bis zu einem Brett mit 16 Spalten. */
+    SPALTEN: "abcdefghijklmnop",
+
+    /* Die klassische Grundstellung, Zeile für Zeile von a8 bis h1. */
     GRUNDSTELLUNG:
         "tsldklst"
         + "bbbbbbbb"
@@ -46,37 +63,75 @@ const SCHACH = {
         + "BBBBBBBB"
         + "TSLDKLST",
 
+    /* Springer-Sprünge, an mehreren Stellen gebraucht. */
+    SPRUENGE: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]],
+
+    /* ---------------------------------------------------------------- *
+     * Maße eines Standes
+     *
+     * Die Maße stehen im Stand; fehlen sie (alter Stand), gilt 8 mal 8.
+     * ---------------------------------------------------------------- */
+
+    breiteVon(stand) {
+        return (stand && stand.breite) ? stand.breite : 8;
+    },
+
+    hoeheVon(stand) {
+        return (stand && stand.hoehe) ? stand.hoehe : 8;
+    },
+
+    /* Anzahl der Felder eines Standes. */
+    felderVon(stand) {
+        return SCHACH.breiteVon(stand) * SCHACH.hoeheVon(stand);
+    },
+
+    /* Die Spielart eines Standes, immer eine gültige. */
+    varianteVon(stand) {
+        return SCHACH_VARIANTEN.holen(stand ? stand.variante : "");
+    },
+
     /* ---------------------------------------------------------------- *
      * Felder und Figuren
+     *
+     * `breite` und `hoehe` sind wahlfrei; ohne Angabe gilt das klassische
+     * Brett. So bleiben alle Aufrufe aus der Zeit vor den Spielarten gültig.
      * ---------------------------------------------------------------- */
 
     /* "e4" -> Feldnummer. Ungültige Angaben ergeben -1. */
-    feldNummer(name) {
+    feldNummer(name, breite, hoehe) {
+        const b = breite || 8;
+        const h = hoehe || 8;
+
         if (typeof name !== "string" || name.length !== 2) {
             return -1;
         }
-        const spalte = "abcdefgh".indexOf(name[0]);
-        const reihe = "87654321".indexOf(name[1]);
-        if (spalte === -1 || reihe === -1) {
+        const spalte = SCHACH.SPALTEN.indexOf(name[0]);
+        const ziffer = "123456789".indexOf(name[1]) + 1;
+
+        if (spalte === -1 || spalte >= b || ziffer < 1 || ziffer > h) {
             return -1;
         }
-        return reihe * 8 + spalte;
+        /* Ziffer 1 ist die unterste Reihe, Reihe 0 ist die oberste. */
+        return (h - ziffer) * b + spalte;
     },
 
     /* Feldnummer -> "e4". */
-    feldName(nummer) {
-        if (!Number.isInteger(nummer) || nummer < 0 || nummer > 63) {
+    feldName(nummer, breite, hoehe) {
+        const b = breite || 8;
+        const h = hoehe || 8;
+
+        if (!Number.isInteger(nummer) || nummer < 0 || nummer >= b * h) {
             return "";
         }
-        return "abcdefgh"[nummer % 8] + "87654321"[Math.floor(nummer / 8)];
+        return SCHACH.SPALTEN[nummer % b] + String(h - Math.floor(nummer / b));
     },
 
-    spalteVon(feld) {
-        return feld % 8;
+    spalteVon(feld, breite) {
+        return feld % (breite || 8);
     },
 
-    reiheVon(feld) {
-        return Math.floor(feld / 8);
+    reiheVon(feld, breite) {
+        return Math.floor(feld / (breite || 8));
     },
 
     /* Farbe der Figur auf einem Feld, oder "" wenn leer. */
@@ -112,36 +167,52 @@ const SCHACH = {
      * Stand
      * ---------------------------------------------------------------- */
 
-    neuerStand() {
+    /* Neuer Stand in der gewünschten Spielart (ohne Angabe: klassisch). */
+    neuerStand(varianteId) {
+        const variante = SCHACH_VARIANTEN.holen(varianteId);
+
         return {
-            brett: SCHACH.GRUNDSTELLUNG,
+            variante: variante.id,
+            breite: variante.breite,
+            hoehe: variante.hoehe,
+            brett: variante.aufstellung,
             amZug: SCHACH.WEISS,
-            rochade: "KDkd",
+            rochade: variante.rochade ? "KDkd" : "",
             enPassant: "",
             halbzuege: 0,
-            zugNummer: 1
+            zugNummer: 1,
+            extraZug: "",
+            sprungAktiv: ""
         };
     },
 
     /* Bringt einen beliebigen Stand auf eine gültige Form. */
     standNormalisieren(roh) {
-        const stand = SCHACH.neuerStand();
+        const varianteId = (roh && typeof roh.variante === "string")
+            ? roh.variante
+            : SCHACH_VARIANTEN.STANDARD;
+        const variante = SCHACH_VARIANTEN.holen(varianteId);
+        const stand = SCHACH.neuerStand(variante.id);
 
         if (!roh || typeof roh !== "object") {
             return stand;
         }
 
-        if (typeof roh.brett === "string" && roh.brett.length === 64
-            && /^[BTSLDKbtsldk.]{64}$/.test(roh.brett)) {
+        const felder = variante.breite * variante.hoehe;
+        const muster = new RegExp("^[BTSLDKbtsldk.]{" + felder + "}$");
+
+        if (typeof roh.brett === "string" && roh.brett.length === felder
+            && muster.test(roh.brett)) {
             stand.brett = roh.brett;
         }
         if (roh.amZug === SCHACH.SCHWARZ) {
             stand.amZug = SCHACH.SCHWARZ;
         }
         if (typeof roh.rochade === "string" && /^[KDkd]*$/.test(roh.rochade)) {
-            stand.rochade = roh.rochade;
+            stand.rochade = variante.rochade ? roh.rochade : "";
         }
-        if (typeof roh.enPassant === "string" && SCHACH.feldNummer(roh.enPassant) !== -1) {
+        if (typeof roh.enPassant === "string"
+            && SCHACH.feldNummer(roh.enPassant, variante.breite, variante.hoehe) !== -1) {
             stand.enPassant = roh.enPassant;
         }
         if (typeof roh.halbzuege === "number" && isFinite(roh.halbzuege) && roh.halbzuege >= 0) {
@@ -150,12 +221,18 @@ const SCHACH = {
         if (typeof roh.zugNummer === "number" && isFinite(roh.zugNummer) && roh.zugNummer >= 1) {
             stand.zugNummer = Math.floor(roh.zugNummer);
         }
+        if (roh.extraZug === SCHACH.WEISS || roh.extraZug === SCHACH.SCHWARZ) {
+            stand.extraZug = roh.extraZug;
+        }
+        if (roh.sprungAktiv === SCHACH.WEISS || roh.sprungAktiv === SCHACH.SCHWARZ) {
+            stand.sprungAktiv = roh.sprungAktiv;
+        }
 
         return stand;
     },
 
     figurAuf(stand, feld) {
-        if (feld < 0 || feld > 63) {
+        if (feld < 0 || feld >= SCHACH.felderVon(stand)) {
             return "";
         }
         return stand.brett[feld];
@@ -166,10 +243,23 @@ const SCHACH = {
         return brett.substring(0, feld) + figur + brett.substring(feld + 1);
     },
 
-    /* Feld des Königs einer Farbe, oder -1. */
+    /* Feld des Königs einer Farbe, oder -1. Bei mehreren Königen das erste. */
     koenigFeld(stand, farbe) {
         const gesucht = (farbe === SCHACH.WEISS) ? "K" : "k";
         return stand.brett.indexOf(gesucht);
+    },
+
+    /* Alle Königsfelder einer Farbe — auf dem Doppelbrett sind es zwei. */
+    koenigFelder(stand, farbe) {
+        const gesucht = (farbe === SCHACH.WEISS) ? "K" : "k";
+        const liste = [];
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            if (stand.brett[feld] === gesucht) {
+                liste.push(feld);
+            }
+        }
+        return liste;
     },
 
     /* ---------------------------------------------------------------- *
@@ -179,6 +269,10 @@ const SCHACH = {
      *   _rohzuege  — was die Figur ihrer Gangart nach dürfte
      *   zuege      — davon nur die, nach denen der eigene König nicht im
      *                Schach steht
+     *
+     * Auf Brettern ohne Schach-Begriff (koenigSchlagbar, siehe
+     * schach-varianten.js) entfällt der zweite Schritt: Dort ist der König
+     * eine Figur wie jede andere.
      * ---------------------------------------------------------------- */
 
     /*
@@ -193,7 +287,13 @@ const SCHACH = {
             return [];
         }
 
-        return SCHACH._rohzuege(stand, von).filter((zug) => {
+        const roh = SCHACH._rohzuege(stand, von);
+
+        if (SCHACH.varianteVon(stand).koenigSchlagbar) {
+            return roh;
+        }
+
+        return roh.filter((zug) => {
             const danach = SCHACH._ausfuehren(stand, zug);
             return !SCHACH.imSchach(danach, farbe);
         });
@@ -202,7 +302,7 @@ const SCHACH = {
     /* Alle erlaubten Züge der Seite, die am Zug ist. */
     alleZuege(stand) {
         const liste = [];
-        for (let feld = 0; feld < 64; feld++) {
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
             if (SCHACH.farbeVon(SCHACH.figurAuf(stand, feld)) === stand.amZug) {
                 for (const zug of SCHACH.zuege(stand, feld)) {
                     liste.push(zug);
@@ -221,16 +321,32 @@ const SCHACH = {
             return [];
         }
 
+        let liste;
         switch (art) {
-            case "B": return SCHACH._bauernzuege(stand, von, farbe);
-            case "S": return SCHACH._springerzuege(stand, von, farbe);
-            case "L": return SCHACH._strahlzuege(stand, von, farbe, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
-            case "T": return SCHACH._strahlzuege(stand, von, farbe, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
-            case "D": return SCHACH._strahlzuege(stand, von, farbe,
-                [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]);
-            case "K": return SCHACH._koenigszuege(stand, von, farbe);
+            case "B": liste = SCHACH._bauernzuege(stand, von, farbe); break;
+            case "S": liste = SCHACH._springerzuege(stand, von, farbe); break;
+            case "L": liste = SCHACH._strahlzuege(stand, von, farbe,
+                [[-1, -1], [-1, 1], [1, -1], [1, 1]]); break;
+            case "T": liste = SCHACH._strahlzuege(stand, von, farbe,
+                [[-1, 0], [1, 0], [0, -1], [0, 1]]); break;
+            case "D": liste = SCHACH._strahlzuege(stand, von, farbe,
+                [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]); break;
+            case "K": liste = SCHACH._koenigszuege(stand, von, farbe); break;
             default: return [];
         }
+
+        /* Fähigkeit Sprung: Solange sie aktiv ist, darf jede eigene Figur
+           zusätzlich wie ein Springer ziehen. Springer selbst können es
+           ohnehin — dort ändert sich nichts. */
+        if (stand.sprungAktiv === farbe && art !== "S") {
+            for (const zug of SCHACH._springerzuege(stand, von, farbe)) {
+                if (!liste.some((vorhanden) => vorhanden.nach === zug.nach)) {
+                    liste.push(zug);
+                }
+            }
+        }
+
+        return liste;
     },
 
     /* Baut einen Zug-Eintrag. */
@@ -247,21 +363,28 @@ const SCHACH = {
         return Object.assign(eintrag, zusatz || {});
     },
 
-    _imBrett(reihe, spalte) {
-        return reihe >= 0 && reihe < 8 && spalte >= 0 && spalte < 8;
+    _imBrett(stand, reihe, spalte) {
+        return reihe >= 0 && reihe < SCHACH.hoeheVon(stand)
+            && spalte >= 0 && spalte < SCHACH.breiteVon(stand);
+    },
+
+    /* Reihe und Spalte zu einer Feldnummer im Brett dieses Standes. */
+    _feld(stand, reihe, spalte) {
+        return reihe * SCHACH.breiteVon(stand) + spalte;
     },
 
     _strahlzuege(stand, von, farbe, richtungen) {
         const liste = [];
-        const reihe = SCHACH.reiheVon(von);
-        const spalte = SCHACH.spalteVon(von);
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(von, breite);
+        const spalte = SCHACH.spalteVon(von, breite);
 
         for (const richtung of richtungen) {
             let r = reihe + richtung[0];
             let s = spalte + richtung[1];
 
-            while (SCHACH._imBrett(r, s)) {
-                const ziel = r * 8 + s;
+            while (SCHACH._imBrett(stand, r, s)) {
+                const ziel = SCHACH._feld(stand, r, s);
                 const dort = SCHACH.figurAuf(stand, ziel);
 
                 if (dort === ".") {
@@ -283,17 +406,17 @@ const SCHACH = {
 
     _springerzuege(stand, von, farbe) {
         const liste = [];
-        const reihe = SCHACH.reiheVon(von);
-        const spalte = SCHACH.spalteVon(von);
-        const spruenge = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(von, breite);
+        const spalte = SCHACH.spalteVon(von, breite);
 
-        for (const sprung of spruenge) {
+        for (const sprung of SCHACH.SPRUENGE) {
             const r = reihe + sprung[0];
             const s = spalte + sprung[1];
-            if (!SCHACH._imBrett(r, s)) {
+            if (!SCHACH._imBrett(stand, r, s)) {
                 continue;
             }
-            const ziel = r * 8 + s;
+            const ziel = SCHACH._feld(stand, r, s);
             if (SCHACH.farbeVon(SCHACH.figurAuf(stand, ziel)) !== farbe) {
                 liste.push(SCHACH._zug(stand, von, ziel));
             }
@@ -304,8 +427,9 @@ const SCHACH = {
 
     _koenigszuege(stand, von, farbe) {
         const liste = [];
-        const reihe = SCHACH.reiheVon(von);
-        const spalte = SCHACH.spalteVon(von);
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(von, breite);
+        const spalte = SCHACH.spalteVon(von, breite);
 
         for (let dr = -1; dr <= 1; dr++) {
             for (let ds = -1; ds <= 1; ds++) {
@@ -314,21 +438,27 @@ const SCHACH = {
                 }
                 const r = reihe + dr;
                 const s = spalte + ds;
-                if (!SCHACH._imBrett(r, s)) {
+                if (!SCHACH._imBrett(stand, r, s)) {
                     continue;
                 }
-                const ziel = r * 8 + s;
+                const ziel = SCHACH._feld(stand, r, s);
                 if (SCHACH.farbeVon(SCHACH.figurAuf(stand, ziel)) !== farbe) {
                     liste.push(SCHACH._zug(stand, von, ziel));
                 }
             }
         }
 
-        /* Rochade: König zwei Felder zur Seite, Turm springt darüber.
+        /* Rochade gibt es nur auf dem klassischen Brett: Sie hängt an den
+           festen Plätzen von König und Turm. */
+        if (!SCHACH.varianteVon(stand).rochade) {
+            return liste;
+        }
+
+        /* König zwei Felder zur Seite, Turm springt darüber.
            Bedingungen: Recht noch vorhanden, Felder dazwischen frei, König
            steht nicht im Schach und zieht über kein bedrohtes Feld. */
-        const grundreihe = (farbe === SCHACH.WEISS) ? 7 : 0;
-        const koenigStart = grundreihe * 8 + 4;
+        const grundreihe = (farbe === SCHACH.WEISS) ? SCHACH.hoeheVon(stand) - 1 : 0;
+        const koenigStart = SCHACH._feld(stand, grundreihe, 4);
 
         if (von === koenigStart && !SCHACH.imSchach(stand, farbe)) {
             const rechte = (farbe === SCHACH.WEISS) ? ["K", "D"] : ["k", "d"];
@@ -356,14 +486,16 @@ const SCHACH = {
 
     _bauernzuege(stand, von, farbe) {
         const liste = [];
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
         const richtung = (farbe === SCHACH.WEISS) ? -1 : 1;
-        const reihe = SCHACH.reiheVon(von);
-        const spalte = SCHACH.spalteVon(von);
-        const startreihe = (farbe === SCHACH.WEISS) ? 6 : 1;
-        const letzteReihe = (farbe === SCHACH.WEISS) ? 0 : 7;
+        const reihe = SCHACH.reiheVon(von, breite);
+        const spalte = SCHACH.spalteVon(von, breite);
+        const startreihe = (farbe === SCHACH.WEISS) ? hoehe - 2 : 1;
+        const letzteReihe = (farbe === SCHACH.WEISS) ? 0 : hoehe - 1;
 
         const anhaengen = (zug) => {
-            if (SCHACH.reiheVon(zug.nach) === letzteReihe) {
+            if (SCHACH.reiheVon(zug.nach, breite) === letzteReihe) {
                 /* Umwandlung: vier Möglichkeiten, jede ein eigener Zug. */
                 for (const art of ["D", "T", "L", "S"]) {
                     liste.push(Object.assign({}, zug, { umwandlung: art }));
@@ -374,14 +506,19 @@ const SCHACH = {
         };
 
         /* Ein Feld vor. */
-        const einsVor = (reihe + richtung) * 8 + spalte;
-        if (SCHACH._imBrett(reihe + richtung, spalte) && SCHACH.figurAuf(stand, einsVor) === ".") {
-            anhaengen(SCHACH._zug(stand, von, einsVor));
+        if (SCHACH._imBrett(stand, reihe + richtung, spalte)) {
+            const einsVor = SCHACH._feld(stand, reihe + richtung, spalte);
 
-            /* Zwei Felder aus der Grundstellung. */
-            const zweiVor = (reihe + 2 * richtung) * 8 + spalte;
-            if (reihe === startreihe && SCHACH.figurAuf(stand, zweiVor) === ".") {
-                liste.push(SCHACH._zug(stand, von, zweiVor));
+            if (SCHACH.figurAuf(stand, einsVor) === ".") {
+                anhaengen(SCHACH._zug(stand, von, einsVor));
+
+                /* Zwei Felder aus der Grundstellung. */
+                if (reihe === startreihe && SCHACH._imBrett(stand, reihe + 2 * richtung, spalte)) {
+                    const zweiVor = SCHACH._feld(stand, reihe + 2 * richtung, spalte);
+                    if (SCHACH.figurAuf(stand, zweiVor) === ".") {
+                        liste.push(SCHACH._zug(stand, von, zweiVor));
+                    }
+                }
             }
         }
 
@@ -389,15 +526,16 @@ const SCHACH = {
         for (const ds of [-1, 1]) {
             const r = reihe + richtung;
             const s = spalte + ds;
-            if (!SCHACH._imBrett(r, s)) {
+            if (!SCHACH._imBrett(stand, r, s)) {
                 continue;
             }
-            const ziel = r * 8 + s;
+            const ziel = SCHACH._feld(stand, r, s);
             const dort = SCHACH.figurAuf(stand, ziel);
 
             if (dort !== "." && SCHACH.farbeVon(dort) !== farbe) {
                 anhaengen(SCHACH._zug(stand, von, ziel));
-            } else if (dort === "." && stand.enPassant && SCHACH.feldNummer(stand.enPassant) === ziel) {
+            } else if (dort === "." && stand.enPassant
+                && SCHACH.feldNummer(stand.enPassant, breite, hoehe) === ziel) {
                 /* En passant: schlägt den Bauern, der gerade zwei Felder zog. */
                 liste.push(SCHACH._zug(stand, von, ziel, { enPassant: true, schlaegt: true }));
             }
@@ -416,29 +554,33 @@ const SCHACH = {
      * bauen: Hier wird von jedem Feld aus rückwärts gedacht.
      */
     _feldBedroht(stand, feld, farbe) {
-        const reihe = SCHACH.reiheVon(feld);
-        const spalte = SCHACH.spalteVon(feld);
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
 
         /* Bauern. */
         const bauernRichtung = (farbe === SCHACH.WEISS) ? 1 : -1;
         for (const ds of [-1, 1]) {
             const r = reihe + bauernRichtung;
             const s = spalte + ds;
-            if (SCHACH._imBrett(r, s)) {
-                const dort = SCHACH.figurAuf(stand, r * 8 + s);
+            if (SCHACH._imBrett(stand, r, s)) {
+                const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
                 if (SCHACH.artVon(dort) === "B" && SCHACH.farbeVon(dort) === farbe) {
                     return true;
                 }
             }
         }
 
-        /* Springer. */
-        for (const sprung of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) {
+        /* Springer — und jede andere Figur, solange die Fähigkeit Sprung der
+           angreifenden Seite aktiv ist. */
+        const sprungFuerAlle = (stand.sprungAktiv === farbe);
+        for (const sprung of SCHACH.SPRUENGE) {
             const r = reihe + sprung[0];
             const s = spalte + sprung[1];
-            if (SCHACH._imBrett(r, s)) {
-                const dort = SCHACH.figurAuf(stand, r * 8 + s);
-                if (SCHACH.artVon(dort) === "S" && SCHACH.farbeVon(dort) === farbe) {
+            if (SCHACH._imBrett(stand, r, s)) {
+                const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
+                if (SCHACH.farbeVon(dort) === farbe
+                    && (SCHACH.artVon(dort) === "S" || sprungFuerAlle)) {
                     return true;
                 }
             }
@@ -452,8 +594,8 @@ const SCHACH = {
                 }
                 const r = reihe + dr;
                 const s = spalte + ds;
-                if (SCHACH._imBrett(r, s)) {
-                    const dort = SCHACH.figurAuf(stand, r * 8 + s);
+                if (SCHACH._imBrett(stand, r, s)) {
+                    const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
                     if (SCHACH.artVon(dort) === "K" && SCHACH.farbeVon(dort) === farbe) {
                         return true;
                     }
@@ -472,8 +614,8 @@ const SCHACH = {
                 let r = reihe + richtung[0];
                 let s = spalte + richtung[1];
 
-                while (SCHACH._imBrett(r, s)) {
-                    const dort = SCHACH.figurAuf(stand, r * 8 + s);
+                while (SCHACH._imBrett(stand, r, s)) {
+                    const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
                     if (dort !== ".") {
                         if (SCHACH.farbeVon(dort) === farbe
                             && strahl.arten.indexOf(SCHACH.artVon(dort)) !== -1) {
@@ -490,8 +632,15 @@ const SCHACH = {
         return false;
     },
 
-    /* Steht der König dieser Farbe im Schach? */
+    /*
+     * Steht der König dieser Farbe im Schach?
+     * Auf Brettern mit schlagbarem König gibt es kein Schach — dort ist der
+     * König eine Figur wie jede andere.
+     */
     imSchach(stand, farbe) {
+        if (SCHACH.varianteVon(stand).koenigSchlagbar) {
+            return false;
+        }
         const koenig = SCHACH.koenigFeld(stand, farbe);
         if (koenig === -1) {
             return false;
@@ -505,13 +654,25 @@ const SCHACH = {
 
     /* Führt einen Zug aus, OHNE Prüfung auf Schach — nur intern. */
     _ausfuehren(stand, zug) {
+        const breite = SCHACH.breiteVon(stand);
+
+        /* Fähigkeit Doppelzug: Die Farbe bleibt am Zug, die Fähigkeit ist
+           damit verbraucht. */
+        const nochmal = (stand.extraZug === stand.amZug);
+
         const neu = {
+            variante: stand.variante,
+            breite: stand.breite,
+            hoehe: stand.hoehe,
             brett: stand.brett,
-            amZug: SCHACH.gegner(stand.amZug),
+            amZug: nochmal ? stand.amZug : SCHACH.gegner(stand.amZug),
             rochade: stand.rochade,
             enPassant: "",
             halbzuege: stand.halbzuege + 1,
-            zugNummer: stand.zugNummer + ((stand.amZug === SCHACH.SCHWARZ) ? 1 : 0)
+            zugNummer: stand.zugNummer + ((stand.amZug === SCHACH.SCHWARZ && !nochmal) ? 1 : 0),
+            extraZug: nochmal ? "" : stand.extraZug,
+            /* Der Sprung gilt für genau einen Zug. */
+            sprungAktiv: (stand.sprungAktiv === stand.amZug) ? "" : stand.sprungAktiv
         };
 
         const figur = SCHACH.figurAuf(stand, zug.von);
@@ -529,18 +690,18 @@ const SCHACH = {
 
         /* En passant: der geschlagene Bauer steht nicht auf dem Zielfeld. */
         if (zug.enPassant) {
-            const opferReihe = SCHACH.reiheVon(zug.von);
-            const opfer = opferReihe * 8 + SCHACH.spalteVon(zug.nach);
+            const opferReihe = SCHACH.reiheVon(zug.von, breite);
+            const opfer = opferReihe * breite + SCHACH.spalteVon(zug.nach, breite);
             brett = SCHACH._brettMit(brett, opfer, ".");
         }
 
         /* Rochade: der Turm zieht mit. */
         if (zug.rochade === "kurz") {
-            const grund = SCHACH.reiheVon(zug.von) * 8;
+            const grund = SCHACH.reiheVon(zug.von, breite) * breite;
             brett = SCHACH._brettMit(brett, grund + 7, ".");
             brett = SCHACH._brettMit(brett, grund + 5, (farbe === SCHACH.WEISS) ? "T" : "t");
         } else if (zug.rochade === "lang") {
-            const grund = SCHACH.reiheVon(zug.von) * 8;
+            const grund = SCHACH.reiheVon(zug.von, breite) * breite;
             brett = SCHACH._brettMit(brett, grund + 0, ".");
             brett = SCHACH._brettMit(brett, grund + 3, (farbe === SCHACH.WEISS) ? "T" : "t");
         }
@@ -549,26 +710,30 @@ const SCHACH = {
 
         /* Rochaderechte verfallen, sobald König oder Turm bewegt wurden —
            oder ein Turm geschlagen wird. */
-        let rechte = neu.rochade;
-        const streichen = (zeichen) => {
-            rechte = rechte.split(zeichen).join("");
-        };
+        if (neu.rochade) {
+            let rechte = neu.rochade;
+            const streichen = (zeichen) => {
+                rechte = rechte.split(zeichen).join("");
+            };
+            const unten = (SCHACH.hoeheVon(stand) - 1) * breite;
 
-        if (art === "K") {
-            if (farbe === SCHACH.WEISS) { streichen("K"); streichen("D"); }
-            else { streichen("k"); streichen("d"); }
+            if (art === "K") {
+                if (farbe === SCHACH.WEISS) { streichen("K"); streichen("D"); }
+                else { streichen("k"); streichen("d"); }
+            }
+            if (zug.von === unten + 7 || zug.nach === unten + 7) { streichen("K"); }
+            if (zug.von === unten || zug.nach === unten) { streichen("D"); }
+            if (zug.von === 7 || zug.nach === 7) { streichen("k"); }
+            if (zug.von === 0 || zug.nach === 0) { streichen("d"); }
+            neu.rochade = rechte;
         }
-        if (zug.von === 63 || zug.nach === 63) { streichen("K"); }
-        if (zug.von === 56 || zug.nach === 56) { streichen("D"); }
-        if (zug.von === 7 || zug.nach === 7) { streichen("k"); }
-        if (zug.von === 0 || zug.nach === 0) { streichen("d"); }
-        neu.rochade = rechte;
 
         /* Doppelschritt eines Bauern eröffnet en passant. */
-        if (art === "B" && Math.abs(SCHACH.reiheVon(zug.nach) - SCHACH.reiheVon(zug.von)) === 2) {
-            const zwischen = (SCHACH.reiheVon(zug.von) + SCHACH.reiheVon(zug.nach)) / 2 * 8
-                + SCHACH.spalteVon(zug.von);
-            neu.enPassant = SCHACH.feldName(zwischen);
+        if (art === "B"
+            && Math.abs(SCHACH.reiheVon(zug.nach, breite) - SCHACH.reiheVon(zug.von, breite)) === 2) {
+            const zwischen = (SCHACH.reiheVon(zug.von, breite) + SCHACH.reiheVon(zug.nach, breite))
+                / 2 * breite + SCHACH.spalteVon(zug.von, breite);
+            neu.enPassant = SCHACH.feldName(zwischen, breite, SCHACH.hoeheVon(stand));
         }
 
         /* Zähler für die Fünfzig-Züge-Regel. */
@@ -615,9 +780,12 @@ const SCHACH = {
             return "Rochade lang";
         }
 
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
         const art = SCHACH.artName(zug.art);
         const trennung = zug.schlaegt ? " schlägt auf " : " nach ";
-        let text = art + " " + SCHACH.feldName(zug.von) + trennung + SCHACH.feldName(zug.nach);
+        let text = art + " " + SCHACH.feldName(zug.von, breite, hoehe)
+            + trennung + SCHACH.feldName(zug.nach, breite, hoehe);
 
         if (zug.umwandlung) {
             text += ", wird " + SCHACH.artName(zug.umwandlung);
@@ -634,9 +802,29 @@ const SCHACH = {
      *   { art: "laeuft" | "matt" | "patt" | "remis", sieger, text }
      */
     lage(stand) {
+        const amZugName = (stand.amZug === SCHACH.WEISS) ? "Weiss" : "Schwarz";
+
+        /* Bretter ohne Schach-Begriff: Es zählt, wer noch einen König hat. */
+        if (SCHACH.varianteVon(stand).koenigSchlagbar) {
+            for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
+                if (SCHACH.koenigFelder(stand, farbe).length === 0) {
+                    const sieger = SCHACH.gegner(farbe);
+                    return {
+                        art: "matt",
+                        sieger: sieger,
+                        text: "Kein König mehr — "
+                            + ((sieger === SCHACH.WEISS) ? "Weiss" : "Schwarz") + " gewinnt."
+                    };
+                }
+            }
+            if (SCHACH.alleZuege(stand).length === 0) {
+                return { art: "patt", sieger: "", text: "Patt — unentschieden." };
+            }
+            return { art: "laeuft", sieger: "", text: amZugName + " ist am Zug." };
+        }
+
         const hatZuege = SCHACH.alleZuege(stand).length > 0;
         const schach = SCHACH.imSchach(stand, stand.amZug);
-        const amZugName = (stand.amZug === SCHACH.WEISS) ? "Weiss" : "Schwarz";
 
         if (!hatZuege && schach) {
             const sieger = SCHACH.gegner(stand.amZug);
@@ -667,7 +855,9 @@ const SCHACH = {
     }
 };
 
-/* Damit die Regressionstests die Datei außerhalb des Browsers laden können. */
+/* Damit die Regressionstests die Datei außerhalb des Browsers laden können.
+   SCHACH_VARIANTEN muss dort vorher als globale Größe bereitstehen — genau wie
+   im Browser, wo die Datei davor eingebunden ist. */
 if (typeof module !== "undefined" && module.exports) {
     module.exports = SCHACH;
 }

@@ -1,8 +1,19 @@
 # Tests
 
-Regressionstests der Spiellogik. Sie laden die **echten** Dateien `js\modell.js`
-und `js\versiegelung.js` und enthalten keine Kopien von Funktionen — Kopien
-driften und testen dann etwas, das es so nicht mehr gibt.
+Regressionstests der Spiellogik. Sie laden die **echten** Dateien aus `js\` und
+enthalten keine Kopien von Funktionen — Kopien driften und testen dann etwas,
+das es so nicht mehr gibt.
+
+| Datei | Prüft |
+|---|---|
+| `test-modell.js` | Spiel- und Datenlogik des Würfel-Quizz |
+| `test-versiegelung.js` | Siegel, PIN, Verwaltungs-Passwort |
+| `test-schach.js` | Schachregeln, auch auf den anderen Brettgrößen |
+| `test-schach-runde.js` | eine Partie: Teams, Spielarten, Fähigkeiten |
+| `test-schach-tafel.js` | Sammlung der Partien und der **Umstieg** von früher |
+| `test-rangliste.js` | Gesamtwertung über beide Spiele |
+| `test-bildschirm.js` | Bildschirm-Code gegen ein nachgebautes DOM |
+| `test-syntax.js` | Übersetzbarkeit, Einbindung, Aufrufe, Version |
 
 ## Aufruf
 
@@ -98,6 +109,48 @@ der anderen in der Datenbank nachschlagen.
 | Spieler-PIN | richtige PIN wird erkannt, falsche nicht; gleiche PIN bei zwei Spielern ergibt dank Salz verschiedene Prüfwerte; der Prüfwert enthält die Ziffern nicht |
 | Verwaltung | die Prüfsumme in `js\konfig.js` passt zum vereinbarten Passwort — schlägt der Test fehl, käme niemand mehr in die Verwaltung |
 
+## Was wird geprüft (`test-schach-tafel.js`)
+
+Die Sammlung aller Partien — und vor allem der Umstieg.
+
+| Bereich | Inhalt |
+|---|---|
+| **Umstieg** | Ein Stand aus der Zeit der einzelnen Partie wird zur Partie `start`; Brett, Zugzähler, Teams, Bereitschaft und Verlauf bleiben Feld für Feld erhalten. Ein zweiter Durchlauf darf nicht erneut umstellen. |
+| Anlegen | Kennung, Titel und Spielart; zwei Partien im selben Moment bekommen verschiedene Kennungen |
+| Einsetzen | ändert nur die eine Partie — der Schutz gegen das Überschreiben fremder Partien |
+| Reihenfolge | laufende oben, noch nicht gestartete danach, beendete unten |
+| Vergleich | erkennt neue, geänderte und gelöschte Partien |
+
+## Was wird geprüft (`test-rangliste.js`)
+
+| Bereich | Inhalt |
+|---|---|
+| Schachpunkte | nur beendete Partien zählen; Sieg, Unentschieden und Teilnahme; mehrere Partien werden summiert |
+| Gesamtwertung | Würfel- und Schachpunkte addiert, Reihenfolge, jeder Mitspieler steht drin (auch ohne Punkte) |
+| Grenzen | wer aus dem Würfel-Quizz entfernt wurde, verschwindet aus der Wertung |
+| Erklärung | der angezeigte Text nennt dieselben Zahlen, mit denen gerechnet wird |
+
+## Was wird geprüft (`test-bildschirm.js`)
+
+Diese Datei baut ein winziges DOM nach und lässt den Bildschirm-Code einmal
+durchlaufen. Sie fängt, was `test-syntax.js` nicht sieht: Aufrufe, die es zwar
+gibt, die aber mit den falschen Daten arbeiten, und Bereiche, die gar nicht
+entstehen — der Fehler aus v1.2, bei dem ein ganzer Tab leer blieb.
+
+| Bereich | Inhalt |
+|---|---|
+| Übersicht | zeichnet mit und ohne Partien |
+| Jede Spielart | die Partie zeichnet vollständig, und das Brett hat genau `breite * hoehe` Felder |
+| Bedienung | eine Figur antippen liefert ihre Zielfelder |
+| Zugbewegung | läuft nach einem Zug — und beim nächsten Zeichnen **nicht** erneut |
+| Sonderfälle | eingesammelte Fähigkeit, beendete Partie, gelöschte offene Partie, nicht angemeldet |
+| Rangliste | zeichnet mit Mitspielern, ohne Mitspieler und bevor Daten da sind |
+
+**Was sie nicht kann:** Sie sagt nichts über das Aussehen — keine Stildatei,
+keine echten Größen, keine Farben. Sie beantwortet nur die Frage, ob der Code
+durchläuft, ohne zu stolpern. Die Prüfliste in `docs\DEPLOYMENT.md` ersetzt sie
+nicht.
+
 ## Eine neue Testdatei anlegen
 
 Datei `tests\test-<thema>.js` — sie wird automatisch mitgelaufen (Muster
@@ -107,7 +160,10 @@ Datei `tests\test-<thema>.js` — sie wird automatisch mitgelaufen (Muster
 
 ## Was die Tests NICHT prüfen
 
-Ob der Bildschirm-Code sich richtig VERHÄLT — Zeichnen, Fokus, Dialoge, das
-Zusammenspiel mit der Datenbank. Das braucht einen Browser und wird von Hand
-geprüft; die Prüfliste steht in [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md),
-Abschnitt 1.
+Wie die Seite AUSSIEHT und wie sie sich anfühlt: Stildatei, echte Größen,
+Farben, Fokus, Dialoge und das Zusammenspiel mit der echten Datenbank. Seit v1.5
+läuft der Bildschirm-Code immerhin einmal durch (`test-bildschirm.js`) — aber
+gegen ein nachgebautes DOM, nicht gegen einen Browser.
+
+Das Übrige wird von Hand geprüft; die Prüfliste steht in
+[../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md), Abschnitt 1.

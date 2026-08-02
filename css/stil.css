@@ -642,21 +642,33 @@ body {
  * Team Schach
  * ------------------------------------------------------------------ */
 
+/*
+ * Das Brett ist blau und weiss — dieselbe Blaufamilie wie die Hauptaktion,
+ * damit die Seite aus einem Guss wirkt. Die Figuren tragen einen vollen
+ * Umriss in der Gegenfarbe: Ohne ihn verschwände eine weisse Figur auf einem
+ * weissen Feld.
+ */
 :root {
-    --feld-hell: #ead9be;
-    --feld-dunkel: #a97f56;
+    --feld-hell: #ffffff;
+    --feld-dunkel: #4a7fb5;
     --feld-gewaehlt: #f2d675;
     --figur-weiss: #ffffff;
     --figur-schwarz: #16181c;
+    --figur-umriss-hell: #ffffff;
+    --figur-umriss-dunkel: #16181c;
+    --bonus-feld: #1e7d43;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --feld-hell: #b99b74;
-        --feld-dunkel: #7a5738;
+        --feld-hell: #cfdcea;
+        --feld-dunkel: #35608f;
         --feld-gewaehlt: #d9b64a;
-        --figur-weiss: #fdfdfd;
-        --figur-schwarz: #16181c;
+        --figur-weiss: #ffffff;
+        --figur-schwarz: #14161a;
+        --figur-umriss-hell: #e9ebef;
+        --figur-umriss-dunkel: #14161a;
+        --bonus-feld: #4cb87a;
     }
 }
 
@@ -686,11 +698,17 @@ body {
     margin: 20px 0;
 }
 
+/*
+ * Spaltenzahl und Höchstbreite setzt team-schach.js als Variablen, weil sie
+ * von der Spielart abhängen (6 mal 6 bis 16 mal 8). Alles Übrige — Größe der
+ * Felder, Schriftgröße der Figuren — rechnet sich hier daraus aus. Deshalb
+ * passt auch ein breites Brett ohne Sonderregel aufs Handy.
+ */
 .brett {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(var(--brett-spalten, 8), 1fr);
     width: 100%;
-    max-width: 520px;
+    max-width: min(var(--brett-max, 520px), 100%);
     margin: 0 auto;
     border: 2px solid var(--rahmen);
     border-radius: 6px;
@@ -708,8 +726,10 @@ body {
     justify-content: center;
     cursor: pointer;
     position: relative;
-    font-size: clamp(1.4rem, 7vw, 2.6rem);
+    font-size: calc(min(var(--brett-max, 520px), 88vw) / var(--brett-spalten, 8) * 0.68);
     line-height: 1;
+    /* Die Figur wandert beim Ziehen über ihr Feld hinaus. */
+    overflow: visible;
 }
 
 .feld:disabled {
@@ -751,13 +771,39 @@ body {
     border: 3px solid rgba(179, 38, 30, 0.65);
 }
 
+/* Feld, dessen Figur gerade wandert: liegt über seinen Nachbarn. */
+.feld-zieht {
+    z-index: 2;
+}
+
+/* Feld mit einer Fähigkeit darauf: Ring in der Ecke, kein Emoji. */
+.feld-bonus::before {
+    content: "";
+    position: absolute;
+    top: 8%;
+    right: 8%;
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    border: 2px solid var(--bonus-feld);
+    background: var(--bonus-feld);
+    opacity: 0.75;
+}
+
 .figur {
     position: relative;
     z-index: 1;
-    /* Umriss, damit weisse Figuren auf hellen Feldern erkennbar bleiben. */
+    /*
+     * Voller Umriss in der Gegenfarbe. Auf einem blau-weissen Brett steht eine
+     * weisse Figur sonst unsichtbar auf einem weissen Feld — ein weicher
+     * Schatten allein reicht dafür nicht.
+     */
     text-shadow:
-        0 0 2px rgba(0, 0, 0, 0.55),
-        0 1px 1px rgba(0, 0, 0, 0.35);
+        1px 0 0 var(--figur-umriss-dunkel),
+        -1px 0 0 var(--figur-umriss-dunkel),
+        0 1px 0 var(--figur-umriss-dunkel),
+        0 -1px 0 var(--figur-umriss-dunkel),
+        0 0 3px rgba(0, 0, 0, 0.4);
 }
 
 .figur-weiss {
@@ -766,7 +812,28 @@ body {
 
 .figur-schwarz {
     color: var(--figur-schwarz);
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.35);
+    text-shadow:
+        1px 0 0 var(--figur-umriss-hell),
+        -1px 0 0 var(--figur-umriss-hell),
+        0 1px 0 var(--figur-umriss-hell),
+        0 -1px 0 var(--figur-umriss-hell);
+}
+
+/*
+ * Die Zugbewegung. team-schach.js setzt die Figur zuerst auf ihr altes Feld
+ * (transform) und nimmt die Verschiebung im nächsten Bild wieder weg — mit
+ * dieser Klasse gleitet sie dabei hinüber. Die Dauer muss zu
+ * TEAM_SCHACH.ANIMATION_MS passen.
+ */
+.figur-zieht {
+    transition: transform 260ms ease-out;
+}
+
+/* Wer keine Bewegung mag oder braucht, bekommt keine. */
+@media (prefers-reduced-motion: reduce) {
+    .figur-zieht {
+        transition: none;
+    }
 }
 
 .zug-liste {
@@ -804,6 +871,64 @@ body {
     margin-left: auto;
     font-size: 0.8rem;
     color: var(--schrift-leise);
+}
+
+/* Der Verlauf ist eingeklappt — auf dem Handy soll das Brett den Platz haben. */
+.verlauf-kasten {
+    margin: 0;
+}
+
+.verlauf-titel {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+.verlauf-titel:focus {
+    outline: 2px solid var(--haupt);
+    outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Übersicht der Partien
+ * ------------------------------------------------------------------ */
+
+.partie-karte .karte-fuss {
+    justify-content: flex-start;
+}
+
+.partie-zeile {
+    margin: 0 0 4px 0;
+    font-size: 0.92rem;
+}
+
+/* Kopfzeile einer geöffneten Partie: Zurück, Name, Spielart. */
+.partie-kopf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: var(--abstand);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.partie-titel {
+    margin: 0;
+    font-size: 1.15rem;
+    /* Nimmt den Platz zwischen Zurück-Knopf und Spielart ein. */
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.faehigkeit-zeile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid var(--rahmen);
 }
 
 /* ------------------------------------------------------------------ *
@@ -937,5 +1062,64 @@ body {
 
     .treffer {
         margin-left: 0;
+    }
+
+    /* -------------------------------------------------------------- *
+     * Team Schach auf dem Handy
+     *
+     * Gespielt wird unterwegs. Deshalb bekommt das Brett den Platz und
+     * alles Beiwerk wird schmaler: Die Partie steht in einer Spalte,
+     * das Brett zieht sich über die ganze Breite, und der Rand um den
+     * Inhalt fällt für das Brett weg.
+     * -------------------------------------------------------------- */
+
+    .schach .brett-halter {
+        /* Zieht das Brett bis an den Bildschirmrand — 12px Rand hat
+           .tab-inhalt oben gesetzt. */
+        margin-left: -12px;
+        margin-right: -12px;
+    }
+
+    .schach .brett {
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+    }
+
+    .schach .brett-halter .erklaerung {
+        padding: 0 12px;
+    }
+
+    /* Beide Teams nebeneinander statt untereinander: So bleibt das Brett
+       ohne Scrollen sichtbar. */
+    .schach .team-reihe {
+        gap: 8px;
+    }
+
+    .schach .team-karte {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 10px;
+    }
+
+    .schach .team-karte .karte-fuss {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .schach .team-namen {
+        font-size: 0.85rem;
+        overflow-wrap: anywhere;
+    }
+
+    .partie-titel {
+        font-size: 1.05rem;
+    }
+
+    /* Die Knöpfe am Fuß einer Partie sollen sich am Daumen bedienen
+       lassen, nicht mit der Lupe. */
+    .schach .fussleiste .knopf-klein {
+        padding: 10px 14px;
+        font-size: 0.92rem;
     }
 }

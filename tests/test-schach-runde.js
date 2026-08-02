@@ -8,9 +8,11 @@
 
 const pfad = require("path");
 
+globalThis.SCHACH_VARIANTEN = require(pfad.join(__dirname, "..", "js", "schach-varianten.js"));
 globalThis.SCHACH = require(pfad.join(__dirname, "..", "js", "schach.js"));
 const SCHACH_RUNDE = require(pfad.join(__dirname, "..", "js", "schach-runde.js"));
 const SCHACH = globalThis.SCHACH;
+const SCHACH_VARIANTEN = globalThis.SCHACH_VARIANTEN;
 
 let anzahlOk = 0;
 let anzahlFehler = 0;
@@ -251,6 +253,193 @@ pruefe("Eine neue Partie behaelt die Teams und verlangt neue Bereitschaft", () =
     gleich(runde.laeuft, false, "laeuft nicht");
     gleich(runde.bereit.weiss, false, "Bereitschaft weg");
     gleich(SCHACH_RUNDE.teamVon(runde, "id-anna"), "weiss", "Team bleibt");
+});
+
+/* ------------------------------------------------------------------ *
+ * Spielarten
+ * ------------------------------------------------------------------ */
+
+pruefe("Eine Partie merkt sich ihre Spielart und bekommt deren Brett", () => {
+    const runde = SCHACH_RUNDE.leereRunde(1000, "klein", "p-1", "Kleines");
+
+    gleich(runde.variante, "klein", "Spielart");
+    gleich(runde.stand.breite, 6, "Breite");
+    gleich(runde.stand.brett.length, 36, "Feldanzahl");
+    gleich(runde.id, "p-1", "Kennung");
+    gleich(runde.titel, "Kleines", "Titel");
+});
+
+pruefe("Die Spielart ueberlebt das Normalisieren", () => {
+    const runde = SCHACH_RUNDE.normalisieren(
+        SCHACH_RUNDE.leereRunde(1000, "doppelbrett", "p-2", "Doppelt"));
+
+    gleich(runde.variante, "doppelbrett", "Spielart");
+    gleich(runde.stand.breite, 16, "Breite");
+    gleich(runde.stand.brett.length, 128, "Feldanzahl");
+});
+
+pruefe("Eine unbekannte Spielart wird zur klassischen", () => {
+    const runde = SCHACH_RUNDE.normalisieren({ variante: "raumschiff" });
+    gleich(runde.variante, "standard", "Rueckfall");
+    gleich(runde.stand.brett, SCHACH.GRUNDSTELLUNG, "Grundstellung");
+});
+
+pruefe("Eine Partie ohne Angabe der Spielart ist klassisch", () => {
+    /* Genau so sehen die Partien aus, die vor den Spielarten angefangen wurden. */
+    const runde = SCHACH_RUNDE.normalisieren({
+        stand: { brett: SCHACH.GRUNDSTELLUNG, amZug: "weiss" },
+        teams: { weiss: ["id-anna"], schwarz: ["id-bert"] },
+        laeuft: true,
+        zugZaehler: 7
+    });
+
+    gleich(runde.variante, "standard", "klassisch");
+    gleich(runde.zugZaehler, 7, "Zugzaehler bleibt");
+    gleich(runde.teams.weiss.join(","), "id-anna", "Team bleibt");
+    gleich(runde.laeuft, true, "laeuft weiter");
+});
+
+pruefe("Neu aufstellen behaelt die Spielart", () => {
+    const runde = SCHACH_RUNDE.neuePartie(
+        SCHACH_RUNDE.leereRunde(1000, "gross", "p-3", "Gross"), 2000);
+
+    gleich(runde.variante, "gross", "Spielart");
+    gleich(runde.stand.breite, 10, "Breite");
+});
+
+/* ------------------------------------------------------------------ *
+ * Fähigkeiten
+ * ------------------------------------------------------------------ */
+
+/* Eine laufende Partie in der Spielart mit den Bonusfeldern. */
+function faehigkeitenPartie() {
+    let runde = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-f", "Mit Faehigkeiten");
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-bert", "schwarz", 1000);
+    runde = SCHACH_RUNDE.bereitSetzen(runde, "weiss", true, 1000);
+    runde = SCHACH_RUNDE.bereitSetzen(runde, "schwarz", true, 1000);
+    return runde;
+}
+
+pruefe("Zu Beginn liegen alle Bonusfelder auf dem Brett", () => {
+    gleich(SCHACH_RUNDE.offeneBonusFelder(faehigkeitenPartie()).length, 4, "vier Felder");
+    gleich(SCHACH_RUNDE.offeneBonusFelder(laufendePartie()).length, 0, "klassisch: keine");
+});
+
+pruefe("Wer auf ein Bonusfeld zieht, sammelt die Faehigkeit ein", () => {
+    /* c5 ist Feld 26 und traegt den Sprung. Der Springer kommt in zwei Zuegen
+       hin: b1 nach c3, dann c3 nach b5 waere falsch — also ueber d4. */
+    let runde = faehigkeitenPartie();
+    const zug = (spieler, von, nach) => {
+        const neu = SCHACH_RUNDE.ziehen(runde, spieler,
+            SCHACH.feldNummer(von), SCHACH.feldNummer(nach), "D", spieler, 2000);
+        wahr(neu !== null, "Zug " + von + "-" + nach + " erlaubt");
+        runde = neu;
+    };
+
+    zug("id-anna", "b1", "c3");
+    zug("id-bert", "a7", "a6");
+    zug("id-anna", "c3", "d5");
+    zug("id-bert", "a6", "a5");
+    zug("id-anna", "d5", "c7");
+    /* c7 ist kein Bonusfeld — die Faehigkeiten liegen auf c5, f5, c4, f4. */
+    gleich(runde.faehigkeiten.weiss.length, 0, "noch nichts eingesammelt");
+
+    /* Jetzt gezielt auf c5 (Feld 26). */
+    gleich(SCHACH.feldNummer("c5"), 26, "c5 ist Feld 26");
+});
+
+pruefe("Ein Zug auf das Bonusfeld c5 bringt den Sprung ins Team", () => {
+    let runde = faehigkeitenPartie();
+
+    /* b1-c3, dann c3-b5? Nein: der kuerzeste Weg auf c5 fuehrt ueber d3 - c5
+       gibt es nicht. Also mit dem Bauern: c2-c4, dann c4-c5. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 2000);
+    wahr(runde !== null, "c2-c4");
+    /* c4 ist Feld 34 und traegt den Doppelzug. */
+    gleich(runde.faehigkeiten.weiss.join(","), "doppelzug", "Doppelzug eingesammelt");
+    gleich(SCHACH_RUNDE.offeneBonusFelder(runde).length, 3, "ein Feld weniger");
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("a7"), SCHACH.feldNummer("a6"), "D", "Bert", 2100);
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c4"), SCHACH.feldNummer("c5"), "D", "Anna", 2200);
+    wahr(runde !== null, "c4-c5");
+    gleich(runde.faehigkeiten.weiss.join(","), "doppelzug,sprung", "Sprung dazu");
+    gleich(SCHACH_RUNDE.offeneBonusFelder(runde).length, 2, "zwei Felder weniger");
+});
+
+pruefe("Ein eingesammeltes Feld bleibt weg, auch nach dem Neuladen", () => {
+    let runde = faehigkeitenPartie();
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 2000);
+
+    /* So kommt der Stand aus der Datenbank zurueck. */
+    const wieder = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+    gleich(SCHACH_RUNDE.offeneBonusFelder(wieder).length, 3, "bleibt eingesammelt");
+    gleich(wieder.faehigkeiten.weiss.join(","), "doppelzug", "Faehigkeit bleibt");
+});
+
+pruefe("Der Doppelzug laesst dieselbe Seite noch einmal ziehen", () => {
+    let runde = faehigkeitenPartie();
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 2000);
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("a7"), SCHACH.feldNummer("a6"), "D", "Bert", 2100);
+
+    const zaehlerVorher = runde.zugZaehler;
+    runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "doppelzug", "Anna", 2200);
+    wahr(runde !== null, "Einsetzen erlaubt");
+    gleich(runde.stand.extraZug, "weiss", "Doppelzug vorgemerkt");
+    gleich(runde.zugZaehler, zaehlerVorher + 1, "Zugzaehler steigt mit");
+    gleich(runde.faehigkeiten.weiss.length, 0, "verbraucht");
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"), "D", "Anna", 2300);
+    gleich(runde.stand.amZug, "weiss", "Weiss ist gleich noch einmal dran");
+    gleich(runde.stand.extraZug, "", "und die Faehigkeit ist weg");
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2400);
+    gleich(runde.stand.amZug, "schwarz", "danach wieder normal");
+});
+
+pruefe("Der Sprung erlaubt einen Springerzug mit einer fremden Figur", () => {
+    let runde = faehigkeitenPartie();
+    /* Sprung von Hand ins Team legen — der Weg ueber das Brett ist oben
+       schon geprueft. */
+    runde.faehigkeiten.weiss.push("sprung");
+
+    const ohne = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"));
+    gleich(ohne.length, 0, "der Turm steht eingekeilt");
+
+    runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "sprung", "Anna", 2000);
+    wahr(runde !== null, "Einsetzen erlaubt");
+    gleich(runde.stand.sprungAktiv, "weiss", "Sprung aktiv");
+
+    /* Vom Turmfeld a1 aus fuehrt nur ein Springerzug auf ein freies Feld: b3.
+       c2 ist mit dem eigenen Bauern besetzt. */
+    const mit = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
+    gleich(mit, "b3", "Turm darf springen");
+
+    /* Nach dem Zug ist der Sprung verbraucht. */
+    const danach = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 2100);
+    gleich(danach.stand.sprungAktiv, "", "Sprung verbraucht");
+});
+
+pruefe("Faehigkeiten kann nur einsetzen, wer am Zug ist und sie hat", () => {
+    const runde = faehigkeitenPartie();
+
+    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "sprung", "Anna", 2000),
+        null, "ohne Faehigkeit geht nichts");
+
+    const mit = SCHACH_RUNDE.kopieren(runde);
+    mit.faehigkeiten.schwarz.push("sprung");
+    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(mit, "id-bert", "sprung", "Bert", 2000),
+        null, "Schwarz ist nicht am Zug");
 });
 
 /* ------------------------------------------------------------------ *
