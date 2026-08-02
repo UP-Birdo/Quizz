@@ -73,13 +73,20 @@ pruefe("Unsinn wird zu einer gueltigen Runde", () => {
  * Teams
  * ------------------------------------------------------------------ */
 
-pruefe("Man tritt einem Team bei und steht dann nur dort", () => {
+pruefe("Wer einem Team beigetreten ist, kann nicht mehr wechseln", () => {
     let runde = SCHACH_RUNDE.teamBeitreten(SCHACH_RUNDE.leereRunde(), "id-anna", "weiss", 1000);
     gleich(SCHACH_RUNDE.teamVon(runde, "id-anna"), "weiss", "im weissen Team");
 
+    /* Der Beitritt zur Gegenseite prallt ab — sonst könnte man in einer Partie,
+       die über Tage läuft, für beide Seiten ziehen. */
     runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "schwarz", 2000);
-    gleich(SCHACH_RUNDE.teamVon(runde, "id-anna"), "schwarz", "gewechselt");
-    gleich(runde.teams.weiss.length, 0, "nicht mehr bei Weiss");
+    gleich(SCHACH_RUNDE.teamVon(runde, "id-anna"), "weiss", "bleibt bei Weiss");
+    gleich(runde.teams.schwarz.length, 0, "nicht bei Schwarz gelandet");
+
+    /* Erst nach dem ausdrücklichen Verlassen geht es. */
+    runde = SCHACH_RUNDE.teamVerlassen(runde, "id-anna", 3000);
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "schwarz", 3100);
+    gleich(SCHACH_RUNDE.teamVon(runde, "id-anna"), "schwarz", "jetzt bei Schwarz");
 });
 
 pruefe("Ein Team nimmt mehrere Leute auf, aber niemanden doppelt", () => {
@@ -358,7 +365,7 @@ pruefe("Jede Stufe hat mindestens eine Faehigkeit, jede Faehigkeit eine Stufe", 
 
 pruefe("Die Ziehung trifft jede Stufe in ihrem Bereich", () => {
     /* 0 liegt in der ersten Stufe, 99,9 in der letzten. */
-    gleich(SCHACH_VARIANTEN.stufeVon(SCHACH_VARIANTEN.faehigkeitZiehen(0)).id, "grau", "unten");
+    gleich(SCHACH_VARIANTEN.stufeVon(SCHACH_VARIANTEN.faehigkeitZiehen(0)).id, "gruen", "unten");
     gleich(SCHACH_VARIANTEN.stufeVon(SCHACH_VARIANTEN.faehigkeitZiehen(0.999)).id, "gelb", "oben");
 
     /* Die Verteilung ueber viele Werte muss zu den Chancen passen. */
@@ -382,18 +389,44 @@ pruefe("Zu Beginn liegt kein Wuerfel auf dem Brett", () => {
     gleich(SCHACH_RUNDE.offeneBonusFelder(laufendePartie()).length, 0, "klassisch: nie");
 });
 
-pruefe("Nach dem festgelegten Abstand erscheint genau ein Wuerfel", () => {
+pruefe("Nach dem festgelegten Abstand erscheinen Wuerfel", () => {
     const abstand = SCHACH_VARIANTEN.BONUS_ABSTAND;
 
     const vorher = springerZuege(faehigkeitenPartie(), abstand - 1);
     gleich(vorher.bonus.length, 0, "vor dem Abstand noch keiner");
 
     const nachher = springerZuege(faehigkeitenPartie(), abstand);
-    gleich(nachher.bonus.length, 1, "danach genau einer");
+    wahr(nachher.bonus.length >= 1 && nachher.bonus.length <= SCHACH_VARIANTEN.BONUS_HOECHSTENS,
+        "danach mindestens einer, hoechstens drei");
 
-    const eintrag = nachher.bonus[0];
-    wahr(SCHACH.figurAuf(nachher.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
-    wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art], "traegt eine bekannte Faehigkeit");
+    for (const eintrag of nachher.bonus) {
+        wahr(SCHACH.figurAuf(nachher.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
+        wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art], "traegt eine bekannte Faehigkeit");
+    }
+
+    /* Kein Feld doppelt belegt. */
+    const felder = nachher.bonus.map((eintrag) => eintrag.feld);
+    gleich(new Set(felder).size, felder.length, "jedes Feld nur einmal");
+});
+
+pruefe("Die Anzahl der Wuerfel folgt ihren Chancen", () => {
+    const summe = SCHACH_VARIANTEN.BONUS_ANZAHL
+        .reduce((wert, eintrag) => wert + eintrag.chance, 0);
+    gleich(summe, 100, "Summe der Chancen");
+
+    const gezaehlt = {};
+    const schritte = 10000;
+
+    for (let nummer = 0; nummer < schritte; nummer++) {
+        const anzahl = SCHACH_VARIANTEN.anzahlZiehen(nummer / schritte);
+        gezaehlt[anzahl] = (gezaehlt[anzahl] || 0) + 1;
+    }
+
+    for (const eintrag of SCHACH_VARIANTEN.BONUS_ANZAHL) {
+        const anteil = (gezaehlt[eintrag.anzahl] || 0) / schritte * 100;
+        wahr(Math.abs(anteil - eintrag.chance) < 0.5,
+            eintrag.anzahl + " Wuerfel: " + anteil.toFixed(1) + " statt " + eintrag.chance);
+    }
 });
 
 pruefe("Die Ziehung ist auf jedem Geraet dieselbe", () => {
@@ -756,6 +789,77 @@ pruefe("Faehigkeiten kann nur einsetzen, wer am Zug ist und sie hat", () => {
     mit.faehigkeiten.schwarz.push("sprung");
     gleich(SCHACH_RUNDE.faehigkeitEinsetzen(mit, "id-bert", "sprung", -1, "Bert", 2000),
         null, "Schwarz ist nicht am Zug");
+});
+
+pruefe("Jede Bewegung hinterlaesst ihren Weg im Verlauf", () => {
+    /* Daraus zeichnet der Bildschirm die Pfeile — auch für Fähigkeiten, die
+       mehrere Figuren auf einmal bewegen. */
+    let runde = faehigkeitenPartie();
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
+    let letzter = runde.verlauf[runde.verlauf.length - 1];
+    gleich(letzter.wege.length, 1, "ein Zug, ein Weg");
+    gleich(letzter.wege[0].von, SCHACH.feldNummer("e2"), "von e2");
+
+    /* Der Bauernschub bewegt bis zu acht Bauern auf einmal. */
+    const geschoben = einsetzen(faehigkeitenPartie(), "bauernschub", -1);
+    letzter = geschoben.verlauf[geschoben.verlauf.length - 1];
+    gleich(letzter.wege.length, 8, "acht Wege");
+
+    for (const weg of letzter.wege) {
+        gleich(SCHACH.reiheVon(weg.von) - SCHACH.reiheVon(weg.nach), 1, "je ein Feld vor");
+    }
+});
+
+pruefe("Die Rochade zeichnet zwei Wege — Koenig und Turm", () => {
+    let runde = laufendePartie();
+    runde.stand = SCHACH.standNormalisieren({
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K..T",
+        amZug: "weiss"
+    });
+
+    const lage = SCHACH.rochadeLage(runde.stand, "weiss");
+    const kurz = lage.find((eintrag) => eintrag.seite === "kurz");
+
+    const danach = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e1"), kurz.zielFeld, "D", "Anna", 2000);
+
+    const letzter = danach.verlauf[danach.verlauf.length - 1];
+    gleich(letzter.wege.length, 2, "zwei Wege");
+    gleich(letzter.wege[1].von, SCHACH.feldNummer("h1"), "der Turm kommt von h1");
+});
+
+pruefe("Die Bilanz zaehlt Beute und Verlust nach Figurenwert", () => {
+    let runde = laufendePartie();
+
+    const leer = SCHACH_RUNDE.bilanz(runde, "weiss");
+    gleich(leer.punkte, 0, "am Anfang ausgeglichen");
+    gleich(leer.geschlagen.length, 0, "nichts geschlagen");
+
+    /* 1. e4 d5 2. exd5 — Weiss gewinnt einen Bauern. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("d7"), SCHACH.feldNummer("d5"), "D", "Bert", 2100);
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e4"), SCHACH.feldNummer("d5"), "D", "Anna", 2200);
+
+    const weiss = SCHACH_RUNDE.bilanz(runde, "weiss");
+    gleich(weiss.geschlagen.join(","), "B", "ein Bauer erbeutet");
+    gleich(weiss.punkte, 1, "ein Punkt Vorsprung");
+
+    const schwarz = SCHACH_RUNDE.bilanz(runde, "schwarz");
+    gleich(schwarz.verloren.join(","), "B", "und Schwarz hat ihn verloren");
+    gleich(schwarz.punkte, -1, "ein Punkt Rueckstand");
 });
 
 pruefe("Die Zielfelder passen zu dem, was die Wirkung wirklich zulaesst", () => {

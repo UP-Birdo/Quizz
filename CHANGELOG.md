@@ -3,6 +3,50 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.3 — 2026-08-02
+
+- **Jede Bewegung bekommt ihren Pfeil** — auch die durch Fähigkeiten. Beim
+  Bauernschub sind es acht Pfeile, beim Erdbeben bis zu acht, bei der Rochade
+  zwei (König und Turm). Vorher zeigte der Pfeil nur den letzten normalen Zug.
+- Die Pfeile treten **hinter die Figuren zurück**: schmaler und halbdurchsichtig,
+  damit sie die Figuren nicht mehr überdecken.
+- **Bilanz unter dem Brett:** Wer hat was geschlagen, wer was verloren, und wer
+  liegt nach Figurenwert vorn (+3, -1 …). Die geschlagenen Figuren stehen als
+  kleine Zeichen daneben — das liest sich schneller als eine Zahl.
+
+## v2.2 — 2026-08-02
+
+- **Die Stufe Grau ist weg.** Es beginnt bei Grün, und die zehn Fähigkeiten
+  wurden nach ihrer tatsächlichen Spielstärke neu eingestuft:
+  - *Gewöhnlich (45 %):* Sprung, Ausweichen, Teleport — mehr Beweglichkeit für
+    einen Zug, gewinnen aber für sich genommen nichts.
+  - *Ungewöhnlich (30 %):* Bauernschub, Schutzschild, Erdbeben — verändern die
+    Stellung spürbar, kosten den Gegner aber kein Material.
+  - *Episch (18 %):* Verstärkung, Fessel — verschieben das Kräfteverhältnis.
+  - *Legendär (7 %):* Doppelzug, Wiedergeburt — zwei Züge hintereinander
+    gewinnen fast immer Material, und eine zurückgeholte Dame ersetzt eine ganze
+    Schlacht.
+- **Manchmal erscheinen mehrere Würfel auf einmal:** einer mit 80 Prozent, zwei
+  mit 17, drei mit 3 Prozent. Mehr als drei liegen nie gleichzeitig.
+
+## v2.1 — 2026-08-02
+
+Drei Regelkorrekturen.
+
+- **Der König kann nicht mehr geschlagen werden.** Mit dem Doppelzug ging das
+  bisher: Man setzte Schach und war sofort wieder am Zug, ohne dass der Gegner
+  reagieren durfte — dann verschwand sein König vom Brett, statt dass die Partie
+  durch Schachmatt endete. Solche Züge werden jetzt abgewiesen.
+- **Die Rochade gibt es in jeder Spielart**, auch auf dem kleinen Brett (König
+  auf d), dem großen (König auf f) und dem Doppelbrett. Sie hängt nicht mehr an
+  den Standardplätzen des 8-mal-8-Bretts, sondern wird aus der Stellung gelesen.
+  Auf dem Doppelbrett rochiert **jeder der beiden Könige für sich**; zieht einer,
+  behält der andere seine Rechte.
+- **Wer einem Team beigetreten ist, kann nicht mehr wechseln.** Bei einer Partie
+  über mehrere Tage hätte man sonst erst für die eine, dann für die andere Seite
+  ziehen können. Wer wirklich raus will, verlässt das Team ausdrücklich und tritt
+  danach neu bei.
+
 ## v2.0 — 2026-08-02
 
 Die Spielart **Fähigkeiten sammeln** ist jetzt ein eigenes Spiel: Würfel

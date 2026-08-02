@@ -659,10 +659,24 @@ const TEAM_SCHACH = {
      */
     _pfeilBauen(partie, gedreht) {
         const letzter = partie.verlauf[partie.verlauf.length - 1];
+        if (!letzter) {
+            return null;
+        }
 
-        if (!letzter || !Number.isInteger(letzter.von) || letzter.von < 0
-            || !Number.isInteger(letzter.nach) || letzter.nach < 0
-            || letzter.von === letzter.nach) {
+        /*
+         * Alle Bewegungen des letzten Eintrags. Ein Zug hat einen Weg, ein
+         * Erdbeben oder ein Bauernschub mehrere — jede Figur, die sich bewegt
+         * hat, bekommt ihren Pfeil. Ältere Einträge kennen nur `von`/`nach`.
+         */
+        let wege = (letzter.wege && letzter.wege.length > 0) ? letzter.wege : [];
+
+        if (wege.length === 0 && Number.isInteger(letzter.von) && letzter.von >= 0
+            && Number.isInteger(letzter.nach) && letzter.nach >= 0) {
+            wege = [{ von: letzter.von, nach: letzter.nach }];
+        }
+
+        wege = wege.filter((weg) => weg.von !== weg.nach);
+        if (wege.length === 0) {
             return null;
         }
 
@@ -679,54 +693,60 @@ const TEAM_SCHACH = {
             };
         };
 
-        const start = mitte(letzter.von);
-        const ende = mitte(letzter.nach);
-
-        const dx = ende.x - start.x;
-        const dy = ende.y - start.y;
-        const laenge = Math.sqrt(dx * dx + dy * dy);
-        if (laenge === 0) {
-            return null;
-        }
-
-        const ex = dx / laenge;
-        const ey = dy / laenge;
-
-        /* Die Spitze sitzt am Zielfeld, der Strich endet davor. */
-        const spitzeLaenge = 0.38;
-        const spitzeBreite = 0.22;
-        const strichEndeX = ende.x - ex * spitzeLaenge;
-        const strichEndeY = ende.y - ey * spitzeLaenge;
-
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "zug-pfeil");
         svg.setAttribute("viewBox", "0 0 " + breite + " " + hoehe);
         svg.setAttribute("preserveAspectRatio", "none");
         svg.setAttribute("aria-hidden", "true");
 
-        const spitzePunkte = [
-            ende.x + "," + ende.y,
-            (strichEndeX - ey * spitzeBreite) + "," + (strichEndeY + ex * spitzeBreite),
-            (strichEndeX + ey * spitzeBreite) + "," + (strichEndeY - ex * spitzeBreite)
-        ].join(" ");
+        let gezeichnet = 0;
 
-        /* Erst die helle Unterlage, dann die farbige Lage darüber. */
+        /* Erst alle hellen Unterlagen, dann alle farbigen Lagen darüber — sonst
+           läge bei sich kreuzenden Pfeilen die Unterlage des einen über der
+           Farbe des anderen. */
         for (const lage of ["zug-pfeil-unten", "zug-pfeil-oben"]) {
-            const strich = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            strich.setAttribute("class", lage);
-            strich.setAttribute("x1", String(start.x));
-            strich.setAttribute("y1", String(start.y));
-            strich.setAttribute("x2", String(strichEndeX));
-            strich.setAttribute("y2", String(strichEndeY));
-            svg.appendChild(strich);
+            for (const weg of wege) {
+                const start = mitte(weg.von);
+                const ende = mitte(weg.nach);
 
-            const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            spitze.setAttribute("class", lage);
-            spitze.setAttribute("points", spitzePunkte);
-            svg.appendChild(spitze);
+                const dx = ende.x - start.x;
+                const dy = ende.y - start.y;
+                const laenge = Math.sqrt(dx * dx + dy * dy);
+                if (laenge === 0) {
+                    continue;
+                }
+
+                const ex = dx / laenge;
+                const ey = dy / laenge;
+
+                /* Die Spitze sitzt am Zielfeld, der Strich endet davor. */
+                const spitzeLaenge = 0.38;
+                const spitzeBreite = 0.22;
+                const strichEndeX = ende.x - ex * spitzeLaenge;
+                const strichEndeY = ende.y - ey * spitzeLaenge;
+
+                const strich = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                strich.setAttribute("class", lage);
+                strich.setAttribute("x1", String(start.x));
+                strich.setAttribute("y1", String(start.y));
+                strich.setAttribute("x2", String(strichEndeX));
+                strich.setAttribute("y2", String(strichEndeY));
+                svg.appendChild(strich);
+
+                const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                spitze.setAttribute("class", lage);
+                spitze.setAttribute("points", [
+                    ende.x + "," + ende.y,
+                    (strichEndeX - ey * spitzeBreite) + "," + (strichEndeY + ex * spitzeBreite),
+                    (strichEndeX + ey * spitzeBreite) + "," + (strichEndeY - ex * spitzeBreite)
+                ].join(" "));
+                svg.appendChild(spitze);
+
+                gezeichnet++;
+            }
         }
 
-        return svg;
+        return (gezeichnet > 0) ? svg : null;
     },
 
     /*
@@ -973,8 +993,53 @@ const TEAM_SCHACH = {
      * Verlauf
      * ---------------------------------------------------------------- */
 
+    /*
+     * Die Bilanz unter dem Brett: geschlagene und verlorene Figuren je Seite,
+     * dazu der Vorsprung nach Figurenwert. Beantwortet auf einen Blick die
+     * Frage, die man sonst durch Abzählen beantworten müsste — wer steht besser?
+     */
+    _bilanzBauen(partie) {
+        const zeile = TEAM_SCHACH._element("div", "bilanz-reihe");
+
+        for (const farbe of ["weiss", "schwarz"]) {
+            const bilanz = SCHACH_RUNDE.bilanz(partie, farbe);
+            const spalte = TEAM_SCHACH._element("div", "bilanz-seite");
+
+            spalte.appendChild(TEAM_SCHACH._element("span", "zug-farbe",
+                (farbe === "weiss") ? "Weiss" : "Schwarz"));
+
+            /* Die geschlagenen Figuren als kleine Zeichen — das liest sich
+               schneller als eine Zahl. */
+            const beute = TEAM_SCHACH._element("span", "bilanz-beute");
+            const sortiert = bilanz.geschlagen.slice().sort((einer, anderer) =>
+                (SCHACH_RUNDE.FIGUR_WERT[anderer] || 0) - (SCHACH_RUNDE.FIGUR_WERT[einer] || 0));
+
+            for (const art of sortiert) {
+                /* Geschlagen wurden Figuren der Gegenfarbe. */
+                const figur = (farbe === "weiss") ? art.toLowerCase() : art;
+                beute.appendChild(TEAM_SCHACH._element("span",
+                    "figur bilanz-figur " + ((farbe === "weiss") ? "figur-schwarz" : "figur-weiss"),
+                    TEAM_SCHACH._figurZeichen(figur)));
+            }
+
+            if (sortiert.length === 0) {
+                beute.appendChild(TEAM_SCHACH._element("span", "erklaerung", "nichts"));
+            }
+            spalte.appendChild(beute);
+
+            const vorsprung = (bilanz.punkte > 0) ? ("+" + bilanz.punkte) : String(bilanz.punkte);
+            spalte.appendChild(TEAM_SCHACH._element("span",
+                "bilanz-punkte" + (bilanz.punkte > 0 ? " bilanz-vorn" : ""), vorsprung));
+
+            zeile.appendChild(spalte);
+        }
+
+        return zeile;
+    },
+
     _verlaufBauen(partie) {
         const karte = TEAM_SCHACH._element("section", "karte");
+        karte.appendChild(TEAM_SCHACH._bilanzBauen(partie));
 
         /* Auf dem Handy soll der Verlauf nicht die halbe Seite füllen —
            deshalb eingeklappt, mit der Anzahl in der Überschrift. */

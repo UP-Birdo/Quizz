@@ -361,11 +361,14 @@ pruefe("Ein bedrohtes Feld auf dem Weg wird als solches benannt", () => {
     wahr(lage[0].grund.indexOf("bedrohtes Feld") !== -1, "Grund: bedrohtes Feld");
 });
 
-pruefe("Spielarten ohne Rochade sagen das auch so", () => {
+pruefe("Auch auf dem kleinen Brett steht die Rochade in der Grundstellung nicht offen", () => {
+    /* Seit v2.1 gibt es sie in jeder Spielart — hier stehen aber noch Figuren
+       zwischen König und Turm. */
     const lage = SCHACH.rochadeLage(SCHACH.neuerStand("klein"), SCHACH.WEISS);
 
+    gleich(lage.length, 2, "zwei Seiten");
     gleich(lage[0].moeglich, false, "gesperrt");
-    wahr(lage[0].grund.indexOf("Spielart") !== -1, "Grund: Spielart ohne Rochade");
+    wahr(lage[0].grund.indexOf("steht noch eine Figur") !== -1, "Grund: Figuren im Weg");
 });
 
 pruefe("Die Lage passt zu den Zuegen, die es wirklich gibt", () => {
@@ -401,7 +404,7 @@ pruefe("Aus einer echten Partie: Weiss hat rochiert, Schwarz kann noch nicht", (
 
     const weiss = SCHACH.rochadeLage(stand, SCHACH.WEISS);
     gleich(weiss[0].moeglich, false, "Weiss kann nicht mehr");
-    wahr(weiss[0].grund.indexOf("Startfeld") !== -1, "Grund: Koenig nicht mehr am Start");
+    wahr(weiss[0].grund.indexOf("verfallen") !== -1, "Grund: Recht verfallen");
 
     const schwarz = SCHACH.rochadeLage(stand, SCHACH.SCHWARZ);
     gleich(schwarz[0].moeglich, false, "Schwarz kurz nicht");
@@ -461,9 +464,99 @@ pruefe("Auf dem kleinen Brett zieht der Bauer wie erwartet", () => {
     gleich(ziele, "c3,c4", "Einzel- und Doppelschritt");
 });
 
-pruefe("Auf dem kleinen Brett gibt es keine Rochade", () => {
-    const stand = SCHACH.neuerStand("klein");
-    gleich(stand.rochade, "", "keine Rechte");
+pruefe("Auf dem kleinen Brett laesst sich wirklich rochieren", () => {
+    /*
+     * Der Kern der Umstellung von v2.1: Der König steht hier auf d1, nicht auf
+     * e1 — die Rochade darf nicht mehr an festen Plätzen hängen.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "klein",
+        brett: "..dk.."
+            + "......"
+            + "......"
+            + "......"
+            + "......"
+            + "T..K.T",
+        amZug: "weiss"
+    });
+
+    gleich(SCHACH.figurAuf(stand, 33), "K", "Koenig steht auf d1");
+
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+    const kurz = lage.find((eintrag) => eintrag.seite === "kurz");
+    wahr(kurz.moeglich, "kurze Rochade moeglich");
+
+    const ergebnis = SCHACH.ziehen(stand, 33, kurz.zielFeld);
+    wahr(ergebnis !== null, "Rochade ausfuehrbar");
+    gleich(SCHACH.figurAuf(ergebnis.stand, kurz.zielFeld), "K", "Koenig zwei Felder weiter");
+    gleich(SCHACH.figurAuf(ergebnis.stand, kurz.zielFeld - 1), "T", "Turm daneben");
+    gleich(SCHACH.figurAuf(ergebnis.stand, 33), ".", "das alte Koenigsfeld ist leer");
+
+    /* Auf diesem schmalen Brett landet der König genau dort, wo der Turm
+       stand — beide dürfen sich dabei nicht gegenseitig löschen. */
+    gleich(ergebnis.stand.brett.split("T").length - 1, 2, "beide Tuerme stehen noch");
+    gleich(ergebnis.stand.brett.split("K").length - 1, 1, "und genau ein Koenig");
+});
+
+pruefe("Auf dem Doppelbrett rochiert jeder Koenig fuer sich", () => {
+    const stand = SCHACH.standNormalisieren({
+        variante: "doppelbrett",
+        brett: "k..............."
+            + "................"
+            + "................"
+            + "................"
+            + "................"
+            + "................"
+            + "................"
+            + "T...K..TT...K..T",
+        amZug: "weiss"
+    });
+
+    const lage = SCHACH.rochadeLage(stand, SCHACH.WEISS);
+    const moegliche = lage.filter((eintrag) => eintrag.moeglich);
+
+    /* Zwei Könige mit je zwei Türmen: vier Rochaden stehen offen. */
+    gleich(moegliche.length, 4, "vier moegliche Rochaden");
+
+    /* Zieht der linke König, verliert nur er seine Rechte. */
+    const linker = moegliche.find((eintrag) => eintrag.koenigFeld === 116);
+    const danach = SCHACH.ziehen(stand, 116, linker.zielFeld);
+    wahr(danach !== null, "Rochade ausfuehrbar");
+
+    const spaeter = SCHACH.rochadeLage(
+        Object.assign({}, danach.stand, { amZug: "weiss" }), SCHACH.WEISS);
+    gleich(spaeter.filter((eintrag) => eintrag.moeglich).length, 2,
+        "der zweite Koenig darf weiterhin");
+});
+
+pruefe("Der Koenig wird nie geschlagen, auch nicht beim Doppelzug", () => {
+    /*
+     * Der Fehler, der das ausgelöst hat: Mit dem Doppelzug setzt man Schach und
+     * ist sofort wieder am Zug — der Gegner durfte nie reagieren. Ohne Sperre
+     * verschwände sein König vom Brett, statt dass die Partie durch Matt endet.
+     */
+    const stand = SCHACH.standNormalisieren({
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....D..."
+            + "....K...",
+        amZug: "weiss",
+        rochade: "",
+        extraZug: "weiss"
+    });
+
+    const ziele = SCHACH.zuege(stand, SCHACH.feldNummer("e2"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+
+    wahr(ziele.indexOf("e8") === -1, "die Dame darf den Koenig nicht schlagen");
+    wahr(ziele.indexOf("e7") !== -1, "davor darf sie ziehen");
+
+    gleich(SCHACH.ziehen(stand, SCHACH.feldNummer("e2"), SCHACH.feldNummer("e8")),
+        null, "der Zug wird abgewiesen");
 });
 
 /* Baut ein leeres Brett der Spielart und setzt einzelne Figuren hinein:

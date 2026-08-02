@@ -167,6 +167,58 @@ const SCHACH = {
      * Stand
      * ---------------------------------------------------------------- */
 
+    /*
+     * Alle Türme, die in der Startaufstellung auf einer Grundreihe stehen.
+     * Aus der Aufstellung gelesen, damit eine neue Spielart nichts weiter
+     * angeben muss als ihr Brett.
+     */
+    _turmStartfelder(variante) {
+        if (!variante.rochade) {
+            return [];
+        }
+
+        const felder = [];
+        const letzte = variante.hoehe - 1;
+
+        for (let spalte = 0; spalte < variante.breite; spalte++) {
+            const oben = spalte;
+            const unten = letzte * variante.breite + spalte;
+
+            if (variante.aufstellung[oben] === "t") {
+                felder.push(oben);
+            }
+            if (variante.aufstellung[unten] === "T") {
+                felder.push(unten);
+            }
+        }
+
+        return felder;
+    },
+
+    /* Alle Könige, die in der Startaufstellung auf einer Grundreihe stehen. */
+    _koenigStartfelder(variante) {
+        if (!variante.rochade) {
+            return [];
+        }
+
+        const felder = [];
+        const letzte = variante.hoehe - 1;
+
+        for (let spalte = 0; spalte < variante.breite; spalte++) {
+            const oben = spalte;
+            const unten = letzte * variante.breite + spalte;
+
+            if (variante.aufstellung[oben] === "k") {
+                felder.push(oben);
+            }
+            if (variante.aufstellung[unten] === "K") {
+                felder.push(unten);
+            }
+        }
+
+        return felder;
+    },
+
     /* Neuer Stand in der gewünschten Spielart (ohne Angabe: klassisch). */
     neuerStand(varianteId) {
         const variante = SCHACH_VARIANTEN.holen(varianteId);
@@ -178,6 +230,22 @@ const SCHACH = {
             brett: variante.aufstellung,
             amZug: SCHACH.WEISS,
             rochade: variante.rochade ? "KDkd" : "",
+
+            /*
+             * Die Turmfelder, die ihr Rochaderecht noch haben. Seit v2.1 die
+             * Wahrheit — `rochade` (KDkd) bleibt als Altbestand daneben stehen
+             * und wird daraus abgeleitet, damit der Vertrag additiv bleibt.
+             * Nötig, weil die Rochade jetzt auf jedem Brett gilt: Auf dem
+             * Doppelbrett gibt es vier Türme je Seite, für die vier Buchstaben
+             * nicht reichen.
+             */
+            rochadeFelder: SCHACH._turmStartfelder(variante),
+
+            /* Die Könige, die ihr Rochaderecht noch haben. Getrennt von den
+               Türmen, weil ein König, der einmal gezogen hat, ALLE seine
+               Rechte verliert — auch die zu einem Turm, dem er dabei näher
+               gekommen ist. */
+            rochadeKoenige: SCHACH._koenigStartfelder(variante),
             enPassant: "",
             halbzuege: 0,
             zugNummer: 1,
@@ -222,6 +290,54 @@ const SCHACH = {
         }
         if (typeof roh.rochade === "string" && /^[KDkd]*$/.test(roh.rochade)) {
             stand.rochade = variante.rochade ? roh.rochade : "";
+        }
+
+        /*
+         * Rochaderechte. Steht die Feldliste im Stand, gilt sie. Fehlt sie,
+         * stammt der Stand aus der Zeit vor v2.1: Dann werden die vier
+         * Buchstaben in Felder übersetzt, damit angefangene Partien ihre
+         * Rechte behalten.
+         */
+        if (Array.isArray(roh.rochadeFelder)) {
+            stand.rochadeFelder = roh.rochadeFelder
+                .filter((feld) => Number.isInteger(feld) && feld >= 0 && feld < felder)
+                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle);
+        } else if (variante.rochade && stand.rochade === "KDkd") {
+            /* Unangetastete Rechte: alle Türme der Startaufstellung. Die vier
+               Buchstaben können nur vier Türme beschreiben — auf dem
+               Doppelbrett sind es acht. */
+            stand.rochadeFelder = SCHACH._turmStartfelder(variante);
+        } else if (variante.rochade) {
+            const unten = (variante.hoehe - 1) * variante.breite;
+            const alt = [];
+
+            if (stand.rochade.indexOf("D") !== -1) { alt.push(unten); }
+            if (stand.rochade.indexOf("K") !== -1) { alt.push(unten + variante.breite - 1); }
+            if (stand.rochade.indexOf("d") !== -1) { alt.push(0); }
+            if (stand.rochade.indexOf("k") !== -1) { alt.push(variante.breite - 1); }
+
+            stand.rochadeFelder = alt;
+        } else {
+            stand.rochadeFelder = [];
+        }
+
+        /* Dasselbe für die Könige. */
+        if (Array.isArray(roh.rochadeKoenige)) {
+            stand.rochadeKoenige = roh.rochadeKoenige
+                .filter((feld) => Number.isInteger(feld) && feld >= 0 && feld < felder)
+                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle);
+        } else if (variante.rochade) {
+            /* Ohne Angabe: Ein König hat sein Recht, solange auf seiner Seite
+               noch irgendein Turmrecht steht. Genauer geht es aus den vier
+               alten Buchstaben nicht — sie kannten keine Königsfelder. */
+            const unten = (variante.hoehe - 1) * variante.breite;
+
+            stand.rochadeKoenige = SCHACH._koenigStartfelder(variante).filter((feld) => {
+                const istWeiss = (feld >= unten);
+                return stand.rochadeFelder.some((turm) => (turm >= unten) === istWeiss);
+            });
+        } else {
+            stand.rochadeKoenige = [];
         }
         if (typeof roh.enPassant === "string"
             && SCHACH.feldNummer(roh.enPassant, variante.breite, variante.hoehe) !== -1) {
@@ -339,6 +455,17 @@ const SCHACH = {
         if (SCHACH.varianteVon(stand).koenigSchlagbar) {
             return roh;
         }
+
+        /*
+         * Der König wird NIE geschlagen — auch nicht durch eine Fähigkeit.
+         *
+         * Im normalen Schach kann das gar nicht vorkommen, weil der Gegner
+         * immer zuerst aus dem Schach ziehen muss. Mit dem Doppelzug schon:
+         * Man setzt Schach und ist sofort wieder am Zug, ohne dass der Gegner
+         * reagieren durfte. Ohne diese Sperre endete die Partie damit, dass
+         * ein König vom Brett verschwindet, statt durch Schachmatt.
+         */
+        roh = roh.filter((zug) => SCHACH.artVon(SCHACH.figurAuf(stand, zug.nach)) !== "K");
 
         return roh.filter((zug) => {
             const danach = SCHACH._ausfuehren(stand, zug);
@@ -544,6 +671,149 @@ const SCHACH = {
         return liste;
     },
 
+    /* ---------------------------------------------------------------- *
+     * Rochade, für jede Spielart
+     *
+     * Bis v2.0 hing sie an den Standardplätzen des 8-mal-8-Bretts (König auf
+     * e, Türme auf a und h) und war deshalb nur dort erlaubt. Seit v2.1 wird
+     * sie aus der Stellung gelesen: König auf seinem Startfeld, ein Turm mit
+     * Recht auf derselben Grundreihe, dazwischen frei. Damit funktioniert sie
+     * auch auf dem 6er-Brett (König auf d), dem 10er (König auf f) und dem
+     * Doppelbrett, wo jede Seite ZWEI Könige mit je zwei Türmen hat.
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Die Türme, mit denen DIESER König rochieren könnte: je Richtung der
+     * nächstgelegene mit Recht.
+     *
+     * „Der nächstgelegene" ist die entscheidende Einschränkung. Auf dem
+     * Doppelbrett stehen vier Türme je Seite; ohne sie gehörte der mittlere
+     * Turm beiden Königen, und beim Zug des einen verlöre der andere sein
+     * Recht.
+     */
+    _rochadeTuerme(stand, koenigFeld, farbe) {
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(koenigFeld, breite);
+        const spalte = SCHACH.spalteVon(koenigFeld, breite);
+        const turm = (farbe === SCHACH.WEISS) ? "T" : "t";
+
+        const gefunden = {};
+
+        for (const feld of stand.rochadeFelder) {
+            if (SCHACH.reiheVon(feld, breite) !== reihe
+                || SCHACH.figurAuf(stand, feld) !== turm) {
+                continue;
+            }
+
+            const turmSpalte = SCHACH.spalteVon(feld, breite);
+            if (turmSpalte === spalte) {
+                continue;
+            }
+
+            const richtung = (turmSpalte > spalte) ? "rechts" : "links";
+            const abstand = Math.abs(turmSpalte - spalte);
+
+            if (!gefunden[richtung] || abstand < gefunden[richtung].abstand) {
+                gefunden[richtung] = { feld: feld, abstand: abstand };
+            }
+        }
+
+        return Object.keys(gefunden).map((richtung) => gefunden[richtung].feld);
+    },
+
+    /*
+     * Alle Rochaden, die dieser König machen könnte — mit Angabe, ob sie
+     * erlaubt sind und warum nicht. EINE Stelle für Zugerzeugung und
+     * Begründung; sonst liefen beide auseinander.
+     */
+    _rochadeWege(stand, koenigFeld, farbe) {
+        const wege = [];
+        const variante = SCHACH.varianteVon(stand);
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(koenigFeld, breite);
+        const spalte = SCHACH.spalteVon(koenigFeld, breite);
+        const koenig = (farbe === SCHACH.WEISS) ? "K" : "k";
+
+        /* Hat dieser König sein Recht schon verspielt, gibt es nichts zu prüfen. */
+        if (stand.rochadeKoenige.indexOf(koenigFeld) === -1) {
+            return [{
+                seite: "kurz",
+                turmFeld: -1,
+                zielFeld: -1,
+                turmZiel: -1,
+                moeglich: false,
+                grund: "Das Recht ist verfallen: König oder Turm haben sich schon bewegt."
+            }];
+        }
+
+        for (const turmFeld of SCHACH._rochadeTuerme(stand, koenigFeld, farbe)) {
+            const turmSpalte = SCHACH.spalteVon(turmFeld, breite);
+            const richtung = (turmSpalte > spalte) ? 1 : -1;
+            const zielSpalte = spalte + 2 * richtung;
+
+            const weg = {
+                seite: (richtung === 1) ? "kurz" : "lang",
+                turmFeld: turmFeld,
+                zielFeld: SCHACH._feld(stand, reihe, zielSpalte),
+                turmZiel: SCHACH._feld(stand, reihe, zielSpalte - richtung),
+                moeglich: false,
+                grund: ""
+            };
+
+            if (!SCHACH._imBrett(stand, reihe, zielSpalte)) {
+                weg.grund = "Der König hätte keine zwei Felder Platz.";
+                wege.push(weg);
+                continue;
+            }
+            if (SCHACH.figurAuf(stand, koenigFeld) !== koenig) {
+                weg.grund = "Der König steht nicht mehr auf seinem Startfeld.";
+                wege.push(weg);
+                continue;
+            }
+
+            /* Alles zwischen König und Turm muss frei sein. */
+            let frei = true;
+            for (let lauf = spalte + richtung; lauf !== turmSpalte; lauf += richtung) {
+                if (SCHACH.figurAuf(stand, SCHACH._feld(stand, reihe, lauf)) !== ".") {
+                    frei = false;
+                    break;
+                }
+            }
+            if (!frei) {
+                weg.grund = "Zwischen König und Turm steht noch eine Figur.";
+                wege.push(weg);
+                continue;
+            }
+
+            /* Auf Brettern ohne Schach entfällt die Bedrohungsprüfung. */
+            if (!variante.koenigSchlagbar) {
+                if (SCHACH.imSchach(stand, farbe)) {
+                    weg.grund = "Der König steht im Schach.";
+                    wege.push(weg);
+                    continue;
+                }
+                const gegner = SCHACH.gegner(farbe);
+                const ueber = SCHACH._feld(stand, reihe, spalte + richtung);
+
+                if (SCHACH._feldBedroht(stand, ueber, gegner)) {
+                    weg.grund = "Der König müsste über ein bedrohtes Feld ziehen.";
+                    wege.push(weg);
+                    continue;
+                }
+                if (SCHACH._feldBedroht(stand, weg.zielFeld, gegner)) {
+                    weg.grund = "Der König stünde danach im Schach.";
+                    wege.push(weg);
+                    continue;
+                }
+            }
+
+            weg.moeglich = true;
+            wege.push(weg);
+        }
+
+        return wege;
+    },
+
     _koenigszuege(stand, von, farbe) {
         const liste = [];
         const breite = SCHACH.breiteVon(stand);
@@ -567,36 +837,14 @@ const SCHACH = {
             }
         }
 
-        /* Rochade gibt es nur auf dem klassischen Brett: Sie hängt an den
-           festen Plätzen von König und Turm. */
-        if (!SCHACH.varianteVon(stand).rochade) {
-            return liste;
-        }
-
-        /* König zwei Felder zur Seite, Turm springt darüber.
-           Bedingungen: Recht noch vorhanden, Felder dazwischen frei, König
-           steht nicht im Schach und zieht über kein bedrohtes Feld. */
-        const grundreihe = (farbe === SCHACH.WEISS) ? SCHACH.hoeheVon(stand) - 1 : 0;
-        const koenigStart = SCHACH._feld(stand, grundreihe, 4);
-
-        if (von === koenigStart && !SCHACH.imSchach(stand, farbe)) {
-            const rechte = (farbe === SCHACH.WEISS) ? ["K", "D"] : ["k", "d"];
-
-            /* Kurze Rochade (Königsflügel). */
-            if (stand.rochade.indexOf(rechte[0]) !== -1
-                && SCHACH.figurAuf(stand, koenigStart + 1) === "."
-                && SCHACH.figurAuf(stand, koenigStart + 2) === "."
-                && !SCHACH._feldBedroht(stand, koenigStart + 1, SCHACH.gegner(farbe))) {
-                liste.push(SCHACH._zug(stand, von, koenigStart + 2, { rochade: "kurz" }));
-            }
-
-            /* Lange Rochade (Damenflügel). */
-            if (stand.rochade.indexOf(rechte[1]) !== -1
-                && SCHACH.figurAuf(stand, koenigStart - 1) === "."
-                && SCHACH.figurAuf(stand, koenigStart - 2) === "."
-                && SCHACH.figurAuf(stand, koenigStart - 3) === "."
-                && !SCHACH._feldBedroht(stand, koenigStart - 1, SCHACH.gegner(farbe))) {
-                liste.push(SCHACH._zug(stand, von, koenigStart - 2, { rochade: "lang" }));
+        /* Rochade — in jeder Spielart, aus der Stellung gelesen. */
+        for (const weg of SCHACH._rochadeWege(stand, von, farbe)) {
+            if (weg.moeglich) {
+                liste.push(SCHACH._zug(stand, von, weg.zielFeld, {
+                    rochade: weg.seite,
+                    turmVon: weg.turmFeld,
+                    turmNach: weg.turmZiel
+                }));
             }
         }
 
@@ -774,59 +1022,50 @@ const SCHACH = {
      */
     rochadeLage(stand, farbe) {
         const variante = SCHACH.varianteVon(stand);
-        const breite = SCHACH.breiteVon(stand);
-        const grundreihe = (farbe === SCHACH.WEISS) ? SCHACH.hoeheVon(stand) - 1 : 0;
-        const koenigStart = SCHACH._feld(stand, grundreihe, 4);
-        const rechte = (farbe === SCHACH.WEISS) ? { kurz: "K", lang: "D" } : { kurz: "k", lang: "d" };
 
-        const seiten = [
-            { seite: "kurz", turmFeld: grundreihe * breite + 7, zielFeld: koenigStart + 2,
-                frei: [koenigStart + 1, koenigStart + 2], ueber: koenigStart + 1 },
-            { seite: "lang", turmFeld: grundreihe * breite, zielFeld: koenigStart - 2,
-                frei: [koenigStart - 1, koenigStart - 2, koenigStart - 3], ueber: koenigStart - 1 }
-        ];
+        if (!variante.rochade) {
+            return [
+                { seite: "kurz", turmFeld: -1, zielFeld: -1, moeglich: false,
+                    grund: "In dieser Spielart gibt es keine Rochade." },
+                { seite: "lang", turmFeld: -1, zielFeld: -1, moeglich: false,
+                    grund: "In dieser Spielart gibt es keine Rochade." }
+            ];
+        }
 
-        return seiten.map((eintrag) => {
-            const antwort = {
-                seite: eintrag.seite,
-                turmFeld: eintrag.turmFeld,
-                zielFeld: eintrag.zielFeld,
-                moeglich: false,
-                grund: ""
-            };
+        /* Auf dem Doppelbrett hat jede Seite zwei Könige — jeder bekommt seine
+           eigenen Einträge. */
+        const antworten = [];
 
-            if (!variante.rochade) {
-                antwort.grund = "In dieser Spielart gibt es keine Rochade.";
-                return antwort;
+        for (const koenigFeld of SCHACH.koenigFelder(stand, farbe)) {
+            for (const weg of SCHACH._rochadeWege(stand, koenigFeld, farbe)) {
+                antworten.push({
+                    seite: weg.seite,
+                    koenigFeld: koenigFeld,
+                    turmFeld: weg.turmFeld,
+                    zielFeld: weg.zielFeld,
+                    moeglich: weg.moeglich,
+                    grund: weg.grund
+                });
             }
-            if (SCHACH.figurAuf(stand, koenigStart) !== ((farbe === SCHACH.WEISS) ? "K" : "k")) {
-                antwort.grund = "Der König steht nicht mehr auf seinem Startfeld.";
-                return antwort;
-            }
-            if (stand.rochade.indexOf(rechte[eintrag.seite]) === -1) {
-                antwort.grund = "Das Recht ist verfallen: König oder Turm haben sich schon bewegt.";
-                return antwort;
-            }
-            if (eintrag.frei.some((feld) => SCHACH.figurAuf(stand, feld) !== ".")) {
-                antwort.grund = "Zwischen König und Turm steht noch eine Figur.";
-                return antwort;
-            }
-            if (SCHACH.imSchach(stand, farbe)) {
-                antwort.grund = "Der König steht im Schach.";
-                return antwort;
-            }
-            if (SCHACH._feldBedroht(stand, eintrag.ueber, SCHACH.gegner(farbe))) {
-                antwort.grund = "Der König müsste über ein bedrohtes Feld ziehen.";
-                return antwort;
-            }
-            if (SCHACH._feldBedroht(stand, eintrag.zielFeld, SCHACH.gegner(farbe))) {
-                antwort.grund = "Der König stünde danach im Schach.";
-                return antwort;
-            }
+        }
 
-            antwort.moeglich = true;
-            return antwort;
-        });
+        /* Damit der Bildschirm sich auf zwei Einträge verlassen kann, gibt es
+           auch dann je einen für kurz und lang, wenn gar kein Turm mehr steht. */
+        for (const seite of ["kurz", "lang"]) {
+            if (!antworten.some((eintrag) => eintrag.seite === seite)) {
+                antworten.push({
+                    seite: seite,
+                    koenigFeld: -1,
+                    turmFeld: -1,
+                    zielFeld: -1,
+                    moeglich: false,
+                    grund: "Das Recht ist verfallen: König oder Turm haben sich schon bewegt."
+                });
+            }
+        }
+
+        antworten.sort((einer, anderer) => (einer.seite === "kurz") ? -1 : 1);
+        return antworten;
     },
 
     /*
@@ -864,6 +1103,8 @@ const SCHACH = {
             brett: stand.brett,
             amZug: nochmal ? stand.amZug : SCHACH.gegner(stand.amZug),
             rochade: stand.rochade,
+            rochadeFelder: stand.rochadeFelder.slice(),
+            rochadeKoenige: stand.rochadeKoenige.slice(),
             enPassant: "",
             halbzuege: stand.halbzuege + 1,
             zugNummer: stand.zugNummer + ((stand.amZug === SCHACH.SCHWARZ && !nochmal) ? 1 : 0),
@@ -904,6 +1145,15 @@ const SCHACH = {
 
         /* Grundbewegung. */
         brett = SCHACH._brettMit(brett, zug.von, ".");
+
+        /*
+         * Bei der Rochade wird der Turm ZUERST vom Brett genommen. Auf schmalen
+         * Brettern (6 Spalten) landet der König auf dem Feld, auf dem der Turm
+         * steht — würde der Turm später geräumt, verschwände dabei der König.
+         */
+        if (zug.rochade && Number.isInteger(zug.turmVon)) {
+            brett = SCHACH._brettMit(brett, zug.turmVon, ".");
+        }
         const zielFigur = zug.umwandlung
             ? ((farbe === SCHACH.WEISS) ? zug.umwandlung : zug.umwandlung.toLowerCase())
             : figur;
@@ -916,36 +1166,47 @@ const SCHACH = {
             brett = SCHACH._brettMit(brett, opfer, ".");
         }
 
-        /* Rochade: der Turm zieht mit. */
-        if (zug.rochade === "kurz") {
-            const grund = SCHACH.reiheVon(zug.von, breite) * breite;
-            brett = SCHACH._brettMit(brett, grund + 7, ".");
-            brett = SCHACH._brettMit(brett, grund + 5, (farbe === SCHACH.WEISS) ? "T" : "t");
-        } else if (zug.rochade === "lang") {
-            const grund = SCHACH.reiheVon(zug.von, breite) * breite;
-            brett = SCHACH._brettMit(brett, grund + 0, ".");
-            brett = SCHACH._brettMit(brett, grund + 3, (farbe === SCHACH.WEISS) ? "T" : "t");
+        /* Rochade: der Turm zieht mit. Wohin, steht im Zug selbst — auf einem
+           16 Felder breiten Brett gibt es keine festen Plätze. */
+        if (zug.rochade && Number.isInteger(zug.turmNach)) {
+            brett = SCHACH._brettMit(brett, zug.turmNach, (farbe === SCHACH.WEISS) ? "T" : "t");
         }
 
         neu.brett = brett;
 
-        /* Rochaderechte verfallen, sobald König oder Turm bewegt wurden —
-           oder ein Turm geschlagen wird. */
-        if (neu.rochade) {
-            let rechte = neu.rochade;
-            const streichen = (zeichen) => {
-                rechte = rechte.split(zeichen).join("");
-            };
-            const unten = (SCHACH.hoeheVon(stand) - 1) * breite;
+        /*
+         * Rochaderechte verfallen, sobald König oder Turm bewegt wurden — oder
+         * ein Turm geschlagen wird. Beim König verfallen alle Rechte seiner
+         * Grundreihe; auf dem Doppelbrett behält der zweite König seine.
+         */
+        if (neu.rochadeFelder.length > 0) {
+            let felderRecht = neu.rochadeFelder
+                .filter((feld) => feld !== zug.von && feld !== zug.nach);
 
             if (art === "K") {
-                if (farbe === SCHACH.WEISS) { streichen("K"); streichen("D"); }
-                else { streichen("k"); streichen("d"); }
+                /* Genau die Türme, mit denen dieser König hätte rochieren
+                   können — dieselbe Auswahl wie bei der Zugerzeugung. Auf dem
+                   Doppelbrett behält der zweite König dadurch seine Rechte. */
+                const seine = SCHACH._rochadeTuerme(stand, zug.von, farbe);
+                felderRecht = felderRecht.filter((feld) => seine.indexOf(feld) === -1);
+
+                /* Und der König selbst ist für immer raus. */
+                neu.rochadeKoenige = neu.rochadeKoenige.filter((feld) => feld !== zug.von);
             }
-            if (zug.von === unten + 7 || zug.nach === unten + 7) { streichen("K"); }
-            if (zug.von === unten || zug.nach === unten) { streichen("D"); }
-            if (zug.von === 7 || zug.nach === 7) { streichen("k"); }
-            if (zug.von === 0 || zug.nach === 0) { streichen("d"); }
+
+            neu.rochadeFelder = felderRecht;
+        }
+
+        /* Die alten vier Buchstaben mitführen, damit der Vertrag additiv
+           bleibt und ältere Stände lesbar sind. */
+        if (neu.rochade) {
+            const unten = (SCHACH.hoeheVon(stand) - 1) * breite;
+            let rechte = "";
+
+            if (neu.rochadeFelder.indexOf(unten + breite - 1) !== -1) { rechte += "K"; }
+            if (neu.rochadeFelder.indexOf(unten) !== -1) { rechte += "D"; }
+            if (neu.rochadeFelder.indexOf(breite - 1) !== -1) { rechte += "k"; }
+            if (neu.rochadeFelder.indexOf(0) !== -1) { rechte += "d"; }
             neu.rochade = rechte;
         }
 
@@ -1037,6 +1298,7 @@ const SCHACH = {
 
         let brett = stand.brett;
         const felder = [];
+        const wege = [];
 
         /*
          * Von vorn nach hinten durchgehen (in Zugrichtung), damit ein Bauer
@@ -1069,6 +1331,7 @@ const SCHACH = {
                 brett = SCHACH._brettMit(brett, ziel,
                     (SCHACH.reiheVon(ziel, breite) === letzteReihe) ? dame : bauer);
                 felder.push(feld, ziel);
+                wege.push({ von: feld, nach: ziel });
             }
         }
 
@@ -1077,7 +1340,7 @@ const SCHACH = {
         }
 
         const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
-        return { stand: neu, felder: felder, text: "Bauernschub" };
+        return { stand: neu, felder: felder, wege: wege, text: "Bauernschub" };
     },
 
     /* Ein eigener Bauer wird zum Springer. */
@@ -1114,6 +1377,7 @@ const SCHACH = {
 
         let brett = stand.brett;
         const felder = [];
+        const wege = [];
 
         for (let dr = -1; dr <= 1; dr++) {
             for (let ds = -1; ds <= 1; ds++) {
@@ -1146,6 +1410,7 @@ const SCHACH = {
                 brett = SCHACH._brettMit(brett, von, ".");
                 brett = SCHACH._brettMit(brett, ziel, figur);
                 felder.push(von, ziel);
+                wege.push({ von: von, nach: ziel });
             }
         }
 
@@ -1154,7 +1419,7 @@ const SCHACH = {
         }
 
         const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
-        return { stand: neu, felder: felder, text: "Erdbeben" };
+        return { stand: neu, felder: felder, wege: wege, text: "Erdbeben" };
     },
 
     /* Eine verlorene Figur kehrt auf ein freies Feld zurück. */

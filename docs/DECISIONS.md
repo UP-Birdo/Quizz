@@ -700,6 +700,82 @@ war der Kern des Wunsches („alle paar Runden").
 Höchstens drei gleichzeitig, damit das Brett lesbar bleibt. Wer alles einsammelt,
 bekommt Nachschub; wer sie liegen lässt, blockiert sich selbst.
 
+## Regeln und Bedienung (2026-08-02, v2.1 bis v2.3)
+
+### Der König, den der Doppelzug verschluckte
+
+Gemeldet als „durch Fähigkeiten, also auch einen Doppelzug, darf der König nicht
+geschlagen werden". Das war kein Wunsch, sondern ein Fehlerbericht — und er
+stimmte.
+
+Im normalen Schach kann ein König gar nicht geschlagen werden: Wer im Schach
+steht, muss zuerst heraus. Der Doppelzug hebelt genau das aus. Man setzt Schach
+und ist sofort wieder am Zug; der Gegner kam nie dazu, zu reagieren. Der zweite
+Zug schlug dann den König, und die Partie endete damit, dass eine Figur vom
+Brett verschwand — nicht durch Schachmatt.
+
+Behoben mit einer Zeile in `zuege()`: Züge auf ein Feld mit einem König werden
+verworfen (ausser in Spielarten mit ausdrücklich schlagbarem König). **Die
+Lehre:** Eine Fähigkeit, die in die Zugfolge eingreift, muss gegen jede Regel
+geprüft werden, die stillschweigend auf dem Wechsel beruht. Schach, Matt und
+Patt tun das alle.
+
+### Warum die Rochade jetzt aus der Stellung gelesen wird
+
+Bis v2.0 hing sie an den Standardplätzen: König auf e, Türme auf a und h. Damit
+war sie auf dem kleinen Brett (König auf d) und dem großen (König auf f)
+unmöglich — und auf dem Doppelbrett erst recht, wo jede Seite zwei Könige und
+vier Türme hat.
+
+Jetzt gilt: König auf seinem Startfeld, ein Turm mit Recht auf derselben
+Grundreihe, dazwischen frei. Zwei Einzelheiten mussten dabei entschieden werden:
+
+- **Wem gehört welcher Turm?** Je Richtung der nächstgelegene. Ohne diese Regel
+  gehörte der mittlere Turm des Doppelbretts beiden Königen — zieht der eine,
+  verlöre der andere sein Recht.
+- **Das Recht hängt am König, nicht nur am Turm.** Sonst dürfte ein König, der
+  schon rochiert hat, ein zweites Mal rochieren — mit einem Turm, dem er dabei
+  näher gekommen ist. Deshalb gibt es `rochadeKoenige` neben `rochadeFelder`.
+
+Auf schmalen Brettern landet der König genau dort, wo der Turm stand. Deshalb
+wird der Turm beim Ausführen ZUERST vom Brett genommen; sonst löschte er beim
+Räumen den König, der inzwischen auf seinem Feld steht. Ein Test hält das fest.
+
+### Warum ein Teamwechsel nicht mehr geht
+
+Bis v2.0 durfte man mitten in der Partie die Seite wechseln. Bei einem Spiel,
+das über Tage läuft und in dem jeder aus dem Team ziehen darf, ist das keine
+theoretische Möglichkeit: Man zieht für Weiß, wechselt, zieht für Schwarz. Das
+Beitreten bleibt jederzeit erlaubt — nur das Wechseln nicht. Wer wirklich raus
+will, verlässt das Team ausdrücklich; dieser Weg war schon da.
+
+### Warum die Pfeile nur halbdurchsichtig sind
+
+Gewünscht waren Pfeile **hinter** den Figuren. Technisch geht das nicht direkt:
+Die Figuren stecken in den Feld-Knöpfen, und ein Element, das über den Feldern
+liegt, lässt sich nicht zwischen Feld und Figur schieben — dafür müssten die
+Figuren in eine eigene Ebene über dem Pfeil wandern, mit allem, was daran hängt
+(Animation, Bedienung, Tests).
+
+Gewählt wurde deshalb der Weg über die Deckkraft: halb durchsichtig und schmaler
+Strich. Das Ergebnis ist dasselbe — die Figur bleibt vollständig lesbar —, zu
+einem Bruchteil des Aufwands. Sollte es später doch stören, ist die Figurenebene
+der saubere Weg.
+
+### Warum die Stufe Grau verschwunden ist
+
+Mit fünf Stufen und zehn Fähigkeiten lagen zwei je Stufe — die unterste bekam
+40 Prozent und war damit fast die Hälfte aller Funde. Vier Stufen verteilen
+dieselben zehn Fähigkeiten gleichmäßiger (3/3/2/2) und lassen der Spitze mehr
+Luft: Legendär ist von 4 auf 7 Prozent gestiegen, kommt aber jetzt mit zwei
+wirklich starken Fähigkeiten statt mit einer starken und einer mittleren.
+
+Die Neubewertung war der eigentliche Grund. **Doppelzug** und **Wiedergeburt**
+waren zu billig: Zwei Züge hintereinander gewinnen fast immer Material, und eine
+zurückgeholte Dame ist mehr wert als jede andere Wirkung im Spiel. Beide sind
+jetzt legendär. **Schutzschild** und **Erdbeben** waren umgekehrt zu teuer
+eingestuft — das eine rettet eine Figur, das andere wirkt auf beide Seiten.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

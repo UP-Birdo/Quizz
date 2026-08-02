@@ -19,8 +19,10 @@
  *     breite, hoehe  Anzahl der Spalten und Reihen.
  *     aufstellung    Startbrett, Zeile für Zeile von oben (Reihe der schwarzen
  *                    Figuren) nach unten. Länge = breite * hoehe.
- *     rochade        Ist die Rochade erlaubt? Nur beim klassischen Brett, weil
- *                    sie an den Standardplätzen von König und Turm hängt.
+ *     rochade        Ist die Rochade erlaubt? Seit v2.1 in JEDER Spielart, weil
+ *                    sie aus der Stellung gelesen wird (König auf seinem
+ *                    Startfeld, Turm mit Recht auf derselben Grundreihe) statt
+ *                    an festen Plätzen zu hängen.
  *     koenigSchlagbar  true = es gibt kein Schach und kein Matt; Könige werden
  *                    geschlagen wie jede andere Figur, und wer keinen König
  *                    mehr hat, verliert. Nötig für Bretter mit mehreren
@@ -43,11 +45,10 @@ const SCHACH_VARIANTEN = {
      * die Rechnung erklärbar: Man muss nur zwei Zahlen kennen.
      */
     STUFEN: [
-        { id: "grau", titel: "Einfach", chance: 40, farbe: "#8a919b" },
-        { id: "gruen", titel: "Gewöhnlich", chance: 28, farbe: "#2e9e52" },
-        { id: "blau", titel: "Ungewöhnlich", chance: 18, farbe: "#2f7fd0" },
-        { id: "lila", titel: "Episch", chance: 10, farbe: "#8b46c8" },
-        { id: "gelb", titel: "Legendär", chance: 4, farbe: "#e0a800" }
+        { id: "gruen", titel: "Gewöhnlich", chance: 45, farbe: "#2e9e52" },
+        { id: "blau", titel: "Ungewöhnlich", chance: 30, farbe: "#2f7fd0" },
+        { id: "lila", titel: "Episch", chance: 18, farbe: "#8b46c8" },
+        { id: "gelb", titel: "Legendär", chance: 7, farbe: "#e0a800" }
     ],
 
     /* Alle wie viele Halbzüge erscheint eine neue Fähigkeit auf dem Brett. */
@@ -55,6 +56,31 @@ const SCHACH_VARIANTEN = {
 
     /* So viele dürfen höchstens gleichzeitig liegen. */
     BONUS_HOECHSTENS: 3,
+
+    /*
+     * Wie viele Würfel auf einmal erscheinen. Meist einer; zwei sind selten,
+     * drei sehr selten. Dieselbe Rechnung wie bei den Stufen: Der Zufallswert
+     * wandert von oben durch die Liste.
+     */
+    BONUS_ANZAHL: [
+        { anzahl: 1, chance: 80 },
+        { anzahl: 2, chance: 17 },
+        { anzahl: 3, chance: 3 }
+    ],
+
+    /* Wie viele Würfel erscheinen bei diesem Zufallswert? */
+    anzahlZiehen(wert) {
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
+
+        for (const eintrag of SCHACH_VARIANTEN.BONUS_ANZAHL) {
+            if (rest < eintrag.chance) {
+                return eintrag.anzahl;
+            }
+            rest -= eintrag.chance;
+        }
+
+        return 1;
+    },
 
     /*
      * Die Fähigkeiten. Jede hat eine Stufe und eine ART, die sagt, WIE sie
@@ -71,10 +97,13 @@ const SCHACH_VARIANTEN = {
      * vier Arten — dann muss am Bildschirm nichts angepasst werden.
      */
     FAEHIGKEITEN: {
-        /* ---- Grau: kleine Hilfen ---- */
+
+        /* ---- Gewöhnlich: mehr Beweglichkeit für genau einen Zug ----
+           Sie helfen situativ, gewinnen aber für sich genommen nichts. */
+
         sprung: {
             titel: "Sprung",
-            stufe: "grau",
+            stufe: "gruen",
             art: "zugmuster",
             muster: "springer",
             beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur "
@@ -82,14 +111,12 @@ const SCHACH_VARIANTEN = {
         },
         ausweichen: {
             titel: "Ausweichen",
-            stufe: "grau",
+            stufe: "gruen",
             art: "zugmuster",
             muster: "koenig",
             beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur "
                 + "zusätzlich ein Feld in jede Richtung ziehen."
         },
-
-        /* ---- Grün: nützlich ---- */
         teleport: {
             titel: "Teleport",
             stufe: "gruen",
@@ -99,39 +126,46 @@ const SCHACH_VARIANTEN = {
                 + "ein freies Feld im Umkreis von zwei Feldern springen — über "
                 + "alles hinweg."
         },
+
+        /* ---- Ungewöhnlich: verändert die Stellung ----
+           Spürbar, aber zweischneidig: Sie kosten den Gegner kein Material. */
+
         bauernschub: {
             titel: "Bauernschub",
-            stufe: "gruen",
+            stufe: "blau",
             art: "sofort",
             beschreibung: "Alle eigenen Bauern rücken sofort ein Feld vor, soweit "
                 + "das Feld davor frei ist. Geschlagen wird dabei nicht."
         },
-
-        /* ---- Blau: stark ---- */
-        doppelzug: {
-            titel: "Doppelzug",
-            stufe: "blau",
-            art: "ablauf",
-            beschreibung: "Nach dem nächsten Zug ist dein Team sofort noch "
-                + "einmal am Zug."
-        },
-        verstaerkung: {
-            titel: "Verstärkung",
-            stufe: "blau",
-            art: "ziel",
-            zielArt: "eigenerBauer",
-            beschreibung: "Ein eigener Bauer wird sofort zum Springer."
-        },
-
-        /* ---- Lila: episch ---- */
         schutzschild: {
             titel: "Schutzschild",
-            stufe: "lila",
+            stufe: "blau",
             art: "ziel",
             zielArt: "eigeneFigur",
             beschreibung: "Eine eigene Figur überlebt den nächsten Angriff: Der "
                 + "Schlag verpufft, der Angreifer bleibt stehen. Auf den König "
                 + "wirkt das Schild nicht."
+        },
+        erdbeben: {
+            titel: "Erdbeben",
+            stufe: "blau",
+            art: "ziel",
+            zielArt: "beliebig",
+            beschreibung: "Alle Figuren rund um das gewählte Feld werden ein Feld "
+                + "nach außen geschoben, soweit dort Platz ist. Könige bleiben "
+                + "stehen. Wirkt auf beide Seiten."
+        },
+
+        /* ---- Episch: kostet den Gegner wirklich etwas ----
+           Sie verschieben das Kräfteverhältnis, ohne die Partie zu entscheiden. */
+
+        verstaerkung: {
+            titel: "Verstärkung",
+            stufe: "lila",
+            art: "ziel",
+            zielArt: "eigenerBauer",
+            beschreibung: "Ein eigener Bauer wird sofort zum Springer — ein "
+                + "Materialgewinn aus dem Nichts."
         },
         fessel: {
             titel: "Fessel",
@@ -142,15 +176,16 @@ const SCHACH_VARIANTEN = {
                 + "Gegners nicht ziehen."
         },
 
-        /* ---- Gelb: legendär ---- */
-        erdbeben: {
-            titel: "Erdbeben",
+        /* ---- Legendär: entscheidet Partien ----
+           Zwei Züge hintereinander gewinnen fast immer Material, und eine
+           zurückgeholte Dame ersetzt eine ganze Schlacht. Deshalb selten. */
+
+        doppelzug: {
+            titel: "Doppelzug",
             stufe: "gelb",
-            art: "ziel",
-            zielArt: "beliebig",
-            beschreibung: "Alle Figuren rund um das gewählte Feld werden ein Feld "
-                + "nach außen geschoben, soweit dort Platz ist. Könige bleiben "
-                + "stehen."
+            art: "ablauf",
+            beschreibung: "Nach dem nächsten Zug ist dein Team sofort noch "
+                + "einmal am Zug. Der König des Gegners bleibt dabei unantastbar."
         },
         wiedergeburt: {
             titel: "Wiedergeburt",
@@ -185,7 +220,7 @@ const SCHACH_VARIANTEN = {
         {
             id: "klein",
             titel: "Kleines Brett",
-            beschreibung: "6 mal 6 Felder, ohne Läufer und ohne Rochade — kurze Partien.",
+            beschreibung: "6 mal 6 Felder, ohne Läufer — kurze, scharfe Partien.",
             breite: 6,
             hoehe: 6,
             aufstellung:
@@ -195,14 +230,15 @@ const SCHACH_VARIANTEN = {
                 + "......"
                 + "BBBBBB"
                 + "TSDKST",
-            rochade: false,
+            rochade: true,
             koenigSchlagbar: false,
             bonusFelder: []
         },
         {
             id: "gross",
             titel: "Großes Brett",
-            beschreibung: "10 mal 8 Felder mit je zwei Läuferpaaren — mehr Platz, längere Partien.",
+            beschreibung: "10 mal 8 Felder mit je zwei Läuferpaaren — mehr Platz, "
+                + "längere Partien, lange Diagonalen.",
             breite: 10,
             hoehe: 8,
             aufstellung:
@@ -214,7 +250,7 @@ const SCHACH_VARIANTEN = {
                 + ".........."
                 + "BBBBBBBBBB"
                 + "TSLLDKLLST",
-            rochade: false,
+            rochade: true,
             koenigSchlagbar: false,
             bonusFelder: []
         },
@@ -235,7 +271,7 @@ const SCHACH_VARIANTEN = {
                 + "................"
                 + "BBBBBBBBBBBBBBBB"
                 + "TSLDKLSTTSLDKLST",
-            rochade: false,
+            rochade: true,
             koenigSchlagbar: true,
             bonusFelder: []
         },
@@ -356,8 +392,13 @@ const SCHACH_VARIANTEN = {
      * bei den Punkten im Würfel-Quizz.
      */
     faehigkeitenErklaerung() {
+        const anzahl = SCHACH_VARIANTEN.BONUS_ANZAHL
+            .map((eintrag) => eintrag.anzahl + " mit " + eintrag.chance + " Prozent")
+            .join(", ");
+
         let text = "Alle " + SCHACH_VARIANTEN.BONUS_ABSTAND
-            + " Halbzüge erscheint ein Würfel auf einem freien Feld, höchstens "
+            + " Halbzüge erscheinen Würfel auf freien Feldern — meist einer, "
+            + "manchmal mehr (" + anzahl + "). Es liegen nie mehr als "
             + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig. Wer mit einer "
             + "Figur darauf zieht, sammelt die Fähigkeit für sein Team ein.\n\n"
             + "Welche es wird, hängt von der Stufe ab:\n";

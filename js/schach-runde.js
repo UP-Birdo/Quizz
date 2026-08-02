@@ -198,6 +198,15 @@ const SCHACH_RUNDE = {
                         wirkung: (typeof eintrag.wirkung === "string") ? eintrag.wirkung : "",
                         felder: Array.isArray(eintrag.felder)
                             ? eintrag.felder.filter((feld) => Number.isInteger(feld) && feld >= 0)
+                            : [],
+                        /* Alle Bewegungen dieses Eintrags — daraus zeichnet der
+                           Bildschirm die Pfeile. Ein Zug hat einen Weg, ein
+                           Erdbeben mehrere. */
+                        wege: Array.isArray(eintrag.wege)
+                            ? eintrag.wege
+                                .filter((weg) => weg && Number.isInteger(weg.von)
+                                    && Number.isInteger(weg.nach) && weg.von >= 0 && weg.nach >= 0)
+                                .map((weg) => ({ von: weg.von, nach: weg.nach }))
                             : []
                     });
                 }
@@ -219,6 +228,36 @@ const SCHACH_RUNDE = {
     /* ---------------------------------------------------------------- *
      * Bonusfelder und Fähigkeiten
      * ---------------------------------------------------------------- */
+
+    /*
+     * Was eine Figurenart wert ist — für die Bilanz unter dem Brett.
+     * Die üblichen Schachwerte; der König zählt nicht mit, er kann nicht
+     * verloren gehen (ausser auf dem Doppelbrett, wo die Partie dann ohnehin
+     * vorbei ist).
+     */
+    FIGUR_WERT: { B: 1, S: 3, L: 3, T: 5, D: 9, K: 0 },
+
+    /*
+     * Bilanz einer Seite: was sie erbeutet hat, was sie verloren hat, und die
+     * Differenz nach Figurenwert.
+     */
+    bilanz(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const gegner = SCHACH.gegner(farbe);
+
+        /* Was der Gegner verloren hat, hat diese Seite geschlagen. */
+        const geschlagen = stand.verloren[gegner] || [];
+        const verloren = stand.verloren[farbe] || [];
+
+        const wert = (liste) => liste.reduce(
+            (summe, art) => summe + (SCHACH_RUNDE.FIGUR_WERT[art] || 0), 0);
+
+        return {
+            geschlagen: geschlagen.slice(),
+            verloren: verloren.slice(),
+            punkte: wert(geschlagen) - wert(verloren)
+        };
+    },
 
     /* Welche Würfel liegen gerade auf dem Brett? */
     offeneBonusFelder(runde) {
@@ -282,25 +321,49 @@ const SCHACH_RUNDE = {
         }
 
         const basis = (runde.id || "partie") + "|" + runde.zugZaehler;
-        const feld = freie[Math.floor(SCHACH_RUNDE._zufallsWert(basis + "|feld") * freie.length)];
-        const art = SCHACH_VARIANTEN.faehigkeitZiehen(SCHACH_RUNDE._zufallsWert(basis + "|art"));
 
-        if (!art) {
+        /* Meist einer, manchmal zwei, sehr selten drei — und nie mehr, als
+           insgesamt liegen dürfen. */
+        const gewuenscht = SCHACH_VARIANTEN.anzahlZiehen(
+            SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
+        const moeglich = Math.min(gewuenscht,
+            SCHACH_VARIANTEN.BONUS_HOECHSTENS - runde.bonus.length, freie.length);
+
+        const neue = [];
+
+        for (let nummer = 0; nummer < moeglich; nummer++) {
+            const marke = basis + "|" + nummer;
+            const stelle = Math.floor(SCHACH_RUNDE._zufallsWert(marke + "|feld") * freie.length);
+            const feld = freie[stelle];
+            const art = SCHACH_VARIANTEN.faehigkeitZiehen(
+                SCHACH_RUNDE._zufallsWert(marke + "|art"));
+
+            if (!art) {
+                continue;
+            }
+
+            freie.splice(stelle, 1);
+            runde.bonus.push({ feld: feld, art: art });
+            neue.push({ feld: feld, art: art });
+        }
+
+        if (neue.length === 0) {
             return;
         }
 
-        runde.bonus.push({ feld: feld, art: art });
+        const namen = neue.map((eintrag) => SCHACH_VARIANTEN.faehigkeitTitel(eintrag.art)
+            + " (" + SCHACH_VARIANTEN.stufeVon(eintrag.art).titel + ") auf "
+            + SCHACH.feldName(eintrag.feld, SCHACH.breiteVon(runde.stand),
+                SCHACH.hoeheVon(runde.stand)));
+
         runde.verlauf.push({
-            text: SCHACH_VARIANTEN.faehigkeitTitel(art) + " ("
-                + SCHACH_VARIANTEN.stufeVon(art).titel + ") erscheint auf "
-                + SCHACH.feldName(feld, SCHACH.breiteVon(runde.stand),
-                    SCHACH.hoeheVon(runde.stand)),
+            text: (neue.length === 1 ? "Es erscheint: " : "Es erscheinen: ") + namen.join(", "),
             wer: "",
             farbe: runde.stand.amZug,
             von: -1,
             nach: -1,
             wirkung: "erscheint",
-            felder: [feld]
+            felder: neue.map((eintrag) => eintrag.feld)
         });
         SCHACH_RUNDE._verlaufKuerzen(runde);
     },
@@ -334,6 +397,7 @@ const SCHACH_RUNDE = {
         const neu = SCHACH_RUNDE.kopieren(alt);
         const ziel = Number.isInteger(zielFeld) ? zielFeld : -1;
         let betroffen = [];
+        let wege = [];
         let zusatzText = "";
 
         if (beschreibung.art === "zugmuster") {
@@ -351,6 +415,7 @@ const SCHACH_RUNDE = {
             }
             neu.stand = wirkung.stand;
             betroffen = wirkung.felder;
+            wege = wirkung.wege || [];
 
         } else if (beschreibung.art === "ziel") {
             const wirkung = SCHACH_RUNDE._zielWirkung(neu, art, farbe, ziel);
@@ -359,6 +424,7 @@ const SCHACH_RUNDE = {
             }
             neu.stand = wirkung.stand;
             betroffen = wirkung.felder;
+            wege = wirkung.wege || [];
             zusatzText = wirkung.text ? (": " + wirkung.text) : "";
 
         } else {
@@ -376,7 +442,8 @@ const SCHACH_RUNDE = {
             von: -1,
             nach: -1,
             wirkung: art,
-            felder: betroffen
+            felder: betroffen,
+            wege: wege
         });
         SCHACH_RUNDE._verlaufKuerzen(neu);
 
@@ -509,6 +576,17 @@ const SCHACH_RUNDE = {
             return neu;
         }
 
+        /*
+         * Wer schon in einem Team ist, bleibt darin. Ein Wechsel mitten in der
+         * Partie hiesse: erst für die eine Seite ziehen, dann für die andere —
+         * bei einer Partie, die über Tage läuft, ist das keine theoretische
+         * Möglichkeit. Wer wirklich raus will, verlässt das Team ausdrücklich.
+         */
+        const bisher = SCHACH_RUNDE.teamVon(neu, spielerId);
+        if (bisher && bisher !== farbe) {
+            return neu;
+        }
+
         neu.teams.weiss = neu.teams.weiss.filter((id) => id !== spielerId);
         neu.teams.schwarz = neu.teams.schwarz.filter((id) => id !== spielerId);
         neu.teams[farbe].push(spielerId);
@@ -604,12 +682,20 @@ const SCHACH_RUNDE = {
             neu.verloren[SCHACH.gegner(farbe)].push("B");
         }
 
+        /* Bei der Rochade bewegen sich zwei Figuren — beide bekommen ihren
+           Pfeil. */
+        const wege = [{ von: von, nach: nach }];
+        if (ergebnis.zug.rochade && Number.isInteger(ergebnis.zug.turmVon)) {
+            wege.push({ von: ergebnis.zug.turmVon, nach: ergebnis.zug.turmNach });
+        }
+
         neu.verlauf.push({
             text: ergebnis.text,
             wer: wer || "",
             farbe: farbe,
             von: von,
-            nach: nach
+            nach: nach,
+            wege: wege
         });
         SCHACH_RUNDE._verlaufKuerzen(neu);
 

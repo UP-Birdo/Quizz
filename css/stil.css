@@ -747,6 +747,13 @@ body {
  * Spalten und Reihen hat) und wird auf die volle Fläche gezogen. Deshalb
  * stimmt er auf jeder Brettgröße, ohne dass irgendwo Pixel gerechnet werden.
  */
+/*
+ * Der Pfeil liegt über den Feldern, aber hinter den Figuren — technisch geht
+ * das nur über die Deckkraft: Die Figuren stecken in den Feld-Knöpfen, ein
+ * Element darüber lässt sich nicht zwischen Feld und Figur schieben. Mit
+ * halber Deckkraft und schmalem Strich bleibt jede Figur voll lesbar, und der
+ * Pfeil stört sie nicht.
+ */
 .zug-pfeil {
     position: absolute;
     inset: 0;
@@ -754,13 +761,13 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 3;
-    opacity: 0.85;
+    opacity: 0.5;
 }
 
 .zug-pfeil-unten {
     stroke: var(--pfeil-rand);
     fill: var(--pfeil-rand);
-    stroke-width: 0.2;
+    stroke-width: 0.16;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
@@ -768,9 +775,57 @@ body {
 .zug-pfeil-oben {
     stroke: var(--pfeil);
     fill: var(--pfeil);
-    stroke-width: 0.12;
+    stroke-width: 0.09;
     stroke-linecap: round;
     stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------ *
+ * Bilanz der geschlagenen Figuren
+ * ------------------------------------------------------------------ */
+
+.bilanz-reihe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.bilanz-seite {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 200px;
+    min-width: 0;
+}
+
+.bilanz-beute {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1px;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+/* Im Kleinen braucht die Figur keinen dicken Umriss. */
+.bilanz-figur {
+    text-shadow: 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.bilanz-punkte {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--schrift-leise);
+    white-space: nowrap;
+}
+
+.bilanz-vorn {
+    color: var(--gut);
 }
 
 .feld {
