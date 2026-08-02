@@ -465,6 +465,16 @@ Erkannt wird der alte Stand an seinem Inhalt (`stand`, `teams`, `verlauf`,
 `zugZaehler`), nicht an `datenVersion`. Eine Versionsnummer allein hätte sich
 auch in einer leeren Ablage finden lassen; der Inhalt lügt nicht.
 
+**Die Kehrseite, ehrlich benannt:** Derselbe Pfad heißt auch, dass ein Gerät mit
+der ALTEN Seite weiter hineinschreiben kann. Zieht dort jemand, steht wieder
+eine einzelne Partie im Pfad. Die laufende Partie überlebt das (sie wird beim
+nächsten Laden erneut zur *Erste Partie*), zusätzlich angelegte Partien wären
+aber verloren. Verhindern ließe sich das nur mit einem neuen Pfad — und der
+hätte genau das gekostet, was die Bedingung des Auftrags war. Der Preis ist
+also bewusst gewählt und dafür klein: Beim Umstieg lädt jeder die Seite einmal
+neu, danach ist das Thema für immer erledigt. Der Hinweis steht als Kasten in
+`DEPLOYMENT.md`, Abschnitt 1.
+
 ### Warum das Doppelbrett keine zwei Bretter ist
 
 Gewünscht waren „zwei Bretter nebeneinander, wo die Figuren überall hinziehen".

@@ -66,6 +66,15 @@ sonst teilen sich beide denselben Gerätespeicher):
     Partie in der Datenbank, muss sie hier als **Erste Partie** stehen — mit
     denselben Teams, demselben Brett und demselben Stand wie vorher. Fehlt sie
     oder steht sie auf der Grundstellung, **nicht ausliefern**.
+
+> **Beim Umstieg alle Geräte einmal neu laden lassen.** Ein Gerät, auf dem noch
+> die Seite von vor v1.4 offen ist, kennt die Sammlung nicht: Sein nächster Zug
+> schreibt wieder eine einzelne Partie an denselben Pfad. Die laufende Partie
+> überlebt das (sie wird beim Laden erneut zur *Erste Partie*), aber **alle
+> zusätzlich angelegten Partien wären weg**. Deshalb: nach dem Hochladen kurz
+> Bescheid geben, dass jeder die Seite einmal neu lädt, und erst danach neue
+> Partien anlegen. Wer die Seite auf dem Startbildschirm liegen hat, schließt
+> sie einmal ganz und öffnet sie neu.
 12. **Neue Partie** anlegen: Es kommt erst die Auswahl der Spielart, dann die
     Frage nach dem Namen. Danach öffnet sich die Partie selbst.
 13. In einem Team **Mitspielen**, im zweiten Fenster das andere Team, beide
