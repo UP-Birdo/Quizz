@@ -3,6 +3,46 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.0 — 2026-08-02
+
+Die Spielart **Fähigkeiten sammeln** ist jetzt ein eigenes Spiel: Würfel
+erscheinen über die Partie verteilt, in fünf Seltenheitsstufen, mit zehn
+Fähigkeiten.
+
+- **Würfel statt Punkt.** Wo eine Fähigkeit liegt, steht jetzt ein gezeichneter
+  Würfel mit Fragezeichen — in der **Farbe seiner Seltenheit**. Man sieht schon
+  von weitem, ob sich der Umweg lohnt. Gezeichnet, kein Bild: Er bleibt auf
+  jeder Feldgröße scharf, vom 6-mal-6-Brett bis zum Doppelbrett auf dem Handy.
+- **Fähigkeiten erscheinen über die Zeit**, alle sechs Halbzüge eine auf einem
+  freien Feld, höchstens drei gleichzeitig. Eine Partie startet also leer.
+- **Fünf Stufen mit festen Chancen:** Einfach 40 Prozent, Gewöhnlich 28,
+  Ungewöhnlich 18, Episch 10, Legendär 4. Innerhalb einer Stufe sind alle gleich
+  wahrscheinlich; die vollständige Liste steht hinter dem i-Knopf.
+- **Zehn Fähigkeiten**, zwei je Stufe:
+  - *Einfach:* **Sprung** (eine Figur zieht wie ein Springer), **Ausweichen**
+    (eine Figur zieht ein Feld in jede Richtung);
+  - *Gewöhnlich:* **Teleport** (auf ein freies Feld im Umkreis von zwei),
+    **Bauernschub** (alle eigenen Bauern rücken ein Feld vor);
+  - *Ungewöhnlich:* **Doppelzug** (sofort noch einmal am Zug), **Verstärkung**
+    (ein eigener Bauer wird zum Springer);
+  - *Episch:* **Schutzschild** (eine Figur lässt sich nicht schlagen),
+    **Fessel** (eine gegnerische Figur darf einen Zug lang nicht ziehen);
+  - *Legendär:* **Erdbeben** (alle Figuren rund um ein Feld werden nach außen
+    geschoben), **Wiedergeburt** (die zuletzt verlorene Figur kehrt zurück).
+- **Fähigkeiten, die ein Feld brauchen, fragen danach:** Nach dem Einsetzen sind
+  die möglichen Felder hervorgehoben, man tippt eines an. Welche Felder das sind,
+  entscheidet das Regelwerk — nicht der Bildschirm.
+- **Alle sehen die Wirkung.** Die betroffenen Felder leuchten auf jedem Gerät
+  kurz auf, nicht nur bei dem, der die Fähigkeit eingesetzt hat.
+- **Nicht gewürfelt, sondern gerechnet.** Feld und Fähigkeit ergeben sich aus
+  Partie-Kennung und Zugzähler. Alle Geräte sehen dadurch dieselben Würfel,
+  ohne sich abzustimmen.
+- **Angefangene Partien laufen weiter:** Wer schon in einer Fähigkeiten-Partie
+  spielt, behält seine vier festen Felder und die eingesammelten Fähigkeiten.
+- Auf König und Matt wurde geachtet: Das Schild wirkt nicht auf den König, der
+  König wird nicht gefesselt, und das Erdbeben lässt Könige stehen. Sonst wäre
+  „Schachmatt" nicht mehr eindeutig.
+
 ## v1.9 — 2026-08-02
 
 - **Ein Pfeil zeigt den letzten Zug.** Er bleibt auf dem Brett stehen, bis der

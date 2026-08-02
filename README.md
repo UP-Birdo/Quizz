@@ -194,22 +194,38 @@ Die Spielart wird beim Anlegen gewählt und bleibt für diese Partie fest.
 | **Kleines Brett** | 6 mal 6 | Ohne Läufer und ohne Rochade — kurze Partien. |
 | **Großes Brett** | 10 mal 8 | Je zwei Läuferpaare, mehr Platz. |
 | **Doppelbrett** | 16 mal 8 | Zwei Bretter nebeneinander, zwei Armeen je Seite. Die Figuren ziehen über beide Hälften. **Kein Schach und kein Matt:** Wer zuerst beide Könige verliert, verliert. |
-| **Fähigkeiten sammeln** | 8 mal 8 | Auf vier Feldern liegen Fähigkeiten. Wer mit einer Figur darauf zieht, sammelt sie für sein Team ein. |
+| **Fähigkeiten sammeln** | 8 mal 8 | Immer wieder erscheinen Würfel mit Fähigkeiten — von einfach bis legendär. Wer mit einer Figur darauf zieht, sammelt sie für sein Team ein. |
 
 ### Die Fähigkeiten
 
-In der Spielart **Fähigkeiten sammeln** liegen vier Fähigkeiten auf dem Brett
-(erkennbar am grünen Punkt in der Ecke des Feldes), für beide Seiten gleich
-weit entfernt. Eingesetzt werden sie über den Knopf unter dem Brett, solange
-das eigene Team am Zug ist:
+In der Spielart **Fähigkeiten sammeln** erscheinen alle sechs Halbzüge **Würfel**
+auf freien Feldern — höchstens drei gleichzeitig. Die Farbe des Würfels zeigt,
+wie selten die Fähigkeit darin ist. Wer mit einer Figur darauf zieht, sammelt sie
+für sein Team ein; eingesetzt wird sie später über den Knopf unter dem Brett,
+solange das eigene Team am Zug ist.
 
-- **Sprung** — beim nächsten Zug darf eine beliebige eigene Figur zusätzlich
-  wie ein Springer ziehen;
-- **Doppelzug** — nach dem nächsten Zug ist das eigene Team sofort noch einmal
-  am Zug.
+| Stufe | Chance | Fähigkeiten |
+|---|---|---|
+| **Einfach** (grau) | 40 % | **Sprung** — eine Figur zieht zusätzlich wie ein Springer. **Ausweichen** — eine Figur zieht zusätzlich ein Feld in jede Richtung. |
+| **Gewöhnlich** (grün) | 28 % | **Teleport** — eine Figur springt auf ein freies Feld im Umkreis von zwei, über alles hinweg. **Bauernschub** — alle eigenen Bauern rücken ein Feld vor. |
+| **Ungewöhnlich** (blau) | 18 % | **Doppelzug** — sofort noch einmal am Zug. **Verstärkung** — ein eigener Bauer wird zum Springer. |
+| **Episch** (lila) | 10 % | **Schutzschild** — eine eigene Figur lässt sich nicht schlagen. **Fessel** — eine gegnerische Figur darf einen Zug lang nicht ziehen. |
+| **Legendär** (gelb) | 4 % | **Erdbeben** — alle Figuren rund um ein Feld werden nach außen geschoben. **Wiedergeburt** — die zuletzt verlorene Figur kehrt auf die Grundreihe zurück. |
+
+Innerhalb einer Stufe sind alle gleich wahrscheinlich; die einzelne Chance ist
+also die halbe Stufenchance. Dieselbe Übersicht steht in der App hinter dem **i**
+bei den Fähigkeiten.
+
+Manche Fähigkeiten brauchen ein Feld (etwa Schutzschild oder Erdbeben). Nach dem
+Einsetzen sind die möglichen Felder hervorgehoben — einfach eines antippen.
 
 Eine eingesetzte Fähigkeit ist verbraucht. Solange sie wirkt, steht sie oben in
-der Leiste — auch für die Gegenseite sichtbar.
+der Leiste, und alle betroffenen Felder leuchten kurz auf — **bei allen
+Mitspielern**, nicht nur bei dem, der sie eingesetzt hat.
+
+**Auf König und Matt wird geachtet:** Das Schild wirkt nicht auf den König, der
+König wird nicht gefesselt, und das Erdbeben lässt Könige stehen. Sonst wäre
+nicht mehr eindeutig, wann eine Partie durch Schachmatt endet.
 
 ## Der dritte Tab: Rangliste
 

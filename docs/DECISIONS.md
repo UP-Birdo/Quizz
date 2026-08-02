@@ -632,6 +632,74 @@ Spiel, das über den ganzen Tag läuft, ist die zweite Frage die häufigere.
 Gezeichnet wird in Feldkoordinaten statt in Pixeln. Damit stimmt der Pfeil auf
 dem 6er-Brett genauso wie auf dem Doppelbrett, ohne einen einzigen Sonderfall.
 
+## Die Fähigkeiten-Spielart (2026-08-02, v2.0)
+
+Gewünscht waren fünf Seltenheitsstufen, zufälliges Erscheinen, neue Fähigkeiten
+je Stufe, ein Würfel-Bild auf den Feldern und Animationen für alle.
+
+### Warum der Würfel gezeichnet und nicht eingefügt ist
+
+Der Nutzer hat ein Bild geschickt (bunter Würfel mit Fragezeichen) mit der
+Bitte, den Hintergrund wegzuschneiden und es auf die Felder zu legen. Gebaut ist
+stattdessen ein **gezeichneter Würfel als SVG**. Drei Gründe, in dieser
+Reihenfolge:
+
+1. **Er trägt die Seltenheit.** Ein SVG bekommt seine Farbe aus der Stufe — ein
+   grauer Würfel ist etwas anderes als ein goldener. Mit einer Bilddatei
+   bräuchte es fünf Dateien, die jemand pflegen müsste.
+2. **Er bleibt scharf.** Auf dem Doppelbrett ist ein Feld auf dem Handy rund 20
+   Pixel breit, auf dem 6er-Brett am Rechner das Zehnfache. Ein Bild müsste für
+   beides taugen.
+3. **Haus-Regel.** Im Projekt ist alles gezeichnet (Auge, App-Zeichen,
+   Figuren) — schon weil ein fremdes Bild auf einer öffentlichen Seite eine
+   Rechtefrage aufwirft, die niemand geprüft hat.
+
+Der Preis: Er sieht nicht exakt aus wie die Vorlage. Das ist vertretbar, weil
+die Vorlage die Idee transportierte („bunter Würfel mit Fragezeichen"), nicht
+ein bestimmtes Bild.
+
+### Warum vier Arten statt zehn Sonderfälle
+
+Zehn Fähigkeiten könnten zehn Sonderfälle im Bildschirm bedeuten. Stattdessen
+gibt es vier **Arten** (`zugmuster`, `ablauf`, `sofort`, `ziel`), und jede
+Fähigkeit nennt ihre. Der Bildschirm kennt nur diese vier; eine elfte Fähigkeit
+kostet dort keine Zeile.
+
+Besonders trägt das bei den Zugmustern: Sprung, Ausweichen und Teleport sind
+dieselbe Mechanik mit drei Formen. Und Fähigkeiten mit Ziel brauchen alle
+denselben Ablauf — Knopf, Felder hervorheben, Feld antippen.
+
+### Warum die Zielfelder ausprobiert und nicht aufgezählt werden
+
+`zielFelder()` fragt für jedes Feld die Wirkung selbst („kommt dabei etwas
+heraus?") statt die Bedingungen ein zweites Mal aufzuschreiben. Eine zweite
+Liste wäre schneller, würde aber irgendwann von der ersten abweichen — und dann
+zeigte die App Felder an, auf denen die Regel nichts zulässt. Das ist dieselbe
+Überlegung wie bei `rochadeLage`: Regelfragen beantwortet das Regelwerk.
+
+### Warum König und Matt ausgenommen sind
+
+Drei Ausnahmen sind keine Bequemlichkeit, sondern Bedingung: Das Schild wirkt
+nicht auf den König, der König wird nicht gefesselt, und das Erdbeben lässt
+Könige stehen.
+
+Ohne sie wäre „Schachmatt" nicht mehr eindeutig: Ein geschützter König kann
+nicht geschlagen werden, ein gefesselter König wäre ohne eigenen Fehler matt,
+und ein verschobener König könnte aus dem Matt heraus- oder hineinrutschen — die
+Partie endete dann durch eine Fähigkeit statt durch einen Zug. Dieselbe
+Überlegung hat beim Doppelbrett zum schlagbaren König geführt: Lieber eine
+klare eigene Regel als eine halbe Schachregel, die in Sonderfällen falsch liegt.
+
+### Warum eine Partie leer startet
+
+Bis v1.9 lagen vier Fähigkeiten von Beginn an fest auf dem Brett. Das hatte den
+Reiz eines Wettrennens, aber nach dem Einsammeln war die Spielart vorbei. Jetzt
+erscheinen sie über die ganze Partie — das hält sie bis zum Ende interessant und
+war der Kern des Wunsches („alle paar Runden").
+
+Höchstens drei gleichzeitig, damit das Brett lesbar bleibt. Wer alles einsammelt,
+bekommt Nachschub; wer sie liegen lässt, blockiert sich selbst.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
@@ -671,6 +739,18 @@ Verwaltung wäre bequemer, würde aber bedeuten, dass ein Passwort im Umlauf jed
 Zugang öffnet.
 
 ## Versions-Historie
+
+### v2.0 — 2026-08-02
+
+Die Fähigkeiten-Spielart, ausgebaut von zwei festen auf zehn erscheinende
+Fähigkeiten in fünf Stufen. Der größte Eingriff ins Regelwerk seit v1.4.
+
+Getragen hat ihn die Aufteilung in vier Arten: Zehn Fähigkeiten, aber nur vier
+Mechaniken, und der Bildschirm kennt nur die vier. Die Regelarbeit steckte
+weniger im Bauen als im Ausschließen — jede der drei Ausnahmen für den König
+ist eine Antwort auf die Frage „was passiert damit mit Schachmatt".
+
+Meilenstein: Voll-Backup unter `Backup\Quizz\v2.0\`.
 
 ### v1.6 bis v1.9 — 2026-08-02
 

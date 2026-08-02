@@ -61,6 +61,17 @@ const TEAM_SCHACH = {
      */
     rochadeZiele: {},
 
+    /*
+     * Fähigkeit, die gerade auf ein Zielfeld wartet ("" = keine), und die
+     * Felder, die dafür in Frage kommen. Beides nur auf diesem Gerät — der
+     * gemeinsame Stand erfährt erst vom Einsatz, wenn er feststeht.
+     */
+    zielFaehigkeit: "",
+    zielFelder: [],
+
+    /* Bis zu welchem Zugzähler die Wirkung einer Fähigkeit gezeigt wurde. */
+    wirkungBis: {},
+
     /* Verhindert zwei Züge gleichzeitig vom selben Gerät. */
     ziehtGerade: false,
 
@@ -73,6 +84,9 @@ const TEAM_SCHACH = {
 
     /* Dauer der Zugbewegung in Millisekunden; muss zur Stildatei passen. */
     ANIMATION_MS: 260,
+
+    /* Dauer des Aufleuchtens bei einer Fähigkeit; ebenfalls in der Stildatei. */
+    WIRKUNG_MS: 900,
 
     verbinden(abgleich) {
         TEAM_SCHACH.abgleich = abgleich;
@@ -213,8 +227,12 @@ const TEAM_SCHACH = {
                     TEAM_SCHACH._figurZeichen(figur)));
             }
 
-            if (variante.bonusFelder.some((eintrag) => eintrag.feld === feld)) {
+            /* Angedeutete Würfel: Sie zeigen, dass in dieser Spielart welche
+               erscheinen — wo genau, entscheidet später die Ziehung. */
+            const beispiel = variante.bonusFelder.find((eintrag) => eintrag.feld === feld);
+            if (beispiel) {
                 zelle.classList.add("feld-bonus");
+                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(beispiel.art));
             }
 
             vorschau.appendChild(zelle);
@@ -312,6 +330,38 @@ const TEAM_SCHACH = {
         /* Erst wenn das Brett im Bildschirm steht, lässt sich die Feldgröße
            messen — deshalb steht die Bewegung ganz am Ende. */
         TEAM_SCHACH._zugAnimieren(halter, partie, person);
+        TEAM_SCHACH._wirkungAnimieren(halter, partie);
+    },
+
+    /*
+     * Lässt die Felder aufleuchten, auf die eine Fähigkeit gewirkt hat.
+     *
+     * Wie bei der Zugbewegung stehen die betroffenen Felder im Verlauf —
+     * deshalb sieht JEDES Gerät die Wirkung, nicht nur das auslösende. Eine
+     * Fähigkeit, die nur der Auslöser sieht, wäre die falsche Lösung: Der
+     * Gegner müsste sonst raten, warum plötzlich eine Figur woanders steht.
+     */
+    _wirkungAnimieren(halter, partie) {
+        const letzter = partie.verlauf[partie.verlauf.length - 1];
+
+        if (!letzter || !letzter.wirkung || letzter.felder.length === 0) {
+            TEAM_SCHACH.wirkungBis[partie.id] = partie.zugZaehler;
+            return;
+        }
+        if (TEAM_SCHACH.wirkungBis[partie.id] === partie.zugZaehler) {
+            return;
+        }
+        TEAM_SCHACH.wirkungBis[partie.id] = partie.zugZaehler;
+
+        for (const feld of letzter.felder) {
+            const zelle = halter.querySelector("[data-feld=\"" + feld + "\"]");
+            if (!zelle) {
+                continue;
+            }
+            zelle.classList.add("feld-wirkung");
+            window.setTimeout(() => zelle.classList.remove("feld-wirkung"),
+                TEAM_SCHACH.WIRKUNG_MS + 60);
+        }
     },
 
     _partieKopfBauen(partie) {
@@ -485,13 +535,22 @@ const TEAM_SCHACH = {
                 zelle.appendChild(zeichen);
             }
 
-            /* Liegt hier eine Fähigkeit? */
+            /* Liegt hier ein Würfel mit einer Fähigkeit? */
             const bonusHier = bonus.find((eintrag) => eintrag.feld === feld);
             if (bonusHier) {
+                const stufe = SCHACH_VARIANTEN.stufeVon(bonusHier.art);
                 zelle.classList.add("feld-bonus");
-                zelle.title = "Fähigkeit: " + SCHACH_VARIANTEN.faehigkeitTitel(bonusHier.art);
+                zelle.title = SCHACH_VARIANTEN.faehigkeitTitel(bonusHier.art)
+                    + " (" + stufe.titel + ")";
                 zelle.setAttribute("aria-label",
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
+                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(bonusHier.art));
+            }
+
+            /* Wartet die Fähigkeit auf ein Ziel? Dann sind die möglichen
+               Felder markiert. */
+            if (TEAM_SCHACH.zielFelder.indexOf(feld) !== -1) {
+                zelle.classList.add("feld-wahl");
             }
 
             if (feld === TEAM_SCHACH.gewaehltesFeld) {
@@ -671,6 +730,75 @@ const TEAM_SCHACH = {
     },
 
     /*
+     * Der Würfel, der eine Fähigkeit auf dem Brett anzeigt.
+     *
+     * Gezeichnet als SVG statt als Bilddatei: Er hat damit von Haus aus keinen
+     * Hintergrund, bleibt auf jeder Feldgröße scharf (von 6 mal 6 bis zum
+     * Doppelbrett auf dem Handy) — und er kann seine FARBE aus der
+     * Seltenheitsstufe nehmen. Man sieht einem Würfel also schon von weitem an,
+     * was er wert ist. Eine Bilddatei je Stufe wäre fünfmal dasselbe Bild in
+     * fünf Farben, das jemand pflegen müsste.
+     *
+     * Die drei Seitenflächen entstehen aus einer Grundfarbe in drei
+     * Helligkeiten — deckend, damit auf hellen Feldern nichts durchscheint.
+     */
+    _wuerfelBauen(art) {
+        const stufe = SCHACH_VARIANTEN.stufeVon(art);
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "wuerfel");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.setAttribute("aria-hidden", "true");
+
+        const flaechen = [
+            /* Oberseite, hell. */
+            { punkte: "50,6 92,30 50,54 8,30", ton: 1.35 },
+            /* Linke Seite, dunkel. */
+            { punkte: "8,30 50,54 50,96 8,72", ton: 0.7 },
+            /* Rechte Seite, mittel. */
+            { punkte: "92,30 50,54 50,96 92,72", ton: 1 }
+        ];
+
+        for (const flaeche of flaechen) {
+            const teil = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            teil.setAttribute("points", flaeche.punkte);
+            teil.setAttribute("fill", TEAM_SCHACH._tonAendern(stufe.farbe, flaeche.ton));
+            teil.setAttribute("stroke", TEAM_SCHACH._tonAendern(stufe.farbe, 0.45));
+            teil.setAttribute("stroke-width", "3");
+            teil.setAttribute("stroke-linejoin", "round");
+            svg.appendChild(teil);
+        }
+
+        /* Das Fragezeichen auf der rechten Seitenfläche. */
+        const zeichen = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        zeichen.setAttribute("x", "70");
+        zeichen.setAttribute("y", "80");
+        zeichen.setAttribute("text-anchor", "middle");
+        zeichen.setAttribute("class", "wuerfel-zeichen");
+        zeichen.textContent = "?";
+        svg.appendChild(zeichen);
+
+        return svg;
+    },
+
+    /*
+     * Hellt eine Farbe auf oder dunkelt sie ab (Faktor über oder unter 1).
+     * Gerechnet statt fünfmal drei Farbwerte von Hand zu pflegen — eine neue
+     * Stufe braucht so nur eine einzige Farbe.
+     */
+    _tonAendern(farbe, faktor) {
+        const zahl = parseInt(String(farbe).replace("#", ""), 16);
+
+        const teile = [
+            (zahl >> 16) & 255,
+            (zahl >> 8) & 255,
+            zahl & 255
+        ].map((wert) => Math.max(0, Math.min(255, Math.round(wert * faktor))));
+
+        return "rgb(" + teile.join(",") + ")";
+    },
+
+    /*
      * Die Figuren sind Schriftzeichen aus dem Unicode-Schachblock, keine
      * Emojis. Das angehängte Zeichen erzwingt die Text-Darstellung, damit kein
      * Gerät sie doch bunt als Emoji zeichnet.
@@ -751,7 +879,7 @@ const TEAM_SCHACH = {
 
     _faehigkeitenBauen(partie, person) {
         const variante = SCHACH_RUNDE.varianteVon(partie);
-        if (variante.bonusFelder.length === 0) {
+        if (!variante.faehigkeiten) {
             return null;
         }
 
@@ -761,10 +889,33 @@ const TEAM_SCHACH = {
         const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
         const offen = SCHACH_RUNDE.offeneBonusFelder(partie);
 
+        /* Wartet gerade eine Fähigkeit auf ihr Ziel? Dann zählt nur das. */
+        if (TEAM_SCHACH.zielFaehigkeit) {
+            const hinweis = TEAM_SCHACH._element("p", "erklaerung erklaerung-rochade",
+                SCHACH_VARIANTEN.faehigkeitTitel(TEAM_SCHACH.zielFaehigkeit)
+                + ": Tippe eines der hervorgehobenen Felder an.");
+            karte.appendChild(hinweis);
+
+            const leiste = TEAM_SCHACH._element("div", "faehigkeit-zeile");
+            leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still knopf-klein",
+                () => {
+                    TEAM_SCHACH._auswahlAufheben();
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                }));
+            karte.appendChild(leiste);
+            return karte;
+        }
+
+        const bisNaechster = SCHACH_VARIANTEN.BONUS_ABSTAND
+            - (partie.zugZaehler % SCHACH_VARIANTEN.BONUS_ABSTAND);
+
         karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Auf dem Brett liegen noch " + offen.length + " von "
-            + variante.bonusFelder.length + " Fähigkeiten. Wer mit einer Figur "
-            + "darauf zieht, sammelt sie ein."));
+            "Auf dem Brett liegen " + offen.length + " von höchstens "
+            + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " Würfeln. "
+            + (offen.length >= SCHACH_VARIANTEN.BONUS_HOECHSTENS
+                ? "Es erscheint erst wieder einer, wenn einer eingesammelt wurde."
+                : "Der nächste erscheint in " + bisNaechster + " Halbzügen.")
+            + " Wer mit einer Figur darauf zieht, sammelt ihn ein."));
 
         for (const farbe of ["weiss", "schwarz"]) {
             const koennen = partie.faehigkeiten[farbe];
@@ -779,25 +930,43 @@ const TEAM_SCHACH = {
 
             for (let stelle = 0; stelle < koennen.length; stelle++) {
                 const art = koennen[stelle];
+                const stufe = SCHACH_VARIANTEN.stufeVon(art);
                 const darf = (meinTeam === farbe)
                     && SCHACH_RUNDE.darfZiehen(partie, person.id);
 
-                if (darf) {
-                    zeile.appendChild(TEAM_SCHACH._knopf(
-                        SCHACH_VARIANTEN.faehigkeitTitel(art) + " einsetzen",
-                        "knopf-still knopf-klein",
-                        () => TEAM_SCHACH.faehigkeitEinsetzen(partie, art)
-                    ));
-                } else {
-                    zeile.appendChild(TEAM_SCHACH._element("span", "chip chip-offen",
-                        SCHACH_VARIANTEN.faehigkeitTitel(art)));
-                }
+                const marke = darf
+                    ? TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
+                        "knopf-still knopf-klein faehigkeit-knopf",
+                        () => TEAM_SCHACH.faehigkeitEinsetzen(partie, art))
+                    : TEAM_SCHACH._element("span", "chip faehigkeit-marke",
+                        SCHACH_VARIANTEN.faehigkeitTitel(art));
+
+                /* Die Farbe der Stufe trägt die Marke — so sieht man sofort,
+                   wie selten die Fähigkeit war. */
+                marke.style.setProperty("--stufe-farbe", stufe.farbe);
+                marke.title = stufe.titel + " — " + SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+                zeile.appendChild(marke);
             }
 
             karte.appendChild(zeile);
         }
 
+        karte.appendChild(TEAM_SCHACH._infoKnopfBauen());
         return karte;
+    },
+
+    /* Der i-Knopf: erklärt Stufen und Chancen im Wortlaut. */
+    _infoKnopfBauen() {
+        const knopf = document.createElement("button");
+        knopf.type = "button";
+        knopf.className = "info-knopf";
+        knopf.textContent = "i";
+        knopf.setAttribute("aria-label", "Welche Fähigkeiten gibt es?");
+        knopf.title = "Welche Fähigkeiten gibt es?";
+        knopf.addEventListener("click", () => {
+            DIALOG.hinweis("Fähigkeiten", SCHACH_VARIANTEN.faehigkeitenErklaerung());
+        });
+        return knopf;
     },
 
     /* ---------------------------------------------------------------- *
@@ -887,6 +1056,7 @@ const TEAM_SCHACH = {
         const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, id);
         if (partie) {
             TEAM_SCHACH.animiertBis[id] = partie.zugZaehler;
+            TEAM_SCHACH.wirkungBis[id] = partie.zugZaehler;
         }
 
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
@@ -900,6 +1070,15 @@ const TEAM_SCHACH = {
 
     feldAngetippt(partie, person, feld) {
         if (!SCHACH_RUNDE.darfZiehen(partie, person.id)) {
+            return;
+        }
+
+        /* Wartet eine Fähigkeit auf ihr Ziel, gilt jeder Tipp ihr. */
+        if (TEAM_SCHACH.zielFaehigkeit) {
+            if (TEAM_SCHACH.zielFelder.indexOf(feld) === -1) {
+                return;
+            }
+            TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit, feld);
             return;
         }
 
@@ -961,6 +1140,8 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.gewaehltesFeld = -1;
         TEAM_SCHACH.moeglicheZiele = [];
         TEAM_SCHACH.rochadeZiele = {};
+        TEAM_SCHACH.zielFaehigkeit = "";
+        TEAM_SCHACH.zielFelder = [];
     },
 
     /*
@@ -1215,9 +1396,18 @@ const TEAM_SCHACH = {
         );
     },
 
+    /*
+     * Der Knopf an einer Fähigkeit. Braucht sie ein Ziel, wird hier nur der
+     * Auswahl-Zustand gesetzt — der Einsatz folgt beim Antippen des Feldes.
+     */
     async faehigkeitEinsetzen(partie, art) {
         const person = TEAM_SCHACH._ich();
         if (!person) {
+            return;
+        }
+
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        if (!beschreibung) {
             return;
         }
 
@@ -1232,12 +1422,49 @@ const TEAM_SCHACH = {
             return;
         }
 
-        const neu = SCHACH_RUNDE.faehigkeitEinsetzen(partie, person.id, art, person.name);
-        if (!neu) {
-            await DIALOG.hinweis("Geht gerade nicht",
-                "Die Fähigkeit lässt sich nur einsetzen, solange dein Team am Zug ist.");
+        if (beschreibung.art === "ziel") {
+            const felder = SCHACH_RUNDE.zielFelder(partie, person.id, art);
+
+            if (felder.length === 0) {
+                await DIALOG.hinweis("Kein Ziel möglich",
+                    "Für " + SCHACH_VARIANTEN.faehigkeitTitel(art)
+                        + " gibt es auf diesem Brett gerade kein gültiges Feld. "
+                        + "Die Fähigkeit bleibt dir erhalten.");
+                return;
+            }
+
+            TEAM_SCHACH.gewaehltesFeld = -1;
+            TEAM_SCHACH.moeglicheZiele = [];
+            TEAM_SCHACH.rochadeZiele = {};
+            TEAM_SCHACH.zielFaehigkeit = art;
+            TEAM_SCHACH.zielFelder = felder;
+            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
         }
+
+        await TEAM_SCHACH.faehigkeitAusfuehren(partie, art, -1);
+    },
+
+    /* Setzt die Fähigkeit wirklich ein — mit Ziel, wenn sie eines braucht. */
+    async faehigkeitAusfuehren(partie, art, zielFeld) {
+        const person = TEAM_SCHACH._ich();
+        if (!person) {
+            return;
+        }
+
+        const neu = SCHACH_RUNDE.faehigkeitEinsetzen(
+            partie, person.id, art, zielFeld, person.name);
+
+        TEAM_SCHACH._auswahlAufheben();
+
+        if (!neu) {
+            await DIALOG.hinweis("Geht gerade nicht",
+                "Die Fähigkeit lässt sich nur einsetzen, solange dein Team am Zug "
+                    + "ist — und nur auf ein gültiges Feld.");
+            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            return;
+        }
+
         await TEAM_SCHACH._sendenMitPruefung(neu, partie.zugZaehler);
     },
 

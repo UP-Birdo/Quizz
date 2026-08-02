@@ -36,19 +36,129 @@ const SCHACH_VARIANTEN = {
     STANDARD: "standard",
 
     /*
-     * Die Fähigkeiten, die man auf einem Bonusfeld aufsammeln kann.
-     * Wirkung: siehe schach.js (sprungAktiv, extraZug im Stand).
+     * Die Seltenheitsstufen. Die Summe der Chancen ergibt 100.
+     *
+     * Innerhalb einer Stufe sind alle Fähigkeiten gleich wahrscheinlich — die
+     * Chance einer einzelnen ist also `chance / Anzahl in der Stufe`. Das hält
+     * die Rechnung erklärbar: Man muss nur zwei Zahlen kennen.
+     */
+    STUFEN: [
+        { id: "grau", titel: "Einfach", chance: 40, farbe: "#8a919b" },
+        { id: "gruen", titel: "Gewöhnlich", chance: 28, farbe: "#2e9e52" },
+        { id: "blau", titel: "Ungewöhnlich", chance: 18, farbe: "#2f7fd0" },
+        { id: "lila", titel: "Episch", chance: 10, farbe: "#8b46c8" },
+        { id: "gelb", titel: "Legendär", chance: 4, farbe: "#e0a800" }
+    ],
+
+    /* Alle wie viele Halbzüge erscheint eine neue Fähigkeit auf dem Brett. */
+    BONUS_ABSTAND: 6,
+
+    /* So viele dürfen höchstens gleichzeitig liegen. */
+    BONUS_HOECHSTENS: 3,
+
+    /*
+     * Die Fähigkeiten. Jede hat eine Stufe und eine ART, die sagt, WIE sie
+     * wirkt — davon gibt es nur vier, und alle zehn Fähigkeiten kommen damit
+     * aus:
+     *
+     *   "zugmuster"  Der nächste eigene Zug darf zusätzlich nach diesem Muster
+     *                gehen. Keine Auswahl nötig; man zieht einfach.
+     *   "ablauf"     Greift in die Zugfolge ein (Doppelzug).
+     *   "sofort"     Wirkt beim Einsetzen sofort aufs Brett, ohne Auswahl.
+     *   "ziel"       Verlangt EIN angetipptes Feld; `zielArt` sagt, welches.
+     *
+     * Wirkung: siehe schach.js. Wer eine Fähigkeit ergänzt, wählt eine dieser
+     * vier Arten — dann muss am Bildschirm nichts angepasst werden.
      */
     FAEHIGKEITEN: {
+        /* ---- Grau: kleine Hilfen ---- */
         sprung: {
             titel: "Sprung",
+            stufe: "grau",
+            art: "zugmuster",
+            muster: "springer",
             beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur "
                 + "zusätzlich wie ein Springer ziehen."
         },
+        ausweichen: {
+            titel: "Ausweichen",
+            stufe: "grau",
+            art: "zugmuster",
+            muster: "koenig",
+            beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur "
+                + "zusätzlich ein Feld in jede Richtung ziehen."
+        },
+
+        /* ---- Grün: nützlich ---- */
+        teleport: {
+            titel: "Teleport",
+            stufe: "gruen",
+            art: "zugmuster",
+            muster: "umkreis2",
+            beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur auf "
+                + "ein freies Feld im Umkreis von zwei Feldern springen — über "
+                + "alles hinweg."
+        },
+        bauernschub: {
+            titel: "Bauernschub",
+            stufe: "gruen",
+            art: "sofort",
+            beschreibung: "Alle eigenen Bauern rücken sofort ein Feld vor, soweit "
+                + "das Feld davor frei ist. Geschlagen wird dabei nicht."
+        },
+
+        /* ---- Blau: stark ---- */
         doppelzug: {
             titel: "Doppelzug",
+            stufe: "blau",
+            art: "ablauf",
             beschreibung: "Nach dem nächsten Zug ist dein Team sofort noch "
                 + "einmal am Zug."
+        },
+        verstaerkung: {
+            titel: "Verstärkung",
+            stufe: "blau",
+            art: "ziel",
+            zielArt: "eigenerBauer",
+            beschreibung: "Ein eigener Bauer wird sofort zum Springer."
+        },
+
+        /* ---- Lila: episch ---- */
+        schutzschild: {
+            titel: "Schutzschild",
+            stufe: "lila",
+            art: "ziel",
+            zielArt: "eigeneFigur",
+            beschreibung: "Eine eigene Figur überlebt den nächsten Angriff: Der "
+                + "Schlag verpufft, der Angreifer bleibt stehen. Auf den König "
+                + "wirkt das Schild nicht."
+        },
+        fessel: {
+            titel: "Fessel",
+            stufe: "lila",
+            art: "ziel",
+            zielArt: "gegnerFigur",
+            beschreibung: "Eine gegnerische Figur darf beim nächsten Zug des "
+                + "Gegners nicht ziehen."
+        },
+
+        /* ---- Gelb: legendär ---- */
+        erdbeben: {
+            titel: "Erdbeben",
+            stufe: "gelb",
+            art: "ziel",
+            zielArt: "beliebig",
+            beschreibung: "Alle Figuren rund um das gewählte Feld werden ein Feld "
+                + "nach außen geschoben, soweit dort Platz ist. Könige bleiben "
+                + "stehen."
+        },
+        wiedergeburt: {
+            titel: "Wiedergeburt",
+            stufe: "gelb",
+            art: "ziel",
+            zielArt: "eigeneGrundreihe",
+            beschreibung: "Die zuletzt verlorene eigene Figur kehrt auf ein freies "
+                + "Feld der eigenen Grundreihe zurück."
         }
     },
 
@@ -132,8 +242,12 @@ const SCHACH_VARIANTEN = {
         {
             id: "faehigkeiten",
             titel: "Fähigkeiten sammeln",
-            beschreibung: "Klassisches Brett, auf dem vier Fähigkeiten liegen. "
-                + "Wer mit einer Figur daraufzieht, sammelt sie für sein Team ein.",
+            beschreibung: "Klassisches Brett, auf dem immer wieder Würfel mit "
+                + "Fähigkeiten erscheinen — von einfach bis legendär. Wer mit "
+                + "einer Figur darauf zieht, sammelt sie für sein Team ein.",
+            /* Diese Spielart lässt Fähigkeiten über die Partie hinweg
+               erscheinen. Ohne diesen Schalter passiert nichts. */
+            faehigkeiten: true,
             breite: 8,
             hoehe: 8,
             aufstellung:
@@ -147,8 +261,14 @@ const SCHACH_VARIANTEN = {
                 + "TSLDKLST",
             rochade: true,
             koenigSchlagbar: false,
-            /* Die vier Felder liegen spiegelbildlich auf den mittleren Reihen,
-               damit keine Seite näher dran ist: c5, f5, c4, f4. */
+            /*
+             * Zwei Aufgaben, deshalb bleibt die Liste stehen:
+             *  1. Vorschaubild — sie deutet an, wo Würfel auftauchen.
+             *  2. Umstieg — Partien, die vor dem Erscheinen-über-die-Zeit
+             *     angefangen wurden, hatten genau diese vier Felder von Beginn
+             *     an liegen (siehe SCHACH_RUNDE.BONUS_FASSUNG).
+             * Für NEUE Partien werden sie nicht mehr gelegt.
+             */
             bonusFelder: [
                 { feld: 26, art: "sprung" },
                 { feld: 29, art: "doppelzug" },
@@ -178,6 +298,87 @@ const SCHACH_VARIANTEN = {
     faehigkeitBeschreibung(art) {
         const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
         return eintrag ? eintrag.beschreibung : "";
+    },
+
+    /* Die Stufe einer Fähigkeit, oder die unterste als Rückfall. */
+    stufeVon(art) {
+        const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        const id = eintrag ? eintrag.stufe : "grau";
+        return SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === id)
+            || SCHACH_VARIANTEN.STUFEN[0];
+    },
+
+    /* Alle Fähigkeiten einer Stufe, in fester Reihenfolge. */
+    faehigkeitenDerStufe(stufeId) {
+        return Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
+            .filter((art) => SCHACH_VARIANTEN.FAEHIGKEITEN[art].stufe === stufeId)
+            .sort();
+    },
+
+    /*
+     * Zieht eine Fähigkeit aus einem Wert zwischen 0 und 1.
+     *
+     * Erst die Stufe nach ihrer Chance, dann innerhalb der Stufe gleichverteilt.
+     * Der Rest des Wertes wird für die zweite Ziehung weiterverwendet, damit
+     * EIN Zufallswert genügt — das hält die Ziehung nachrechenbar.
+     */
+    faehigkeitZiehen(wert) {
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            if (rest < stufe.chance) {
+                const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
+                if (arten.length === 0) {
+                    return "";
+                }
+                const anteil = rest / stufe.chance;
+                return arten[Math.min(Math.floor(anteil * arten.length), arten.length - 1)];
+            }
+            rest -= stufe.chance;
+        }
+
+        /* Kann nur passieren, wenn die Chancen nicht 100 ergeben. */
+        return SCHACH_VARIANTEN.faehigkeitenDerStufe(SCHACH_VARIANTEN.STUFEN[0].id)[0] || "";
+    },
+
+    /* Die Chance einer einzelnen Fähigkeit in Prozent. */
+    chanceVon(art) {
+        const stufe = SCHACH_VARIANTEN.stufeVon(art);
+        const anzahl = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length;
+        return anzahl > 0 ? (stufe.chance / anzahl) : 0;
+    },
+
+    /*
+     * Alle Fähigkeiten im Wortlaut, für den i-Knopf.
+     *
+     * Erzeugt aus denselben Angaben, mit denen gerechnet wird — die angezeigte
+     * Chance kann deshalb nicht von der gezogenen abweichen. Dieselbe Regel wie
+     * bei den Punkten im Würfel-Quizz.
+     */
+    faehigkeitenErklaerung() {
+        let text = "Alle " + SCHACH_VARIANTEN.BONUS_ABSTAND
+            + " Halbzüge erscheint ein Würfel auf einem freien Feld, höchstens "
+            + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig. Wer mit einer "
+            + "Figur darauf zieht, sammelt die Fähigkeit für sein Team ein.\n\n"
+            + "Welche es wird, hängt von der Stufe ab:\n";
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
+            text += "\n" + stufe.titel.toUpperCase() + " — " + stufe.chance + " Prozent\n";
+
+            for (const art of arten) {
+                const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+                text += "  " + eintrag.titel + " ("
+                    + SCHACH_VARIANTEN.chanceVon(art).toFixed(1).replace(".", ",")
+                    + " Prozent): " + eintrag.beschreibung + "\n";
+            }
+        }
+
+        text += "\nInnerhalb einer Stufe sind alle gleich wahrscheinlich. "
+            + "Gewürfelt wird dabei nicht: Feld und Fähigkeit werden aus dem "
+            + "Spielstand gerechnet, damit alle Mitspieler dasselbe Brett sehen.";
+
+        return text;
     }
 };
 

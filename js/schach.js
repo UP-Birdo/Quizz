@@ -182,7 +182,19 @@ const SCHACH = {
             halbzuege: 0,
             zugNummer: 1,
             extraZug: "",
-            sprungAktiv: ""
+            sprungAktiv: "",
+
+            /* Wirkung der Fähigkeiten, siehe schach-varianten.js.
+               `zusatzMuster` löst `sprungAktiv` ab: Es kann jetzt auch etwas
+               anderes als ein Springerzug sein. `sprungAktiv` bleibt im
+               Vertrag stehen und wird mitgeführt — Felder werden nie
+               gelöscht, nur ergänzt. */
+            zusatzFarbe: "",
+            zusatzMuster: "",
+            schildFeld: -1,
+            schildFarbe: "",
+            fesselFeld: -1,
+            fesselFarbe: ""
         };
     },
 
@@ -224,8 +236,32 @@ const SCHACH = {
         if (roh.extraZug === SCHACH.WEISS || roh.extraZug === SCHACH.SCHWARZ) {
             stand.extraZug = roh.extraZug;
         }
-        if (roh.sprungAktiv === SCHACH.WEISS || roh.sprungAktiv === SCHACH.SCHWARZ) {
-            stand.sprungAktiv = roh.sprungAktiv;
+
+        /* Zusätzliches Zugmuster (Sprung, Ausweichen, Teleport). */
+        const farben = [SCHACH.WEISS, SCHACH.SCHWARZ];
+
+        if (farben.indexOf(roh.zusatzFarbe) !== -1 && typeof roh.zusatzMuster === "string"
+            && ["springer", "koenig", "umkreis2"].indexOf(roh.zusatzMuster) !== -1) {
+            stand.zusatzFarbe = roh.zusatzFarbe;
+            stand.zusatzMuster = roh.zusatzMuster;
+        } else if (farben.indexOf(roh.sprungAktiv) !== -1) {
+            /* Stände aus der Zeit, als es nur den Sprung gab. */
+            stand.zusatzFarbe = roh.sprungAktiv;
+            stand.zusatzMuster = "springer";
+        }
+
+        /* Das alte Feld wird mitgeführt, damit der Vertrag additiv bleibt. */
+        stand.sprungAktiv = (stand.zusatzMuster === "springer") ? stand.zusatzFarbe : "";
+
+        if (Number.isInteger(roh.schildFeld) && roh.schildFeld >= 0
+            && roh.schildFeld < felder && farben.indexOf(roh.schildFarbe) !== -1) {
+            stand.schildFeld = roh.schildFeld;
+            stand.schildFarbe = roh.schildFarbe;
+        }
+        if (Number.isInteger(roh.fesselFeld) && roh.fesselFeld >= 0
+            && roh.fesselFeld < felder && farben.indexOf(roh.fesselFarbe) !== -1) {
+            stand.fesselFeld = roh.fesselFeld;
+            stand.fesselFarbe = roh.fesselFarbe;
         }
 
         return stand;
@@ -287,7 +323,18 @@ const SCHACH = {
             return [];
         }
 
-        const roh = SCHACH._rohzuege(stand, von);
+        /* Fähigkeit Fessel: Diese Figur darf gerade nicht ziehen. */
+        if (stand.fesselFeld === von && stand.fesselFarbe === farbe) {
+            return [];
+        }
+
+        let roh = SCHACH._rohzuege(stand, von);
+
+        /* Fähigkeit Schutzschild: Die geschützte Figur lässt sich nicht
+           schlagen — der Gegner kann es gar nicht erst versuchen. */
+        if (stand.schildFeld >= 0 && stand.schildFarbe !== farbe) {
+            roh = roh.filter((zug) => zug.nach !== stand.schildFeld);
+        }
 
         if (SCHACH.varianteVon(stand).koenigSchlagbar) {
             return roh;
@@ -335,13 +382,85 @@ const SCHACH = {
             default: return [];
         }
 
-        /* Fähigkeit Sprung: Solange sie aktiv ist, darf jede eigene Figur
-           zusätzlich wie ein Springer ziehen. Springer selbst können es
-           ohnehin — dort ändert sich nichts. */
-        if (stand.sprungAktiv === farbe && art !== "S") {
-            for (const zug of SCHACH._springerzuege(stand, von, farbe)) {
+        /* Fähigkeiten mit zusätzlichem Zugmuster (Sprung, Ausweichen,
+           Teleport): Solange sie wirken, darf jede eigene Figur zusätzlich so
+           ziehen. Doppelte Ziele werden nicht zweimal angeboten. */
+        if (stand.zusatzFarbe === farbe && stand.zusatzMuster) {
+            for (const zug of SCHACH._musterzuege(stand, von, farbe, stand.zusatzMuster)) {
                 if (!liste.some((vorhanden) => vorhanden.nach === zug.nach)) {
                     liste.push(zug);
+                }
+            }
+        }
+
+        return liste;
+    },
+
+    /* Die Zusatzmuster der Fähigkeiten. */
+    _musterzuege(stand, von, farbe, muster) {
+        if (muster === "springer") {
+            return SCHACH._springerzuege(stand, von, farbe);
+        }
+        if (muster === "koenig") {
+            return SCHACH._nachbarzuege(stand, von, farbe);
+        }
+        if (muster === "umkreis2") {
+            return SCHACH._umkreiszuege(stand, von, farbe, 2);
+        }
+        return [];
+    },
+
+    /* Ein Feld in jede Richtung — die Gangart des Königs, ohne Rochade. */
+    _nachbarzuege(stand, von, farbe) {
+        const liste = [];
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(von, breite);
+        const spalte = SCHACH.spalteVon(von, breite);
+
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let ds = -1; ds <= 1; ds++) {
+                if (dr === 0 && ds === 0) {
+                    continue;
+                }
+                const r = reihe + dr;
+                const s = spalte + ds;
+                if (!SCHACH._imBrett(stand, r, s)) {
+                    continue;
+                }
+                const ziel = SCHACH._feld(stand, r, s);
+                if (SCHACH.farbeVon(SCHACH.figurAuf(stand, ziel)) !== farbe) {
+                    liste.push(SCHACH._zug(stand, von, ziel));
+                }
+            }
+        }
+
+        return liste;
+    },
+
+    /*
+     * Teleport: auf ein FREIES Feld im Umkreis springen, über alles hinweg.
+     * Bewusst ohne Schlagen — sonst wäre die Fähigkeit auf engem Raum eine
+     * Allzweckwaffe gegen jede Figur in Reichweite.
+     */
+    _umkreiszuege(stand, von, farbe, weite) {
+        const liste = [];
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(von, breite);
+        const spalte = SCHACH.spalteVon(von, breite);
+
+        for (let dr = -weite; dr <= weite; dr++) {
+            for (let ds = -weite; ds <= weite; ds++) {
+                if (dr === 0 && ds === 0) {
+                    continue;
+                }
+                const r = reihe + dr;
+                const s = spalte + ds;
+                if (!SCHACH._imBrett(stand, r, s)) {
+                    continue;
+                }
+                const ziel = SCHACH._feld(stand, r, s);
+                if (SCHACH.figurAuf(stand, ziel) === ".") {
+                    liste.push(SCHACH._zug(stand, von, ziel));
                 }
             }
         }
@@ -573,7 +692,7 @@ const SCHACH = {
 
         /* Springer — und jede andere Figur, solange die Fähigkeit Sprung der
            angreifenden Seite aktiv ist. */
-        const sprungFuerAlle = (stand.sprungAktiv === farbe);
+        const sprungFuerAlle = (stand.zusatzFarbe === farbe && stand.zusatzMuster === "springer");
         for (const sprung of SCHACH.SPRUENGE) {
             const r = reihe + sprung[0];
             const s = spalte + sprung[1];
@@ -586,7 +705,10 @@ const SCHACH = {
             }
         }
 
-        /* König (Nachbarfelder). */
+        /* König (Nachbarfelder) — und jede andere Figur, solange die Fähigkeit
+           Ausweichen der angreifenden Seite aktiv ist. */
+        const nachbarFuerAlle = (stand.zusatzFarbe === farbe && stand.zusatzMuster === "koenig");
+
         for (let dr = -1; dr <= 1; dr++) {
             for (let ds = -1; ds <= 1; ds++) {
                 if (dr === 0 && ds === 0) {
@@ -596,7 +718,8 @@ const SCHACH = {
                 const s = spalte + ds;
                 if (SCHACH._imBrett(stand, r, s)) {
                     const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
-                    if (SCHACH.artVon(dort) === "K" && SCHACH.farbeVon(dort) === farbe) {
+                    if (SCHACH.farbeVon(dort) === farbe
+                        && (SCHACH.artVon(dort) === "K" || nachbarFuerAlle)) {
                         return true;
                     }
                 }
@@ -745,9 +868,33 @@ const SCHACH = {
             halbzuege: stand.halbzuege + 1,
             zugNummer: stand.zugNummer + ((stand.amZug === SCHACH.SCHWARZ && !nochmal) ? 1 : 0),
             extraZug: nochmal ? "" : stand.extraZug,
-            /* Der Sprung gilt für genau einen Zug. */
-            sprungAktiv: (stand.sprungAktiv === stand.amZug) ? "" : stand.sprungAktiv
+
+            /* Ein zusätzliches Zugmuster gilt für genau einen Zug. */
+            zusatzFarbe: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzFarbe,
+            zusatzMuster: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzMuster,
+            sprungAktiv: "",
+
+            /*
+             * Das Schild hält den nächsten gegnerischen Zug aus; danach ist es
+             * verbraucht. Zieht die geschützte Figur selbst, wandert es nicht
+             * mit — sie ist dann ja woanders.
+             */
+            schildFeld: -1,
+            schildFarbe: "",
+
+            /* Die Fessel gilt für den nächsten Zug der gefesselten Seite. */
+            fesselFeld: (stand.fesselFarbe === stand.amZug) ? -1 : stand.fesselFeld,
+            fesselFarbe: (stand.fesselFarbe === stand.amZug) ? "" : stand.fesselFarbe
         };
+
+        if (stand.schildFeld >= 0 && stand.schildFarbe === stand.amZug
+            && stand.schildFeld !== zug.von) {
+            /* Die eigene Seite zieht mit einer ANDEREN Figur: Das Schild bleibt. */
+            neu.schildFeld = stand.schildFeld;
+            neu.schildFarbe = stand.schildFarbe;
+        }
+
+        neu.sprungAktiv = (neu.zusatzMuster === "springer") ? neu.zusatzFarbe : "";
 
         const figur = SCHACH.figurAuf(stand, zug.von);
         const farbe = SCHACH.farbeVon(figur);
@@ -865,6 +1012,170 @@ const SCHACH = {
             text += ", wird " + SCHACH.artName(zug.umwandlung);
         }
         return text;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Wirkung der Fähigkeiten auf das Brett
+     *
+     * Diese vier ändern das Brett SOFORT, statt einen Zug zu erlauben. Sie
+     * liegen hier und nicht in schach-runde.js, weil sie reine Brettarbeit
+     * sind — wer sie einsetzen darf, entscheidet die Runde.
+     *
+     * Jede liefert { stand, felder, text } oder null, wenn sie nicht wirken
+     * kann. `felder` sind die betroffenen Felder; der Bildschirm zeigt daran
+     * die Animation.
+     * ---------------------------------------------------------------- */
+
+    /* Alle eigenen Bauern ein Feld vor, soweit frei. Geschlagen wird nicht. */
+    bauernschub(stand, farbe) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const richtung = (farbe === SCHACH.WEISS) ? -1 : 1;
+        const letzteReihe = (farbe === SCHACH.WEISS) ? 0 : hoehe - 1;
+        const bauer = (farbe === SCHACH.WEISS) ? "B" : "b";
+        const dame = (farbe === SCHACH.WEISS) ? "D" : "d";
+
+        let brett = stand.brett;
+        const felder = [];
+
+        /*
+         * Von vorn nach hinten durchgehen (in Zugrichtung), damit ein Bauer
+         * das Feld freimacht, bevor der dahinter nachrückt. Sonst blockierten
+         * sich zwei Bauern in derselben Spalte gegenseitig.
+         */
+        const reihen = [];
+        for (let reihe = 0; reihe < hoehe; reihe++) {
+            reihen.push(reihe);
+        }
+        if (richtung === 1) {
+            reihen.reverse();
+        }
+
+        for (const reihe of reihen) {
+            for (let spalte = 0; spalte < breite; spalte++) {
+                const feld = reihe * breite + spalte;
+                if (brett[feld] !== bauer) {
+                    continue;
+                }
+                if (!SCHACH._imBrett(stand, reihe + richtung, spalte)) {
+                    continue;
+                }
+                const ziel = SCHACH._feld(stand, reihe + richtung, spalte);
+                if (brett[ziel] !== ".") {
+                    continue;
+                }
+
+                brett = SCHACH._brettMit(brett, feld, ".");
+                brett = SCHACH._brettMit(brett, ziel,
+                    (SCHACH.reiheVon(ziel, breite) === letzteReihe) ? dame : bauer);
+                felder.push(feld, ziel);
+            }
+        }
+
+        if (felder.length === 0) {
+            return null;
+        }
+
+        const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
+        return { stand: neu, felder: felder, text: "Bauernschub" };
+    },
+
+    /* Ein eigener Bauer wird zum Springer. */
+    verstaerkung(stand, farbe, feld) {
+        const bauer = (farbe === SCHACH.WEISS) ? "B" : "b";
+        if (SCHACH.figurAuf(stand, feld) !== bauer) {
+            return null;
+        }
+
+        const springer = (farbe === SCHACH.WEISS) ? "S" : "s";
+        const neu = Object.assign({}, stand, {
+            brett: SCHACH._brettMit(stand.brett, feld, springer)
+        });
+
+        return {
+            stand: neu,
+            felder: [feld],
+            text: "Verstärkung auf " + SCHACH.feldName(feld, SCHACH.breiteVon(stand),
+                SCHACH.hoeheVon(stand))
+        };
+    },
+
+    /*
+     * Erdbeben: Alle Figuren rund um das gewählte Feld werden ein Feld nach
+     * aussen geschoben, soweit dort Platz ist. Könige bleiben stehen — sonst
+     * liesse sich ein König aus einem Matt herausschieben oder umgekehrt
+     * hineinschieben, und die Partie endete durch eine Fähigkeit statt durch
+     * einen Zug.
+     */
+    erdbeben(stand, feld) {
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        let brett = stand.brett;
+        const felder = [];
+
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let ds = -1; ds <= 1; ds++) {
+                if (dr === 0 && ds === 0) {
+                    continue;
+                }
+                const r = reihe + dr;
+                const s = spalte + ds;
+                if (!SCHACH._imBrett(stand, r, s)) {
+                    continue;
+                }
+
+                const von = SCHACH._feld(stand, r, s);
+                const figur = brett[von];
+                if (figur === "." || SCHACH.artVon(figur) === "K") {
+                    continue;
+                }
+
+                /* Ein Feld weiter in derselben Richtung. */
+                const zielR = r + dr;
+                const zielS = s + ds;
+                if (!SCHACH._imBrett(stand, zielR, zielS)) {
+                    continue;
+                }
+                const ziel = SCHACH._feld(stand, zielR, zielS);
+                if (brett[ziel] !== ".") {
+                    continue;
+                }
+
+                brett = SCHACH._brettMit(brett, von, ".");
+                brett = SCHACH._brettMit(brett, ziel, figur);
+                felder.push(von, ziel);
+            }
+        }
+
+        if (felder.length === 0) {
+            return null;
+        }
+
+        const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
+        return { stand: neu, felder: felder, text: "Erdbeben" };
+    },
+
+    /* Eine verlorene Figur kehrt auf ein freies Feld zurück. */
+    wiedergeburt(stand, farbe, feld, figurArt) {
+        if (SCHACH.figurAuf(stand, feld) !== ".") {
+            return null;
+        }
+        if (!figurArt || SCHACH.artName(figurArt) === "") {
+            return null;
+        }
+
+        const figur = (farbe === SCHACH.WEISS) ? figurArt : figurArt.toLowerCase();
+        const neu = Object.assign({}, stand, {
+            brett: SCHACH._brettMit(stand.brett, feld, figur)
+        });
+
+        return {
+            stand: neu,
+            felder: [feld],
+            text: SCHACH.artName(figurArt) + " kehrt zurück"
+        };
     },
 
     /* ---------------------------------------------------------------- *

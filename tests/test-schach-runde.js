@@ -311,7 +311,7 @@ pruefe("Neu aufstellen behaelt die Spielart", () => {
  * Fähigkeiten
  * ------------------------------------------------------------------ */
 
-/* Eine laufende Partie in der Spielart mit den Bonusfeldern. */
+/* Eine laufende Partie in der Spielart mit den Fähigkeiten. */
 function faehigkeitenPartie() {
     let runde = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-f", "Mit Faehigkeiten");
     runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
@@ -321,126 +321,503 @@ function faehigkeitenPartie() {
     return runde;
 }
 
-pruefe("Zu Beginn liegen alle Bonusfelder auf dem Brett", () => {
-    gleich(SCHACH_RUNDE.offeneBonusFelder(faehigkeitenPartie()).length, 4, "vier Felder");
-    gleich(SCHACH_RUNDE.offeneBonusFelder(laufendePartie()).length, 0, "klassisch: keine");
-});
+/* Zieht die Springer hin und her — so lassen sich beliebig viele Halbzuege
+   machen, ohne die Stellung zu veraendern. */
+function springerZuege(runde, anzahl) {
+    const wege = [
+        ["id-anna", "b1", "c3"], ["id-bert", "b8", "c6"],
+        ["id-anna", "c3", "b1"], ["id-bert", "c6", "b8"]
+    ];
 
-pruefe("Wer auf ein Bonusfeld zieht, sammelt die Faehigkeit ein", () => {
-    /* c5 ist Feld 26 und traegt den Sprung. Der Springer kommt in zwei Zuegen
-       hin: b1 nach c3, dann c3 nach b5 waere falsch — also ueber d4. */
-    let runde = faehigkeitenPartie();
-    const zug = (spieler, von, nach) => {
-        const neu = SCHACH_RUNDE.ziehen(runde, spieler,
-            SCHACH.feldNummer(von), SCHACH.feldNummer(nach), "D", spieler, 2000);
-        wahr(neu !== null, "Zug " + von + "-" + nach + " erlaubt");
+    for (let nummer = 0; nummer < anzahl; nummer++) {
+        const weg = wege[nummer % wege.length];
+        const neu = SCHACH_RUNDE.ziehen(runde, weg[0], SCHACH.feldNummer(weg[1]),
+            SCHACH.feldNummer(weg[2]), "D", weg[0], 2000 + nummer);
+        wahr(neu !== null, "Zug " + nummer + " (" + weg[1] + "-" + weg[2] + ") erlaubt");
         runde = neu;
-    };
+    }
+    return runde;
+}
 
-    zug("id-anna", "b1", "c3");
-    zug("id-bert", "a7", "a6");
-    zug("id-anna", "c3", "d5");
-    zug("id-bert", "a6", "a5");
-    zug("id-anna", "d5", "c7");
-    /* c7 ist kein Bonusfeld — die Faehigkeiten liegen auf c5, f5, c4, f4. */
-    gleich(runde.faehigkeiten.weiss.length, 0, "noch nichts eingesammelt");
-
-    /* Jetzt gezielt auf c5 (Feld 26). */
-    gleich(SCHACH.feldNummer("c5"), 26, "c5 ist Feld 26");
+pruefe("Die Chancen der Stufen ergeben zusammen 100 Prozent", () => {
+    const summe = SCHACH_VARIANTEN.STUFEN.reduce((wert, stufe) => wert + stufe.chance, 0);
+    gleich(summe, 100, "Summe");
 });
 
-pruefe("Ein Zug auf das Bonusfeld c5 bringt den Sprung ins Team", () => {
-    let runde = faehigkeitenPartie();
-
-    /* b1-c3, dann c3-b5? Nein: der kuerzeste Weg auf c5 fuehrt ueber d3 - c5
-       gibt es nicht. Also mit dem Bauern: c2-c4, dann c4-c5. */
-    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 2000);
-    wahr(runde !== null, "c2-c4");
-    /* c4 ist Feld 34 und traegt den Doppelzug. */
-    gleich(runde.faehigkeiten.weiss.join(","), "doppelzug", "Doppelzug eingesammelt");
-    gleich(SCHACH_RUNDE.offeneBonusFelder(runde).length, 3, "ein Feld weniger");
-
-    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
-        SCHACH.feldNummer("a7"), SCHACH.feldNummer("a6"), "D", "Bert", 2100);
-    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("c4"), SCHACH.feldNummer("c5"), "D", "Anna", 2200);
-    wahr(runde !== null, "c4-c5");
-    gleich(runde.faehigkeiten.weiss.join(","), "doppelzug,sprung", "Sprung dazu");
-    gleich(SCHACH_RUNDE.offeneBonusFelder(runde).length, 2, "zwei Felder weniger");
+pruefe("Jede Stufe hat mindestens eine Faehigkeit, jede Faehigkeit eine Stufe", () => {
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        wahr(SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length > 0,
+            "Stufe " + stufe.id + " ist besetzt");
+    }
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        const stufe = SCHACH_VARIANTEN.stufeVon(art);
+        wahr(!!stufe, "Stufe von " + art);
+        wahr(SCHACH_VARIANTEN.chanceVon(art) > 0, "Chance von " + art);
+    }
 });
 
-pruefe("Ein eingesammeltes Feld bleibt weg, auch nach dem Neuladen", () => {
-    let runde = faehigkeitenPartie();
-    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 2000);
+pruefe("Die Ziehung trifft jede Stufe in ihrem Bereich", () => {
+    /* 0 liegt in der ersten Stufe, 99,9 in der letzten. */
+    gleich(SCHACH_VARIANTEN.stufeVon(SCHACH_VARIANTEN.faehigkeitZiehen(0)).id, "grau", "unten");
+    gleich(SCHACH_VARIANTEN.stufeVon(SCHACH_VARIANTEN.faehigkeitZiehen(0.999)).id, "gelb", "oben");
 
-    /* So kommt der Stand aus der Datenbank zurueck. */
+    /* Die Verteilung ueber viele Werte muss zu den Chancen passen. */
+    const gezaehlt = {};
+    const schritte = 10000;
+
+    for (let nummer = 0; nummer < schritte; nummer++) {
+        const stufe = SCHACH_VARIANTEN.stufeVon(SCHACH_VARIANTEN.faehigkeitZiehen(nummer / schritte));
+        gezaehlt[stufe.id] = (gezaehlt[stufe.id] || 0) + 1;
+    }
+
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        const anteil = (gezaehlt[stufe.id] || 0) / schritte * 100;
+        wahr(Math.abs(anteil - stufe.chance) < 0.5,
+            "Anteil " + stufe.id + " (" + anteil.toFixed(1) + " statt " + stufe.chance + ")");
+    }
+});
+
+pruefe("Zu Beginn liegt kein Wuerfel auf dem Brett", () => {
+    gleich(SCHACH_RUNDE.offeneBonusFelder(faehigkeitenPartie()).length, 0, "leer");
+    gleich(SCHACH_RUNDE.offeneBonusFelder(laufendePartie()).length, 0, "klassisch: nie");
+});
+
+pruefe("Nach dem festgelegten Abstand erscheint genau ein Wuerfel", () => {
+    const abstand = SCHACH_VARIANTEN.BONUS_ABSTAND;
+
+    const vorher = springerZuege(faehigkeitenPartie(), abstand - 1);
+    gleich(vorher.bonus.length, 0, "vor dem Abstand noch keiner");
+
+    const nachher = springerZuege(faehigkeitenPartie(), abstand);
+    gleich(nachher.bonus.length, 1, "danach genau einer");
+
+    const eintrag = nachher.bonus[0];
+    wahr(SCHACH.figurAuf(nachher.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
+    wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art], "traegt eine bekannte Faehigkeit");
+});
+
+pruefe("Die Ziehung ist auf jedem Geraet dieselbe", () => {
+    /* Der Kern der Sache: gerechnet statt gewuerfelt. Zwei getrennte Laeufe
+       muessen Feld UND Faehigkeit gleich ergeben — sonst saehe jedes Geraet
+       ein anderes Brett. */
+    const einmal = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
+    const zweimal = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
+
+    gleich(einmal.bonus[0].feld, zweimal.bonus[0].feld, "dasselbe Feld");
+    gleich(einmal.bonus[0].art, zweimal.bonus[0].art, "dieselbe Faehigkeit");
+});
+
+pruefe("Zwei Partien ziehen verschiedene Wuerfel", () => {
+    /* Die Kennung geht in die Rechnung ein, damit nicht in jeder Partie
+       dasselbe passiert. */
+    let andere = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-andere", "Andere");
+    andere = SCHACH_RUNDE.teamBeitreten(andere, "id-anna", "weiss", 1000);
+    andere = SCHACH_RUNDE.teamBeitreten(andere, "id-bert", "schwarz", 1000);
+    andere = SCHACH_RUNDE.bereitSetzen(andere, "weiss", true, 1000);
+    andere = SCHACH_RUNDE.bereitSetzen(andere, "schwarz", true, 1000);
+
+    const eine = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
+    const zwei = springerZuege(andere, SCHACH_VARIANTEN.BONUS_ABSTAND);
+
+    wahr(eine.bonus[0].feld !== zwei.bonus[0].feld
+        || eine.bonus[0].art !== zwei.bonus[0].art, "nicht identisch");
+});
+
+pruefe("Es liegen nie mehr Wuerfel als erlaubt", () => {
+    const runde = springerZuege(faehigkeitenPartie(),
+        SCHACH_VARIANTEN.BONUS_ABSTAND * (SCHACH_VARIANTEN.BONUS_HOECHSTENS + 2));
+
+    gleich(runde.bonus.length, SCHACH_VARIANTEN.BONUS_HOECHSTENS, "Hoechstzahl eingehalten");
+});
+
+pruefe("Wer auf einen Wuerfel zieht, sammelt ihn ein", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Der Wuerfel wird von Hand auf e4 gelegt — wo er sonst erscheint, ist
+       Sache der Ziehung und oben schon geprueft. */
+    runde.bonus.push({ feld: SCHACH.feldNummer("e4"), art: "doppelzug" });
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
+    wahr(runde !== null, "Zug erlaubt");
+    gleich(runde.faehigkeiten.weiss.join(","), "doppelzug", "eingesammelt");
+    gleich(runde.bonus.length, 0, "vom Brett verschwunden");
+});
+
+pruefe("Ein eingesammelter Wuerfel bleibt weg, auch nach dem Neuladen", () => {
+    let runde = faehigkeitenPartie();
+    runde.bonus.push({ feld: SCHACH.feldNummer("e4"), art: "doppelzug" });
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
     const wieder = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
-    gleich(SCHACH_RUNDE.offeneBonusFelder(wieder).length, 3, "bleibt eingesammelt");
+    gleich(wieder.bonus.length, 0, "kein Wuerfel zurueck");
     gleich(wieder.faehigkeiten.weiss.join(","), "doppelzug", "Faehigkeit bleibt");
 });
 
-pruefe("Der Doppelzug laesst dieselbe Seite noch einmal ziehen", () => {
+pruefe("Eine Partie aus der Zeit der festen Felder behaelt sie", () => {
+    /* Fassung 1: vier feste Felder, davon eines schon eingesammelt. */
+    const alt = {
+        variante: "faehigkeiten",
+        stand: { brett: SCHACH.GRUNDSTELLUNG, amZug: "weiss" },
+        teams: { weiss: ["id-anna"], schwarz: ["id-bert"] },
+        laeuft: true,
+        zugZaehler: 3,
+        bonusGesammelt: [26]
+    };
+
+    const runde = SCHACH_RUNDE.normalisieren(alt);
+    gleich(runde.bonus.length, 3, "drei Felder liegen noch");
+    wahr(!runde.bonus.some((eintrag) => eintrag.feld === 26), "das eingesammelte fehlt");
+});
+
+/* ------------------------------------------------------------------ *
+ * Die einzelnen Fähigkeiten
+ * ------------------------------------------------------------------ */
+
+/* Legt eine Fähigkeit direkt ins Team und setzt sie ein. */
+function einsetzen(runde, art, zielFeld, spieler) {
+    const wer = spieler || "id-anna";
+    const farbe = SCHACH_RUNDE.teamVon(runde, wer);
+    const vorbereitet = SCHACH_RUNDE.kopieren(runde);
+
+    vorbereitet.faehigkeiten[farbe].push(art);
+    return SCHACH_RUNDE.faehigkeitEinsetzen(vorbereitet, wer, art, zielFeld, wer, 3000);
+}
+
+pruefe("Sprung: eine beliebige Figur zieht wie ein Springer", () => {
+    const runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
+    wahr(runde !== null, "eingesetzt");
+
+    gleich(runde.stand.zusatzMuster, "springer", "Muster gesetzt");
+    const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
+    gleich(ziele, "b3", "der Turm springt");
+});
+
+pruefe("Ausweichen: eine beliebige Figur zieht ein Feld weit", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Turm a1, daneben und darueber frei — b2 ist nur schraeg zu erreichen. */
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const ohne = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ohne.indexOf("b2") === -1, "ohne Faehigkeit kein Schraegzug");
+
+    const mit = einsetzen(runde, "ausweichen", -1);
+    wahr(mit !== null, "eingesetzt");
+    gleich(mit.stand.zusatzMuster, "koenig", "Muster gesetzt");
+
+    const ziele = SCHACH.zuege(mit.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ziele.indexOf("b2") !== -1, "jetzt auch ein Feld schraeg");
+    wahr(ziele.indexOf("a2") !== -1, "und weiterhin gerade");
+});
+
+pruefe("Teleport: eine Figur springt auf ein freies Feld im Umkreis", () => {
+    const runde = einsetzen(faehigkeitenPartie(), "teleport", -1);
+    wahr(runde !== null, "eingesetzt");
+
+    const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
+    /* Aus der Grundstellung heraus sind a3, b3 und c3 frei — c1 und c2 sind
+       besetzt, geschlagen wird beim Teleport nicht. */
+    gleich(ziele, "a3,b3,c3", "nur freie Felder im Umkreis 2");
+});
+
+pruefe("Bauernschub: alle eigenen Bauern ruecken ein Feld vor", () => {
+    const runde = einsetzen(faehigkeitenPartie(), "bauernschub", -1);
+    wahr(runde !== null, "eingesetzt");
+
+    for (const spalte of "abcdefgh") {
+        gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer(spalte + "3")), "B",
+            "Bauer auf " + spalte + "3");
+        gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer(spalte + "2")), ".",
+            spalte + "2 ist frei");
+    }
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a7")), "b",
+        "schwarze Bauern bleiben stehen");
+});
+
+pruefe("Verstaerkung: ein eigener Bauer wird zum Springer", () => {
+    const runde = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e2"));
+    wahr(runde !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e2")), "S", "jetzt ein Springer");
+
+    gleich(einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e7")),
+        null, "nicht auf einen gegnerischen Bauern");
+    gleich(einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e1")),
+        null, "nicht auf den Koenig");
+});
+
+pruefe("Schutzschild: die geschuetzte Figur laesst sich nicht schlagen", () => {
+    /* Weisser Turm auf d5, schwarze Dame auf d8 — sie koennte schlagen. */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "...dk..."
+            + "........"
+            + "........"
+            + "...T...."
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    let geschuetzt = einsetzen(runde, "schutzschild", SCHACH.feldNummer("d5"));
+    wahr(geschuetzt !== null, "eingesetzt");
+    gleich(geschuetzt.stand.schildFeld, SCHACH.feldNummer("d5"), "Schild liegt auf d5");
+
+    /* Weiss zieht mit dem Koenig — das Schild bleibt, weil eine ANDERE Figur
+       gezogen hat. Danach ist Schwarz am Zug. */
+    geschuetzt = SCHACH_RUNDE.ziehen(geschuetzt, "id-anna",
+        SCHACH.feldNummer("e1"), SCHACH.feldNummer("f1"), "D", "Anna", 3100);
+    wahr(geschuetzt !== null, "Koenigszug erlaubt");
+    gleich(geschuetzt.stand.schildFeld, SCHACH.feldNummer("d5"), "Schild haelt noch");
+
+    /* Die Dame darf d5 nicht schlagen. */
+    const ziele = SCHACH.zuege(geschuetzt.stand, SCHACH.feldNummer("d8"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ziele.indexOf("d5") === -1, "d5 ist kein Ziel mehr");
+    wahr(ziele.indexOf("d6") !== -1, "die Dame darf aber davor ziehen");
+
+    gleich(einsetzen(runde, "schutzschild", SCHACH.feldNummer("e1")), null,
+        "auf den Koenig wirkt es nicht");
+});
+
+pruefe("Fessel: die gefesselte Figur darf einen Zug lang nicht ziehen", () => {
+    let runde = einsetzen(faehigkeitenPartie(), "fessel", SCHACH.feldNummer("b8"));
+    wahr(runde !== null, "eingesetzt");
+    gleich(runde.stand.fesselFeld, SCHACH.feldNummer("b8"), "Fessel liegt");
+    gleich(runde.stand.fesselFarbe, "schwarz", "auf Schwarz");
+
+    /* Weiss zieht, damit Schwarz an der Reihe ist. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 3050);
+    gleich(runde.stand.fesselFeld, SCHACH.feldNummer("b8"), "Fessel haelt noch");
+
+    gleich(SCHACH.zuege(runde.stand, SCHACH.feldNummer("b8")).length, 0,
+        "der Springer steht fest");
+    wahr(SCHACH.zuege(runde.stand, SCHACH.feldNummer("g8")).length > 0,
+        "der andere Springer darf");
+
+    /* Nach dem Zug der gefesselten Seite ist sie wieder frei. */
+    const danach = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("g8"), SCHACH.feldNummer("f6"), "D", "Bert", 3100);
+    gleich(danach.stand.fesselFeld, -1, "Fessel verfallen");
+
+    gleich(einsetzen(faehigkeitenPartie(), "fessel", SCHACH.feldNummer("e8")), null,
+        "der Koenig wird nicht gefesselt");
+    gleich(einsetzen(faehigkeitenPartie(), "fessel", SCHACH.feldNummer("b1")), null,
+        "und keine eigene Figur");
+});
+
+pruefe("Erdbeben: Figuren rundherum werden nach aussen geschoben", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "...bbb.."
+            + "...b.b.."
+            + "...bbb.."
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const nachher = einsetzen(runde, "erdbeben", SCHACH.feldNummer("e5"));
+    wahr(nachher !== null, "eingesetzt");
+
+    /* Der Ring um e5 wird um ein Feld nach aussen geschoben. */
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("d6")), ".", "d6 geraeumt");
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("c7")), "b", "nach c7 geschoben");
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("e5")), ".", "die Mitte bleibt leer");
+});
+
+pruefe("Erdbeben laesst Koenige stehen", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "........"
+            + "........"
+            + "........"
+            + "...k...."
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    /* Rund um d4 steht nur der schwarze Koenig auf d5. */
+    gleich(einsetzen(runde, "erdbeben", SCHACH.feldNummer("d4")), null,
+        "nichts zu verschieben");
+});
+
+pruefe("Wiedergeburt: die zuletzt verlorene Figur kehrt zurueck", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Schwarz schlaegt einen weissen Bauern: 1. e4 d5 2. exd5? Nein —
+       einfacher von Hand. */
+    runde.verloren.weiss.push("T");
+
+    const zurueck = einsetzen(runde, "wiedergeburt", SCHACH.feldNummer("b1"));
+    gleich(zurueck, null, "nicht auf ein besetztes Feld");
+
+    /* Platz auf der Grundreihe schaffen. */
+    let frei = SCHACH_RUNDE.kopieren(runde);
+    frei.stand.brett = SCHACH._brettMit(frei.stand.brett, SCHACH.feldNummer("b1"), ".");
+    frei.verloren.weiss.push("T");
+
+    const gelungen = einsetzen(frei, "wiedergeburt", SCHACH.feldNummer("b1"));
+    wahr(gelungen !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(gelungen.stand, SCHACH.feldNummer("b1")), "T", "Turm steht wieder da");
+    gleich(gelungen.verloren.weiss.length, 1, "einer weniger im Verlust");
+});
+
+pruefe("Wiedergeburt geht nur auf der eigenen Grundreihe und nur mit Verlust", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH._brettMit ? runde.stand : runde.stand;
+
+    gleich(einsetzen(runde, "wiedergeburt", SCHACH.feldNummer("e4")), null,
+        "ohne verlorene Figur geht nichts");
+
+    let mitVerlust = SCHACH_RUNDE.kopieren(runde);
+    mitVerlust.verloren.weiss.push("D");
+    gleich(einsetzen(mitVerlust, "wiedergeburt", SCHACH.feldNummer("e4")), null,
+        "nicht mitten auf dem Brett");
+});
+
+pruefe("Geschlagene Figuren landen im Verlust", () => {
     let runde = faehigkeitenPartie();
     runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 2000);
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
     runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
-        SCHACH.feldNummer("a7"), SCHACH.feldNummer("a6"), "D", "Bert", 2100);
+        SCHACH.feldNummer("d7"), SCHACH.feldNummer("d5"), "D", "Bert", 2100);
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e4"), SCHACH.feldNummer("d5"), "D", "Anna", 2200);
 
-    const zaehlerVorher = runde.zugZaehler;
-    runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "doppelzug", "Anna", 2200);
-    wahr(runde !== null, "Einsetzen erlaubt");
+    gleich(runde.verloren.schwarz.join(","), "B", "Schwarz hat einen Bauern verloren");
+    gleich(runde.verloren.weiss.length, 0, "Weiss noch nichts");
+});
+
+pruefe("Der Doppelzug laesst dieselbe Seite noch einmal ziehen", () => {
+    let runde = einsetzen(faehigkeitenPartie(), "doppelzug", -1);
+    wahr(runde !== null, "eingesetzt");
     gleich(runde.stand.extraZug, "weiss", "Doppelzug vorgemerkt");
-    gleich(runde.zugZaehler, zaehlerVorher + 1, "Zugzaehler steigt mit");
-    gleich(runde.faehigkeiten.weiss.length, 0, "verbraucht");
 
     runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"), "D", "Anna", 2300);
+        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"), "D", "Anna", 3100);
     gleich(runde.stand.amZug, "weiss", "Weiss ist gleich noch einmal dran");
     gleich(runde.stand.extraZug, "", "und die Faehigkeit ist weg");
 
     runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2400);
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 3200);
     gleich(runde.stand.amZug, "schwarz", "danach wieder normal");
 });
 
-pruefe("Der Sprung erlaubt einen Springerzug mit einer fremden Figur", () => {
-    let runde = faehigkeitenPartie();
-    /* Sprung von Hand ins Team legen — der Weg ueber das Brett ist oben
-       schon geprueft. */
-    runde.faehigkeiten.weiss.push("sprung");
+pruefe("Ein Zusatzmuster gilt nur fuer einen Zug", () => {
+    let runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 3100);
 
-    const ohne = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"));
-    gleich(ohne.length, 0, "der Turm steht eingekeilt");
-
-    runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "sprung", "Anna", 2000);
-    wahr(runde !== null, "Einsetzen erlaubt");
-    gleich(runde.stand.sprungAktiv, "weiss", "Sprung aktiv");
-
-    /* Vom Turmfeld a1 aus fuehrt nur ein Springerzug auf ein freies Feld: b3.
-       c2 ist mit dem eigenen Bauern besetzt. */
-    const mit = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
-        .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
-    gleich(mit, "b3", "Turm darf springen");
-
-    /* Nach dem Zug ist der Sprung verbraucht. */
-    const danach = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 2100);
-    gleich(danach.stand.sprungAktiv, "", "Sprung verbraucht");
+    gleich(runde.stand.zusatzMuster, "", "verbraucht");
+    gleich(runde.stand.zusatzFarbe, "", "und keine Farbe mehr");
 });
 
 pruefe("Faehigkeiten kann nur einsetzen, wer am Zug ist und sie hat", () => {
     const runde = faehigkeitenPartie();
 
-    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "sprung", "Anna", 2000),
+    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "sprung", -1, "Anna", 2000),
         null, "ohne Faehigkeit geht nichts");
 
     const mit = SCHACH_RUNDE.kopieren(runde);
     mit.faehigkeiten.schwarz.push("sprung");
-    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(mit, "id-bert", "sprung", "Bert", 2000),
+    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(mit, "id-bert", "sprung", -1, "Bert", 2000),
         null, "Schwarz ist nicht am Zug");
 });
+
+pruefe("Die Zielfelder passen zu dem, was die Wirkung wirklich zulaesst", () => {
+    const runde = faehigkeitenPartie();
+
+    gleich(SCHACH_RUNDE.zielFelder(runde, "id-anna", "verstaerkung").length, 8,
+        "acht eigene Bauern");
+
+    const schild = SCHACH_RUNDE.zielFelder(runde, "id-anna", "schutzschild");
+    gleich(schild.length, 15, "alle eigenen Figuren ausser dem Koenig");
+    wahr(schild.indexOf(SCHACH.feldNummer("e1")) === -1, "der Koenig ist nicht dabei");
+
+    const fessel = SCHACH_RUNDE.zielFelder(runde, "id-anna", "fessel");
+    gleich(fessel.length, 15, "alle gegnerischen Figuren ausser dem Koenig");
+    wahr(fessel.indexOf(SCHACH.feldNummer("e8")) === -1, "der gegnerische Koenig auch nicht");
+
+    gleich(SCHACH_RUNDE.zielFelder(runde, "id-anna", "wiedergeburt").length, 0,
+        "ohne verlorene Figur kein Ziel");
+
+    /* Fähigkeiten ohne Ziel liefern keine Felder. */
+    gleich(SCHACH_RUNDE.zielFelder(runde, "id-anna", "sprung").length, 0, "Sprung braucht keins");
+});
+
+pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => {
+    /* Sicherheitsnetz: Kommt eine neue Faehigkeit dazu, ohne dass jemand ihre
+       Wirkung baut, faellt es hier auf. */
+    const ziele = {
+        verstaerkung: "e2",
+        schutzschild: "d1",
+        fessel: "b8",
+        erdbeben: "d4",
+        wiedergeburt: "b1"
+    };
+
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        let runde = faehigkeitenPartie();
+        let feld = -1;
+
+        if (ziele[art]) {
+            feld = SCHACH.feldNummer(ziele[art]);
+        }
+        if (art === "wiedergeburt") {
+            runde.stand.brett = SCHACH._brettMit(runde.stand.brett, feld, ".");
+            runde.verloren.weiss.push("S");
+        }
+        if (art === "erdbeben") {
+            /* Rund um d4 steht in der Grundstellung nichts — einen Bauern
+               hinstellen, damit es etwas zu verschieben gibt. */
+            runde.stand.brett = SCHACH._brettMit(runde.stand.brett,
+                SCHACH.feldNummer("d5"), "b");
+        }
+
+        const nachher = einsetzen(runde, art, feld);
+        wahr(nachher !== null, "einsetzbar: " + art);
+        gleich(nachher.faehigkeiten.weiss.length, 0, "verbraucht: " + art);
+        gleich(nachher.zugZaehler, runde.zugZaehler + 1, "Zugzaehler steigt: " + art);
+
+        const letzter = nachher.verlauf[nachher.verlauf.length - 1];
+        gleich(letzter.wirkung, art, "Wirkung im Verlauf: " + art);
+    }
+});
+
 
 /* ------------------------------------------------------------------ *
  * Vergleich

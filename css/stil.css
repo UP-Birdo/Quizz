@@ -870,18 +870,68 @@ body {
     z-index: 2;
 }
 
-/* Feld mit einer Fähigkeit darauf: Ring in der Ecke, kein Emoji. */
-.feld-bonus::before {
-    content: "";
+/*
+ * Feld mit einer Fähigkeit darauf: Der Würfel liegt als SVG darin (siehe
+ * TEAM_SCHACH._wuerfelBauen). Er schwebt leicht, damit man ihn zwischen den
+ * Figuren bemerkt.
+ */
+.wuerfel {
     position: absolute;
-    top: 8%;
-    right: 8%;
-    width: 22%;
-    height: 22%;
-    border-radius: 50%;
-    border: 2px solid var(--bonus-feld);
-    background: var(--bonus-feld);
-    opacity: 0.75;
+    width: 76%;
+    height: 76%;
+    pointer-events: none;
+    z-index: 2;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+    animation: wuerfel-schweben 2.4s ease-in-out infinite;
+}
+
+.wuerfel-zeichen {
+    fill: #ffffff;
+    font-size: 34px;
+    font-weight: 700;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+
+@keyframes wuerfel-schweben {
+    0%, 100% { transform: translateY(-3%); }
+    50% { transform: translateY(3%); }
+}
+
+/* Mögliches Ziel einer Fähigkeit, die auf ein Feld wartet. */
+.feld-wahl {
+    box-shadow:
+        inset 0 0 0 2px var(--ziel-rand),
+        inset 0 0 0 5px var(--bonus-feld);
+}
+
+/* Ein Feld, auf das eine Fähigkeit gewirkt hat: leuchtet einmal auf. */
+.feld-wirkung {
+    animation: feld-leuchten 900ms ease-out;
+}
+
+@keyframes feld-leuchten {
+    0% { box-shadow: inset 0 0 0 3px var(--bonus-feld); filter: brightness(1.6); }
+    100% { box-shadow: inset 0 0 0 3px transparent; filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wuerfel {
+        animation: none;
+    }
+
+    .feld-wirkung {
+        animation: none;
+    }
+}
+
+/* Marke einer eingesammelten Fähigkeit — die Farbe zeigt die Seltenheit. */
+.faehigkeit-marke,
+.faehigkeit-knopf {
+    border-color: var(--stufe-farbe, var(--rahmen));
+    border-width: 2px;
+    border-style: solid;
+    color: var(--stufe-farbe, var(--schrift-leise));
+    font-weight: 600;
 }
 
 .figur {
@@ -1065,6 +1115,11 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+}
+
+/* Im Vorschaubild bleibt der Würfel ruhig — dort geht es um die Brettform. */
+.vorschau .wuerfel {
+    animation: none;
 }
 
 /* ------------------------------------------------------------------ *

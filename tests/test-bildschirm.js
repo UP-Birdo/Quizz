@@ -410,13 +410,22 @@ pruefe("Nach einem Zug laeuft die Bewegung — und nur einmal", () => {
     }
 });
 
-pruefe("Eine Partie mit eingesammelter Faehigkeit zeichnet", () => {
+pruefe("Eine Partie mit Wuerfel und eingesammelter Faehigkeit zeichnet", () => {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
+
+    /* Ein Würfel auf c4, ein zweiter bleibt liegen — beides muss gezeichnet
+       werden: der eingesammelte im Vorrat, der liegende auf dem Brett. */
+    partie.bonus.push({ feld: SCHACH.feldNummer("c4"), art: "erdbeben" });
+    partie.bonus.push({ feld: SCHACH.feldNummer("e5"), art: "sprung" });
+
     partie = SCHACH_RUNDE.ziehen(partie, "id-anna",
         SCHACH.feldNummer("c2"), SCHACH.feldNummer("c4"), "D", "Anna", 3100);
 
     if (partie.faehigkeiten.weiss.length !== 1) {
         throw new Error("Faehigkeit nicht eingesammelt");
+    }
+    if (partie.bonus.length !== 1) {
+        throw new Error("der zweite Wuerfel muss liegen bleiben");
     }
 
     const neueTafel = SCHACH_TAFEL.partieEinsetzen(TEAM_SCHACH.abgleich.daten, partie, 3100);
@@ -433,7 +442,58 @@ pruefe("Eine beendete Partie zeichnet", () => {
     TEAM_SCHACH.partieOeffnen(kennungen.klein);
 });
 
+pruefe("Ein Wuerfel auf dem Brett wird gezeichnet", () => {
+    let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
+    partie = SCHACH_RUNDE.kopieren(partie);
+    partie.bonus.push({ feld: SCHACH.feldNummer("d5"), art: "erdbeben" });
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        TEAM_SCHACH.abgleich.daten, partie, 3150);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+        "[data-feld=\"" + SCHACH.feldNummer("d5") + "\"]");
+    if (!zelle) {
+        throw new Error("Feld nicht gezeichnet");
+    }
+
+    const wuerfel = zelle.kinder.find((kind) => kind.attribute
+        && kind.attribute["class"] === "wuerfel");
+    if (!wuerfel) {
+        throw new Error("kein Wuerfel auf dem Feld");
+    }
+    /* Drei Seitenflächen und das Fragezeichen. */
+    if (wuerfel.kinder.length !== 4) {
+        throw new Error("Wuerfel hat " + wuerfel.kinder.length + " Teile statt 4");
+    }
+});
+
+pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
+    const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
+    const felder = SCHACH_RUNDE.zielFelder(partie, "id-anna", "verstaerkung");
+
+    if (felder.length !== 8) {
+        throw new Error("erwartet 8 eigene Bauern, waren " + felder.length);
+    }
+
+    TEAM_SCHACH.zielFaehigkeit = "verstaerkung";
+    TEAM_SCHACH.zielFelder = felder;
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+        "[data-feld=\"" + SCHACH.feldNummer("e2") + "\"]");
+    if (!zelle || !zelle.classList.contains("feld-wahl")) {
+        throw new Error("das Zielfeld ist nicht markiert");
+    }
+
+    TEAM_SCHACH._auswahlAufheben();
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+});
+
 pruefe("Wird die offene Partie geloescht, landet man in der Uebersicht", () => {
+    /* Genau die Partie öffnen, die gleich verschwindet. */
+    TEAM_SCHACH.partieOeffnen(kennungen.klein);
+
     const neueTafel = SCHACH_TAFEL.partieEntfernen(
         TEAM_SCHACH.abgleich.daten, kennungen.klein, 3300);
 

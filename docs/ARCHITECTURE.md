@@ -469,20 +469,70 @@ Regeln allein aus dem Stand arbeiten können.
 
 ### Fähigkeiten
 
-Nur in der Spielart `faehigkeiten`. Die Wirkung liegt in zwei Feldern des
-Standes und ist damit für alle sichtbar und gespeichert:
+Nur in der Spielart `faehigkeiten` (Schalter `faehigkeiten: true`). Seit v2.0
+gibt es fünf Seltenheitsstufen und zehn Fähigkeiten.
 
-| Feld | Fähigkeit | Wirkung |
+**Vier Arten tragen alle zehn.** Jede Fähigkeit in `SCHACH_VARIANTEN` nennt ihre
+`art`; daran hängt alles Weitere, und deshalb kostet eine elfte Fähigkeit weder
+im Bildschirm noch im Ablauf eine Zeile:
+
+| Art | Was passiert | Beispiele |
 |---|---|---|
-| `sprungAktiv` | Sprung | `_rohzuege` hängt für jede eigene Figur zusätzlich Springerzüge an; `_feldBedroht` rechnet sie mit, sonst könnte der König in ein bedrohtes Feld ziehen. Nach dem nächsten Zug gelöscht. |
-| `extraZug` | Doppelzug | `_ausfuehren` lässt `amZug` stehen, statt zu wechseln, und löscht das Feld. |
+| `zugmuster` | Der nächste eigene Zug darf zusätzlich nach diesem Muster gehen. Keine Auswahl nötig. | Sprung, Ausweichen, Teleport |
+| `ablauf` | Greift in die Zugfolge ein. | Doppelzug |
+| `sofort` | Wirkt beim Einsetzen sofort aufs Brett. | Bauernschub |
+| `ziel` | Verlangt EIN angetipptes Feld; `zielArt` sagt, welches. | Verstärkung, Schutzschild, Fessel, Erdbeben, Wiedergeburt |
 
-**Eingesammelt** wird in `schach-runde.js` (dort sind die Teams bekannt), nicht
-in `schach.js`. Gespeichert wird `bonusGesammelt` — die schon **eingesammelten**
-Felder, nicht die verbliebenen. Grund: Firebase wirft leere Listen weg. Eine
-leere Liste „verbliebene Felder" käme als *nicht vorhanden* zurück, und die
-Nachrüstung würde sie wieder mit allen Feldern füllen. Bei den eingesammelten
-bedeutet *nicht vorhanden* genau das Richtige: noch keins.
+Die Wirkung liegt in Feldern des Standes und ist damit gespeichert und für alle
+sichtbar:
+
+| Feld | Wirkung |
+|---|---|
+| `zusatzFarbe` / `zusatzMuster` | Zusätzliches Zugmuster für einen Zug. Löst `sprungAktiv` ab, das als Altbestand mitgeführt wird. `_feldBedroht` rechnet Sprung und Ausweichen mit — sonst könnte der König in ein bedrohtes Feld ziehen. |
+| `extraZug` | `_ausfuehren` lässt `amZug` stehen, statt zu wechseln. |
+| `schildFeld` / `schildFarbe` | `zuege()` filtert alle gegnerischen Züge auf dieses Feld weg. Verfällt nach dem nächsten gegnerischen Zug oder wenn die geschützte Figur selbst zieht. |
+| `fesselFeld` / `fesselFarbe` | `zuege()` liefert für dieses Feld nichts. Verfällt nach dem nächsten Zug der gefesselten Seite. |
+
+**Warum König und Matt geschützt sind:** Das Schild wirkt nicht auf den König,
+der König wird nicht gefesselt, und das Erdbeben lässt Könige stehen. Andernfalls
+wäre „Schachmatt" nicht mehr eindeutig — dieselbe Überlegung, die beim
+Doppelbrett zum schlagbaren König geführt hat. Diese drei Ausnahmen sind keine
+Bequemlichkeit, sondern die Bedingung dafür, dass die Spielart noch Schach ist.
+
+### Der gerechnete Zufall
+
+Würfel erscheinen alle `BONUS_ABSTAND` Halbzüge auf einem freien Feld, höchstens
+`BONUS_HOECHSTENS` gleichzeitig. **Gewürfelt wird dabei nicht:**
+`SCHACH_RUNDE._zufallsWert()` streut Partie-Kennung und Zugzähler (FNV-1a) zu
+einer Zahl zwischen 0 und 1; daraus folgen Feld und Fähigkeit.
+
+Das ist die wichtigste Festlegung der ganzen Spielart. Mit `Math.random()` sähe
+jedes Gerät ein anderes Brett, und der erste Schreibvorgang gewönne — dieselbe
+Falle wie beim gegenseitigen Überschreiben in v0.8. So rechnet jeder dasselbe
+aus, ohne sich abzustimmen, und die Tests bleiben aussagekräftig, weil das
+Ergebnis vorhersagbar ist. **`Math.random()` hat im Modell nichts zu suchen.**
+
+Die Ziehung läuft zweistufig: erst die Stufe nach ihrer Chance, dann innerhalb
+der Stufe gleichverteilt. Beides aus EINEM Zufallswert, indem der Rest
+weiterverwendet wird — damit bleibt die Ziehung nachrechenbar.
+
+### Gespeichert wird, was liegt
+
+`partie.bonus` ist die Liste der Würfel auf dem Brett (`[{ feld, art }]`), dazu
+`bonusFassung: 2`. Eine Partie **ohne** diese Angabe stammt aus der Zeit der vier
+festen Felder; für sie wird die Liste einmalig aus `variante.bonusFelder` minus
+`bonusGesammelt` gebaut. Angefangene Partien laufen dadurch unverändert weiter.
+
+`verloren` sammelt geschlagene Figuren je Farbe — die Wiedergeburt holt daraus
+die zuletzt verlorene zurück.
+
+### Welche Felder ein Ziel sein können
+
+`SCHACH_RUNDE.zielFelder()` probiert für jedes Feld die Wirkung auf einer Kopie
+durch und meldet die, bei denen etwas herauskommt. Damit kann die Anzeige nicht
+von der Regel abweichen: Es gibt keine zweite Liste von Bedingungen, die
+veralten könnte. Der Preis sind ein paar Dutzend Probeläufe je Klick — das
+fällt nicht auf.
 
 ### Die Zugbewegung
 
