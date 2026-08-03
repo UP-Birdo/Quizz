@@ -60,7 +60,9 @@ $Zweig      = "main"
 
 $freigegebeneDateien = @("index.html", "README.md", "CHANGELOG.md",
                          "manifest.webmanifest", "icon.svg")
-$freigegebeneOrdner  = @("css", "js", "icons", "docs", "tests", "tools")
+# ".github" gehoert dazu: Dort liegt die Formular-Vorlage fuer den
+# Wunsch-Knopf. Ohne sie oeffnet GitHub ein leeres Formular statt der Vorlage.
+$freigegebeneOrdner  = @("css", "js", "icons", "docs", "tests", "tools", ".github")
 $gesperrteDateien    = @("TODO.md", "ROADMAP.md", "CLAUDE.md", "github-token.dat")
 
 # Diese Endungen sind KEIN Text. Sie muessen als eigener Datenklumpen (Blob)
