@@ -302,14 +302,21 @@ pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
     if (!feld) {
         throw new Error("kein Kachelfeld gezeichnet");
     }
-    if (feld.kinder.length !== SCHACH_VARIANTEN.liste.length) {
-        throw new Error("erwartet " + SCHACH_VARIANTEN.liste.length
+    /* Versteckte Spielarten (etwa „Fähigkeiten sammeln" seit v2.9) stehen
+       nicht mehr zur Auswahl, bleiben aber gültig. */
+    const auswahl = SCHACH_VARIANTEN.zurAuswahl();
+
+    if (auswahl.length >= SCHACH_VARIANTEN.liste.length) {
+        throw new Error("keine Spielart ist versteckt — Test veraltet?");
+    }
+    if (feld.kinder.length !== auswahl.length) {
+        throw new Error("erwartet " + auswahl.length
             + " Kacheln, waren " + feld.kinder.length);
     }
 
     /* Jedes Vorschaubild hat so viele Felder wie das Brett der Spielart. */
-    for (let stelle = 0; stelle < SCHACH_VARIANTEN.liste.length; stelle++) {
-        const variante = SCHACH_VARIANTEN.liste[stelle];
+    for (let stelle = 0; stelle < auswahl.length; stelle++) {
+        const variante = auswahl[stelle];
         const vorschau = feld.kinder[stelle].kinder[0];
         const erwartet = variante.breite * variante.hoehe;
 

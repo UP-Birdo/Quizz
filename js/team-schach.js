@@ -59,7 +59,7 @@ const TEAM_SCHACH = {
      */
     neueRegeln: {
         faehigkeiten: false,
-        seltenheitZeigen: true,
+        seltenheitZeigen: false,
         einigkeit: false
     },
 
@@ -390,7 +390,7 @@ const TEAM_SCHACH = {
 
         const feld = TEAM_SCHACH._element("div", "spielart-feld");
 
-        for (const variante of SCHACH_VARIANTEN.liste) {
+        for (const variante of SCHACH_VARIANTEN.zurAuswahl()) {
             feld.appendChild(TEAM_SCHACH._spielartKachelBauen(variante));
         }
 
@@ -406,31 +406,46 @@ const TEAM_SCHACH = {
         const karte = TEAM_SCHACH._element("section", "karte");
         karte.appendChild(TEAM_SCHACH._element("h3", "", "Einstellungen"));
 
+        /*
+         * Alle Haken sind zu Beginn AUS: Eine neue Partie ist erst einmal ein
+         * normales Schachspiel. Was dazukommen soll, hakt man ausdrücklich an.
+         *
+         * „Seltenheit anzeigen" hängt am Würfel-Haken und erscheint erst, wenn
+         * der gesetzt ist — ohne Würfel gäbe es nichts anzuzeigen.
+         */
         const schalter = [
             {
                 schluessel: "faehigkeiten",
                 titel: "Zufalls-Würfel",
-                hinweis: "Auf freien Feldern erscheinen Würfel mit Fähigkeiten — in "
-                    + "jeder Spielart, nicht nur in „Fähigkeiten sammeln“."
+                hinweis: "Auf freien Feldern erscheinen Würfel mit Fähigkeiten — "
+                    + "gute wie schlechte. Alles, was dazugehört (Einsammeln, "
+                    + "Einsetzen, Unglückswürfel), gilt dann in dieser Spielart."
             },
             {
                 schluessel: "seltenheitZeigen",
                 titel: "Seltenheit anzeigen",
                 hinweis: "Der Würfel trägt schon auf dem Brett die Farbe seiner Stufe. "
-                    + "Aus heißt: Alle Würfel sehen gleich aus, und man weiß erst beim "
-                    + "Einsammeln, was drin war."
+                    + "Aus heißt: Alle Würfel sehen gleich aus — auch die schlechten, "
+                    + "und man weiß erst beim Einsammeln, was drin war.",
+                nurMitWuerfeln: true
             },
             {
                 schluessel: "einigkeit",
                 titel: "Team muss sich einig sein",
-                hinweis: "Ein Zug wird erst vorgeschlagen und ausgeführt, wenn alle aus "
-                    + "dem Team zugestimmt haben. Achtung: Der Vorschlag steht im "
-                    + "gemeinsamen Stand — der Gegner kann ihn mitlesen."
+                hinweis: "Ein Zug oder eine Fähigkeit wird erst vorgeschlagen und "
+                    + "ausgeführt, wenn alle aus dem Team zugestimmt haben — oder die "
+                    + "Frist abläuft. Achtung: Der Vorschlag steht im gemeinsamen "
+                    + "Stand, der Gegner kann ihn mitlesen."
             }
         ];
 
         for (const eintrag of schalter) {
-            const zeile = TEAM_SCHACH._element("label", "schalter-zeile");
+            if (eintrag.nurMitWuerfeln && !TEAM_SCHACH.neueRegeln.faehigkeiten) {
+                continue;
+            }
+
+            const zeile = TEAM_SCHACH._element("label",
+                "schalter-zeile" + (eintrag.nurMitWuerfeln ? " schalter-unterpunkt" : ""));
 
             const kasten = document.createElement("input");
             kasten.type = "checkbox";
@@ -438,6 +453,11 @@ const TEAM_SCHACH = {
             kasten.checked = !!TEAM_SCHACH.neueRegeln[eintrag.schluessel];
             kasten.addEventListener("change", () => {
                 TEAM_SCHACH.neueRegeln[eintrag.schluessel] = !!kasten.checked;
+
+                /* Der Würfel-Haken blendet den Unterpunkt ein oder aus. */
+                if (eintrag.schluessel === "faehigkeiten") {
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                }
             });
             zeile.appendChild(kasten);
 
@@ -865,20 +885,27 @@ const TEAM_SCHACH = {
                  * nicht beim Darüberfahren. Ein Würfel, dessen Inhalt man
                  * vorher lesen kann, ist kein Überraschungswürfel mehr.
                  */
+                /*
+                 * Ist „Seltenheit anzeigen" aus, sehen ALLE Würfel gleich aus —
+                 * auch die schlechten. Dann ist jeder Würfel ein Risiko, und
+                 * genau das ist der Sinn dieser Einstellung. Ist sie an, trägt
+                 * er seine Stufenfarbe und das umgedrehte Fragezeichen.
+                 */
                 const zeigen = (partie.regeln.seltenheitZeigen !== false);
                 const stufe = bonusHier.pech
                     ? SCHACH_VARIANTEN.pechStufeVon(bonusHier.art)
                     : SCHACH_VARIANTEN.stufeVon(bonusHier.art);
 
                 zelle.classList.add("feld-bonus");
-                zelle.title = zeigen ? ("Würfel — " + stufe.titel) : "Würfel";
+                zelle.title = zeigen
+                    ? ("Würfel — " + stufe.titel + (bonusHier.pech ? ", Unglück" : ""))
+                    : "Würfel";
                 zelle.setAttribute("aria-label",
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
 
-                /* Ob es ein Unglückswürfel ist, sieht man IMMER — das ist keine
-                   Überraschung, sondern die Entscheidung, ob man hinzieht. */
                 zelle.appendChild(TEAM_SCHACH._wuerfelBauen(
-                    zeigen ? bonusHier.art : "", bonusHier.pech));
+                    zeigen ? bonusHier.art : "",
+                    zeigen && bonusHier.pech));
             }
 
             /*
@@ -2100,7 +2127,7 @@ const TEAM_SCHACH = {
         /* Jede neue Partie fängt mit den Vorgaben an. */
         TEAM_SCHACH.neueRegeln = {
             faehigkeiten: false,
-            seltenheitZeigen: true,
+            seltenheitZeigen: false,
             einigkeit: false
         };
 

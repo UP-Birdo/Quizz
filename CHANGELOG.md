@@ -3,6 +3,26 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.9 — 2026-08-03
+
+- **Die Spielart „Fähigkeiten sammeln" steht nicht mehr zur Auswahl.** Seit v2.5
+  lassen sich Würfel in jeder Spielart zuschalten — damit war sie dasselbe wie
+  „Klassisch" mit gesetztem Haken und stand nur doppelt in der Liste.
+  **Laufende Partien in dieser Spielart laufen unverändert weiter**; die Kennung
+  bleibt gültig, sie taucht nur beim Anlegen nicht mehr auf.
+- **Alle Haken sind neu erst einmal aus.** Eine neue Partie ist ein normales
+  Schachspiel; was dazukommen soll, hakt man ausdrücklich an.
+- **„Seltenheit anzeigen" erscheint erst, wenn die Würfel an sind** — als
+  eingerückter Unterpunkt. Vorher stand dort eine Einstellung für etwas, das es
+  gar nicht gab.
+- **Ohne „Seltenheit anzeigen" sehen jetzt ALLE Würfel gleich aus** — auch die
+  Unglückswürfel. Vorher verrieten sie sich durch das umgedrehte Fragezeichen;
+  jetzt ist jeder Würfel ein Risiko, und genau das ist der Sinn der Einstellung.
+- **Handy durchgesehen:** Jeder Knopf hat jetzt eine Tippfläche von mindestens
+  40 Pixeln, die i-Knöpfe und die Haken sind größer, die Spielart-Kacheln stehen
+  einzeln untereinander (großes Vorschaubild), Bilanz und Fähigkeiten brechen um
+  statt zu quetschen, und der Abschluss-Bildschirm füllt den Schirm.
+
 ## v2.8 — 2026-08-03
 
 - **Würfel erscheinen ohne festen Takt.** Bisher kam alle sechs Halbzüge einer —

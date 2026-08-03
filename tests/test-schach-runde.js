@@ -946,6 +946,35 @@ pruefe("Ein Vorschlag muss regelkonform sein", () => {
         null, "drei Felder gehen nicht");
 });
 
+pruefe("Versteckte Spielarten bleiben gueltig, stehen aber nicht zur Auswahl", () => {
+    /*
+     * „Fähigkeiten sammeln" ist seit v2.9 versteckt: Dasselbe erreicht man mit
+     * „Klassisch" und dem Würfel-Haken. Laufende Partien tragen die Kennung
+     * aber weiter im Stand und müssen ihre Spielart behalten.
+     */
+    const versteckte = SCHACH_VARIANTEN.liste.filter((eintrag) => eintrag.versteckt);
+    wahr(versteckte.length > 0, "mindestens eine versteckt");
+
+    for (const variante of versteckte) {
+        wahr(SCHACH_VARIANTEN.gibtEs(variante.id), "gilt weiterhin: " + variante.id);
+        gleich(SCHACH_VARIANTEN.holen(variante.id).id, variante.id,
+            "wird gefunden: " + variante.id);
+        wahr(SCHACH_VARIANTEN.zurAuswahl().indexOf(variante) === -1,
+            "nicht zur Auswahl: " + variante.id);
+    }
+
+    /* Eine laufende Partie in dieser Spielart behaelt alles. */
+    const runde = SCHACH_RUNDE.normalisieren({
+        variante: "faehigkeiten",
+        stand: { brett: SCHACH.GRUNDSTELLUNG, amZug: "weiss" },
+        teams: { weiss: ["id-anna"], schwarz: ["id-bert"] },
+        laeuft: true
+    });
+
+    gleich(runde.variante, "faehigkeiten", "Spielart bleibt");
+    gleich(SCHACH_RUNDE.faehigkeitenAn(runde), true, "und die Wuerfel auch");
+});
+
 pruefe("Der Schalter fuer Faehigkeiten geht der Spielart vor", () => {
     /* Klassisch, aber mit Würfeln. */
     let runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-w", "Mit Wuerfeln");

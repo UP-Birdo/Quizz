@@ -411,9 +411,21 @@ const SCHACH_VARIANTEN = {
         {
             id: "faehigkeiten",
             titel: "Fähigkeiten sammeln",
-            beschreibung: "Klassisches Brett, auf dem immer wieder Würfel mit "
-                + "Fähigkeiten erscheinen — von einfach bis legendär. Wer mit "
-                + "einer Figur darauf zieht, sammelt sie für sein Team ein.",
+            beschreibung: "Klassisches Brett mit Würfeln. Gibt es seit v2.9 nicht "
+                + "mehr zur Auswahl — dasselbe erreicht man mit „Klassisch“ und "
+                + "eingeschaltetem Würfel-Haken.",
+
+            /*
+             * NICHT MEHR ZUR AUSWAHL, aber weiterhin im Katalog.
+             *
+             * Seit v2.5 lassen sich Würfel in JEDER Spielart zuschalten; damit
+             * war diese hier dasselbe wie „Klassisch mit Haken" und stand nur
+             * doppelt in der Liste. Gelöscht wird sie trotzdem nicht: Partien,
+             * die noch laufen, tragen diese Kennung im Stand und würden sonst
+             * ihre Spielart verlieren.
+             */
+            versteckt: true,
+
             /* Diese Spielart lässt Fähigkeiten über die Partie hinweg
                erscheinen. Ohne diesen Schalter passiert nichts. */
             faehigkeiten: true,
@@ -451,6 +463,14 @@ const SCHACH_VARIANTEN = {
     holen(id) {
         const gefunden = SCHACH_VARIANTEN.liste.find((eintrag) => eintrag.id === id);
         return gefunden || SCHACH_VARIANTEN.liste[0];
+    },
+
+    /*
+     * Die Spielarten, die beim Anlegen zur Auswahl stehen. Versteckte sind
+     * weiterhin gültig (laufende Partien!), tauchen hier aber nicht auf.
+     */
+    zurAuswahl() {
+        return SCHACH_VARIANTEN.liste.filter((eintrag) => !eintrag.versteckt);
     },
 
     /* Gibt es diese Kennung? */

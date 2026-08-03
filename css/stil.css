@@ -1753,4 +1753,79 @@ body {
         padding: 10px 14px;
         font-size: 0.92rem;
     }
+
+    /* -------------------------------------------------------------- *
+     * Was seit v2.9 dazugekommen ist — ebenfalls für den Daumen
+     * -------------------------------------------------------------- */
+
+    /* Jeder Knopf bekommt eine Tippfläche, die man trifft. */
+    .knopf {
+        min-height: 44px;
+    }
+
+    .knopf-klein {
+        min-height: 40px;
+        padding: 8px 14px;
+    }
+
+    /* Die i-Knöpfe sind rund und klein — auf dem Handy zu klein. */
+    .info-knopf {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    /* Die Einstellungen: großer Kasten, Text darunter statt daneben
+       gequetscht. */
+    .schalter-kasten {
+        width: 24px;
+        height: 24px;
+    }
+
+    .schalter-zeile {
+        padding: 10px 0;
+    }
+
+    .schalter-unterpunkt {
+        padding-left: 16px;
+    }
+
+    /* Spielart-Kacheln: eine je Zeile, damit das Vorschaubild groß bleibt. */
+    .spielart-feld {
+        grid-template-columns: 1fr;
+    }
+
+    .vorschau {
+        font-size: calc(min(320px, 84vw) / var(--vorschau-spalten, 8) * 0.8);
+    }
+
+    /* Der Abschluss füllt den Schirm, die Zeilen bleiben lesbar. */
+    .abschluss {
+        min-height: 70vh;
+        padding: 20px 12px;
+    }
+
+    .abschluss-zeile {
+        padding: 10px;
+    }
+
+    /* Bilanz und Fähigkeiten untereinander statt nebeneinander. */
+    .bilanz-seite {
+        flex: 1 1 100%;
+    }
+
+    .faehigkeit-zeile {
+        gap: 6px;
+    }
+
+    /* Die Randbeschriftung des Bretts darf schmaler sein. */
+    .brett-rand-reihen {
+        width: 12px;
+    }
+
+    /* Der Kasten mit den beendeten Partien und der Zugverlauf: mehr
+       Platz für den Finger an der Aufklapp-Zeile. */
+    .verlauf-titel {
+        padding: 10px 0;
+    }
 }

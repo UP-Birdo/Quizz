@@ -597,6 +597,16 @@ die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder, der
 Rochade-Turm und der Pfeil sind so gebaut. Wer eine neue Markierung ergänzt,
 hält sich daran — eine einzelne Farbe reicht auf diesem Brett nie.
 
+### Versteckte Spielarten
+
+Eine Variante mit `versteckt: true` steht nicht mehr zur Auswahl
+(`SCHACH_VARIANTEN.zurAuswahl()`), bleibt aber im Katalog. Das ist der Weg,
+eine Spielart aus dem Angebot zu nehmen, **ohne laufende Partien zu beschädigen**:
+Sie tragen die Kennung im Stand, und `holen()` findet sie weiterhin.
+
+So ist „Fähigkeiten sammeln" in v2.9 verschwunden — sie war seit v2.5 dasselbe
+wie „Klassisch" mit gesetztem Würfel-Haken. **Gelöscht wird eine Spielart nie.**
+
 ### Einstellungen je Partie
 
 `partie.regeln` hält, was beim Anlegen gewählt wurde: `faehigkeiten` (Würfel an
