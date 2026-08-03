@@ -71,7 +71,19 @@ function neuesElement(tag) {
             add(...namen) { this.liste.push(...namen); },
             remove(name) { this.liste = this.liste.filter((eintrag) => eintrag !== name); },
             toggle(name, an) { if (an) { this.add(name); } else { this.remove(name); } },
-            contains(name) { return this.liste.indexOf(name) !== -1; }
+
+            /*
+             * Prüft AUCH die Klassen aus `className`. Im Browser sind beide
+             * dasselbe; hier waren sie es lange nicht, und ein Test hat
+             * deshalb eine Klasse nicht gefunden, die sichtbar da war.
+             */
+            contains(name) {
+                if (this.liste.indexOf(name) !== -1) {
+                    return true;
+                }
+                const fest = this.besitzer ? String(this.besitzer.className || "") : "";
+                return fest.split(" ").indexOf(name) !== -1;
+            }
         },
 
         addEventListener(art, behandler) {
@@ -119,8 +131,10 @@ function neuesElement(tag) {
         get innerHTML() { return ""; }
     };
 
-    /* Eigene Liste je Element — sonst teilen sich alle dieselbe. */
-    element.classList = Object.assign({}, element.classList, { liste: [] });
+    /* Eigene Liste je Element — sonst teilen sich alle dieselbe. Der
+       Rückbezug lässt `contains` auch die Klassen aus `className` sehen. */
+    element.classList = Object.assign({}, element.classList,
+        { liste: [], besitzer: element });
     return element;
 }
 
@@ -433,13 +447,58 @@ pruefe("Eine Partie mit Wuerfel und eingesammelter Faehigkeit zeichnet", () => {
     TEAM_SCHACH.partieOeffnen(kennungen.faehigkeiten);
 });
 
-pruefe("Eine beendete Partie zeichnet", () => {
+pruefe("Wer verliert, bekommt den Abschluss-Bildschirm", () => {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.klein);
     partie = SCHACH_RUNDE.aufgeben(partie, "weiss", 3200);
 
     const neueTafel = SCHACH_TAFEL.partieEinsetzen(TEAM_SCHACH.abgleich.daten, partie, 3200);
     TEAM_SCHACH.abgleich.daten = neueTafel;
     TEAM_SCHACH.partieOeffnen(kennungen.klein);
+
+    /* Anna spielt Weiss und hat aufgegeben — sie sieht den Verlierer-Schirm. */
+    if (!TEAM_SCHACH.abschluss || TEAM_SCHACH.abschluss.schritt !== 1) {
+        throw new Error("kein Abschluss-Bildschirm");
+    }
+
+    const flaeche = TEAM_SCHACH.wurzelEl.kinder[0];
+    if (!flaeche.classList.contains("abschluss-niederlage")) {
+        throw new Error("nicht als Niederlage gezeichnet");
+    }
+
+    /* Zweiter Schritt: der Punktestand. */
+    TEAM_SCHACH.abschluss.schritt = 2;
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    if (!TEAM_SCHACH.wurzelEl.kinder[0].classList.contains("abschluss-stand")) {
+        throw new Error("kein Punktestand");
+    }
+
+    /* Danach zurück in die Übersicht — und nicht wieder von vorn. */
+    TEAM_SCHACH.abschlussSchliessen(kennungen.klein);
+
+    if (TEAM_SCHACH.abschluss || TEAM_SCHACH.offeneId) {
+        throw new Error("Abschluss nicht geschlossen");
+    }
+
+    TEAM_SCHACH.partieOeffnen(kennungen.klein);
+    if (TEAM_SCHACH.abschluss) {
+        throw new Error("der Abschluss darf nicht erneut kommen");
+    }
+    TEAM_SCHACH.offeneId = "";
+});
+
+pruefe("Beendete Partien stehen nicht mehr zwischen den offenen", () => {
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    /* Kopf, dann die offenen Karten, dann der zugeklappte Kasten. */
+    const kasten = TEAM_SCHACH.wurzelEl.kinder.find((kind) => kind.tagName === "details");
+    if (!kasten) {
+        throw new Error("kein Kasten fuer beendete Partien");
+    }
+    const beschriftung = String(kasten.kinder[0].textContent || "");
+    if (beschriftung.indexOf("Beendet") === -1) {
+        throw new Error("Kasten falsch beschriftet: " + beschriftung);
+    }
 });
 
 pruefe("Ein Wuerfel auf dem Brett wird gezeichnet", () => {

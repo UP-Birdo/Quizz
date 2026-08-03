@@ -570,6 +570,36 @@ die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder, der
 Rochade-Turm und der Pfeil sind so gebaut. Wer eine neue Markierung ergänzt,
 hält sich daran — eine einzelne Farbe reicht auf diesem Brett nie.
 
+### Die Chronik — warum die Rangliste nichts verlieren kann
+
+`tafel.chronik` hält je beendeter Partie EINEN Eintrag fest: Kennung, Titel,
+Spielart, Ergebnis und die Teams, wie sie am Ende waren. Geschrieben wird er in
+`SCHACH_TAFEL.partieEinsetzen` — der einzigen Stelle, durch die jede Änderung an
+einer Partie läuft — und danach nie wieder angefasst.
+
+Bis v2.3 rechnete `RANGLISTE.schachPunkte` aus den Partien selbst. Wer eine
+beendete Partie löschte, nahm damit allen Beteiligten ihre Punkte wieder weg.
+Seit v2.4 rechnet die Rangliste aus der Chronik; `partieEntfernen` lässt sie
+bewusst stehen.
+
+Partien, die schon beendet waren, bevor es die Chronik gab, tragen sich beim
+ersten `normalisieren()` selbst ein. Auch das Doppelschreiben derselben Partie
+(zwei Geräte senden denselben Stand) erzeugt nur einen Eintrag — geprüft wird
+über die Kennung.
+
+### Der Abschluss einer Partie
+
+Zwei Schritte, die den ganzen Tab einnehmen (`TEAM_SCHACH.abschluss`):
+Sieg/Niederlage, dann Punktestand, dann zurück in die Übersicht.
+
+Er erscheint von selbst, wenn die geöffnete Partie ein Ergebnis hat und dieses
+Gerät ihn noch nicht gesehen hat (`gesehen`, nur im Arbeitsspeicher) — und nur
+für Leute, die in einem der Teams standen. Zuschauer bekommen ihn nicht.
+
+Beendete Partien verschwinden aus der aktiven Liste in einen zugeklappten
+Kasten. Gelöscht wird nichts: Die Punkte stehen ohnehin in der Chronik, und wer
+nachsehen will, klappt auf.
+
 ### Die Auswahl der Spielart
 
 Beim Anlegen einer Partie erscheint eine **eigene Ansicht** im Tab (nicht

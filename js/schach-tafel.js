@@ -43,7 +43,19 @@ const SCHACH_TAFEL = {
         return {
             datenVersion: SCHACH_TAFEL.DATEN_VERSION,
             geaendertAm: (zeitpunkt === undefined) ? 0 : zeitpunkt,
-            partien: {}
+            partien: {},
+
+            /*
+             * Die Chronik: je beendeter Partie EIN Eintrag mit dem Ergebnis und
+             * den Teams, wie sie am Ende waren.
+             *
+             * Sie ist der Grund, warum die Rangliste nichts mehr verlieren kann.
+             * Bis v2.3 rechnete sie aus den Partien selbst — wer eine beendete
+             * Partie löschte, nahm allen Beteiligten ihre Punkte wieder weg.
+             * Ein Chronik-Eintrag wird geschrieben, sobald ein Ergebnis
+             * feststeht, und danach NIE wieder angefasst.
+             */
+            chronik: []
         };
     },
 
@@ -78,7 +90,61 @@ const SCHACH_TAFEL = {
             }
         }
 
+        if (Array.isArray(roh.chronik)) {
+            tafel.chronik = roh.chronik
+                .filter((eintrag) => eintrag && typeof eintrag.id === "string"
+                    && ["weiss", "schwarz", "remis"].indexOf(eintrag.ergebnis) !== -1)
+                .map((eintrag) => ({
+                    id: eintrag.id,
+                    titel: (typeof eintrag.titel === "string") ? eintrag.titel : "Partie",
+                    variante: SCHACH_VARIANTEN.gibtEs(eintrag.variante)
+                        ? eintrag.variante : SCHACH_VARIANTEN.STANDARD,
+                    ergebnis: eintrag.ergebnis,
+                    beendetAm: (typeof eintrag.beendetAm === "number") ? eintrag.beendetAm : 0,
+                    teams: {
+                        weiss: SCHACH_TAFEL._kennungen(eintrag.teams, "weiss"),
+                        schwarz: SCHACH_TAFEL._kennungen(eintrag.teams, "schwarz")
+                    }
+                }))
+                .filter((eintrag, stelle, alle) =>
+                    alle.findIndex((anderer) => anderer.id === eintrag.id) === stelle);
+        }
+
+        /*
+         * Nachrüstung: Partien, die schon beendet sind, aber noch keinen
+         * Chronik-Eintrag haben. So kommen die Ergebnisse aus der Zeit vor v2.4
+         * in die Chronik, ohne dass jemand etwas tun muss.
+         */
+        for (const id of Object.keys(tafel.partien)) {
+            const partie = tafel.partien[id];
+            if (partie.ergebnis && !tafel.chronik.some((eintrag) => eintrag.id === id)) {
+                tafel.chronik.push(SCHACH_TAFEL._chronikEintrag(partie));
+            }
+        }
+
         return tafel;
+    },
+
+    _kennungen(teams, farbe) {
+        const liste = (teams && Array.isArray(teams[farbe])) ? teams[farbe] : [];
+        return liste
+            .filter((id) => typeof id === "string" && id !== "")
+            .filter((id, stelle, alle) => alle.indexOf(id) === stelle);
+    },
+
+    /* Was von einer beendeten Partie dauerhaft festgehalten wird. */
+    _chronikEintrag(partie) {
+        return {
+            id: partie.id,
+            titel: partie.titel || "Partie",
+            variante: partie.variante,
+            ergebnis: partie.ergebnis,
+            beendetAm: partie.geaendertAm || 0,
+            teams: {
+                weiss: partie.teams.weiss.slice(),
+                schwarz: partie.teams.schwarz.slice()
+            }
+        };
     },
 
     /*
@@ -149,11 +215,27 @@ const SCHACH_TAFEL = {
             return neu;
         }
 
-        neu.partien[partie.id] = SCHACH_RUNDE.normalisieren(partie);
+        const eingesetzt = SCHACH_RUNDE.normalisieren(partie);
+        neu.partien[partie.id] = eingesetzt;
+
+        /*
+         * Steht ein Ergebnis fest und fehlt der Chronik-Eintrag, wird er JETZT
+         * geschrieben — an der einzigen Stelle, durch die jede Änderung läuft.
+         * Danach überlebt das Ergebnis auch das Löschen der Partie.
+         */
+        if (eingesetzt.ergebnis
+            && !neu.chronik.some((eintrag) => eintrag.id === eingesetzt.id)) {
+            neu.chronik.push(SCHACH_TAFEL._chronikEintrag(eingesetzt));
+        }
+
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
     },
 
+    /*
+     * Entfernt eine Partie vom Brett. Ihr Chronik-Eintrag BLEIBT — die Punkte
+     * in der Rangliste sind damit endgültig und können nicht mehr verschwinden.
+     */
     partieEntfernen(tafel, id, zeitpunkt) {
         const neu = SCHACH_TAFEL.kopieren(tafel);
         delete neu.partien[id];

@@ -3,6 +3,28 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.4 — 2026-08-02
+
+Das Ende einer Partie hat jetzt einen Abschluss — und die Rangliste kann nichts
+mehr verlieren.
+
+- **Sieger- und Verlierer-Bildschirm**, jeder über den ganzen Bereich: grün mit
+  „Gewonnen", rot mit „Verloren", dazu die Punkte, die diese Partie gebracht
+  hat. Danach ein Schritt weiter zum **Punktestand** mit der eigenen Zeile
+  hervorgehoben, dann zurück in die Übersicht. Er erscheint einmal je Gerät und
+  nur für die, die mitgespielt haben.
+- **Beendete Partien stehen nicht mehr zwischen den offenen.** Sie liegen
+  zugeklappt unter „Beendet (N)" — die Auswahl zeigt nur noch, was wirklich
+  läuft.
+- **Die Punkte sind endgültig.** Sobald ein Ergebnis feststeht, wird es
+  festgeschrieben. Wer eine beendete Partie löscht, nimmt niemandem mehr seine
+  Punkte weg — bis v2.3 tat er genau das. Ergebnisse aus älteren Partien wandern
+  beim ersten Laden von selbst in die Chronik.
+- **Jede Fähigkeit hinterlässt eine Spur auf dem Brett:** Was sich bewegt, bekommt
+  einen Pfeil; was wirkt, ohne zu bewegen (Schutzschild, Fessel, Verstärkung,
+  Wiedergeburt) und jeder neu erschienene Würfel bekommt einen Ring. Beides
+  bleibt stehen, bis der nächste Zug kommt.
+
 ## v2.3 — 2026-08-02
 
 - **Jede Bewegung bekommt ihren Pfeil** — auch die durch Fähigkeiten. Beim

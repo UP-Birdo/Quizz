@@ -780,6 +780,11 @@ body {
     stroke-linejoin: round;
 }
 
+/* Wirkung ohne Bewegung: ein Ring statt eines Pfeils. */
+.zug-pfeil-ring {
+    fill: none;
+}
+
 /* ------------------------------------------------------------------ *
  * Bilanz der geschlagenen Figuren
  * ------------------------------------------------------------------ */
@@ -1086,6 +1091,150 @@ body {
 .verlauf-titel:focus {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Abschluss einer Partie (Sieg, Niederlage, Punktestand)
+ *
+ * Nimmt den ganzen Bereich ein — das Ende einer Partie, an der tagelang
+ * gespielt wurde, ist kein Nebensatz.
+ * ------------------------------------------------------------------ */
+
+.abschluss {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 60vh;
+    padding: 28px 20px;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.abschluss-sieg {
+    background: var(--gut-flaeche);
+    border: 2px solid var(--gut);
+}
+
+.abschluss-niederlage {
+    background: var(--fehler-flaeche);
+    border: 2px solid var(--gefahr);
+}
+
+.abschluss-remis,
+.abschluss-stand {
+    background: var(--karte);
+    border: 2px solid var(--rahmen);
+}
+
+.abschluss-marke {
+    margin: 0;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--schrift-leise);
+}
+
+.abschluss-titel {
+    margin: 0;
+    font-size: clamp(1.8rem, 9vw, 3rem);
+    line-height: 1.1;
+}
+
+.abschluss-sieg .abschluss-titel {
+    color: var(--gut);
+}
+
+.abschluss-niederlage .abschluss-titel {
+    color: var(--gefahr);
+}
+
+.abschluss-text {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.abschluss-grund {
+    margin: 0;
+    color: var(--schrift-leise);
+    font-size: 0.92rem;
+}
+
+.abschluss-punkte {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-top: 8px;
+    padding: 14px 22px;
+    background: var(--karte);
+    border: 1px solid var(--rahmen);
+    border-radius: var(--radius);
+}
+
+.abschluss-zahl {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--haupt);
+}
+
+.abschluss-punkte-text {
+    font-size: 0.82rem;
+    color: var(--schrift-leise);
+}
+
+.abschluss-leiste {
+    margin-top: 12px;
+}
+
+.abschluss-tabelle {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.abschluss-zeile {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--karte-leise);
+}
+
+.abschluss-ich {
+    background: var(--haupt);
+    color: var(--haupt-schrift);
+    font-weight: 600;
+}
+
+.abschluss-platz {
+    min-width: 28px;
+    text-align: right;
+    color: var(--schrift-leise);
+    font-variant-numeric: tabular-nums;
+}
+
+.abschluss-ich .abschluss-platz {
+    color: inherit;
+}
+
+.abschluss-name {
+    flex: 1 1 auto;
+    text-align: left;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.abschluss-gesamt {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
 }
 
 /* ------------------------------------------------------------------ *

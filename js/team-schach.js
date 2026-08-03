@@ -72,6 +72,16 @@ const TEAM_SCHACH = {
     /* Bis zu welchem Zugzähler die Wirkung einer Fähigkeit gezeigt wurde. */
     wirkungBis: {},
 
+    /*
+     * Der Abschluss einer Partie: { id, schritt }.
+     * schritt 1 = Sieg oder Niederlage, schritt 2 = Punktestand.
+     * Nur auf diesem Gerät — der gemeinsame Stand weiß davon nichts.
+     */
+    abschluss: null,
+
+    /* Welche beendeten Partien hat dieses Gerät schon abgeschlossen gesehen? */
+    gesehen: {},
+
     /* Verhindert zwei Züge gleichzeitig vom selben Gerät. */
     ziehtGerade: false,
 
@@ -139,6 +149,29 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /*
+         * Ist die offene Partie gerade zu Ende gegangen und dieses Gerät hat
+         * den Abschluss noch nicht gesehen, kommt er von selbst.
+         */
+        if (!TEAM_SCHACH.abschluss && TEAM_SCHACH.offeneId) {
+            const fertig = SCHACH_TAFEL.partie(tafel, TEAM_SCHACH.offeneId);
+
+            if (fertig && fertig.ergebnis && !TEAM_SCHACH.gesehen[fertig.id]
+                && SCHACH_RUNDE.teamVon(fertig, person.id)) {
+                TEAM_SCHACH.abschluss = { id: fertig.id, schritt: 1 };
+            }
+        }
+
+        if (TEAM_SCHACH.abschluss) {
+            const partie = SCHACH_TAFEL.partie(tafel, TEAM_SCHACH.abschluss.id);
+
+            if (partie && partie.ergebnis) {
+                TEAM_SCHACH._abschlussZeichnen(wurzel, partie, person);
+                return;
+            }
+            TEAM_SCHACH.abschluss = null;
+        }
+
         const offene = TEAM_SCHACH.offeneId
             ? SCHACH_TAFEL.partie(tafel, TEAM_SCHACH.offeneId)
             : null;
@@ -150,6 +183,129 @@ const TEAM_SCHACH = {
             TEAM_SCHACH.offeneId = "";
             TEAM_SCHACH._uebersichtZeichnen(wurzel, tafel, person);
         }
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Abschluss: Sieg, Niederlage, Punktestand
+     *
+     * Zwei Schritte, die den ganzen Bereich einnehmen. Der erste sagt, wie es
+     * ausgegangen ist, der zweite zeigt den Punktestand — danach geht es zurück
+     * in die Übersicht, und die Partie gilt für dieses Gerät als abgeschlossen.
+     *
+     * Warum das keine Dialog-Box ist: Das Ende einer Partie, an der man tagelang
+     * gespielt hat, ist der Moment, auf den alles zulief. Eine Meldung mit
+     * OK-Knopf würde ihn wegwischen.
+     * ---------------------------------------------------------------- */
+
+    _abschlussZeichnen(wurzel, partie, person) {
+        if (TEAM_SCHACH.abschluss.schritt === 2) {
+            TEAM_SCHACH._punktestandZeichnen(wurzel, partie, person);
+            return;
+        }
+
+        const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
+        const gewonnen = (partie.ergebnis === meinTeam);
+        const remis = (partie.ergebnis === "remis");
+
+        const art = remis ? "remis" : (gewonnen ? "sieg" : "niederlage");
+        const flaeche = TEAM_SCHACH._element("div", "abschluss abschluss-" + art);
+
+        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-marke", partie.titel));
+        flaeche.appendChild(TEAM_SCHACH._element("h2", "abschluss-titel",
+            remis ? "Unentschieden" : (gewonnen ? "Gewonnen" : "Verloren")));
+
+        const lage = SCHACH.lage(partie.stand);
+        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-text",
+            remis
+                ? "Keine Seite konnte die Partie für sich entscheiden."
+                : (gewonnen
+                    ? "Euer Team hat die Partie gewonnen."
+                    : ((partie.ergebnis === "weiss") ? "Weiss" : "Schwarz")
+                        + " hat die Partie gewonnen.")));
+
+        if (lage.text && lage.art !== "laeuft") {
+            flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-grund", lage.text));
+        }
+
+        /* Was diese Partie an Punkten gebracht hat — dieselben Zahlen wie in
+           der Rangliste, aus derselben Datei. */
+        const punkte = RANGLISTE.PUNKTE_TEILNAHME
+            + (gewonnen ? RANGLISTE.PUNKTE_SIEG : (remis ? RANGLISTE.PUNKTE_REMIS : 0));
+
+        const kasten = TEAM_SCHACH._element("div", "abschluss-punkte");
+        kasten.appendChild(TEAM_SCHACH._element("span", "abschluss-zahl", "+" + punkte));
+        kasten.appendChild(TEAM_SCHACH._element("span", "abschluss-punkte-text",
+            "Punkte für die Rangliste"
+            + (gewonnen ? " (" + RANGLISTE.PUNKTE_SIEG + " für den Sieg, " : " (")
+            + RANGLISTE.PUNKTE_TEILNAHME + " fürs Mitspielen"
+            + (remis ? ", " + RANGLISTE.PUNKTE_REMIS + " fürs Unentschieden" : "")
+            + ")"));
+        flaeche.appendChild(kasten);
+
+        const leiste = TEAM_SCHACH._element("div", "abschluss-leiste");
+        leiste.appendChild(TEAM_SCHACH._knopf("Punktestand ansehen", "knopf-haupt",
+            () => {
+                TEAM_SCHACH.abschluss.schritt = 2;
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            }));
+        flaeche.appendChild(leiste);
+
+        wurzel.appendChild(flaeche);
+    },
+
+    _punktestandZeichnen(wurzel, partie, person) {
+        const flaeche = TEAM_SCHACH._element("div", "abschluss abschluss-stand");
+
+        flaeche.appendChild(TEAM_SCHACH._element("h2", "abschluss-titel", "Punktestand"));
+
+        /* Die Rangliste rechnet — hier wird nur gezeigt. */
+        const quizzDaten = (WUERFEL_QUIZZ.abgleich && WUERFEL_QUIZZ.abgleich.daten)
+            ? WUERFEL_QUIZZ.abgleich.daten
+            : null;
+        const liste = RANGLISTE.gesamt(quizzDaten, TEAM_SCHACH.abgleich.daten);
+
+        if (liste.length === 0) {
+            flaeche.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+                "Noch keine Punkte."));
+        } else {
+            const tabelle = TEAM_SCHACH._element("div", "abschluss-tabelle");
+
+            for (let platz = 0; platz < liste.length; platz++) {
+                const eintrag = liste[platz];
+                const zeile = TEAM_SCHACH._element("div",
+                    "abschluss-zeile" + ((eintrag.id === person.id) ? " abschluss-ich" : ""));
+
+                zeile.appendChild(TEAM_SCHACH._element("span", "abschluss-platz",
+                    (platz + 1) + "."));
+                zeile.appendChild(TEAM_SCHACH._element("span", "abschluss-name", eintrag.name));
+                zeile.appendChild(TEAM_SCHACH._element("span", "abschluss-gesamt",
+                    String(eintrag.gesamt)));
+
+                tabelle.appendChild(zeile);
+            }
+
+            flaeche.appendChild(tabelle);
+        }
+
+        flaeche.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            "Die Punkte dieser Partie sind festgeschrieben. Sie bleiben erhalten, "
+            + "auch wenn die Partie später aus der Liste verschwindet."));
+
+        const leiste = TEAM_SCHACH._element("div", "abschluss-leiste");
+        leiste.appendChild(TEAM_SCHACH._knopf("Zurück zur Übersicht", "knopf-haupt",
+            () => TEAM_SCHACH.abschlussSchliessen(partie.id)));
+        flaeche.appendChild(leiste);
+
+        wurzel.appendChild(flaeche);
+    },
+
+    /* Abschluss weglegen: Die Partie gilt auf diesem Gerät als erledigt. */
+    abschlussSchliessen(id) {
+        TEAM_SCHACH.gesehen[id] = true;
+        TEAM_SCHACH.abschluss = null;
+        TEAM_SCHACH.offeneId = "";
+        TEAM_SCHACH._auswahlAufheben();
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
     /* ---------------------------------------------------------------- *
@@ -246,21 +402,46 @@ const TEAM_SCHACH = {
      * ---------------------------------------------------------------- */
 
     _uebersichtZeichnen(wurzel, tafel, person) {
+        const alle = SCHACH_TAFEL.liste(tafel);
+
+        /*
+         * Beendete Partien stehen nicht mehr zwischen den offenen: Sie sind
+         * gespielt, ihre Punkte sind festgeschrieben. Weggeworfen werden sie
+         * trotzdem nicht — sie liegen zugeklappt darunter, falls jemand noch
+         * einmal nachsehen will.
+         */
+        const offene = alle.filter((partie) => !partie.ergebnis);
+        const beendete = alle.filter((partie) => partie.ergebnis);
+
         const kopf = TEAM_SCHACH._element("div", "phasen-leiste");
         kopf.appendChild(TEAM_SCHACH._element("span", "phasen-text",
-            "Offene Partien: " + SCHACH_TAFEL.anzahl(tafel)));
+            "Offene Partien: " + offene.length));
         wurzel.appendChild(kopf);
 
-        const liste = SCHACH_TAFEL.liste(tafel);
-
-        if (liste.length === 0) {
+        if (offene.length === 0) {
             wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-                "Es läuft noch keine Partie. Leg eine an, wähle deine Spielart "
+                "Es läuft keine Partie. Leg eine an, wähle deine Spielart "
                 + "und tritt einem Team bei."));
         }
 
-        for (const partie of liste) {
+        for (const partie of offene) {
             wurzel.appendChild(TEAM_SCHACH._partieKarteBauen(partie, person));
+        }
+
+        if (beendete.length > 0) {
+            const kasten = document.createElement("details");
+            kasten.className = "verlauf-kasten";
+
+            const titel = document.createElement("summary");
+            titel.className = "verlauf-titel";
+            titel.textContent = "Beendet (" + beendete.length + ")";
+            kasten.appendChild(titel);
+
+            for (const partie of beendete) {
+                kasten.appendChild(TEAM_SCHACH._partieKarteBauen(partie, person));
+            }
+
+            wurzel.appendChild(kasten);
         }
 
         const fuss = TEAM_SCHACH._element("div", "fussleiste");
@@ -676,7 +857,23 @@ const TEAM_SCHACH = {
         }
 
         wege = wege.filter((weg) => weg.von !== weg.nach);
-        if (wege.length === 0) {
+
+        /*
+         * Fähigkeiten, die nichts bewegen (Schutzschild, Fessel, Verstärkung,
+         * Wiedergeburt) und neu erschienene Würfel haben betroffene Felder ohne
+         * Weg. Sie bekommen statt eines Pfeils einen Ring — sonst wäre die
+         * einzige Spur ein kurzes Aufleuchten, das verpasst, wer gerade nicht
+         * hinsieht.
+         */
+        const inWegen = {};
+        for (const weg of wege) {
+            inWegen[weg.von] = true;
+            inWegen[weg.nach] = true;
+        }
+
+        const ringe = (letzter.felder || []).filter((feld) => !inWegen[feld]);
+
+        if (wege.length === 0 && ringe.length === 0) {
             return null;
         }
 
@@ -705,6 +902,18 @@ const TEAM_SCHACH = {
            läge bei sich kreuzenden Pfeilen die Unterlage des einen über der
            Farbe des anderen. */
         for (const lage of ["zug-pfeil-unten", "zug-pfeil-oben"]) {
+            for (const feld of ringe) {
+                const punkt = mitte(feld);
+                const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+
+                ring.setAttribute("class", lage + " zug-pfeil-ring");
+                ring.setAttribute("cx", String(punkt.x));
+                ring.setAttribute("cy", String(punkt.y));
+                ring.setAttribute("r", "0.36");
+                svg.appendChild(ring);
+                gezeichnet++;
+            }
+
             for (const weg of wege) {
                 const start = mitte(weg.von);
                 const ende = mitte(weg.nach);

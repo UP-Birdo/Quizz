@@ -39,8 +39,14 @@ const RANGLISTE = {
      * Punkte aus allen beendeten Schachpartien, je Spieler-Kennung.
      * Liefert { "<id>": { punkte, siege, remis, partien } }.
      *
-     * Gewertet wird nur, was vorbei ist: Eine laufende Partie hat noch kein
-     * Ergebnis, und ein Zwischenstand wäre reine Vermutung.
+     * Gerechnet wird aus der CHRONIK der Tafel, nicht aus den Partien selbst.
+     * Das ist der Unterschied seit v2.4: Ein Ergebnis wird beim Beenden einmal
+     * festgeschrieben und bleibt dann stehen — auch wenn die Partie später
+     * geschlossen oder gelöscht wird. Vorher nahm ein Löschen allen
+     * Beteiligten ihre Punkte wieder weg.
+     *
+     * Gewertet wird weiterhin nur, was vorbei ist: Eine laufende Partie hat
+     * noch kein Ergebnis, und ein Zwischenstand wäre reine Vermutung.
      */
     schachPunkte(tafel) {
         const ergebnis = {};
@@ -52,11 +58,7 @@ const RANGLISTE = {
             return ergebnis[id];
         };
 
-        for (const partie of SCHACH_TAFEL.liste(tafel)) {
-            if (!partie.ergebnis) {
-                continue;
-            }
-
+        for (const partie of SCHACH_TAFEL.normalisieren(tafel).chronik) {
             for (const farbe of ["weiss", "schwarz"]) {
                 for (const id of partie.teams[farbe]) {
                     const eintrag = eintragen(id);

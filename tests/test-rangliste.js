@@ -113,6 +113,47 @@ pruefe("Mehrere Partien werden zusammengezaehlt", () => {
         2 * RANGLISTE.PUNKTE_SIEG + 3 * RANGLISTE.PUNKTE_TEILNAHME, "Summe Anna");
 });
 
+pruefe("Die Punkte bleiben, wenn die Partie geloescht wird", () => {
+    /*
+     * Der Kern der Chronik: Bis v2.3 rechnete die Rangliste aus den Partien
+     * selbst — wer eine beendete Partie loeschte, nahm allen Beteiligten ihre
+     * Punkte wieder weg. Genau das darf nicht mehr passieren.
+     */
+    const tafel = beendetePartie(SCHACH_TAFEL.leereTafel(1000), "Endspiel", "weiss", 2000);
+
+    const vorher = RANGLISTE.schachPunkte(tafel);
+    gleich(vorher["id-anna"].punkte, RANGLISTE.PUNKTE_SIEG + RANGLISTE.PUNKTE_TEILNAHME,
+        "Anna hat gewonnen");
+    gleich(tafel.chronik.length, 1, "ein Chronik-Eintrag");
+
+    /* Partie weg — Punkte bleiben. */
+    const id = SCHACH_TAFEL.liste(tafel)[0].id;
+    const ohne = SCHACH_TAFEL.partieEntfernen(tafel, id, 2100);
+    gleich(SCHACH_TAFEL.anzahl(ohne), 0, "keine Partie mehr");
+
+    const nachher = RANGLISTE.schachPunkte(ohne);
+    gleich(nachher["id-anna"].punkte, vorher["id-anna"].punkte, "Annas Punkte bleiben");
+    gleich(nachher["id-bert"].punkte, vorher["id-bert"].punkte, "Berts Punkte bleiben");
+
+    /* Und auch ueber Speichern und Laden hinweg. */
+    const geladen = SCHACH_TAFEL.normalisieren(JSON.parse(JSON.stringify(ohne)));
+    gleich(RANGLISTE.schachPunkte(geladen)["id-anna"].punkte, vorher["id-anna"].punkte,
+        "nach dem Neuladen ebenfalls");
+});
+
+pruefe("Ein Ergebnis wird nur einmal gezaehlt", () => {
+    let tafel = beendetePartie(SCHACH_TAFEL.leereTafel(1000), "Doppelt", "weiss", 2000);
+    const partie = SCHACH_TAFEL.liste(tafel)[0];
+
+    /* Dieselbe beendete Partie mehrfach schreiben — etwa weil zwei Geraete
+       denselben Stand senden. */
+    tafel = SCHACH_TAFEL.partieEinsetzen(tafel, partie, 2100);
+    tafel = SCHACH_TAFEL.partieEinsetzen(tafel, partie, 2200);
+
+    gleich(tafel.chronik.length, 1, "trotzdem ein Eintrag");
+    gleich(RANGLISTE.schachPunkte(tafel)["id-anna"].partien, 1, "eine Partie gewertet");
+});
+
 /* ------------------------------------------------------------------ *
  * Gesamtwertung
  * ------------------------------------------------------------------ */
