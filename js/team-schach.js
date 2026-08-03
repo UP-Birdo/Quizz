@@ -46,6 +46,17 @@ const TEAM_SCHACH = {
     /* Ist die Auswahl der Spielart offen? Sie liegt VOR der Übersicht. */
     auswahlOffen: false,
 
+    /*
+     * Die Einstellungen für die NÄCHSTE Partie. Sie leben nur, solange die
+     * Auswahl offen ist; mit dem Anlegen wandern sie in die Partie und stehen
+     * dort fest.
+     */
+    neueRegeln: {
+        faehigkeiten: false,
+        seltenheitZeigen: true,
+        einigkeit: false
+    },
+
     /* Gerade angetipptes Feld (Feldnummer) oder -1. */
     gewaehltesFeld: -1,
 
@@ -81,6 +92,20 @@ const TEAM_SCHACH = {
 
     /* Welche beendeten Partien hat dieses Gerät schon abgeschlossen gesehen? */
     gesehen: {},
+
+    /*
+     * Der Vorzug: ein Zug, den man einträgt, während der Gegner dran ist. Er
+     * wird ausgeführt, sobald das eigene Team am Zug ist — ohne dass man noch
+     * etwas drücken muss.
+     *
+     * { partieId, von, nach, umwandlung }
+     *
+     * ER BLEIBT AUF DIESEM GERÄT. Im gemeinsamen Stand hätte er nichts zu
+     * suchen: Die Datenbank ist offen lesbar, der Gegner wüsste den Zug, bevor
+     * er passiert. Dieselbe Überlegung wie beim Würfel-Siegel. Der Preis: Beim
+     * Neuladen der Seite ist er weg — das ist die richtige Seite des Irrtums.
+     */
+    vorzug: null,
 
     /* Verhindert zwei Züge gleichzeitig vom selben Gerät. */
     ziehtGerade: false,
@@ -325,8 +350,10 @@ const TEAM_SCHACH = {
         wurzel.appendChild(kopf);
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Die Spielart steht mit dem Anlegen fest und lässt sich später nicht "
-            + "mehr wechseln. Das Bild zeigt die Startaufstellung."));
+            "Spielart und Einstellungen stehen mit dem Anlegen fest und lassen "
+            + "sich später nicht mehr ändern. Das Bild zeigt die Startaufstellung."));
+
+        wurzel.appendChild(TEAM_SCHACH._regelSchalterBauen());
 
         const feld = TEAM_SCHACH._element("div", "spielart-feld");
 
@@ -335,6 +362,61 @@ const TEAM_SCHACH = {
         }
 
         wurzel.appendChild(feld);
+    },
+
+    /*
+     * Die drei Einstellungen über den Kacheln. Sie stehen VOR der Spielart,
+     * weil sie für jede gelten — die Kachel ist der letzte Klick, der die
+     * Partie anlegt.
+     */
+    _regelSchalterBauen() {
+        const karte = TEAM_SCHACH._element("section", "karte");
+        karte.appendChild(TEAM_SCHACH._element("h3", "", "Einstellungen"));
+
+        const schalter = [
+            {
+                schluessel: "faehigkeiten",
+                titel: "Zufalls-Würfel",
+                hinweis: "Auf freien Feldern erscheinen Würfel mit Fähigkeiten — in "
+                    + "jeder Spielart, nicht nur in „Fähigkeiten sammeln“."
+            },
+            {
+                schluessel: "seltenheitZeigen",
+                titel: "Seltenheit anzeigen",
+                hinweis: "Der Würfel trägt schon auf dem Brett die Farbe seiner Stufe. "
+                    + "Aus heißt: Alle Würfel sehen gleich aus, und man weiß erst beim "
+                    + "Einsammeln, was drin war."
+            },
+            {
+                schluessel: "einigkeit",
+                titel: "Team muss sich einig sein",
+                hinweis: "Ein Zug wird erst vorgeschlagen und ausgeführt, wenn alle aus "
+                    + "dem Team zugestimmt haben. Achtung: Der Vorschlag steht im "
+                    + "gemeinsamen Stand — der Gegner kann ihn mitlesen."
+            }
+        ];
+
+        for (const eintrag of schalter) {
+            const zeile = TEAM_SCHACH._element("label", "schalter-zeile");
+
+            const kasten = document.createElement("input");
+            kasten.type = "checkbox";
+            kasten.className = "schalter-kasten";
+            kasten.checked = !!TEAM_SCHACH.neueRegeln[eintrag.schluessel];
+            kasten.addEventListener("change", () => {
+                TEAM_SCHACH.neueRegeln[eintrag.schluessel] = !!kasten.checked;
+            });
+            zeile.appendChild(kasten);
+
+            const text = TEAM_SCHACH._element("span", "schalter-text");
+            text.appendChild(TEAM_SCHACH._element("span", "schalter-titel", eintrag.titel));
+            text.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis", eintrag.hinweis));
+            zeile.appendChild(text);
+
+            karte.appendChild(zeile);
+        }
+
+        return karte;
     },
 
     _spielartKachelBauen(variante) {
@@ -512,6 +594,9 @@ const TEAM_SCHACH = {
            messen — deshalb steht die Bewegung ganz am Ende. */
         TEAM_SCHACH._zugAnimieren(halter, partie, person);
         TEAM_SCHACH._wirkungAnimieren(halter, partie);
+
+        /* Zuletzt: Ist ein Vorzug fällig, läuft er jetzt. */
+        TEAM_SCHACH._vorzugPruefen(partie, person);
     },
 
     /*
@@ -719,13 +804,18 @@ const TEAM_SCHACH = {
             /* Liegt hier ein Würfel mit einer Fähigkeit? */
             const bonusHier = bonus.find((eintrag) => eintrag.feld === feld);
             if (bonusHier) {
-                const stufe = SCHACH_VARIANTEN.stufeVon(bonusHier.art);
+                /* Ist „Seltenheit anzeigen“ aus, sehen alle Würfel gleich aus —
+                   man weiß erst beim Einsammeln, was drin war. */
+                const zeigen = (partie.regeln.seltenheitZeigen !== false);
+
                 zelle.classList.add("feld-bonus");
-                zelle.title = SCHACH_VARIANTEN.faehigkeitTitel(bonusHier.art)
-                    + " (" + stufe.titel + ")";
+                zelle.title = zeigen
+                    ? (SCHACH_VARIANTEN.faehigkeitTitel(bonusHier.art)
+                        + " (" + SCHACH_VARIANTEN.stufeVon(bonusHier.art).titel + ")")
+                    : "Würfel mit einer unbekannten Fähigkeit";
                 zelle.setAttribute("aria-label",
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
-                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(bonusHier.art));
+                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(zeigen ? bonusHier.art : ""));
             }
 
             /* Wartet die Fähigkeit auf ein Ziel? Dann sind die möglichen
@@ -747,6 +837,13 @@ const TEAM_SCHACH = {
                 zelle.title = "Rochade: hier tippen";
             }
 
+            /* Der vorgemerkte Zug. */
+            if (TEAM_SCHACH.vorzug && TEAM_SCHACH.vorzug.partieId === partie.id
+                && (TEAM_SCHACH.vorzug.von === feld || TEAM_SCHACH.vorzug.nach === feld)) {
+                zelle.classList.add("feld-vorzug");
+                zelle.title = "Vorgemerkter Zug";
+            }
+
             /* Königsfeld hervorheben, wenn es im Schach steht. */
             if (partie.laeuft && SCHACH.artVon(figur) === "K"
                 && SCHACH.farbeVon(figur) === stand.amZug
@@ -754,7 +851,10 @@ const TEAM_SCHACH = {
                 zelle.classList.add("feld-schach");
             }
 
-            zelle.disabled = !darfZiehen;
+            /* Auch wer nicht am Zug ist, darf tippen — für den Vorzug. Gesperrt
+               ist das Brett nur für Zuschauer und beendete Partien. */
+            zelle.disabled = !darfZiehen
+                && !(meinTeam && partie.laeuft && !partie.ergebnis);
             zelle.addEventListener("click", () => TEAM_SCHACH.feldAngetippt(partie, person, feld));
 
             brett.appendChild(zelle);
@@ -773,10 +873,29 @@ const TEAM_SCHACH = {
                 "Die Partie beginnt, sobald in beiden Teams jemand steht und beide "
                 + "Seiten bereit gedrückt haben."));
         } else if (partie.laeuft && !darfZiehen) {
+            const vorgemerkt = (TEAM_SCHACH.vorzug
+                && TEAM_SCHACH.vorzug.partieId === partie.id);
+
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
                 meinTeam
-                    ? "Warte, bis dein Team wieder am Zug ist."
+                    ? (vorgemerkt
+                        ? "Vorgemerkt: " + SCHACH.feldName(TEAM_SCHACH.vorzug.von, breite, hoehe)
+                            + " nach " + SCHACH.feldName(TEAM_SCHACH.vorzug.nach, breite, hoehe)
+                            + ". Der Zug läuft von selbst, sobald dein Team dran ist."
+                        : "Warte, bis dein Team wieder am Zug ist — oder merk dir schon "
+                            + "jetzt einen Zug vor: Figur antippen, Ziel antippen.")
                     : "Tritt einem Team bei, um mitzuspielen."));
+
+            if (vorgemerkt) {
+                const leiste = TEAM_SCHACH._element("div", "karte-fuss");
+                leiste.appendChild(TEAM_SCHACH._knopf("Vormerkung löschen",
+                    "knopf-still knopf-klein",
+                    () => {
+                        TEAM_SCHACH.vorzug = null;
+                        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    }));
+                halter.appendChild(leiste);
+            }
         } else if (darfZiehen) {
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
                 "Figur antippen, dann ein Feld mit Punkt. Wer aus deinem Team "
@@ -788,7 +907,88 @@ const TEAM_SCHACH = {
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung erklaerung-rochade", rochade));
         }
 
+        const abstimmung = TEAM_SCHACH._abstimmungBauen(partie, person);
+        if (abstimmung) {
+            halter.appendChild(abstimmung);
+        }
+
         return halter;
+    },
+
+    /*
+     * Der offene Zugvorschlag, über den das Team abstimmt. Nur in Partien, die
+     * mit „Team muss sich einig sein“ angelegt wurden.
+     */
+    _abstimmungBauen(partie, person) {
+        if (!partie.vorschlag || partie.vorschlag.zugZaehler !== partie.zugZaehler) {
+            return null;
+        }
+
+        const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
+        if (meinTeam !== partie.stand.amZug) {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(partie.stand);
+        const hoehe = SCHACH.hoeheVon(partie.stand);
+
+        const karte = TEAM_SCHACH._element("section", "karte abstimmung");
+        karte.appendChild(TEAM_SCHACH._element("h3", "", "Zug vorgeschlagen"));
+
+        karte.appendChild(TEAM_SCHACH._element("p", "abstimmung-zug",
+            (partie.vorschlag.name || "Jemand") + " schlägt vor: "
+            + SCHACH.feldName(partie.vorschlag.von, breite, hoehe) + " nach "
+            + SCHACH.feldName(partie.vorschlag.nach, breite, hoehe)));
+
+        const fehlende = partie.teams[meinTeam]
+            .filter((id) => partie.vorschlag.stimmen.indexOf(id) === -1);
+
+        karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            fehlende.length === 0
+                ? "Alle sind einverstanden."
+                : "Es fehlt noch: " + fehlende.map((id) => TEAM_SCHACH._nameVon(id)).join(", ")));
+
+        const leiste = TEAM_SCHACH._element("div", "karte-fuss");
+
+        if (partie.vorschlag.stimmen.indexOf(person.id) === -1) {
+            leiste.appendChild(TEAM_SCHACH._knopf("Einverstanden", "knopf-haupt",
+                () => TEAM_SCHACH.zugMittragen(partie)));
+        } else {
+            leiste.appendChild(TEAM_SCHACH._element("span", "chip chip-fertig",
+                "Du bist einverstanden"));
+        }
+
+        leiste.appendChild(TEAM_SCHACH._knopf("Verwerfen", "knopf-still knopf-klein",
+            () => TEAM_SCHACH.vorschlagVerwerfen(partie)));
+
+        karte.appendChild(leiste);
+        return karte;
+    },
+
+    async zugMittragen(partie) {
+        const person = TEAM_SCHACH._ich();
+        if (!person) {
+            return;
+        }
+
+        const neu = SCHACH_RUNDE.zugMittragen(partie, person.id);
+        if (!neu) {
+            return;
+        }
+        await TEAM_SCHACH._sendenMitPruefung(neu, partie.zugZaehler);
+    },
+
+    async vorschlagVerwerfen(partie) {
+        const person = TEAM_SCHACH._ich();
+        if (!person) {
+            return;
+        }
+
+        const neu = SCHACH_RUNDE.vorschlagVerwerfen(partie, person.id);
+        if (!neu) {
+            return;
+        }
+        await TEAM_SCHACH._sendenMitPruefung(neu, partie.zugZaehler);
     },
 
     /*
@@ -1343,7 +1543,9 @@ const TEAM_SCHACH = {
     },
 
     feldAngetippt(partie, person, feld) {
+        /* Nicht am Zug, aber im Team: Der Tipp gilt dem Vorzug. */
         if (!SCHACH_RUNDE.darfZiehen(partie, person.id)) {
+            TEAM_SCHACH._vorzugAngetippt(partie, person, feld);
             return;
         }
 
@@ -1385,6 +1587,96 @@ const TEAM_SCHACH = {
         }
 
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Vorzüge
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Ein Stand, in dem die eigene Farbe am Zug ist — nur zum Nachsehen, welche
+     * Züge in Frage kämen. Das Original bleibt unberührt; gezogen wird damit
+     * nie.
+     */
+    _vorschauStand(partie, farbe) {
+        return Object.assign({}, partie.stand, { amZug: farbe });
+    },
+
+    _vorzugAngetippt(partie, person, feld) {
+        const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
+
+        /* Nur, wer mitspielt und dessen Partie läuft. */
+        if (!meinTeam || !partie.laeuft || partie.ergebnis) {
+            return;
+        }
+
+        const stand = TEAM_SCHACH._vorschauStand(partie, meinTeam);
+
+        /* Zweiter Tipp auf ein mögliches Ziel: Vorzug merken. */
+        if (TEAM_SCHACH.gewaehltesFeld !== -1
+            && TEAM_SCHACH.moeglicheZiele.indexOf(feld) !== -1) {
+            TEAM_SCHACH.vorzug = {
+                partieId: partie.id,
+                von: TEAM_SCHACH.gewaehltesFeld,
+                nach: feld,
+                umwandlung: "D"
+            };
+            TEAM_SCHACH.gewaehltesFeld = -1;
+            TEAM_SCHACH.moeglicheZiele = [];
+            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            return;
+        }
+
+        const figur = SCHACH.figurAuf(stand, feld);
+
+        if (SCHACH.farbeVon(figur) === meinTeam) {
+            if (TEAM_SCHACH.gewaehltesFeld === feld) {
+                TEAM_SCHACH.gewaehltesFeld = -1;
+                TEAM_SCHACH.moeglicheZiele = [];
+            } else {
+                TEAM_SCHACH.gewaehltesFeld = feld;
+                TEAM_SCHACH.moeglicheZiele = SCHACH.zuege(stand, feld)
+                    .map((zug) => zug.nach)
+                    .filter((ziel, stelle, alle) => alle.indexOf(ziel) === stelle);
+            }
+        } else {
+            /* Tipp ins Leere hebt Auswahl und Vorzug auf. */
+            TEAM_SCHACH.gewaehltesFeld = -1;
+            TEAM_SCHACH.moeglicheZiele = [];
+            if (TEAM_SCHACH.vorzug && TEAM_SCHACH.vorzug.partieId === partie.id) {
+                TEAM_SCHACH.vorzug = null;
+            }
+        }
+
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
+
+    /*
+     * Führt den vorgemerkten Zug aus, sobald das eigene Team am Zug ist.
+     * Wird nach jedem Zeichnen geprüft — der Stand kommt ja von aussen.
+     */
+    _vorzugPruefen(partie, person) {
+        const vorzug = TEAM_SCHACH.vorzug;
+
+        if (!vorzug || vorzug.partieId !== partie.id || TEAM_SCHACH.ziehtGerade) {
+            return;
+        }
+        if (!SCHACH_RUNDE.darfZiehen(partie, person.id)) {
+            return;
+        }
+
+        TEAM_SCHACH.vorzug = null;
+
+        /* Ist er nicht mehr möglich (die Figur wurde geschlagen, das Feld ist
+           besetzt), wird er verworfen — nie ersatzweise etwas anderes gezogen. */
+        if (!SCHACH.ziehen(partie.stand, vorzug.von, vorzug.nach, vorzug.umwandlung)) {
+            DIALOG.hinweis("Vorzug verworfen",
+                "Der vorgemerkte Zug ist nach dem Zug des Gegners nicht mehr möglich.");
+            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            return;
+        }
+
+        TEAM_SCHACH.zugAusfuehren(partie, vorzug.von, vorzug.nach);
     },
 
     /* Merkt sich die angetippte Figur samt ihren Zielen. */
@@ -1462,9 +1754,13 @@ const TEAM_SCHACH = {
                 umwandlung = wahl;
             }
 
-            const neu = SCHACH_RUNDE.ziehen(
-                partie, person.id, von, nach, umwandlung, person.name
-            );
+            /* Braucht die Partie Einigkeit, wird der Zug erst vorgeschlagen.
+               Ist man allein im Team, zieht `zugVorschlagen` sofort. */
+            const neu = SCHACH_RUNDE.brauchtEinigkeit(partie)
+                ? SCHACH_RUNDE.zugVorschlagen(
+                    partie, person.id, von, nach, umwandlung, person.name)
+                : SCHACH_RUNDE.ziehen(
+                    partie, person.id, von, nach, umwandlung, person.name);
 
             if (!neu) {
                 TEAM_SCHACH._auswahlAufheben();
@@ -1535,6 +1831,14 @@ const TEAM_SCHACH = {
         }
         TEAM_SCHACH.auswahlOffen = true;
         TEAM_SCHACH.offeneId = "";
+
+        /* Jede neue Partie fängt mit den Vorgaben an. */
+        TEAM_SCHACH.neueRegeln = {
+            faehigkeiten: false,
+            seltenheitZeigen: true,
+            einigkeit: false
+        };
+
         TEAM_SCHACH._auswahlAufheben();
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
@@ -1577,7 +1881,17 @@ const TEAM_SCHACH = {
             return;
         }
 
-        const ergebnis = SCHACH_TAFEL.partieAnlegen(tafel, varianteId, titel);
+        /* Die Spielart „Fähigkeiten sammeln“ hat sie ohnehin an; für alle
+           anderen entscheidet der Schalter. */
+        const regeln = {
+            faehigkeiten: TEAM_SCHACH.neueRegeln.faehigkeiten
+                || !!SCHACH_VARIANTEN.holen(varianteId).faehigkeiten,
+            seltenheitZeigen: TEAM_SCHACH.neueRegeln.seltenheitZeigen,
+            einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
+        };
+
+        const ergebnis = SCHACH_TAFEL.partieAnlegen(
+            tafel, varianteId, titel, undefined, regeln);
 
         try {
             await abgleich.speicher.speichern(ergebnis.tafel);

@@ -791,6 +791,110 @@ pruefe("Faehigkeiten kann nur einsetzen, wer am Zug ist und sie hat", () => {
         null, "Schwarz ist nicht am Zug");
 });
 
+/* ------------------------------------------------------------------ *
+ * Einstellungen und Abstimmung
+ * ------------------------------------------------------------------ */
+
+/* Eine Partie mit zwei Leuten im weissen Team und Einigkeitspflicht. */
+function einigkeitsPartie() {
+    let runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-e", "Mit Einigkeit");
+    runde.regeln.einigkeit = true;
+
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-cem", "weiss", 1000);
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-bert", "schwarz", 1000);
+    runde = SCHACH_RUNDE.bereitSetzen(runde, "weiss", true, 1000);
+    runde = SCHACH_RUNDE.bereitSetzen(runde, "schwarz", true, 1000);
+    return runde;
+}
+
+pruefe("Ohne Einigkeitspflicht zieht ein Vorschlag sofort", () => {
+    const runde = SCHACH_RUNDE.zugVorschlagen(laufendePartie(), "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
+    gleich(runde.zugZaehler, 1, "gezogen");
+    gleich(runde.vorschlag, null, "kein Vorschlag offen");
+});
+
+pruefe("Allein im Team braucht es keine Abstimmung", () => {
+    let runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-a", "Allein");
+    runde.regeln.einigkeit = true;
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-bert", "schwarz", 1000);
+    runde = SCHACH_RUNDE.bereitSetzen(runde, "weiss", true, 1000);
+    runde = SCHACH_RUNDE.bereitSetzen(runde, "schwarz", true, 1000);
+
+    const danach = SCHACH_RUNDE.zugVorschlagen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
+    gleich(danach.zugZaehler, 1, "sofort gezogen");
+});
+
+pruefe("Mit Einigkeitspflicht wird erst vorgeschlagen, dann gezogen", () => {
+    let runde = SCHACH_RUNDE.zugVorschlagen(einigkeitsPartie(), "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
+    gleich(runde.zugZaehler, 0, "noch nicht gezogen");
+    wahr(runde.vorschlag !== null, "ein Vorschlag steht");
+    gleich(runde.vorschlag.stimmen.join(","), "id-anna", "der Vorschlagende ist dafuer");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e4")), ".", "Brett unveraendert");
+
+    /* Cem stimmt zu — jetzt sind alle dafuer. */
+    runde = SCHACH_RUNDE.zugMittragen(runde, "id-cem", 2100);
+    gleich(runde.zugZaehler, 1, "jetzt gezogen");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e4")), "B", "Bauer steht auf e4");
+    gleich(runde.vorschlag, null, "Vorschlag ist erledigt");
+});
+
+pruefe("Der Gegner kann nicht mitstimmen, und ein Vorschlag laesst sich verwerfen", () => {
+    let runde = SCHACH_RUNDE.zugVorschlagen(einigkeitsPartie(), "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+
+    gleich(SCHACH_RUNDE.zugMittragen(runde, "id-bert", 2100), null,
+        "Schwarz stimmt nicht mit ab");
+
+    runde = SCHACH_RUNDE.vorschlagVerwerfen(runde, "id-cem", 2200);
+    gleich(runde.vorschlag, null, "verworfen");
+    gleich(runde.zugZaehler, 0, "und nichts gezogen");
+});
+
+pruefe("Ein Vorschlag muss regelkonform sein", () => {
+    gleich(SCHACH_RUNDE.zugVorschlagen(einigkeitsPartie(), "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e5"), "D", "Anna", 2000),
+        null, "drei Felder gehen nicht");
+});
+
+pruefe("Der Schalter fuer Faehigkeiten geht der Spielart vor", () => {
+    /* Klassisch, aber mit Würfeln. */
+    let runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-w", "Mit Wuerfeln");
+    gleich(SCHACH_RUNDE.faehigkeitenAn(runde), false, "klassisch: ohne");
+
+    runde.regeln.faehigkeiten = true;
+    gleich(SCHACH_RUNDE.faehigkeitenAn(runde), true, "eingeschaltet");
+
+    /* Und umgekehrt: Fähigkeiten-Spielart ohne Würfel. */
+    const ohne = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-o", "Ohne");
+    gleich(SCHACH_RUNDE.faehigkeitenAn(ohne), true, "Spielart: mit");
+
+    ohne.regeln.faehigkeiten = false;
+    gleich(SCHACH_RUNDE.faehigkeitenAn(ohne), false, "abgeschaltet");
+});
+
+pruefe("Partien von frueher behalten ihr Verhalten", () => {
+    /* Kein `regeln` im Stand: Dann entscheidet die Spielart wie vor v2.5. */
+    const alt = SCHACH_RUNDE.normalisieren({
+        variante: "faehigkeiten",
+        stand: { brett: SCHACH.GRUNDSTELLUNG, amZug: "weiss" },
+        teams: { weiss: ["id-anna"], schwarz: ["id-bert"] },
+        laeuft: true
+    });
+
+    gleich(alt.regeln.faehigkeiten, null, "keine Angabe");
+    gleich(SCHACH_RUNDE.faehigkeitenAn(alt), true, "trotzdem mit Wuerfeln");
+    gleich(alt.regeln.einigkeit, false, "und ohne Abstimmung");
+    gleich(alt.regeln.seltenheitZeigen, true, "Seltenheit sichtbar");
+});
+
 pruefe("Jede Bewegung hinterlaesst ihren Weg im Verlauf", () => {
     /* Daraus zeichnet der Bildschirm die Pfeile — auch für Fähigkeiten, die
        mehrere Figuren auf einmal bewegen. */

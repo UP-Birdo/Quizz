@@ -267,8 +267,14 @@ pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
         throw new Error("Auswahl nicht geoeffnet");
     }
 
-    /* Kopfzeile, Erklärung, Kachelfeld. */
-    const feld = TEAM_SCHACH.wurzelEl.kinder[2];
+    /* Nach Klasse suchen statt nach Stelle — sonst kippt der Test, sobald
+       darüber etwas dazukommt (wie die Einstellungen in v2.5). */
+    const feld = TEAM_SCHACH.wurzelEl.kinder.find(
+        (kind) => kind.className === "spielart-feld");
+
+    if (!feld) {
+        throw new Error("kein Kachelfeld gezeichnet");
+    }
     if (feld.kinder.length !== SCHACH_VARIANTEN.liste.length) {
         throw new Error("erwartet " + SCHACH_VARIANTEN.liste.length
             + " Kacheln, waren " + feld.kinder.length);
@@ -547,6 +553,56 @@ pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
 
     TEAM_SCHACH._auswahlAufheben();
     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+});
+
+pruefe("Wer nicht am Zug ist, kann einen Zug vormerken", () => {
+    /* Eine Partie, in der Schwarz am Zug ist — Anna (Weiss) merkt vor. */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Vorzug", 6000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 6000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 6000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 6000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 6000);
+    partie = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("a2"), SCHACH.feldNummer("a3"), "D", "Anna", 6100);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 6100);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const person = { id: "id-anna", name: "Anna" };
+    const offene = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, partie.id);
+
+    /* Schwarz ist am Zug — Anna darf nicht ziehen, aber vormerken. */
+    if (SCHACH_RUNDE.darfZiehen(offene, person.id)) {
+        throw new Error("Anna duerfte gar nicht ziehen");
+    }
+
+    TEAM_SCHACH.feldAngetippt(offene, person, SCHACH.feldNummer("e2"));
+    if (TEAM_SCHACH.moeglicheZiele.length === 0) {
+        throw new Error("keine Vorschau-Ziele");
+    }
+
+    TEAM_SCHACH.feldAngetippt(offene, person, SCHACH.feldNummer("e4"));
+
+    if (!TEAM_SCHACH.vorzug || TEAM_SCHACH.vorzug.nach !== SCHACH.feldNummer("e4")) {
+        throw new Error("nichts vorgemerkt");
+    }
+
+    /* Das Brett ist unveraendert — vorgemerkt heisst nicht gezogen. */
+    const jetzt = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, partie.id);
+    if (SCHACH.figurAuf(jetzt.stand, SCHACH.feldNummer("e4")) !== ".") {
+        throw new Error("der Zug wurde ausgefuehrt statt vorgemerkt");
+    }
+
+    /* Und er steht nirgends im gemeinsamen Stand. */
+    if (JSON.stringify(TEAM_SCHACH.abgleich.daten).indexOf("vorzug") !== -1) {
+        throw new Error("der Vorzug ist in den gemeinsamen Stand geraten");
+    }
+
+    TEAM_SCHACH.vorzug = null;
+    TEAM_SCHACH._auswahlAufheben();
+    TEAM_SCHACH.offeneId = "";
 });
 
 pruefe("Wird die offene Partie geloescht, landet man in der Uebersicht", () => {

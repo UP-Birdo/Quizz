@@ -85,6 +85,28 @@ const SCHACH_RUNDE = {
             /* Geschlagene Figuren je Farbe, für die Wiedergeburt. */
             verloren: { weiss: [], schwarz: [] },
 
+            /*
+             * Was beim Anlegen eingestellt wurde. Die Vorgaben entsprechen dem
+             * Verhalten von vorher, damit angefangene Partien sich nicht
+             * ändern — sie haben diese Felder nicht und bekommen genau das,
+             * was sie schon hatten.
+             */
+            regeln: {
+                /* Erscheinen Würfel mit Fähigkeiten? Ohne Angabe entscheidet
+                   die Spielart, wie bisher. */
+                faehigkeiten: null,
+                /* Zeigt der Würfel seine Seltenheit schon auf dem Brett? */
+                seltenheitZeigen: true,
+                /* Muss sich das Team über einen Zug einig werden? */
+                einigkeit: false
+            },
+
+            /*
+             * Vorschläge, über die gerade abgestimmt wird (nur bei `einigkeit`):
+             * { von, nach, umwandlung, wer, name, zugZaehler, stimmen: [ids] }
+             */
+            vorschlag: null,
+
             verlauf: []
         };
     },
@@ -159,6 +181,33 @@ const SCHACH_RUNDE = {
                 ? roh.verloren[farbe] : [];
             runde.verloren[farbe] = liste
                 .filter((art) => typeof art === "string" && SCHACH.artName(art) !== "");
+        }
+
+        if (roh.regeln && typeof roh.regeln === "object") {
+            if (roh.regeln.faehigkeiten === true || roh.regeln.faehigkeiten === false) {
+                runde.regeln.faehigkeiten = roh.regeln.faehigkeiten;
+            }
+            runde.regeln.seltenheitZeigen = (roh.regeln.seltenheitZeigen !== false);
+            runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
+        }
+
+        if (roh.vorschlag && typeof roh.vorschlag === "object"
+            && Number.isInteger(roh.vorschlag.von) && Number.isInteger(roh.vorschlag.nach)) {
+            const stimmen = Array.isArray(roh.vorschlag.stimmen) ? roh.vorschlag.stimmen : [];
+
+            runde.vorschlag = {
+                von: roh.vorschlag.von,
+                nach: roh.vorschlag.nach,
+                umwandlung: (typeof roh.vorschlag.umwandlung === "string")
+                    ? roh.vorschlag.umwandlung : "D",
+                wer: (typeof roh.vorschlag.wer === "string") ? roh.vorschlag.wer : "",
+                name: (typeof roh.vorschlag.name === "string") ? roh.vorschlag.name : "",
+                zugZaehler: Number.isInteger(roh.vorschlag.zugZaehler)
+                    ? roh.vorschlag.zugZaehler : 0,
+                stimmen: stimmen
+                    .filter((id) => typeof id === "string" && id !== "")
+                    .filter((id, stelle, alle) => alle.indexOf(id) === stelle)
+            };
         }
 
         /*
@@ -292,10 +341,21 @@ const SCHACH_RUNDE = {
      * Lässt bei Bedarf einen neuen Würfel erscheinen. Wird nach jedem Zug
      * gerufen und ändert die übergebene Runde.
      */
-    _bonusNachziehen(runde) {
-        const variante = SCHACH_RUNDE.varianteVon(runde);
+    /*
+     * Erscheinen in dieser Partie Würfel? Der Schalter der Partie geht vor;
+     * ohne Angabe entscheidet die Spielart wie vor v2.5.
+     */
+    faehigkeitenAn(runde) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
 
-        if (!variante.faehigkeiten) {
+        if (stand.regeln.faehigkeiten === true || stand.regeln.faehigkeiten === false) {
+            return stand.regeln.faehigkeiten;
+        }
+        return !!SCHACH_RUNDE.varianteVon(stand).faehigkeiten;
+    },
+
+    _bonusNachziehen(runde) {
+        if (!SCHACH_RUNDE.faehigkeitenAn(runde)) {
             return;
         }
         if (runde.zugZaehler % SCHACH_VARIANTEN.BONUS_ABSTAND !== 0) {
@@ -675,6 +735,9 @@ const SCHACH_RUNDE = {
         neu.stand = ergebnis.stand;
         neu.zugZaehler = alt.zugZaehler + 1;
 
+        /* Ein Zug beendet jede offene Abstimmung. */
+        neu.vorschlag = null;
+
         /* Verlorene Figuren merken — die Wiedergeburt holt sie zurück. */
         if (geschlagen) {
             neu.verloren[SCHACH.gegner(farbe)].push(geschlagen);
@@ -737,6 +800,124 @@ const SCHACH_RUNDE = {
             neu.laeuft = false;
         }
 
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        return neu;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Abstimmung im Team (nur wenn `regeln.einigkeit` gesetzt ist)
+     *
+     * Die Hausregel lautet sonst: Wer zuerst zieht, hat gezogen. Wer diese
+     * Partie mit Einigkeit angelegt hat, will genau das nicht — dann wird ein
+     * Zug erst vorgeschlagen und ausgeführt, sobald ALLE aus dem Team am Zug
+     * zugestimmt haben. Der Vorschlagende stimmt automatisch mit zu.
+     *
+     * Der Vorschlag steht im gemeinsamen Stand: Anders als ein Vorzug ist er
+     * kein Geheimnis — das eigene Team muss ihn ja sehen, und dass der Gegner
+     * mitliest, ist der Preis dieser Einstellung. Sie steht deshalb in der
+     * Auswahl mit diesem Hinweis.
+     * ---------------------------------------------------------------- */
+
+    brauchtEinigkeit(runde) {
+        return SCHACH_RUNDE.normalisieren(runde).regeln.einigkeit === true;
+    },
+
+    /*
+     * Schlägt einen Zug vor. Ist man allein im Team, wird er sofort ausgeführt —
+     * Einigkeit mit sich selbst ist keine Abstimmung wert.
+     * Liefert die neue Runde oder null.
+     */
+    zugVorschlagen(runde, spielerId, von, nach, umwandlung, wer, zeitpunkt) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+
+        if (!SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+            return null;
+        }
+        if (!SCHACH_RUNDE.brauchtEinigkeit(alt)) {
+            return SCHACH_RUNDE.ziehen(alt, spielerId, von, nach, umwandlung, wer, zeitpunkt);
+        }
+
+        const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+        if (alt.teams[farbe].length <= 1) {
+            return SCHACH_RUNDE.ziehen(alt, spielerId, von, nach, umwandlung, wer, zeitpunkt);
+        }
+
+        /* Der Zug muss regelkonform sein — sonst stimmt das Team über etwas ab,
+           das gar nicht geht. */
+        if (!SCHACH.ziehen(alt.stand, von, nach, umwandlung)) {
+            return null;
+        }
+
+        const neu = SCHACH_RUNDE.kopieren(alt);
+        neu.vorschlag = {
+            von: von,
+            nach: nach,
+            umwandlung: umwandlung || "D",
+            wer: spielerId,
+            name: wer || "",
+            zugZaehler: alt.zugZaehler,
+            stimmen: [spielerId]
+        };
+
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        return neu;
+    },
+
+    /*
+     * Stimmt dem offenen Vorschlag zu. Sobald ALLE aus dem Team am Zug
+     * zugestimmt haben, wird gezogen.
+     */
+    zugMittragen(runde, spielerId, zeitpunkt) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+
+        if (!alt.vorschlag || !SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+            return null;
+        }
+        /* Ein Vorschlag von vor dem letzten Zug ist überholt. */
+        if (alt.vorschlag.zugZaehler !== alt.zugZaehler) {
+            return null;
+        }
+
+        const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+        const neu = SCHACH_RUNDE.kopieren(alt);
+
+        if (neu.vorschlag.stimmen.indexOf(spielerId) === -1) {
+            neu.vorschlag.stimmen.push(spielerId);
+        }
+
+        const fehlen = neu.teams[farbe]
+            .filter((id) => neu.vorschlag.stimmen.indexOf(id) === -1);
+
+        if (fehlen.length > 0) {
+            neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+            return neu;
+        }
+
+        /* Alle dafür: ziehen. */
+        const vorschlag = neu.vorschlag;
+        const gezogen = SCHACH_RUNDE.ziehen(neu, vorschlag.wer, vorschlag.von, vorschlag.nach,
+            vorschlag.umwandlung, vorschlag.name, zeitpunkt);
+
+        if (!gezogen) {
+            /* Inzwischen nicht mehr möglich — Vorschlag fällt weg. */
+            neu.vorschlag = null;
+            neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+            return neu;
+        }
+
+        return gezogen;
+    },
+
+    /* Verwirft den offenen Vorschlag. */
+    vorschlagVerwerfen(runde, spielerId, zeitpunkt) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+
+        if (!alt.vorschlag || !SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+            return null;
+        }
+
+        const neu = SCHACH_RUNDE.kopieren(alt);
+        neu.vorschlag = null;
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
     },
@@ -837,9 +1018,20 @@ const SCHACH_RUNDE = {
             && einsA.teams.schwarz.join(",") === einsB.teams.schwarz.join(",")
             && einsA.faehigkeiten.weiss.join(",") === einsB.faehigkeiten.weiss.join(",")
             && einsA.faehigkeiten.schwarz.join(",") === einsB.faehigkeiten.schwarz.join(",")
+            && SCHACH_RUNDE._vorschlagText(einsA) === SCHACH_RUNDE._vorschlagText(einsB)
             && SCHACH_RUNDE._bonusText(einsA) === SCHACH_RUNDE._bonusText(einsB)
             && einsA.stand.schildFeld === einsB.stand.schildFeld
             && einsA.stand.fesselFeld === einsB.stand.fesselFeld;
+    },
+
+    /* Der offene Vorschlag als Zeichenkette — ändert er sich, wird neu gezeichnet. */
+    _vorschlagText(runde) {
+        if (!runde.vorschlag) {
+            return "";
+        }
+        return runde.vorschlag.von + ">" + runde.vorschlag.nach
+            + "@" + runde.vorschlag.zugZaehler
+            + ":" + runde.vorschlag.stimmen.slice().sort().join(",");
     },
 
     _bonusText(runde) {

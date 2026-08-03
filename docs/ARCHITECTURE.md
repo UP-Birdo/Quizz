@@ -570,6 +570,45 @@ die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder, der
 Rochade-Turm und der Pfeil sind so gebaut. Wer eine neue Markierung ergänzt,
 hält sich daran — eine einzelne Farbe reicht auf diesem Brett nie.
 
+### Einstellungen je Partie
+
+`partie.regeln` hält, was beim Anlegen gewählt wurde: `faehigkeiten` (Würfel an
+oder aus, `null` = die Spielart entscheidet), `seltenheitZeigen` und
+`einigkeit`. Die Vorgaben entsprechen dem Verhalten von vor v2.5 — eine Partie
+ohne dieses Feld verhält sich also unverändert.
+
+`SCHACH_RUNDE.faehigkeitenAn()` ist die einzige Stelle, die die Frage
+beantwortet, ob Würfel erscheinen. Der Schalter der Partie geht der Spielart vor.
+
+### Abstimmung im Team
+
+Mit `regeln.einigkeit` wird ein Zug erst **vorgeschlagen**
+(`SCHACH_RUNDE.zugVorschlagen`) und ausgeführt, sobald alle aus dem Team am Zug
+zugestimmt haben (`zugMittragen`). Wer allein im Team ist, zieht sofort —
+Einigkeit mit sich selbst ist keine Abstimmung wert.
+
+Der Vorschlag steht **im gemeinsamen Stand**: Das eigene Team muss ihn sehen.
+Dass der Gegner mitlesen kann, ist der Preis dieser Einstellung und steht als
+Hinweis daneben. Ein Vorschlag verfällt, sobald der Zugzähler nicht mehr passt.
+
+### Vorzüge — und warum sie NICHT im gemeinsamen Stand stehen
+
+Ein Vorzug (`TEAM_SCHACH.vorzug`) ist ein Zug, den man einträgt, während der
+Gegner am Zug ist. Er liegt **nur auf dem Gerät** und wird ausgeführt, sobald
+das eigene Team dran ist — geprüft nach jedem Zeichnen, denn der Stand kommt von
+aussen.
+
+Der Unterschied zum Vorschlag ist der Zweck: Ein Vorschlag ist eine Nachricht
+ans eigene Team, ein Vorzug ist eine Absicht, die niemand kennen soll. Stünde er
+in der Datenbank, wüsste der Gegner den nächsten Zug, bevor er passiert —
+dieselbe Überlegung, die beim Würfel-Siegel dazu geführt hat, den echten Wurf
+gar nicht erst zu veröffentlichen. Der Preis: Beim Neuladen ist er weg. Das ist
+die richtige Seite des Irrtums.
+
+Ist der Vorzug nicht mehr regelkonform (die Figur wurde geschlagen, das Feld ist
+besetzt), wird er verworfen und gemeldet. **Ersatzweise wird nie etwas anderes
+gezogen** — ein ungewollter Zug wäre schlimmer als gar keiner.
+
 ### Die Chronik — warum die Rangliste nichts verlieren kann
 
 `tafel.chronik` hält je beendeter Partie EINEN Eintrag fest: Kennung, Titel,

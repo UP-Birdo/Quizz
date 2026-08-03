@@ -251,7 +251,7 @@ const SCHACH_TAFEL = {
      * lässt sich das ohne Server nicht — deshalb wird bei einer Kollision
      * hochgezählt.
      */
-    partieAnlegen(tafel, varianteId, titel, zeitpunkt) {
+    partieAnlegen(tafel, varianteId, titel, zeitpunkt, regeln) {
         const neu = SCHACH_TAFEL.kopieren(tafel);
         const wann = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
 
@@ -268,6 +268,16 @@ const SCHACH_TAFEL = {
             id,
             String(titel || "").trim().substring(0, 40) || "Neue Partie"
         );
+
+        /* Die Einstellungen aus der Auswahl. Ohne Angabe bleibt alles bei den
+           Vorgaben der Spielart. */
+        if (regeln && typeof regeln === "object") {
+            if (regeln.faehigkeiten === true || regeln.faehigkeiten === false) {
+                partie.regeln.faehigkeiten = regeln.faehigkeiten;
+            }
+            partie.regeln.seltenheitZeigen = (regeln.seltenheitZeigen !== false);
+            partie.regeln.einigkeit = (regeln.einigkeit === true);
+        }
 
         neu.partien[id] = partie;
         neu.geaendertAm = wann;

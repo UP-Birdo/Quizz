@@ -3,6 +3,25 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.5 — 2026-08-02
+
+- **Drei Einstellungen beim Anlegen einer Partie**, gültig für jede Spielart:
+  - **Zufalls-Würfel** — Fähigkeiten erscheinen jetzt auch auf dem kleinen, dem
+    großen und dem Doppelbrett, wenn man will.
+  - **Seltenheit anzeigen** — aus heißt: Alle Würfel sehen gleich aus, und man
+    erfährt erst beim Einsammeln, was drin war.
+  - **Team muss sich einig sein** — ein Zug wird erst vorgeschlagen und
+    ausgeführt, wenn alle aus dem Team zugestimmt haben. Damit lässt sich die
+    Hausregel „wer zuerst zieht, hat gezogen" für einzelne Partien abschalten.
+    Wer allein im Team ist, zieht weiterhin sofort.
+- **Vorzüge:** Während der Gegner dran ist, lässt sich der eigene Zug schon
+  vormerken — Figur antippen, Ziel antippen. Er läuft von selbst, sobald das
+  eigene Team am Zug ist, ohne dass man etwas drücken muss. Ist er dann nicht
+  mehr möglich, wird er verworfen und gemeldet; ersatzweise wird nie etwas
+  anderes gezogen.
+  **Der Vorzug bleibt auf dem eigenen Gerät** und steht nie im gemeinsamen
+  Stand — sonst könnte der Gegner ihn in der offenen Datenbank mitlesen.
+
 ## v2.4 — 2026-08-02
 
 Das Ende einer Partie hat jetzt einen Abschluss — und die Rangliste kann nichts

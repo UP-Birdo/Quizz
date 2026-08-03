@@ -336,11 +336,21 @@ const SCHACH_VARIANTEN = {
         return eintrag ? eintrag.beschreibung : "";
     },
 
-    /* Die Stufe einer Fähigkeit, oder die unterste als Rückfall. */
+    /*
+     * Die Stufe einer Fähigkeit, oder eine neutrale als Rückfall.
+     *
+     * Der Rückfall trägt auch die Partien, in denen die Seltenheit verborgen
+     * bleibt: Dort wird ohne Kennung gefragt, und der Würfel bekommt ein
+     * unauffälliges Grau, das zu keiner Stufe gehört.
+     */
+    STUFE_UNBEKANNT: { id: "unbekannt", titel: "Unbekannt", chance: 0, farbe: "#8a919b" },
+
     stufeVon(art) {
         const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
-        const id = eintrag ? eintrag.stufe : "grau";
-        return SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === id)
+        if (!eintrag) {
+            return SCHACH_VARIANTEN.STUFE_UNBEKANNT;
+        }
+        return SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === eintrag.stufe)
             || SCHACH_VARIANTEN.STUFEN[0];
     },
 
