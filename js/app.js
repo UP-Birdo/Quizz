@@ -110,15 +110,24 @@ const APP = {
 
         IMPOSTER.verbinden(imposterAbgleich);
 
-        /* ---- Tabs ---- */
-        TABS.registrieren(WUERFEL_QUIZZ);
+        /*
+         * ---- Tabs ----
+         * Die Reihenfolge der Registrierung ist die Reihenfolge in der Leiste:
+         * erst das Spiel, an dem am meisten gespielt wird, zuletzt die
+         * Auswertung.
+         */
         TABS.registrieren(TEAM_SCHACH);
         TABS.registrieren(IMPOSTER);
+        TABS.registrieren(WUERFEL_QUIZZ);
         TABS.registrieren(RANGLISTE);
         TABS.starten(
             document.getElementById("tab-leiste"),
             document.getElementById("tab-inhalt")
         );
+
+        /* Der Wunsch-Knopf im Kopf — nach den Tabs, weil er den offenen Tab
+           als Herkunft mitschickt. */
+        WUNSCH.aufbauen(document.getElementById("wunsch-platz"));
 
         quizzAbgleich.starten().then(() => {
             WUERFEL_QUIZZ.anmelden();

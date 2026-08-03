@@ -753,6 +753,37 @@ gar kein Imposter herauskam statt in jeder fünfzigsten.
 ausdrücklich dazu: „Regenschrim" ist der häufigste Tippfehler überhaupt, und
 die einfache Editier-Entfernung zählt ihn als zwei Fehler.
 
+## Der Weg eines Wunsches
+
+    App (Wunsch-Knopf)  ->  vorbefülltes GitHub-Formular  ->  Eintrag im Repo
+        ->  tools\Wuensche-Abholen.ps1  ->  TODO.md "## Anfragen"
+        ->  Nutzer schreibt "bestätigt"  ->  ROADMAP.md
+
+Dasselbe Muster wie im Lernheft. **Warum über ein Formular und nicht über die
+GitHub-Schnittstelle:** Ein Schreib-Token müsste dafür in der öffentlichen Seite
+stehen — jeder Besucher könnte damit ins Repo schreiben. Der Umweg kostet einen
+Klick und braucht kein Geheimnis.
+
+Die Anfragen landen **über** dem Abschnitt „Neu", weil sie noch nicht angenommen
+sind. Doppelte Einträge verhindert die Nummer `[#12]` in jeder Zeile.
+
+## Die Wortbibliothek
+
+Hinter dem Verwaltungs-Passwort (`ICH.verwaltungAktiv`). Ergänzte Wörter stehen
+in `runde.eigeneWoerter` — also im **gemeinsamen Stand**, damit alle Geräte aus
+derselben Liste ziehen; läge die Ergänzung lokal, zöge jedes Gerät ein anderes
+Wort.
+
+Neue Wörter kommen **hinten** an die Gruppe. Das ist kein Schönheitsdetail: Die
+Ziehung rechnet mit der Länge der Liste, und vorne eingefügte Wörter würden
+alle folgenden verschieben — eine laufende Runde bekäme mitten im Spiel ein
+anderes Wort.
+
+*Warum hinter dem Passwort:* Wer die Wortliste kennt, hat als Imposter einen
+Vorteil. Der feste Katalog steht zwar im Quelltext und ist nicht geheim, aber es
+macht einen Unterschied, ob man ihn in der Konsole sucht oder auf Knopfdruck
+bekommt.
+
 ## Tab-Register
 
 Ein Tab ist ein Objekt mit `id`, `titel` und `aufbauen(behaelter)`. `app.js`

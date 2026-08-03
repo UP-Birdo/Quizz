@@ -96,8 +96,9 @@ const TEAM_SCHACH = {
      */
     abschluss: null,
 
-    /* Welche beendeten Partien hat dieses Gerät schon abgeschlossen gesehen? */
-    gesehen: {},
+    /* Welche Abschlüsse dieses Gerät schon gesehen hat, steht im
+       Gerätespeicher (ICH.abschlussGesehen) — sonst käme der Sieger-Bildschirm
+       nach jedem Neuladen erneut. */
 
     /*
      * VORZÜGE GIBT ES NICHT MEHR (ausgebaut in v2.8).
@@ -130,11 +131,17 @@ const TEAM_SCHACH = {
     WIRKUNG_MS: 900,
 
     /*
-     * Halbmesser einer Figur in Feldbreiten. Er bestimmt beides: wo der Pfeil
-     * anfängt und aufhört, und wie groß das Loch in seiner Maske ist. EINE Zahl
-     * für beides — sonst passt das eine nicht zum anderen.
+     * Halbmesser einer Figur in Feldbreiten — so groß ist das Loch, das eine
+     * Figur ZWISCHEN Start und Ziel in die Pfeilmaske stanzt.
      */
     FIGUR_RADIUS: 0.42,
+
+    /*
+     * Wie weit der Pfeil vor der Feldmitte anfängt und aufhört. Kleiner als
+     * der Figurenradius: Der Pfeil rückt näher an die Figuren heran und bleibt
+     * dabei an beiden Enden vollständig sichtbar.
+     */
+    PFEIL_ABSTAND: 0.3,
 
     verbinden(abgleich) {
         TEAM_SCHACH.abgleich = abgleich;
@@ -205,7 +212,7 @@ const TEAM_SCHACH = {
         if (!TEAM_SCHACH.abschluss) {
             const fertig = SCHACH_TAFEL.liste(tafel).find((partie) =>
                 partie.ergebnis
-                && !TEAM_SCHACH.gesehen[partie.id]
+                && !ICH.abschlussGesehen(partie.id)
                 && SCHACH_RUNDE.teamVon(partie, person.id));
 
             if (fertig) {
@@ -360,9 +367,10 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
-    /* Abschluss weglegen: Die Partie gilt auf diesem Gerät als erledigt. */
+    /* Abschluss weglegen: Die Partie gilt auf diesem Gerät als erledigt —
+       dauerhaft, also auch nach dem Neuladen der Seite. */
     abschlussSchliessen(id) {
-        TEAM_SCHACH.gesehen[id] = true;
+        ICH.abschlussMerken(id);
         TEAM_SCHACH.abschluss = null;
         TEAM_SCHACH.offeneId = "";
         TEAM_SCHACH._auswahlAufheben();
@@ -802,7 +810,39 @@ const TEAM_SCHACH = {
             bereich.appendChild(karte);
         }
 
+        /* Wer noch in keinem Team ist, kann sich auch würfeln lassen. */
+        if (!meinTeam && !partie.ergebnis) {
+            const zufall = TEAM_SCHACH._element("div", "fussleiste");
+            zufall.appendChild(TEAM_SCHACH._knopf("Zufällig zuteilen",
+                "knopf-still knopf-klein",
+                () => TEAM_SCHACH.zufaelligBeitreten(partie)));
+            bereich.appendChild(zufall);
+        }
+
         return bereich;
+    },
+
+    /*
+     * Zufällig einem Team beitreten — aber nur dann zufällig, wenn beide
+     * gleich besetzt sind. Steht ein Team leer, geht es dorthin: Eine Partie
+     * mit vier gegen null fängt nie an.
+     */
+    zufaelligBeitreten(partie) {
+        const leer = ["weiss", "schwarz"].filter(
+            (farbe) => partie.teams[farbe].length === 0);
+
+        let farbe;
+        if (leer.length === 1) {
+            farbe = leer[0];
+        } else if (partie.teams.weiss.length !== partie.teams.schwarz.length) {
+            /* Sonst in das kleinere Team — das hält die Seiten im Gleichgewicht. */
+            farbe = (partie.teams.weiss.length < partie.teams.schwarz.length)
+                ? "weiss" : "schwarz";
+        } else {
+            farbe = (Math.random() < 0.5) ? "weiss" : "schwarz";
+        }
+
+        TEAM_SCHACH.teamBeitreten(partie, farbe);
     },
 
     /* Name eines Spielers aus dem Würfel-Quizz; Kennung als Rückfall. */
@@ -1333,8 +1373,19 @@ const TEAM_SCHACH = {
         grund.setAttribute("fill", "white");
         maske.appendChild(grund);
 
+        /*
+         * Nur Figuren ZWISCHEN Start und Ziel stanzen ein Loch. An den Enden
+         * bleibt der Pfeil ganz — sonst verschwänden Spitze und Anfang unter
+         * genau den beiden Figuren, um die es geht.
+         */
+        const enden = {};
+        for (const weg of wege) {
+            enden[weg.von] = true;
+            enden[weg.nach] = true;
+        }
+
         for (let feld = 0; feld < felder; feld++) {
-            if (SCHACH.figurAuf(partie.stand, feld) === ".") {
+            if (SCHACH.figurAuf(partie.stand, feld) === "." || enden[feld]) {
                 continue;
             }
             const punkt = mitte(feld);
@@ -1386,14 +1437,14 @@ const TEAM_SCHACH = {
                 const ey = dy / laenge;
 
                 /*
-                 * Der Pfeil beginnt und endet am RAND der Figuren, nicht in
-                 * ihrer Mitte: Er läuft nicht unter ihnen durch, sondern
-                 * zwischen ihnen. Derselbe Radius wie die Maske, damit beides
-                 * zusammenpasst — und einheitlich für jede Art von Bewegung.
+                 * Der Pfeil beginnt und endet dicht am Rand der Figur, aber
+                 * nicht erst hinter ihr: Beide Enden bleiben vollständig zu
+                 * sehen. Kürzere Spitze als früher, damit sie nicht über das
+                 * Zielfeld hinausragt.
                  */
-                const rand = TEAM_SCHACH.FIGUR_RADIUS;
-                const spitzeLaenge = 0.34;
-                const spitzeBreite = 0.2;
+                const rand = TEAM_SCHACH.PFEIL_ABSTAND;
+                const spitzeLaenge = 0.26;
+                const spitzeBreite = 0.17;
 
                 /* Zu kurz für Rand, Strich und Spitze? Dann gar nicht zeichnen. */
                 if (laenge <= 2 * rand + spitzeLaenge * 0.5) {
@@ -2187,6 +2238,15 @@ const TEAM_SCHACH = {
 
         const ergebnis = SCHACH_TAFEL.partieAnlegen(
             tafel, varianteId, titel, undefined, regeln);
+
+        /*
+         * Wer anlegt, spielt mit: Er kommt gleich ins weisse Team und landet
+         * direkt in der Partie. Vorher musste man erst zurück in die Übersicht,
+         * die eigene Partie suchen und dort beitreten.
+         */
+        ergebnis.tafel = SCHACH_TAFEL.partieEinsetzen(
+            ergebnis.tafel,
+            SCHACH_RUNDE.teamBeitreten(ergebnis.partie, person.id, "weiss"));
 
         try {
             await abgleich.speicher.speichern(ergebnis.tafel);

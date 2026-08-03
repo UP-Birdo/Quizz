@@ -83,6 +83,90 @@ pruefe("Unbekannte Gruppen fallen auf die erste zurueck", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Eigene Wörter (Bibliothek)
+ * ------------------------------------------------------------------ */
+
+pruefe("Eingefuegte Woerter landen hinten in der Gruppe", () => {
+    const gruppe = IMPOSTER_WOERTER.gruppen[0];
+    const vorher = gruppe.woerter.length;
+
+    const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
+        gruppe.id, "Kaminfeuer\nDachrinne\n\n  Fensterbank  ", 2000);
+
+    gleich(ergebnis.hinzugefuegt, 3, "drei Woerter");
+    gleich(ergebnis.uebersprungen, 0, "nichts uebersprungen");
+
+    const alle = IMPOSTER_RUNDE.woerterVon(ergebnis.runde, gruppe.id);
+    gleich(alle.length, vorher + 3, "Liste ist gewachsen");
+    gleich(alle[vorher], "Kaminfeuer", "das erste neue steht hinten");
+    gleich(alle[vorher + 2], "Fensterbank", "und ist beschnitten");
+
+    /* Der feste Katalog bleibt unberuehrt. */
+    gleich(gruppe.woerter.length, vorher, "Katalog unveraendert");
+});
+
+pruefe("Was schon dasteht, wird uebersprungen", () => {
+    const gruppe = IMPOSTER_WOERTER.gruppen[0];
+    const schonDa = gruppe.woerter[0];
+
+    let ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
+        gruppe.id, schonDa + "\n" + schonDa.toLowerCase() + "\nGanzNeu", 2000);
+
+    gleich(ergebnis.hinzugefuegt, 1, "nur das neue");
+    gleich(ergebnis.uebersprungen, 2, "zwei uebersprungen");
+
+    /* Auch gegen die schon ergaenzten. */
+    ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(ergebnis.runde, gruppe.id, "GanzNeu", 2100);
+    gleich(ergebnis.hinzugefuegt, 0, "kein zweites Mal");
+});
+
+pruefe("Ergaenzte Woerter lassen sich wieder entfernen", () => {
+    const gruppe = IMPOSTER_WOERTER.gruppen[0];
+    let runde = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
+        gruppe.id, "Kaminfeuer", 2000).runde;
+
+    runde = IMPOSTER_RUNDE.wortEntfernen(runde, gruppe.id, "Kaminfeuer", 2100);
+
+    gleich(IMPOSTER_RUNDE.woerterVon(runde, gruppe.id).length, gruppe.woerter.length,
+        "wieder wie vorher");
+    gleich(runde.eigeneWoerter[gruppe.id], undefined, "leere Liste faellt weg");
+});
+
+pruefe("Ein ergaenztes Wort kann auch gezogen werden", () => {
+    const gruppe = IMPOSTER_WOERTER.gruppen[0];
+    let runde = bereiteRunde(3);
+    runde = IMPOSTER_RUNDE.einstellen(runde, gruppe.id, 1, 1000);
+    runde = IMPOSTER_RUNDE.woerterErgaenzen(runde, gruppe.id, "Kaminfeuer", 1500).runde;
+
+    /* Ueber viele Salze muss das neue Wort irgendwann drankommen. */
+    let getroffen = false;
+    for (let nummer = 0; nummer < 200 && !getroffen; nummer++) {
+        const gestartet = IMPOSTER_RUNDE.starten(runde, "w" + nummer, 2000);
+        if (IMPOSTER_RUNDE.wortVon(gestartet) === "Kaminfeuer") {
+            getroffen = true;
+        }
+    }
+
+    wahr(getroffen, "das ergaenzte Wort wird gezogen");
+});
+
+pruefe("Eigene Woerter ueberleben das Speichern und Laden", () => {
+    const gruppe = IMPOSTER_WOERTER.gruppen[0];
+    const runde = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
+        gruppe.id, "Kaminfeuer", 2000).runde;
+
+    const wieder = IMPOSTER_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+    gleich(wieder.eigeneWoerter[gruppe.id].join(","), "Kaminfeuer", "steht noch da");
+
+    /* Unsinn wird weggeworfen. */
+    const kaputt = IMPOSTER_RUNDE.normalisieren({
+        eigeneWoerter: { gibtsnicht: ["x"], alltag: ["", "   ", 42, "Gut"] }
+    });
+    gleich(kaputt.eigeneWoerter.gibtsnicht, undefined, "unbekannte Gruppe weg");
+    gleich(kaputt.eigeneWoerter.alltag.join(","), "Gut", "nur das brauchbare bleibt");
+});
+
+/* ------------------------------------------------------------------ *
  * Grundstrukturen
  * ------------------------------------------------------------------ */
 

@@ -18,6 +18,7 @@ const ICH = {
     SCHLUESSEL_PERSON: "quizz.ich",
     SCHLUESSEL_WURF: "quizz.wurf.",
     SCHLUESSEL_VERWALTUNG: "quizz.verwaltung",
+    SCHLUESSEL_ABSCHLUSS: "quizz.abschluss-gesehen",
 
     /* ---------------------------------------------------------------- *
      * Wer bin ich
@@ -89,6 +90,42 @@ const ICH = {
         } else {
             ICH._loeschen(ICH.SCHLUESSEL_VERWALTUNG);
         }
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Gesehene Abschlüsse
+     *
+     * Welche beendeten Partien dieses Gerät schon abgeschlossen gesehen hat.
+     * Das gehört hierher und nicht in den Arbeitsspeicher: Sonst käme der
+     * Sieger-Bildschirm nach jedem Neuladen erneut — und in den gemeinsamen
+     * Stand gehört es erst recht nicht, denn es ist eine Eigenschaft des
+     * Geräts, nicht der Partie.
+     * ---------------------------------------------------------------- */
+
+    abschlussGesehen(partieId) {
+        const liste = ICH._lesen(ICH.SCHLUESSEL_ABSCHLUSS);
+        return Array.isArray(liste) && liste.indexOf(partieId) !== -1;
+    },
+
+    abschlussMerken(partieId) {
+        if (!partieId) {
+            return;
+        }
+
+        const liste = ICH._lesen(ICH.SCHLUESSEL_ABSCHLUSS);
+        const neu = Array.isArray(liste) ? liste.slice() : [];
+
+        if (neu.indexOf(partieId) !== -1) {
+            return;
+        }
+        neu.push(partieId);
+
+        /* Nicht endlos wachsen lassen — die ältesten fallen hinten weg. */
+        while (neu.length > 100) {
+            neu.shift();
+        }
+
+        ICH._schreiben(ICH.SCHLUESSEL_ABSCHLUSS, neu);
     },
 
     /* ---------------------------------------------------------------- *

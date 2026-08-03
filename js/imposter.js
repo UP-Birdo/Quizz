@@ -31,6 +31,9 @@ const IMPOSTER = {
     /* Zeitgeber für die laufende Uhr. */
     uhrZeitgeber: null,
 
+    /* Ist die Wortbibliothek offen? Nur mit Verwaltungs-Zugang. */
+    bibliothekOffen: false,
+
     /* Verhindert zwei Schreibvorgänge gleichzeitig. */
     schreibtGerade: false,
 
@@ -90,6 +93,12 @@ const IMPOSTER = {
             return;
         }
 
+        /* Die Bibliothek liegt vor allem anderen — sie ist ein eigener Raum. */
+        if (IMPOSTER.bibliothekOffen && ICH.verwaltungAktiv()) {
+            IMPOSTER._bibliothekZeichnen(wurzel, runde);
+            return;
+        }
+
         if (runde.phase === "aufloesung") {
             IMPOSTER._aufloesungZeichnen(wurzel, runde, person);
         } else if (runde.phase === "laeuft") {
@@ -97,6 +106,141 @@ const IMPOSTER = {
         } else {
             IMPOSTER._wartenZeichnen(wurzel, runde, person);
         }
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Die Wortbibliothek — nur mit Verwaltungs-Zugang
+     *
+     * Warum hinter dem Passwort: Wer die Wortliste sieht, hat als Imposter
+     * einen Vorteil — er weiß, worauf er raten muss. Der feste Katalog steht
+     * zwar im Quelltext und ist damit nicht geheim, aber es macht einen
+     * Unterschied, ob man ihn in der Entwicklerkonsole sucht oder ihn auf
+     * Knopfdruck bekommt.
+     * ---------------------------------------------------------------- */
+
+    async bibliothekOeffnen() {
+        if (!ICH.verwaltungAktiv()) {
+            const passwort = await DIALOG.zahlen(
+                "Wortbibliothek",
+                "Sie ist der Verwaltung vorbehalten: Wer die Wörter sieht, hat "
+                    + "als Imposter einen Vorteil.",
+                KONFIG.verwaltung.passwortStellen,
+                "Öffnen",
+                true
+            );
+            if (!passwort) {
+                return;
+            }
+
+            const stimmt = await VERSIEGELUNG.verwaltungPruefen(
+                passwort, KONFIG.verwaltung.pruefwert);
+
+            if (!stimmt) {
+                await DIALOG.hinweis("Falsches Passwort",
+                    "Die Bibliothek bleibt zu.");
+                return;
+            }
+            ICH.verwaltungSetzen(true);
+        }
+
+        IMPOSTER.bibliothekOffen = true;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    bibliothekSchliessen() {
+        IMPOSTER.bibliothekOffen = false;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    _bibliothekZeichnen(wurzel, runde) {
+        const kopf = IMPOSTER._element("div", "partie-kopf");
+        kopf.appendChild(IMPOSTER._knopf("Zurück", "knopf-still knopf-klein",
+            () => IMPOSTER.bibliothekSchliessen()));
+        kopf.appendChild(IMPOSTER._element("h2", "partie-titel", "Wortbibliothek"));
+        wurzel.appendChild(kopf);
+
+        wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
+            "Hier stehen alle Wörter. Ergänzte Wörter liegen im gemeinsamen "
+            + "Stand — alle Mitspieler ziehen aus derselben Liste. Der feste "
+            + "Katalog lässt sich hier nicht ändern; er steht in "
+            + "js/imposter-woerter.js."));
+
+        for (const gruppe of IMPOSTER_WOERTER.gruppen) {
+            wurzel.appendChild(IMPOSTER._bibliothekGruppeBauen(runde, gruppe));
+        }
+    },
+
+    _bibliothekGruppeBauen(runde, gruppe) {
+        const karte = IMPOSTER._element("section", "karte");
+        const eigene = runde.eigeneWoerter[gruppe.id] || [];
+
+        const kopf = IMPOSTER._element("div", "karte-kopf");
+        kopf.appendChild(IMPOSTER._element("h3", "", gruppe.titel));
+        kopf.appendChild(IMPOSTER._element("span", "chip chip-offen",
+            (gruppe.woerter.length + eigene.length) + " Wörter"));
+        karte.appendChild(kopf);
+
+        /* Der feste Teil, zugeklappt — er ist lang und ändert sich nie. */
+        const kasten = document.createElement("details");
+        kasten.className = "verlauf-kasten";
+
+        const titel = document.createElement("summary");
+        titel.className = "verlauf-titel";
+        titel.textContent = "Fest im Katalog (" + gruppe.woerter.length + ")";
+        kasten.appendChild(titel);
+        kasten.appendChild(IMPOSTER._element("p", "erklaerung", gruppe.woerter.join(", ")));
+        karte.appendChild(kasten);
+
+        /* Die ergänzten, einzeln entfernbar. */
+        if (eigene.length > 0) {
+            const liste = IMPOSTER._element("div", "imposter-knopfreihe");
+
+            for (const wort of eigene) {
+                liste.appendChild(IMPOSTER._knopf(wort + " ×",
+                    "knopf-still knopf-klein",
+                    () => IMPOSTER.wortEntfernen(gruppe.id, wort)));
+            }
+
+            karte.appendChild(IMPOSTER._element("p", "erklaerung",
+                "Ergänzt (antippen zum Entfernen):"));
+            karte.appendChild(liste);
+        }
+
+        const leiste = IMPOSTER._element("div", "karte-fuss");
+        leiste.appendChild(IMPOSTER._knopf("Wörter einfügen", "knopf-still knopf-klein",
+            () => IMPOSTER.woerterImportieren(gruppe.id)));
+        karte.appendChild(leiste);
+
+        return karte;
+    },
+
+    async woerterImportieren(gruppeId) {
+        const text = await DIALOG.eingabe(
+            "Wörter einfügen",
+            "Ein Wort je Zeile. Was schon dasteht, wird übersprungen.",
+            "",
+            "Einfügen",
+            true
+        );
+        if (text === null) {
+            return;
+        }
+
+        const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(
+            IMPOSTER.abgleich.daten, gruppeId, text);
+
+        IMPOSTER._aendern(ergebnis.runde, true);
+
+        await DIALOG.hinweis("Eingefügt",
+            ergebnis.hinzugefuegt + " Wörter hinzugefügt"
+            + (ergebnis.uebersprungen > 0
+                ? ", " + ergebnis.uebersprungen + " übersprungen (schon vorhanden)."
+                : "."));
+    },
+
+    wortEntfernen(gruppeId, wort) {
+        IMPOSTER._aendern(
+            IMPOSTER_RUNDE.wortEntfernen(IMPOSTER.abgleich.daten, gruppeId, wort), true);
     },
 
     /* ---------------------------------------------------------------- *
@@ -122,6 +266,11 @@ const IMPOSTER = {
         wurzel.appendChild(IMPOSTER._mitspielerBauen(runde, person));
 
         const fuss = IMPOSTER._element("div", "fussleiste");
+
+        /* Die Bibliothek ist von hier erreichbar — der einzige Ort, an dem sie
+           nicht mitten im Spiel steht. */
+        fuss.appendChild(IMPOSTER._knopf("Wortbibliothek", "knopf-still knopf-klein",
+            () => IMPOSTER.bibliothekOeffnen()));
 
         if (!dabei) {
             fuss.appendChild(IMPOSTER._knopf("Mitspielen", "knopf-haupt",
@@ -267,9 +416,13 @@ const IMPOSTER = {
             + " von " + runde.spieler.length + " fertig"));
         wurzel.appendChild(leiste);
 
-        if (istImposter) {
-            wurzel.appendChild(IMPOSTER._wortTippBauen(runde, dabei));
-        }
+        /*
+         * ALLE bekommen ein Eingabefeld — sonst sieht man am Tisch sofort, wer
+         * tippt, und damit wer der Imposter ist. Für die Ehrlichen ist es ein
+         * Notizfeld ohne Wirkung auf die Punkte; gewertet wird nur der Tipp
+         * eines Imposters.
+         */
+        wurzel.appendChild(IMPOSTER._wortTippBauen(runde, dabei, istImposter));
 
         wurzel.appendChild(IMPOSTER._tippsBauen(runde, person, dabei));
 
@@ -287,21 +440,29 @@ const IMPOSTER = {
         IMPOSTER._uhrVerfolgen(runde);
     },
 
-    _wortTippBauen(runde, eigener) {
+    _wortTippBauen(runde, eigener, istImposter) {
         const karte = IMPOSTER._element("section", "karte karte-ich");
-        karte.appendChild(IMPOSTER._element("h3", "", "Dein Tipp auf das Wort"));
+
+        /* Dieselbe Überschrift für alle wäre eine Lüge, verschiedene verraten
+           nichts: Jeder sieht nur seine eigene. */
+        karte.appendChild(IMPOSTER._element("h3", "",
+            istImposter ? "Dein Tipp auf das Wort" : "Deine Notiz"));
 
         const feld = document.createElement("input");
         feld.type = "text";
         feld.className = "dialog-feld";
         feld.value = eigener.wortTipp;
         feld.maxLength = 40;
-        feld.placeholder = "Wort eintippen";
+        feld.placeholder = istImposter ? "Wort eintippen" : "Notiz eintippen";
         feld.addEventListener("change", () => IMPOSTER.wortTippSetzen(feld.value));
         karte.appendChild(feld);
 
         karte.appendChild(IMPOSTER._element("p", "erklaerung",
-            "Groß- und Kleinschreibung ist egal, und ein Tippfehler wird verziehen."));
+            istImposter
+                ? "Groß- und Kleinschreibung ist egal, und ein Tippfehler wird verziehen."
+                : "Schreib auf, wen du verdächtigst und warum — das zählt für die "
+                    + "Punkte nicht. Alle haben dieses Feld, damit am Tisch nicht "
+                    + "auffällt, wer gerade tippt."));
 
         return karte;
     },

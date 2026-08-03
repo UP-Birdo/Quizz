@@ -35,6 +35,9 @@
  *         "salz": "",               // daraus folgen Wort und Rollen
  *         "startAm": 0,             // Zeitpunkt des Starts (für die Uhr)
  *         "endeAm": 0,
+ *         "eigeneWoerter": {        // von der Verwaltung ergänzt, je Gruppe
+ *             "alltag": ["Kaminfeuer"]
+ *         },
  *         "spieler": [
  *             { "id": "…", "bereit": false, "fertig": false,
  *               "tipps": { "<id>": "neutral|imposter|save" },
@@ -77,8 +80,31 @@ const IMPOSTER_RUNDE = {
             salz: "",
             startAm: 0,
             endeAm: 0,
+
+            /*
+             * Wörter, die die Verwaltung ergänzt hat, je Gruppe. Sie stehen im
+             * gemeinsamen Stand, damit alle Geräte dieselbe Auswahl haben —
+             * sonst zöge jedes ein anderes Wort aus einem anderen Vorrat.
+             */
+            eigeneWoerter: {},
+
             spieler: []
         };
+    },
+
+    /*
+     * Alle Wörter einer Gruppe: der feste Katalog plus die eigenen.
+     *
+     * Ergänzte Wörter kommen HINTEN dran. Die Ziehung rechnet mit der Länge
+     * der Liste — dadurch verschieben sich vorhandene Wörter nicht, und eine
+     * laufende Runde behält ihr Wort.
+     */
+    woerterVon(runde, gruppeId) {
+        const gruppe = IMPOSTER_WOERTER.gruppe(gruppeId);
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+        const eigene = stand.eigeneWoerter[gruppe.id] || [];
+
+        return gruppe.woerter.concat(eigene);
     },
 
     normalisieren(roh) {
@@ -109,6 +135,26 @@ const IMPOSTER_RUNDE = {
         }
         if (typeof roh.endeAm === "number" && isFinite(roh.endeAm) && roh.endeAm >= 0) {
             runde.endeAm = roh.endeAm;
+        }
+
+        if (roh.eigeneWoerter && typeof roh.eigeneWoerter === "object") {
+            for (const gruppe of Object.keys(roh.eigeneWoerter)) {
+                if (!IMPOSTER_WOERTER.gibtEs(gruppe)) {
+                    continue;
+                }
+                const liste = Array.isArray(roh.eigeneWoerter[gruppe])
+                    ? roh.eigeneWoerter[gruppe] : [];
+
+                const sauber = liste
+                    .filter((wort) => typeof wort === "string")
+                    .map((wort) => wort.trim().substring(0, 40))
+                    .filter((wort) => wort !== "")
+                    .filter((wort, stelle, alle) => alle.indexOf(wort) === stelle);
+
+                if (sauber.length > 0) {
+                    runde.eigeneWoerter[gruppe] = sauber;
+                }
+            }
         }
 
         if (Array.isArray(roh.spieler)) {
@@ -194,10 +240,74 @@ const IMPOSTER_RUNDE = {
             return "";
         }
 
-        const gruppe = IMPOSTER_WOERTER.gruppe(stand.gruppe);
+        const woerter = IMPOSTER_RUNDE.woerterVon(stand, stand.gruppe);
         const wert = IMPOSTER_RUNDE._zufallsWert(stand.salz + "|wort");
 
-        return gruppe.woerter[Math.floor(wert * gruppe.woerter.length) % gruppe.woerter.length];
+        return woerter[Math.floor(wert * woerter.length) % woerter.length];
+    },
+
+    /*
+     * Fügt Wörter zu einer Gruppe hinzu — für den Import aus einem Block Text,
+     * ein Wort je Zeile. Liefert { runde, hinzugefuegt, uebersprungen }.
+     *
+     * Übersprungen wird, was schon dasteht (auch im festen Katalog) und was
+     * leer ist. Doppelte Wörter wären kein Fehler, aber sie verschöben die
+     * Wahrscheinlichkeiten — ein zweimal vorhandenes Wort käme doppelt so oft.
+     */
+    woerterErgaenzen(runde, gruppeId, text, zeitpunkt) {
+        const neu = IMPOSTER_RUNDE.kopieren(runde);
+
+        if (!IMPOSTER_WOERTER.gibtEs(gruppeId)) {
+            return { runde: neu, hinzugefuegt: 0, uebersprungen: 0 };
+        }
+
+        const vorhanden = IMPOSTER_RUNDE.woerterVon(neu, gruppeId)
+            .map((wort) => wort.toLowerCase());
+        const eigene = (neu.eigeneWoerter[gruppeId] || []).slice();
+
+        let hinzugefuegt = 0;
+        let uebersprungen = 0;
+
+        for (const zeile of String(text || "").split(/\r?\n/)) {
+            const wort = zeile.trim().substring(0, 40);
+
+            if (wort === "") {
+                continue;
+            }
+            if (vorhanden.indexOf(wort.toLowerCase()) !== -1) {
+                uebersprungen++;
+                continue;
+            }
+
+            eigene.push(wort);
+            vorhanden.push(wort.toLowerCase());
+            hinzugefuegt++;
+        }
+
+        if (hinzugefuegt > 0) {
+            neu.eigeneWoerter[gruppeId] = eigene;
+            neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        }
+
+        return { runde: neu, hinzugefuegt: hinzugefuegt, uebersprungen: uebersprungen };
+    },
+
+    /* Entfernt ein ergänztes Wort. Der feste Katalog bleibt unberührt. */
+    wortEntfernen(runde, gruppeId, wort, zeitpunkt) {
+        const neu = IMPOSTER_RUNDE.kopieren(runde);
+        const eigene = neu.eigeneWoerter[gruppeId];
+
+        if (!eigene) {
+            return neu;
+        }
+
+        neu.eigeneWoerter[gruppeId] = eigene.filter((eintrag) => eintrag !== wort);
+        if (neu.eigeneWoerter[gruppeId].length === 0) {
+            delete neu.eigeneWoerter[gruppeId];
+        }
+
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        return neu;
     },
 
     /*

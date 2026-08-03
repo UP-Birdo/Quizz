@@ -355,6 +355,15 @@ const SCHACH_RUNDE = {
         };
     },
 
+    /* Der Figurenwert dessen, was eine Seite geschlagen hat. */
+    beuteWert(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const geschlagen = stand.verloren[SCHACH.gegner(farbe)] || [];
+
+        return geschlagen.reduce(
+            (summe, art) => summe + (SCHACH_RUNDE.FIGUR_WERT[art] || 0), 0);
+    },
+
     /* Welche Würfel liegen gerade auf dem Brett? */
     offeneBonusFelder(runde) {
         return SCHACH_RUNDE.normalisieren(runde).bonus;

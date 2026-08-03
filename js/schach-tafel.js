@@ -104,6 +104,11 @@ const SCHACH_TAFEL = {
                     teams: {
                         weiss: SCHACH_TAFEL._kennungen(eintrag.teams, "weiss"),
                         schwarz: SCHACH_TAFEL._kennungen(eintrag.teams, "schwarz")
+                    },
+                    /* Einträge von vor v3.1 haben keine Beute — dann null. */
+                    beute: {
+                        weiss: SCHACH_TAFEL._zahl(eintrag.beute, "weiss"),
+                        schwarz: SCHACH_TAFEL._zahl(eintrag.beute, "schwarz")
                     }
                 }))
                 .filter((eintrag, stelle, alle) =>
@@ -125,6 +130,11 @@ const SCHACH_TAFEL = {
         return tafel;
     },
 
+    _zahl(quelle, feld) {
+        const wert = quelle ? quelle[feld] : 0;
+        return (typeof wert === "number" && isFinite(wert) && wert > 0) ? wert : 0;
+    },
+
     _kennungen(teams, farbe) {
         const liste = (teams && Array.isArray(teams[farbe])) ? teams[farbe] : [];
         return liste
@@ -143,6 +153,13 @@ const SCHACH_TAFEL = {
             teams: {
                 weiss: partie.teams.weiss.slice(),
                 schwarz: partie.teams.schwarz.slice()
+            },
+            /* Der Figurenwert der Beute je Seite — daraus rechnet die
+               Rangliste ihre Teilpunkte. Er wird HIER festgehalten, weil das
+               Brett nach dem Löschen der Partie nicht mehr da ist. */
+            beute: {
+                weiss: SCHACH_RUNDE.beuteWert(partie, "weiss"),
+                schwarz: SCHACH_RUNDE.beuteWert(partie, "schwarz")
             }
         };
     },

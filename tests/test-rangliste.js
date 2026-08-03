@@ -115,6 +115,66 @@ pruefe("Mehrere Partien werden zusammengezaehlt", () => {
         2 * RANGLISTE.PUNKTE_SIEG + 3 * RANGLISTE.PUNKTE_TEILNAHME, "Summe Anna");
 });
 
+pruefe("Geschlagene Figuren bringen Teilpunkte — auch beim Verlierer", () => {
+    let tafel = SCHACH_TAFEL.leereTafel(1000);
+    const angelegt = SCHACH_TAFEL.partieAnlegen(tafel, "standard", "Beute", 1000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 1000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 1000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 1000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 1000);
+
+    /* Schwarz nimmt Weiss die Dame ab (Wert 9) und gibt dann auf. */
+    partie.verloren.weiss.push("D");
+    partie = SCHACH_RUNDE.aufgeben(partie, "schwarz", 1100);
+
+    gleich(SCHACH_RUNDE.beuteWert(partie, "schwarz"), 9, "Beute von Schwarz");
+    gleich(SCHACH_RUNDE.beuteWert(partie, "weiss"), 0, "Weiss hat nichts geschlagen");
+
+    tafel = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 1100);
+    gleich(tafel.chronik[0].beute.schwarz, 9, "steht in der Chronik");
+
+    const punkte = RANGLISTE.schachPunkte(tafel);
+    const erwartet = Math.min(
+        Math.round(9 * RANGLISTE.PUNKTE_JE_FIGURENWERT),
+        RANGLISTE.PUNKTE_BEUTE_HOECHSTENS);
+
+    /* Bert hat verloren, aber die Dame geschlagen. */
+    gleich(punkte["id-bert"].beute, erwartet, "Teilpunkte fuer die Beute");
+    gleich(punkte["id-bert"].punkte, RANGLISTE.PUNKTE_TEILNAHME + erwartet,
+        "Teilnahme plus Beute, kein Sieg");
+
+    /* Anna hat gewonnen, aber nichts geschlagen. */
+    gleich(punkte["id-anna"].beute, 0, "keine Beute");
+    gleich(punkte["id-anna"].punkte,
+        RANGLISTE.PUNKTE_TEILNAHME + RANGLISTE.PUNKTE_SIEG, "Sieg ohne Beute");
+
+    /* Und die Beute ueberholt keinen Sieg. */
+    wahr(punkte["id-bert"].punkte < punkte["id-anna"].punkte,
+        "der Sieg wiegt schwerer als die Beute");
+});
+
+pruefe("Alte Chronik-Eintraege ohne Beute bleiben gueltig", () => {
+    /* Eintraege von vor v3.1 kennen das Feld nicht. */
+    const tafel = SCHACH_TAFEL.normalisieren({
+        partien: {},
+        chronik: [{
+            id: "p-alt",
+            titel: "Von frueher",
+            variante: "standard",
+            ergebnis: "weiss",
+            beendetAm: 500,
+            teams: { weiss: ["id-anna"], schwarz: ["id-bert"] }
+        }]
+    });
+
+    gleich(tafel.chronik[0].beute.weiss, 0, "keine Beute vermerkt");
+
+    const punkte = RANGLISTE.schachPunkte(tafel);
+    gleich(punkte["id-anna"].punkte,
+        RANGLISTE.PUNKTE_TEILNAHME + RANGLISTE.PUNKTE_SIEG, "Punkte unveraendert");
+});
+
 pruefe("Die Punkte bleiben, wenn die Partie geloescht wird", () => {
     /*
      * Der Kern der Chronik: Bis v2.3 rechnete die Rangliste aus den Partien

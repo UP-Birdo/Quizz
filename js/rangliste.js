@@ -24,10 +24,32 @@ const RANGLISTE = {
     id: "rangliste",
     titel: "Rangliste",
 
-    /* Punkte im Schach, je beendeter Partie. */
+    /*
+     * Punkte im Schach, je beendeter Partie.
+     *
+     * WIE DIE ZAHLEN ZUEINANDER PASSEN (Stand v3.1)
+     * Alle drei Spiele sollen sich lohnen, keines soll die Rangliste allein
+     * entscheiden. Als Maßstab dient eine gute Runde:
+     *   Würfel Quizz  eine gute Runde bringt rund 30 bis 50 Punkte,
+     *   Team Schach   ein Sieg bringt 30 plus Beute, also etwa 35 bis 45,
+     *   Imposter      eine gute Runde bringt rund 30 bis 45.
+     * Wer eine Zahl ändert, prüft sie gegen diese drei Zeilen.
+     */
     PUNKTE_SIEG: 30,
     PUNKTE_REMIS: 10,
     PUNKTE_TEILNAHME: 2,
+
+    /*
+     * Teilpunkte für geschlagene Figuren: Auch eine verlorene Partie war Arbeit,
+     * wenn man dem Gegner die Dame abgenommen hat.
+     *
+     * Gerechnet wird auf den Figurenwert (Bauer 1 … Dame 9) mal diesem Faktor,
+     * gedeckelt, damit eine einzige Schlachtplatte keinen Sieg überholt. Ein
+     * ausgeglichenes Ende bringt so ein paar Punkte, ein klarer Materialvorteil
+     * etwa ein Drittel eines Sieges.
+     */
+    PUNKTE_JE_FIGURENWERT: 0.8,
+    PUNKTE_BEUTE_HOECHSTENS: 12,
 
     wurzelEl: null,
 
@@ -53,17 +75,24 @@ const RANGLISTE = {
 
         const eintragen = (id) => {
             if (!ergebnis[id]) {
-                ergebnis[id] = { punkte: 0, siege: 0, remis: 0, partien: 0 };
+                ergebnis[id] = { punkte: 0, siege: 0, remis: 0, partien: 0, beute: 0 };
             }
             return ergebnis[id];
         };
 
         for (const partie of SCHACH_TAFEL.normalisieren(tafel).chronik) {
             for (const farbe of ["weiss", "schwarz"]) {
+                /* Teilpunkte für die Beute — gedeckelt, damit sie einen Sieg
+                   ergänzen und nicht ersetzen. */
+                const beute = Math.min(
+                    Math.round((partie.beute[farbe] || 0) * RANGLISTE.PUNKTE_JE_FIGURENWERT),
+                    RANGLISTE.PUNKTE_BEUTE_HOECHSTENS);
+
                 for (const id of partie.teams[farbe]) {
                     const eintrag = eintragen(id);
                     eintrag.partien++;
-                    eintrag.punkte += RANGLISTE.PUNKTE_TEILNAHME;
+                    eintrag.punkte += RANGLISTE.PUNKTE_TEILNAHME + beute;
+                    eintrag.beute += beute;
 
                     if (partie.ergebnis === farbe) {
                         eintrag.siege++;
@@ -154,7 +183,12 @@ const RANGLISTE = {
             + "Sieg: " + RANGLISTE.PUNKTE_SIEG + " Punkte.\n"
             + "Unentschieden: " + RANGLISTE.PUNKTE_REMIS + " Punkte.\n"
             + "Dabeigewesen: " + RANGLISTE.PUNKTE_TEILNAHME + " Punkte, "
-            + "zusätzlich zum Ergebnis.\n\n"
+            + "zusätzlich zum Ergebnis.\n"
+            + "Geschlagene Figuren: " + RANGLISTE.PUNKTE_JE_FIGURENWERT
+            + " Punkte je Figurenwert (Bauer 1, Springer und Läufer 3, Turm 5, "
+            + "Dame 9), höchstens " + RANGLISTE.PUNKTE_BEUTE_HOECHSTENS
+            + " Punkte je Partie. Auch eine verlorene Partie war Arbeit, wenn "
+            + "man dem Gegner die Dame abgenommen hat.\n\n"
             + "Laufende Partien zählen nicht mit — erst das Ergebnis bringt "
             + "Punkte. Alle aus dem Siegerteam bekommen dieselben Punkte; wer "
             + "wie viele Züge gemacht hat, spielt keine Rolle. Das ist gewollt, "

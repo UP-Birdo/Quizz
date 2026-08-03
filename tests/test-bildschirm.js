@@ -186,7 +186,14 @@ umgebung.globalThis = umgebung;
 vm.createContext(umgebung);
 
 /* Stellvertreter für die Teile, die hier nicht mitspielen. */
-umgebung.ICH = { person: () => ({ id: "id-anna", name: "Anna" }) };
+umgebung.ICH = {
+    person: () => ({ id: "id-anna", name: "Anna" }),
+
+    /* Der Gerätespeicher, so weit der Bildschirm ihn braucht. */
+    _gesehen: {},
+    abschlussGesehen(id) { return umgebung.ICH._gesehen[id] === true; },
+    abschlussMerken(id) { umgebung.ICH._gesehen[id] = true; }
+};
 umgebung.DIALOG = { hinweis: async () => true, frage: async () => true };
 
 /*
@@ -432,9 +439,26 @@ pruefe("Ohne Zug gibt es keinen Pfeil, nach einem Zug schon", () => {
         throw new Error("Pfeil hat " + gruppe.kinder.length + " Teile statt 4");
     }
 
-    /* Ein Loch je besetztem Feld, dazu die weisse Grundfläche. */
-    if (maske.kinder.length !== 33) {
-        throw new Error("Maske hat " + maske.kinder.length + " Teile statt 33");
+    /*
+     * Ein Loch je besetztem Feld, dazu die weisse Grundfläche — ABER nicht für
+     * Start und Ziel: Dort bleibt der Pfeil ganz. Nach 1. e4 stehen 31 Figuren
+     * auf anderen Feldern (32 minus dem Bauern auf e4), macht 32 Teile.
+     */
+    if (maske.kinder.length !== 32) {
+        throw new Error("Maske hat " + maske.kinder.length + " Teile statt 32");
+    }
+
+    /* Und auf dem Zielfeld darf kein Loch sitzen. */
+    const ziel = pfeilImBrett && SCHACH.feldNummer("e4");
+    const punkte = maske.kinder
+        .filter((kind) => kind.tagName === "circle")
+        .map((kind) => kind.attribute.cx + "/" + kind.attribute.cy);
+
+    if (punkte.indexOf("4.5/4.5") !== -1) {
+        throw new Error("das Zielfeld e4 ist maskiert — der Pfeil waere abgeschnitten");
+    }
+    if (ziel < 0) {
+        throw new Error("Zielfeld nicht gefunden");
     }
 });
 

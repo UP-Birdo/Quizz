@@ -3,6 +3,36 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.1 — 2026-08-03
+
+- **Wunsch-Knopf im Kopf.** Ein Satz hineinschreiben, und die App öffnet ein
+  vorbefülltes GitHub-Formular — mit Tab und Version schon eingetragen. Die
+  Wünsche holt `tools\Wuensche-Abholen.ps1` in die Aufgabenliste unter
+  **Anfragen**; erst mit dem Wort *bestätigt* werden sie eingeordnet.
+- **Wortbibliothek für die Verwaltung.** Hinter dem Verwaltungs-Passwort stehen
+  alle Wörter des Imposter-Spiels, mit einem **Import-Knopf**: Blocktext
+  einfügen, ein Wort je Zeile, Doppelte werden übersprungen. Ergänzte Wörter
+  gelten für alle Mitspieler; einzeln entfernen geht per Antippen.
+  *Warum hinter dem Passwort:* Wer die Wortliste kennt, hat als Imposter einen
+  Vorteil.
+- **Teilpunkte im Schach.** Geschlagene Figuren zählen jetzt: 0,8 Punkte je
+  Figurenwert (Bauer 1 … Dame 9), höchstens 12 je Partie. Auch eine verlorene
+  Partie bringt etwas, wenn man dem Gegner die Dame abgenommen hat — ein Sieg
+  bleibt trotzdem mehr wert.
+- **Im Imposter tippen jetzt alle etwas ein.** Die Ehrlichen bekommen ein
+  Notizfeld ohne Wirkung auf die Punkte — sonst sah man am Tisch sofort, wer
+  tippt und damit wer der Imposter ist.
+- **Fehler behoben: Der Abschluss-Bildschirm kam nach jedem Neuladen erneut.**
+  „Schon gesehen" lag nur im Arbeitsspeicher und liegt jetzt im Gerätespeicher.
+- **Die Pfeile sind wieder ganz zu sehen.** Nur Figuren ZWISCHEN Start und Ziel
+  unterbrechen sie noch; an den Enden bleibt der Pfeil vollständig, und Spitze
+  wie Anfang sind kürzer.
+- **Wer eine Partie anlegt, ist sofort dabei** — im weissen Team und direkt in
+  der Partie, statt erst über die Übersicht beizutreten.
+- **Zufalls-Knopf bei der Team-Auswahl:** Er setzt bevorzugt in ein leeres Team,
+  sonst in das kleinere; erst bei Gleichstand entscheidet der Zufall.
+- **Neue Tab-Reihenfolge:** Team Schach, Imposter, Würfel Quizz, Rangliste.
+
 ## v3.0 — 2026-08-03
 
 Ein drittes Spiel: **Imposter**.

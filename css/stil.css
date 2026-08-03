@@ -91,6 +91,13 @@ body {
     font-size: 0.85rem;
 }
 
+.kopf-rechts {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .status {
     display: flex;
     align-items: center;
