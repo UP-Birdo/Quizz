@@ -221,8 +221,12 @@ const SCHACH_RUNDE = {
             runde.bonus = liste
                 .filter((eintrag) => eintrag && Number.isInteger(eintrag.feld)
                     && eintrag.feld >= 0
-                    && SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art])
-                .map((eintrag) => ({ feld: eintrag.feld, art: eintrag.art }))
+                    && (eintrag.pech
+                        ? SCHACH_VARIANTEN.PECH[eintrag.art]
+                        : SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]))
+                .map((eintrag) => (eintrag.pech
+                    ? { feld: eintrag.feld, art: eintrag.art, pech: true }
+                    : { feld: eintrag.feld, art: eintrag.art }))
                 .filter((eintrag, stelle, alle) =>
                     alle.findIndex((anderer) => anderer.feld === eintrag.feld) === stelle);
         } else {
@@ -395,29 +399,44 @@ const SCHACH_RUNDE = {
             const marke = basis + "|" + nummer;
             const stelle = Math.floor(SCHACH_RUNDE._zufallsWert(marke + "|feld") * freie.length);
             const feld = freie[stelle];
-            const art = SCHACH_VARIANTEN.faehigkeitZiehen(
-                SCHACH_RUNDE._zufallsWert(marke + "|art"));
+
+            /* Ist es ein Unglückswürfel? Deutlich seltener als ein normaler. */
+            const istPech = (SCHACH_RUNDE._zufallsWert(marke + "|pech") * 100)
+                < SCHACH_VARIANTEN.PECH_CHANCE;
+
+            const art = istPech
+                ? SCHACH_VARIANTEN.pechZiehen(SCHACH_RUNDE._zufallsWert(marke + "|pechart"))
+                : SCHACH_VARIANTEN.faehigkeitZiehen(SCHACH_RUNDE._zufallsWert(marke + "|art"));
 
             if (!art) {
                 continue;
             }
 
             freie.splice(stelle, 1);
-            runde.bonus.push({ feld: feld, art: art });
-            neue.push({ feld: feld, art: art });
+            const eintrag = { feld: feld, art: art };
+            if (istPech) {
+                eintrag.pech = true;
+            }
+
+            runde.bonus.push(eintrag);
+            neue.push(eintrag);
         }
 
         if (neue.length === 0) {
             return;
         }
 
-        const namen = neue.map((eintrag) => SCHACH_VARIANTEN.faehigkeitTitel(eintrag.art)
-            + " (" + SCHACH_VARIANTEN.stufeVon(eintrag.art).titel + ") auf "
-            + SCHACH.feldName(eintrag.feld, SCHACH.breiteVon(runde.stand),
-                SCHACH.hoeheVon(runde.stand)));
+        /*
+         * Im Verlauf steht NUR, wo etwas liegt — nicht was. Weder die
+         * Fähigkeit noch die Tatsache, dass es ein Unglückswürfel ist: Das ist
+         * die Überraschung, um die es geht.
+         */
+        const namen = neue.map((eintrag) => SCHACH.feldName(eintrag.feld,
+            SCHACH.breiteVon(runde.stand), SCHACH.hoeheVon(runde.stand)));
 
         runde.verlauf.push({
-            text: (neue.length === 1 ? "Es erscheint: " : "Es erscheinen: ") + namen.join(", "),
+            text: (neue.length === 1 ? "Ein Würfel erscheint auf " : "Würfel erscheinen auf ")
+                + namen.join(", "),
             wer: "",
             farbe: runde.stand.amZug,
             von: -1,
@@ -509,6 +528,60 @@ const SCHACH_RUNDE = {
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
+    },
+
+    /*
+     * Lässt einen Unglückswürfel sofort wirken. Ändert die übergebene Runde.
+     *
+     * `feld` ist das Feld, auf dem er lag (dort steht jetzt die einsammelnde
+     * Figur), `farbe` die Seite, die ihn erwischt hat.
+     */
+    _pechAusloesen(runde, art, farbe, feld, wer, herkunft) {
+        const basis = (runde.id || "partie") + "|" + runde.zugZaehler + "|pech";
+        let wirkung = null;
+
+        if (art === "stolperstein") {
+            wirkung = SCHACH.stolperstein(runde.stand, farbe, feld);
+
+        } else if (art === "ausdehnung") {
+            const seiten = ["oben", "unten", "links", "rechts"];
+            const wahl = SCHACH_RUNDE._zufallsWert(basis + "|seite");
+            wirkung = SCHACH.ausdehnung(runde.stand,
+                seiten[Math.floor(wahl * seiten.length) % seiten.length]);
+
+        } else if (art === "meuterei") {
+            wirkung = SCHACH.meuterei(runde.stand, farbe,
+                SCHACH_RUNDE._zufallsWert(basis + "|figur"));
+
+        } else if (art === "erdrutsch") {
+            wirkung = SCHACH.erdrutsch(runde.stand, farbe);
+        }
+
+        const stufe = SCHACH_VARIANTEN.pechStufeVon(art);
+        let text = "Unglückswürfel: " + SCHACH_VARIANTEN.pechTitel(art)
+            + " (" + stufe.titel + ")";
+
+        if (wirkung) {
+            runde.stand = wirkung.stand;
+            text += " — " + wirkung.text;
+        } else {
+            /* Auch ein wirkungsloser Unglückswürfel wird festgehalten: Sonst
+               stünde im Verlauf ein Einsammeln ohne Folge, und niemand wüsste,
+               warum nichts passiert ist. */
+            text += " — ohne Wirkung";
+        }
+
+        runde.verlauf.push({
+            text: text,
+            wer: wer || "",
+            farbe: farbe,
+            von: Number.isInteger(herkunft) ? herkunft : -1,
+            nach: feld,
+            wirkung: "pech",
+            felder: wirkung ? wirkung.felder : [feld],
+            wege: wirkung ? (wirkung.wege || []) : []
+        });
+        SCHACH_RUNDE._verlaufKuerzen(runde);
     },
 
     /*
@@ -806,22 +879,30 @@ const SCHACH_RUNDE = {
             const bonus = neu.bonus[stelle];
             neu.bonus.splice(stelle, 1);
             neu.bonusGesammelt.push(bonus.feld);
-            neu.faehigkeiten[farbe].push(bonus.art);
 
-            /* Derselbe Weg wie beim Zug davor: Dieser Eintrag beschreibt
-               denselben Zug. So findet der Bildschirm die Bewegung auch dann am
-               Ende des Verlaufs, wenn dabei eine Fähigkeit eingesammelt wurde. */
-            neu.verlauf.push({
-                text: SCHACH_VARIANTEN.faehigkeitTitel(bonus.art) + " ("
-                    + SCHACH_VARIANTEN.stufeVon(bonus.art).titel + ") eingesammelt",
-                wer: wer || "",
-                farbe: farbe,
-                von: von,
-                nach: nach,
-                wirkung: "eingesammelt",
-                felder: [nach]
-            });
-            SCHACH_RUNDE._verlaufKuerzen(neu);
+            if (bonus.pech) {
+                /* Ein Unglückswürfel kommt nicht in den Vorrat — er wirkt
+                   sofort, und zwar gegen den, der ihn eingesammelt hat. */
+                SCHACH_RUNDE._pechAusloesen(neu, bonus.art, farbe, nach, wer, von);
+            } else {
+                neu.faehigkeiten[farbe].push(bonus.art);
+
+                /* Derselbe Weg wie beim Zug davor: Dieser Eintrag beschreibt
+                   denselben Zug. So findet der Bildschirm die Bewegung auch
+                   dann am Ende des Verlaufs, wenn dabei etwas eingesammelt
+                   wurde. */
+                neu.verlauf.push({
+                    text: SCHACH_VARIANTEN.faehigkeitTitel(bonus.art) + " ("
+                        + SCHACH_VARIANTEN.stufeVon(bonus.art).titel + ") eingesammelt",
+                    wer: wer || "",
+                    farbe: farbe,
+                    von: von,
+                    nach: nach,
+                    wirkung: "eingesammelt",
+                    felder: [nach]
+                });
+                SCHACH_RUNDE._verlaufKuerzen(neu);
+            }
         }
 
         /* Und alle paar Züge erscheint ein neuer Würfel. */

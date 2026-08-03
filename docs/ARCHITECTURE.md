@@ -499,6 +499,33 @@ wäre „Schachmatt" nicht mehr eindeutig — dieselbe Überlegung, die beim
 Doppelbrett zum schlagbaren König geführt hat. Diese drei Ausnahmen sind keine
 Bequemlichkeit, sondern die Bedingung dafür, dass die Spielart noch Schach ist.
 
+### Unglückswürfel
+
+Ein Bonus-Eintrag mit `pech: true` trägt statt einer Fähigkeit einen Eintrag aus
+`SCHACH_VARIANTEN.PECH` — je Stufe genau einen. Er kommt **nicht in den
+Vorrat**, sondern wirkt beim Einsammeln sofort (`SCHACH_RUNDE._pechAusloesen`),
+und zwar gegen die Seite, die ihn eingesammelt hat.
+
+Die vier Wirkungen liegen wie die Fähigkeiten in `schach.js` und liefern
+dieselbe Form (`{ stand, felder, wege, text }`). Auch hier gilt: **Könige bleiben
+verschont** — sie stolpern nicht, meutern nicht und rutschen nicht.
+
+**Die Ausdehnung ist der einzige Eingriff, der die Brettgröße ändert.** Damit
+das geht, sind `breite`/`hoehe` seit v2.7 eigenständige Angaben im Stand: Die
+Spielart gibt sie vor, aber ein gespeicherter Stand mit passender Brettlänge
+gewinnt. Beim Wachsen verschieben sich **alle Feldnummern**; deshalb rechnet
+`SCHACH.ausdehnung` auch die gemerkten Felder um (Rochaderechte, Schild, Fessel,
+Frost). Wer das vergisst, hat ein Schild auf dem falschen Feld — ein Test hält
+es fest.
+
+### Was der Verlauf verrät
+
+Beim Erscheinen steht im Verlauf nur, **wo** ein Würfel liegt, nie was darin
+ist — sonst könnte man den Inhalt vorher lesen, und die Überraschung wäre weg.
+Dass ein Würfel ein Unglückswürfel ist, sieht man dagegen immer (umgedrehtes
+Fragezeichen): Das ist keine Überraschung, sondern die Entscheidung, ob man
+hinzieht.
+
 ### Der gerechnete Zufall
 
 Würfel erscheinen alle `BONUS_ABSTAND` Halbzüge auf einem freien Feld, höchstens

@@ -598,6 +598,72 @@ pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
 });
 
+pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () => {
+    TEAM_SCHACH.faehigkeitenOeffnen();
+
+    const karten = TEAM_SCHACH.wurzelEl.kinder.filter(
+        (kind) => String(kind.className || "").indexOf("stufen-karte") !== -1);
+
+    if (karten.length !== SCHACH_VARIANTEN.STUFEN.length) {
+        throw new Error("erwartet " + SCHACH_VARIANTEN.STUFEN.length
+            + " Stufen, waren " + karten.length);
+    }
+
+    /* Je Stufe: Kopfzeile, die Fähigkeiten und der Unglückswürfel. */
+    for (let stelle = 0; stelle < karten.length; stelle++) {
+        const stufe = SCHACH_VARIANTEN.STUFEN[stelle];
+        const eintraege = karten[stelle].kinder.filter(
+            (kind) => String(kind.className || "").indexOf("stufen-eintrag") !== -1);
+
+        const erwartet = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length + 1;
+        if (eintraege.length !== erwartet) {
+            throw new Error(stufe.id + ": " + eintraege.length + " Eintraege statt " + erwartet);
+        }
+
+        const pech = eintraege.find(
+            (kind) => String(kind.className || "").indexOf("stufen-pech") !== -1);
+        if (!pech) {
+            throw new Error(stufe.id + ": kein Unglueckswuerfel");
+        }
+    }
+
+    TEAM_SCHACH.infoSchliessen();
+    if (TEAM_SCHACH.infoOffen) {
+        throw new Error("Uebersicht nicht geschlossen");
+    }
+});
+
+pruefe("Ein Unglueckswuerfel traegt ein umgedrehtes Fragezeichen", () => {
+    let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
+    partie = SCHACH_RUNDE.kopieren(partie);
+    /* Ein noch freies Feld — auf d5 liegt aus einem frueheren Test schon einer,
+       und je Feld gilt der erste Eintrag. */
+    partie.bonus.push({ feld: SCHACH.feldNummer("g5"), art: "erdrutsch", pech: true });
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        TEAM_SCHACH.abgleich.daten, partie, 5500);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+        "[data-feld=\"" + SCHACH.feldNummer("g5") + "\"]");
+    const wuerfel = zelle.kinder.find((kind) => kind.attribute
+        && kind.attribute["class"] === "wuerfel");
+
+    if (!wuerfel) {
+        throw new Error("kein Wuerfel");
+    }
+
+    const zeichen = wuerfel.kinder.find((kind) => kind.tagName === "text");
+    if (!zeichen || !zeichen.attribute.transform) {
+        throw new Error("das Fragezeichen steht nicht auf dem Kopf");
+    }
+
+    /* Und der Titel verraet weiterhin nicht, was drin ist. */
+    if (String(zelle.title).indexOf("Erdrutsch") !== -1) {
+        throw new Error("der Titel verraet den Inhalt");
+    }
+});
+
 pruefe("Wer nicht am Zug ist, kann einen Zug vormerken", () => {
     /* Eine Partie, in der Schwarz am Zug ist — Anna (Weiss) merkt vor. */
     const angelegt = SCHACH_TAFEL.partieAnlegen(

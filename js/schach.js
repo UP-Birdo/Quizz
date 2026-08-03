@@ -283,7 +283,23 @@ const SCHACH = {
             return stand;
         }
 
-        const felder = variante.breite * variante.hoehe;
+        /*
+         * Die Maße kommen aus der Spielart — es sei denn, der Stand trägt
+         * eigene und das Brett passt dazu. Das braucht die Unglückskiste
+         * „Ausdehnung“, die das Feld während der Partie wachsen lässt: Danach
+         * stimmen Brett und Variante nicht mehr überein, und der Stand selbst
+         * ist die Wahrheit.
+         */
+        if (Number.isInteger(roh.breite) && Number.isInteger(roh.hoehe)
+            && roh.breite >= 2 && roh.breite <= SCHACH.SPALTEN.length
+            && roh.hoehe >= 2 && roh.hoehe <= 9
+            && typeof roh.brett === "string"
+            && roh.brett.length === roh.breite * roh.hoehe) {
+            stand.breite = roh.breite;
+            stand.hoehe = roh.hoehe;
+        }
+
+        const felder = stand.breite * stand.hoehe;
         const muster = new RegExp("^[BTSLDKbtsldk.]{" + felder + "}$");
 
         if (typeof roh.brett === "string" && roh.brett.length === felder
@@ -1567,6 +1583,196 @@ const SCHACH = {
             stand: neu,
             felder: [feld],
             text: SCHACH.artName(figurArt) + " kehrt zurück"
+        };
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Wirkung der Unglückswürfel
+     *
+     * Sie treffen die Seite, die den Würfel eingesammelt hat. Alle vier
+     * liefern dasselbe wie die Fähigkeiten: { stand, felder, wege, text } oder
+     * null, wenn nichts passieren kann.
+     * ---------------------------------------------------------------- */
+
+    /* Stolperstein: Die Figur auf `feld` wird ein Feld zurückgeworfen. */
+    stolperstein(stand, farbe, feld) {
+        const breite = SCHACH.breiteVon(stand);
+        const figur = SCHACH.figurAuf(stand, feld);
+
+        if (SCHACH.farbeVon(figur) !== farbe) {
+            return null;
+        }
+
+        /* Zurück heißt: in Richtung der eigenen Grundreihe. */
+        const zurueck = (farbe === SCHACH.WEISS) ? 1 : -1;
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        if (!SCHACH._imBrett(stand, reihe + zurueck, spalte)) {
+            return null;
+        }
+
+        const ziel = SCHACH._feld(stand, reihe + zurueck, spalte);
+        if (SCHACH.figurAuf(stand, ziel) !== ".") {
+            return null;
+        }
+
+        let brett = SCHACH._brettMit(stand.brett, feld, ".");
+        brett = SCHACH._brettMit(brett, ziel, figur);
+
+        return {
+            stand: Object.assign({}, stand, { brett: brett, enPassant: "" }),
+            felder: [feld, ziel],
+            wege: [{ von: feld, nach: ziel }],
+            text: SCHACH.artName(SCHACH.artVon(figur)) + " stolpert zurück"
+        };
+    },
+
+    /*
+     * Ausdehnung: Das Brett wächst an einer Seite um eine Reihe oder Spalte.
+     * `seite` ist "oben", "unten", "links" oder "rechts".
+     *
+     * Die neuen Felder sind leer. Alle Feldnummern verschieben sich dabei —
+     * deshalb werden auch die gemerkten Felder (Rochade, Schild, Fessel, Frost)
+     * mit umgerechnet. Wer das vergisst, hat ein Schild auf dem falschen Feld.
+     */
+    ausdehnung(stand, seite) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+
+        if ((seite === "links" || seite === "rechts") && breite >= SCHACH.SPALTEN.length) {
+            return null;
+        }
+        if ((seite === "oben" || seite === "unten") && hoehe >= 9) {
+            return null;
+        }
+
+        const neuBreite = (seite === "links" || seite === "rechts") ? breite + 1 : breite;
+        const neuHoehe = (seite === "oben" || seite === "unten") ? hoehe + 1 : hoehe;
+
+        /* Wohin rutscht das alte Brett? */
+        const dSpalte = (seite === "links") ? 1 : 0;
+        const dReihe = (seite === "oben") ? 1 : 0;
+
+        const felder = new Array(neuBreite * neuHoehe).fill(".");
+        const umrechnen = (feld) => {
+            if (!Number.isInteger(feld) || feld < 0) {
+                return -1;
+            }
+            const reihe = Math.floor(feld / breite) + dReihe;
+            const spalte = (feld % breite) + dSpalte;
+            return reihe * neuBreite + spalte;
+        };
+
+        for (let feld = 0; feld < breite * hoehe; feld++) {
+            felder[umrechnen(feld)] = stand.brett[feld];
+        }
+
+        const neu = Object.assign({}, stand, {
+            breite: neuBreite,
+            hoehe: neuHoehe,
+            brett: felder.join(""),
+            enPassant: "",
+            rochadeFelder: stand.rochadeFelder.map(umrechnen),
+            rochadeKoenige: stand.rochadeKoenige.map(umrechnen),
+            schildFeld: (stand.schildFeld >= 0) ? umrechnen(stand.schildFeld) : -1,
+            fesselFeld: (stand.fesselFeld >= 0) ? umrechnen(stand.fesselFeld) : -1,
+            frostFeld: (stand.frostFeld >= 0) ? umrechnen(stand.frostFeld) : -1
+        });
+
+        const namen = { oben: "oben", unten: "unten", links: "links", rechts: "rechts" };
+
+        return {
+            stand: neu,
+            felder: [],
+            wege: [],
+            text: "Das Feld wächst " + (namen[seite] || seite)
+        };
+    },
+
+    /* Meuterei: Eine eigene Figur wechselt die Seite. */
+    meuterei(stand, farbe, wahl) {
+        const eigene = [];
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            const figur = SCHACH.figurAuf(stand, feld);
+            if (SCHACH.farbeVon(figur) === farbe && SCHACH.artVon(figur) !== "K") {
+                eigene.push(feld);
+            }
+        }
+
+        if (eigene.length === 0) {
+            return null;
+        }
+
+        const feld = eigene[Math.floor(wahl * eigene.length) % eigene.length];
+        const figur = SCHACH.figurAuf(stand, feld);
+        const gewendet = (farbe === SCHACH.WEISS)
+            ? figur.toLowerCase()
+            : figur.toUpperCase();
+
+        return {
+            stand: Object.assign({}, stand, {
+                brett: SCHACH._brettMit(stand.brett, feld, gewendet)
+            }),
+            felder: [feld],
+            wege: [],
+            text: SCHACH.artName(SCHACH.artVon(figur)) + " läuft über"
+        };
+    },
+
+    /* Erdrutsch: Alle eigenen Figuren ein Feld zurück. */
+    erdrutsch(stand, farbe) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const zurueck = (farbe === SCHACH.WEISS) ? 1 : -1;
+
+        let brett = stand.brett;
+        const felder = [];
+        const wege = [];
+
+        /* In Rutschrichtung von vorn abarbeiten, damit vorn Platz entsteht. */
+        const reihen = [];
+        for (let reihe = 0; reihe < hoehe; reihe++) {
+            reihen.push(reihe);
+        }
+        if (zurueck === 1) {
+            reihen.reverse();
+        }
+
+        for (const reihe of reihen) {
+            for (let spalte = 0; spalte < breite; spalte++) {
+                const von = reihe * breite + spalte;
+                const figur = brett[von];
+
+                if (SCHACH.farbeVon(figur) !== farbe || SCHACH.artVon(figur) === "K") {
+                    continue;
+                }
+                if (!SCHACH._imBrett(stand, reihe + zurueck, spalte)) {
+                    continue;
+                }
+
+                const ziel = SCHACH._feld(stand, reihe + zurueck, spalte);
+                if (brett[ziel] !== ".") {
+                    continue;
+                }
+
+                brett = SCHACH._brettMit(brett, von, ".");
+                brett = SCHACH._brettMit(brett, ziel, figur);
+                felder.push(von, ziel);
+                wege.push({ von: von, nach: ziel });
+            }
+        }
+
+        if (felder.length === 0) {
+            return null;
+        }
+
+        return {
+            stand: Object.assign({}, stand, { brett: brett, enPassant: "" }),
+            felder: felder,
+            wege: wege,
+            text: "Alles rutscht zurück"
         };
     },
 

@@ -3,6 +3,29 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.7 — 2026-08-03
+
+- **Unglückswürfel.** Manche Würfel tragen ein **umgedrehtes Fragezeichen** und
+  bringen nichts Gutes: Sie kommen nicht in den Vorrat, sondern wirken sofort —
+  gegen den, der sie eingesammelt hat. Je Seltenheitsstufe gibt es einen, und je
+  höher die Stufe, desto schlimmer:
+  - *Gewöhnlich:* **Stolperstein** — die einsammelnde Figur wird ein Feld
+    zurückgeworfen.
+  - *Ungewöhnlich:* **Ausdehnung** — das Spielfeld wächst an einer zufälligen
+    Seite um eine Reihe oder Spalte. Alle Wege werden länger.
+  - *Episch:* **Meuterei** — eine eigene Figur läuft zum Gegner über.
+  - *Legendär:* **Erdrutsch** — alle eigenen Figuren rutschen ein Feld zurück.
+  Jeder achte Würfel ist ein Unglückswürfel; Könige bleiben von allem verschont.
+- Was ein Unglückswürfel bewegt, wird **gelb** gezeichnet — Pfeile wie
+  aufleuchtende Felder — und steht mit Namen im Zugverlauf.
+- **Der Verlauf verrät nichts mehr:** Beim Erscheinen steht nur noch, WO ein
+  Würfel liegt, nicht was darin ist. Ob es ein Unglückswürfel ist, sieht man
+  dagegen immer — das ist die Entscheidung, ob man hinzieht.
+- **Neue Übersicht hinter dem i:** eine Karte je Seltenheitsstufe in ihrer Farbe,
+  darin jede Fähigkeit mit Beschreibung und der Unglückswürfel dieser Stufe.
+  Die Zahlen (Chancen, Abstand, Höchstzahl) liegen hinter einem zweiten i an der
+  Überschrift — wer nur wissen will, was etwas tut, liest keine Prozentwerte.
+
 ## v2.6 — 2026-08-03
 
 - **Fehler behoben: Der Gewinner-Bildschirm blieb aus.** Er kam nur, wenn die

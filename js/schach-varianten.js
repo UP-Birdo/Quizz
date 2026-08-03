@@ -51,6 +51,84 @@ const SCHACH_VARIANTEN = {
         { id: "gelb", titel: "Legendär", chance: 3, farbe: "#e0a800" }
     ],
 
+    /*
+     * Unglückswürfel: Wie oft ein erscheinender Würfel ein schlechter ist.
+     * Deutlich seltener als ein normaler — sonst wäre jeder Würfel eine
+     * Zitterpartie statt einer Belohnung.
+     */
+    PECH_CHANCE: 12,
+
+    /*
+     * Die Unglückswürfel, je Stufe einer. Sie kommen NICHT in den Vorrat,
+     * sondern wirken sofort beim Einsammeln — und zwar gegen den, der sie
+     * eingesammelt hat. Je höher die Stufe, desto schlimmer.
+     */
+    PECH: {
+        stolperstein: {
+            titel: "Stolperstein",
+            stufe: "gruen",
+            beschreibung: "Die Figur, die den Würfel eingesammelt hat, wird ein Feld "
+                + "zurückgeworfen — zurück in Richtung der eigenen Grundreihe."
+        },
+        ausdehnung: {
+            titel: "Ausdehnung",
+            stufe: "blau",
+            beschreibung: "Das Spielfeld wächst an einer zufälligen Seite um eine "
+                + "Reihe oder Spalte. Alle Wege werden länger."
+        },
+        meuterei: {
+            titel: "Meuterei",
+            stufe: "lila",
+            beschreibung: "Eine eigene Figur läuft zum Gegner über und kämpft ab "
+                + "sofort für die andere Seite. Könige meutern nicht."
+        },
+        erdrutsch: {
+            titel: "Erdrutsch",
+            stufe: "gelb",
+            beschreibung: "Alle eigenen Figuren rutschen ein Feld zurück in Richtung "
+                + "der eigenen Grundreihe, soweit dort Platz ist. Der ganze Angriff "
+                + "fällt in sich zusammen."
+        }
+    },
+
+    /* Titel und Stufe eines Unglückswürfels. */
+    pechTitel(art) {
+        const eintrag = SCHACH_VARIANTEN.PECH[art];
+        return eintrag ? eintrag.titel : "";
+    },
+
+    pechBeschreibung(art) {
+        const eintrag = SCHACH_VARIANTEN.PECH[art];
+        return eintrag ? eintrag.beschreibung : "";
+    },
+
+    pechStufeVon(art) {
+        const eintrag = SCHACH_VARIANTEN.PECH[art];
+        if (!eintrag) {
+            return SCHACH_VARIANTEN.STUFE_UNBEKANNT;
+        }
+        return SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === eintrag.stufe)
+            || SCHACH_VARIANTEN.STUFEN[0];
+    },
+
+    /* Zieht einen Unglückswürfel — dieselbe Stufenverteilung wie bei den
+       Fähigkeiten, damit „selten“ überall dasselbe heißt. */
+    pechZiehen(wert) {
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            if (rest < stufe.chance) {
+                const arten = Object.keys(SCHACH_VARIANTEN.PECH)
+                    .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufe.id)
+                    .sort();
+                return arten.length > 0 ? arten[0] : "";
+            }
+            rest -= stufe.chance;
+        }
+
+        return "stolperstein";
+    },
+
     /* Alle wie viele Halbzüge erscheint eine neue Fähigkeit auf dem Brett. */
     BONUS_ABSTAND: 6,
 
@@ -428,6 +506,29 @@ const SCHACH_VARIANTEN = {
      * Chance kann deshalb nicht von der gezogenen abweichen. Dieselbe Regel wie
      * bei den Punkten im Würfel-Quizz.
      */
+    /* Die Zahlen zu einer Stufe — hinter dem i an ihrer Überschrift. */
+    stufenErklaerung(stufeId) {
+        const stufe = SCHACH_VARIANTEN.STUFEN.find((eintrag) => eintrag.id === stufeId);
+        if (!stufe) {
+            return "";
+        }
+
+        const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
+        const einzeln = SCHACH_VARIANTEN.chanceVon(arten[0] || "").toFixed(1).replace(".", ",");
+
+        return "Von allen Würfeln, die erscheinen, tragen " + stufe.chance
+            + " Prozent eine Fähigkeit dieser Stufe.\n\n"
+            + "Innerhalb der Stufe sind alle gleich wahrscheinlich — bei "
+            + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
+            + "Alle " + SCHACH_VARIANTEN.BONUS_ABSTAND + " Halbzüge erscheinen neue "
+            + "Würfel (meist einer, selten zwei, sehr selten drei); es liegen nie "
+            + "mehr als " + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig.\n\n"
+            + "Jeder achte Würfel ist ein Unglückswürfel (" + SCHACH_VARIANTEN.PECH_CHANCE
+            + " Prozent) — er wirkt sofort gegen den, der ihn einsammelt.\n\n"
+            + "Gewürfelt wird dabei nicht: Feld und Inhalt werden aus dem Spielstand "
+            + "gerechnet, damit alle Mitspieler dasselbe Brett sehen.";
+    },
+
     faehigkeitenErklaerung() {
         const anzahl = SCHACH_VARIANTEN.BONUS_ANZAHL
             .map((eintrag) => eintrag.anzahl + " mit " + eintrag.chance + " Prozent")

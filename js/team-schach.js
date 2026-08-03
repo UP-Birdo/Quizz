@@ -46,6 +46,9 @@ const TEAM_SCHACH = {
     /* Ist die Auswahl der Spielart offen? Sie liegt VOR der Übersicht. */
     auswahlOffen: false,
 
+    /* Ist die Fähigkeiten-Übersicht offen (hinter dem i)? */
+    infoOffen: false,
+
     /*
      * Die Einstellungen für die NÄCHSTE Partie. Sie leben nur, solange die
      * Auswahl offen ist; mit dem Anlegen wandern sie in die Partie und stehen
@@ -166,6 +169,11 @@ const TEAM_SCHACH = {
             wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
                 "Melde dich zuerst im Tab Würfel Quizz an — dann bist du auch hier "
                 + "mit deinem Namen dabei."));
+            return;
+        }
+
+        if (TEAM_SCHACH.infoOffen) {
+            TEAM_SCHACH._infoZeichnen(wurzel);
             return;
         }
 
@@ -646,13 +654,15 @@ const TEAM_SCHACH = {
         }
         TEAM_SCHACH.wirkungBis[partie.id] = partie.zugZaehler;
 
+        const klasse = (letzter.wirkung === "pech") ? "feld-wirkung-pech" : "feld-wirkung";
+
         for (const feld of letzter.felder) {
             const zelle = halter.querySelector("[data-feld=\"" + feld + "\"]");
             if (!zelle) {
                 continue;
             }
-            zelle.classList.add("feld-wirkung");
-            window.setTimeout(() => zelle.classList.remove("feld-wirkung"),
+            zelle.classList.add(klasse);
+            window.setTimeout(() => zelle.classList.remove(klasse),
                 TEAM_SCHACH.WIRKUNG_MS + 60);
         }
     },
@@ -839,14 +849,19 @@ const TEAM_SCHACH = {
                  * vorher lesen kann, ist kein Überraschungswürfel mehr.
                  */
                 const zeigen = (partie.regeln.seltenheitZeigen !== false);
+                const stufe = bonusHier.pech
+                    ? SCHACH_VARIANTEN.pechStufeVon(bonusHier.art)
+                    : SCHACH_VARIANTEN.stufeVon(bonusHier.art);
 
                 zelle.classList.add("feld-bonus");
-                zelle.title = zeigen
-                    ? ("Würfel — " + SCHACH_VARIANTEN.stufeVon(bonusHier.art).titel)
-                    : "Würfel";
+                zelle.title = zeigen ? ("Würfel — " + stufe.titel) : "Würfel";
                 zelle.setAttribute("aria-label",
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
-                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(zeigen ? bonusHier.art : ""));
+
+                /* Ob es ein Unglückswürfel ist, sieht man IMMER — das ist keine
+                   Überraschung, sondern die Entscheidung, ob man hinzieht. */
+                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(
+                    zeigen ? bonusHier.art : "", bonusHier.pech));
             }
 
             /*
@@ -1182,7 +1197,10 @@ const TEAM_SCHACH = {
         };
 
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("class", "zug-pfeil");
+        /* Ein Unglückswürfel färbt die Pfeile gelb — man soll auf einen Blick
+           sehen, dass das keine gewollte Bewegung war. */
+        svg.setAttribute("class",
+            "zug-pfeil" + ((letzter.wirkung === "pech") ? " zug-pfeil-pech" : ""));
         svg.setAttribute("viewBox", "0 0 " + breite + " " + hoehe);
         svg.setAttribute("preserveAspectRatio", "none");
         svg.setAttribute("aria-hidden", "true");
@@ -1304,8 +1322,10 @@ const TEAM_SCHACH = {
      * Die drei Seitenflächen entstehen aus einer Grundfarbe in drei
      * Helligkeiten — deckend, damit auf hellen Feldern nichts durchscheint.
      */
-    _wuerfelBauen(art) {
-        const stufe = SCHACH_VARIANTEN.stufeVon(art);
+    _wuerfelBauen(art, pech) {
+        const stufe = pech
+            ? SCHACH_VARIANTEN.pechStufeVon(art)
+            : SCHACH_VARIANTEN.stufeVon(art);
 
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "wuerfel");
@@ -1331,13 +1351,22 @@ const TEAM_SCHACH = {
             svg.appendChild(teil);
         }
 
-        /* Das Fragezeichen auf der rechten Seitenfläche. */
+        /*
+         * Das Fragezeichen auf der rechten Seitenfläche — beim Unglückswürfel
+         * steht es auf dem Kopf. Ein eigenes Zeichen statt einer anderen Farbe:
+         * Die Farbe trägt schon die Seltenheit, und ein umgedrehtes
+         * Fragezeichen erkennt man auch auf einem winzigen Feld.
+         */
         const zeichen = document.createElementNS("http://www.w3.org/2000/svg", "text");
         zeichen.setAttribute("x", "70");
         zeichen.setAttribute("y", "80");
         zeichen.setAttribute("text-anchor", "middle");
         zeichen.setAttribute("class", "wuerfel-zeichen");
         zeichen.textContent = "?";
+
+        if (pech) {
+            zeichen.setAttribute("transform", "rotate(180 70 72)");
+        }
         svg.appendChild(zeichen);
 
         return svg;
@@ -1517,7 +1546,7 @@ const TEAM_SCHACH = {
         return karte;
     },
 
-    /* Der i-Knopf: erklärt Stufen und Chancen im Wortlaut. */
+    /* Der i-Knopf öffnet die Übersicht aller Fähigkeiten. */
     _infoKnopfBauen() {
         const knopf = document.createElement("button");
         knopf.type = "button";
@@ -1525,10 +1554,88 @@ const TEAM_SCHACH = {
         knopf.textContent = "i";
         knopf.setAttribute("aria-label", "Welche Fähigkeiten gibt es?");
         knopf.title = "Welche Fähigkeiten gibt es?";
-        knopf.addEventListener("click", () => {
-            DIALOG.hinweis("Fähigkeiten", SCHACH_VARIANTEN.faehigkeitenErklaerung());
-        });
+        knopf.addEventListener("click", () => TEAM_SCHACH.faehigkeitenOeffnen());
         return knopf;
+    },
+
+    /*
+     * Die Übersicht der Fähigkeiten: nach Seltenheit geordnet, jede Stufe in
+     * ihrer Farbe. Die Zahlen (Chance je Stufe, Abstand, Höchstzahl) stecken
+     * hinter einem eigenen i an der Überschrift — wer nur wissen will, was eine
+     * Fähigkeit tut, soll nicht durch Prozentwerte lesen müssen.
+     */
+    faehigkeitenOeffnen() {
+        TEAM_SCHACH.infoOffen = true;
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
+
+    infoSchliessen() {
+        TEAM_SCHACH.infoOffen = false;
+        TEAM_SCHACH.infoStufe = "";
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
+
+    _infoZeichnen(wurzel) {
+        const kopf = TEAM_SCHACH._element("div", "partie-kopf");
+        kopf.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still knopf-klein",
+            () => TEAM_SCHACH.infoSchliessen()));
+        kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Fähigkeiten"));
+        wurzel.appendChild(kopf);
+
+        wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            "Auf freien Feldern erscheinen Würfel. Wer mit einer Figur darauf zieht, "
+            + "sammelt ein, was darin steckt — welche Fähigkeit es ist, sieht man "
+            + "vorher nie. Ein Würfel mit umgedrehtem Fragezeichen bringt nichts "
+            + "Gutes und wirkt sofort."));
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            wurzel.appendChild(TEAM_SCHACH._stufenKarteBauen(stufe));
+        }
+    },
+
+    _stufenKarteBauen(stufe) {
+        const karte = TEAM_SCHACH._element("section", "karte stufen-karte");
+        karte.style.setProperty("--stufe-farbe", stufe.farbe);
+
+        const kopf = TEAM_SCHACH._element("div", "karte-kopf");
+        kopf.appendChild(TEAM_SCHACH._element("h3", "stufen-titel", stufe.titel));
+
+        /* Das zweite i: die Zahlen zu dieser Stufe. */
+        const zahlen = document.createElement("button");
+        zahlen.type = "button";
+        zahlen.className = "info-knopf";
+        zahlen.textContent = "i";
+        zahlen.setAttribute("aria-label", "Wie oft kommt " + stufe.titel + "?");
+        zahlen.title = "Wie oft kommt " + stufe.titel + "?";
+        zahlen.addEventListener("click", () => {
+            DIALOG.hinweis(stufe.titel, SCHACH_VARIANTEN.stufenErklaerung(stufe.id));
+        });
+        kopf.appendChild(zahlen);
+        karte.appendChild(kopf);
+
+        for (const art of SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id)) {
+            const eintrag = TEAM_SCHACH._element("div", "stufen-eintrag");
+            eintrag.appendChild(TEAM_SCHACH._element("span", "stufen-name",
+                SCHACH_VARIANTEN.faehigkeitTitel(art)));
+            eintrag.appendChild(TEAM_SCHACH._element("span", "stufen-text",
+                SCHACH_VARIANTEN.faehigkeitBeschreibung(art)));
+            karte.appendChild(eintrag);
+        }
+
+        /* Der Unglückswürfel dieser Stufe. */
+        const pechArt = Object.keys(SCHACH_VARIANTEN.PECH)
+            .find((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufe.id);
+
+        if (pechArt) {
+            const eintrag = TEAM_SCHACH._element("div", "stufen-eintrag stufen-pech");
+            eintrag.appendChild(TEAM_SCHACH._element("span", "stufen-name",
+                SCHACH_VARIANTEN.pechTitel(pechArt) + " (Unglück)"));
+            eintrag.appendChild(TEAM_SCHACH._element("span", "stufen-text",
+                SCHACH_VARIANTEN.pechBeschreibung(pechArt)));
+            karte.appendChild(eintrag);
+        }
+
+        return karte;
     },
 
     /* ---------------------------------------------------------------- *

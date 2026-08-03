@@ -1054,6 +1054,157 @@ pruefe("Nudelholz: zwei Spalten rollen in die getippte Richtung", () => {
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("e8")), "k", "der Koenig blieb");
 });
 
+/* ------------------------------------------------------------------ *
+ * Unglückswürfel
+ * ------------------------------------------------------------------ */
+
+/* Legt einen Unglückswürfel auf ein Feld und zieht mit einer Figur darauf. */
+function pechEinsammeln(runde, art, von, nach) {
+    const vorbereitet = SCHACH_RUNDE.kopieren(runde);
+    vorbereitet.bonus.push({ feld: SCHACH.feldNummer(nach), art: art, pech: true });
+
+    return SCHACH_RUNDE.ziehen(vorbereitet, "id-anna",
+        SCHACH.feldNummer(von), SCHACH.feldNummer(nach), "D", "Anna", 4000);
+}
+
+pruefe("Jede Stufe hat genau einen Unglueckswuerfel", () => {
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        const arten = Object.keys(SCHACH_VARIANTEN.PECH)
+            .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufe.id);
+        gleich(arten.length, 1, "Stufe " + stufe.id);
+    }
+});
+
+pruefe("Ein Unglueckswuerfel kommt nicht in den Vorrat, sondern wirkt sofort", () => {
+    const runde = pechEinsammeln(faehigkeitenPartie(), "stolperstein", "e2", "e4");
+
+    wahr(runde !== null, "Zug erlaubt");
+    gleich(runde.faehigkeiten.weiss.length, 0, "nichts im Vorrat");
+    gleich(runde.bonus.length, 0, "vom Brett verschwunden");
+
+    const letzter = runde.verlauf[runde.verlauf.length - 1];
+    gleich(letzter.wirkung, "pech", "als Unglueck festgehalten");
+    wahr(letzter.text.indexOf("Stolperstein") !== -1, "mit Namen im Verlauf");
+});
+
+pruefe("Stolperstein wirft die einsammelnde Figur zurueck", () => {
+    const runde = pechEinsammeln(faehigkeitenPartie(), "stolperstein", "e2", "e4");
+
+    /* Der Bauer zieht nach e4 und rutscht sofort auf e3 zurueck. */
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e4")), ".", "e4 ist wieder leer");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e3")), "B", "der Bauer steht auf e3");
+
+    const letzter = runde.verlauf[runde.verlauf.length - 1];
+    gleich(letzter.wege.length, 1, "ein Weg fuer den Pfeil");
+});
+
+pruefe("Ausdehnung laesst das Brett wachsen und rechnet alle Felder um", () => {
+    /* Links anbauen ist der harte Fall: Jede Feldnummer verschiebt sich. */
+    const stand = SCHACH.standNormalisieren({ variante: "standard" });
+    const gewachsen = SCHACH.ausdehnung(stand, "links");
+
+    wahr(gewachsen !== null, "gewachsen");
+    gleich(SCHACH.breiteVon(gewachsen.stand), 9, "eine Spalte mehr");
+    gleich(SCHACH.hoeheVon(gewachsen.stand), 8, "gleich hoch");
+    gleich(gewachsen.stand.brett.length, 72, "72 Felder");
+
+    /* Die neue Spalte ist leer, die Figuren sind mitgewandert. */
+    for (let reihe = 0; reihe < 8; reihe++) {
+        gleich(gewachsen.stand.brett[reihe * 9], ".", "neue Spalte leer in Reihe " + reihe);
+    }
+    gleich(SCHACH.figurAuf(gewachsen.stand, SCHACH.feldNummer("b8", 9, 8)), "t",
+        "der Turm steht jetzt auf b8");
+
+    /* Und die gemerkten Felder stimmen weiterhin: Der Koenig behaelt sein Recht. */
+    const lage = SCHACH.rochadeLage(gewachsen.stand, SCHACH.WEISS);
+    gleich(lage.length, 2, "zwei Eintraege");
+    wahr(lage[0].grund.indexOf("Figur") !== -1, "gesperrt, weil Figuren im Weg stehen");
+
+    /* Nach dem Speichern und Laden bleiben die neuen Masse erhalten. */
+    const geladen = SCHACH.standNormalisieren(JSON.parse(JSON.stringify(gewachsen.stand)));
+    gleich(SCHACH.breiteVon(geladen), 9, "Breite ueberlebt das Laden");
+    gleich(geladen.brett, gewachsen.stand.brett, "und das Brett auch");
+});
+
+pruefe("Ausdehnung schiebt auch Schild, Fessel und Frost mit", () => {
+    let stand = SCHACH.standNormalisieren({ variante: "standard" });
+    stand = Object.assign({}, stand, {
+        schildFeld: SCHACH.feldNummer("e2"),
+        schildFarbe: "weiss",
+        frostFeld: SCHACH.feldNummer("e7"),
+        frostFarbe: "schwarz"
+    });
+
+    const gewachsen = SCHACH.ausdehnung(stand, "oben");
+    wahr(gewachsen !== null, "gewachsen");
+
+    /* Oben angebaut: Jede Reihe rutscht um eine nach unten. */
+    gleich(gewachsen.stand.schildFeld, stand.schildFeld + 8, "Schild mitgewandert");
+    gleich(gewachsen.stand.frostFeld, stand.frostFeld + 8, "Frost mitgewandert");
+    gleich(SCHACH.figurAuf(gewachsen.stand, gewachsen.stand.schildFeld), "B",
+        "und da steht auch die geschuetzte Figur");
+});
+
+pruefe("Meuterei laesst eine eigene Figur ueberlaufen, nie den Koenig", () => {
+    const stand = SCHACH.standNormalisieren({ variante: "standard" });
+
+    /* Ueber alle Wahlwerte: Es trifft nie den Koenig. */
+    for (let schritt = 0; schritt < 20; schritt++) {
+        const wirkung = SCHACH.meuterei(stand, "weiss", schritt / 20);
+        wahr(wirkung !== null, "eine Figur gefunden");
+
+        const feld = wirkung.felder[0];
+        gleich(SCHACH.farbeVon(SCHACH.figurAuf(wirkung.stand, feld)), "schwarz",
+            "gehoert jetzt Schwarz");
+        wahr(SCHACH.artVon(SCHACH.figurAuf(stand, feld)) !== "K", "war kein Koenig");
+    }
+
+    /* Der weisse Koenig steht noch. */
+    gleich(SCHACH.figurAuf(SCHACH.meuterei(stand, "weiss", 0.5).stand,
+        SCHACH.feldNummer("e1")), "K", "Koenig unveraendert");
+});
+
+pruefe("Erdrutsch schiebt alle eigenen Figuren zurueck", () => {
+    const stand = SCHACH.standNormalisieren({
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "...B.B.."
+            + "........"
+            + "..B....."
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const wirkung = SCHACH.erdrutsch(stand, "weiss");
+    wahr(wirkung !== null, "gerutscht");
+
+    /* Zurueck heisst fuer Weiss: nach unten (Richtung Reihe 8). */
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("d4")), "B", "d5 nach d4");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("f4")), "B", "f5 nach f4");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("c2")), "B", "c3 nach c2");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("e1")), "K", "der Koenig bleibt");
+    gleich(wirkung.wege.length, 3, "drei Wege fuer die Pfeile");
+});
+
+pruefe("Der Verlauf verraet nicht, was in einem Wuerfel steckt", () => {
+    const runde = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
+    const eintrag = runde.verlauf.find((zeile) => zeile.wirkung === "erscheint");
+
+    wahr(!!eintrag, "ein Erscheinen im Verlauf");
+
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        wahr(eintrag.text.indexOf(SCHACH_VARIANTEN.faehigkeitTitel(art)) === -1,
+            "verraet nicht " + art);
+    }
+    for (const art of Object.keys(SCHACH_VARIANTEN.PECH)) {
+        wahr(eintrag.text.indexOf(SCHACH_VARIANTEN.pechTitel(art)) === -1,
+            "verraet nicht " + art);
+    }
+});
+
 pruefe("Die Zielfelder passen zu dem, was die Wirkung wirklich zulaesst", () => {
     const runde = faehigkeitenPartie();
 
