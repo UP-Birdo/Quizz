@@ -3,6 +3,36 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.9 — 2026-08-03
+
+Ein gemeldeter Fehler, zwei Ursachen — beide behoben.
+
+Gemeldet war: „Beim Gegner zeigt es den Zug oft nicht direkt an; wenn er öfter
+drückt, wird es rot oder er zeigt dauerhaft die Punkte an, und alles hängt, bis
+ich meinen Zug gemacht habe."
+
+- **Die Datenbank-Aufrufe haben jetzt ein Zeitlimit** (Laden 8, Speichern 12
+  Sekunden). **Das war die harte Ursache:** `fetch` gibt von sich aus NIE auf.
+  Steht das Handy im Funkloch, bleibt der Aufruf offen, bis der Browser
+  irgendwann selbst abbricht — das kann über eine Minute dauern. In dieser Zeit
+  nahm das Brett keinen einzigen Tipp mehr an (`ziehtGerade`), und die
+  regelmässige Abfrage ruhte ebenfalls. Von aussen sah das aus, als sei die
+  Seite eingefroren — bis der Zug des Gegners eintraf und alles auf einen Schlag
+  nachholte. **Genau das erklärt das „bis ich meinen Zug gemacht habe".**
+  Jetzt wird daraus eine normale Fehlermeldung: Der Zug wird zurückgenommen, und
+  man kann es sofort noch einmal versuchen. Das Rot im Kopf war übrigens der
+  Statuspunkt — er zeigte richtig an, dass die Verbindung stand.
+- **Solange ein Zug unterwegs ist, sagt es die Leiste über dem Brett**
+  („Wird gesendet …"). Vorher tippte man ins Leere: Das Brett nahm nichts mehr
+  an, sagte es aber niemandem.
+- **Ein alter Abschluss-Bildschirm verdrängt keine laufende Partie mehr.** Lag
+  irgendeine beendete Partie herum, deren Abschluss man nie weggeklickt hatte,
+  kam sie bei JEDEM Zeichnen wieder — also alle drei Sekunden — und man kam
+  nicht mehr ans Brett. Stattdessen stand dauerhaft der Punktestand da. **Das
+  erklärt das „er zeigt dauerhaft die Punkte an".** Der Abschluss wartet jetzt,
+  bis man die laufende Partie verlässt; geht die offene Partie selbst zu Ende,
+  kommt er sofort wie bisher.
+
 ## v3.8 — 2026-08-03
 
 Der letzte Punkt aus dem Eingangskorb — und der einzige, der die Bedienung

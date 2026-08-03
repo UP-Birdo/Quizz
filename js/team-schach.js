@@ -225,7 +225,26 @@ const TEAM_SCHACH = {
          * bekam ihn nie zu sehen: Beendete Partien liegen seither zugeklappt
          * unter „Beendet", und niemand sucht dort nach einem Sieg.
          */
-        if (!TEAM_SCHACH.abschluss) {
+        /*
+         * ABER NICHT MITTEN IN EINER ANDEREN PARTIE (seit v3.9).
+         *
+         * Bis v3.8 galt die Suche immer. Lag irgendeine beendete Partie herum,
+         * deren Abschluss man nie weggeklickt hatte, verdrängte sie bei JEDEM
+         * Zeichnen die Partie, die man gerade spielte — also alle drei
+         * Sekunden erneut. Man kam schlicht nicht mehr ans Brett, und auf dem
+         * Bildschirm stand stattdessen dauerhaft der Punktestand. Genau so
+         * wurde es gemeldet.
+         *
+         * Verloren geht dadurch nichts: Der Abschluss wartet, bis man die
+         * offene Partie verlässt. Nur wenn die OFFENE Partie selbst zu Ende
+         * geht, kommt er sofort — und das ist der Moment, um den es geht.
+         */
+        const offeneJetzt = TEAM_SCHACH.offeneId
+            ? SCHACH_TAFEL.partie(tafel, TEAM_SCHACH.offeneId)
+            : null;
+        const spieltNoch = !!(offeneJetzt && !offeneJetzt.ergebnis);
+
+        if (!TEAM_SCHACH.abschluss && !spieltNoch) {
             const fertig = SCHACH_TAFEL.liste(tafel).find((partie) =>
                 partie.ergebnis
                 && !ICH.abschlussGesehen(partie.id)
@@ -362,6 +381,19 @@ const TEAM_SCHACH = {
 
         if (partie.laeuft && SCHACH.imSchach(partie.stand, partie.stand.amZug)) {
             leiste.appendChild(TEAM_SCHACH._element("span", "chip chip-fehler", "Schach"));
+        }
+
+        /*
+         * „Wird gesendet" — solange ein eigener Zug unterwegs ist (seit v3.9).
+         *
+         * Ohne diese Marke tippt man in dieser Zeit ins Leere: Das Brett nimmt
+         * keine Züge mehr an (`ziehtGerade`), sagt es aber niemandem. Wer
+         * mehrmals drückt und nichts passieren sieht, hält die Seite für
+         * abgestürzt — genau so wurde es gemeldet.
+         */
+        if (TEAM_SCHACH.ziehtGerade) {
+            leiste.appendChild(TEAM_SCHACH._element("span", "chip chip-laeuft",
+                "Wird gesendet …"));
         }
 
         /* Aktive Fähigkeiten sichtbar machen — sonst wundert sich der Gegner
@@ -685,6 +717,12 @@ const TEAM_SCHACH = {
             await TEAM_SCHACH._sendenMitPruefung(neu, partie.zugZaehler);
         } finally {
             TEAM_SCHACH.ziehtGerade = false;
+
+            /* Noch einmal zeichnen, damit die Marke „Wird gesendet" wieder
+               verschwindet — sie hängt an genau diesem Schalter. */
+            if (TEAM_SCHACH.abgleich) {
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            }
         }
     },
 

@@ -199,8 +199,48 @@ function neuesElement(tag) {
     return element;
 }
 
+/*
+ * Ein `fetch`, das sich steuern laesst — fuer die Pruefung des Zeitlimits.
+ * `haengt = true` heisst: Der Aufruf antwortet nie, wie im Funkloch.
+ */
+const netz = { haengt: false, abgebrochen: false, sofort: false };
+
+async function fetchNachbau(adresse, einstellungen) {
+    if (!netz.haengt) {
+        return { ok: true, async json() { return {}; } };
+    }
+
+    const signal = einstellungen && einstellungen.signal;
+
+    const abbruchFehler = () => {
+        netz.abgebrochen = true;
+        const fehler = new Error("abgebrochen");
+        fehler.name = "AbortError";
+        return fehler;
+    };
+
+    /*
+     * WICHTIG: Das Signal kann SCHON abgebrochen sein, bevor fetch ueberhaupt
+     * gerufen wird — im Test feuert der Zeitgeber sofort. Echtes fetch lehnt
+     * dann unmittelbar ab; ohne diese Zeile wartete der Nachbau auf ein
+     * Ereignis, das nie mehr kommt, und der ganze Testlauf endete still.
+     */
+    if (signal && signal.aborted) {
+        throw abbruchFehler();
+    }
+
+    return new Promise((_, ablehnen) => {
+        if (!signal) {
+            return;
+        }
+        signal.addEventListener("abort", () => ablehnen(abbruchFehler()));
+    });
+}
+
 const umgebung = {
     console: console,
+    fetch: fetchNachbau,
+    AbortController: AbortController,
     document: {
         createElement: neuesElement,
         /* Für den Pfeil des letzten Zuges (SVG). Der Namensraum spielt hier
@@ -211,7 +251,18 @@ const umgebung = {
     },
     window: {
         requestAnimationFrame(funktion) { funktion(); },
-        setTimeout() { return 0; },
+        /*
+         * Zeitgeber laufen normalerweise NIE ab — sonst ruft sich die Uhr des
+         * Imposter-Raums endlos selbst auf. Nur wo ein Test es ausdruecklich
+         * verlangt (`netz.sofort`), feuert der Zeitgeber sofort: So muss die
+         * Pruefung des Zeitlimits nicht acht Sekunden warten und loest den
+         * Abbruch trotzdem echt aus.
+         */
+        setTimeout(funktion) {
+            if (netz.sofort && typeof funktion === "function") { funktion(); }
+            return 0;
+        },
+        clearTimeout() { /* nichts zu tun */ },
         localStorage: { getItem() { return null; }, setItem() { /* leer */ } }
     }
 };
@@ -254,12 +305,12 @@ umgebung.DIALOG = {
  */
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
     "SCHACH_TAFEL", "TEAM_SCHACH", "IMPOSTER_WOERTER", "IMPOSTER_RUNDE",
-    "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE"];
+    "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam"];
 
 /* Die Reihenfolge ist dieselbe wie in index.html — die drei team-schach-Teile
    ergänzen das Objekt und müssen nach ihm kommen. */
-const dateien = ["konfig.js", "modell.js", "schach-varianten.js", "schach.js",
-    "schach-runde.js", "schach-tafel.js", "team-schach.js",
+const dateien = ["konfig.js", "modell.js", "speicher.js", "schach-varianten.js",
+    "schach.js", "schach-runde.js", "schach-tafel.js", "team-schach.js",
     "team-schach-uebersicht.js", "team-schach-brett.js", "team-schach-auswertung.js",
     "imposter-woerter.js", "imposter-runde.js", "imposter-tafel.js", "imposter.js",
     "rangliste.js"];
@@ -281,6 +332,7 @@ const IMPOSTER_RUNDE = umgebung.IMPOSTER_RUNDE;
 const IMPOSTER_TAFEL = umgebung.IMPOSTER_TAFEL;
 const IMPOSTER = umgebung.IMPOSTER;
 const RANGLISTE = umgebung.RANGLISTE;
+const SpeicherGemeinsam = umgebung.SpeicherGemeinsam;
 
 /* ------------------------------------------------------------------ *
  * Ausgangslage: zwei Mitspieler, je eine laufende Partie pro Spielart
@@ -1135,6 +1187,79 @@ pruefe("Ein Zug steht sofort auf dem Brett, bevor gespeichert ist", () => {
     }
 });
 
+pruefe("Ein Abschluss verdraengt keine laufende Partie", () => {
+    /*
+     * Der gemeldete Haenger: Lag irgendeine beendete Partie herum, deren
+     * Abschluss man nie weggeklickt hatte, kam sie bei JEDEM Zeichnen wieder —
+     * also alle drei Sekunden — und man kam nicht mehr ans Brett.
+     */
+    let tafelJetzt = TEAM_SCHACH.abgleich.daten;
+
+    /* Eine beendete Partie, in der Anna mitgespielt hat. */
+    const beendet = SCHACH_TAFEL.partieAnlegen(tafelJetzt, "standard", "Vorbei", 8000);
+    let alt = SCHACH_RUNDE.teamBeitreten(beendet.partie, "id-anna", "weiss", 8000);
+    alt = SCHACH_RUNDE.teamBeitreten(alt, "id-bert", "schwarz", 8000);
+    alt = SCHACH_RUNDE.bereitSetzen(alt, "weiss", true, 8000);
+    alt = SCHACH_RUNDE.bereitSetzen(alt, "schwarz", true, 8000);
+    alt = SCHACH_RUNDE.aufgeben(alt, "schwarz", 8100);
+    tafelJetzt = SCHACH_TAFEL.partieEinsetzen(beendet.tafel, alt, 8100);
+
+    /* Und eine zweite, die noch laeuft. */
+    const laufend = SCHACH_TAFEL.partieAnlegen(tafelJetzt, "standard", "Laeuft", 8200);
+    let neu = SCHACH_RUNDE.teamBeitreten(laufend.partie, "id-anna", "weiss", 8200);
+    neu = SCHACH_RUNDE.teamBeitreten(neu, "id-bert", "schwarz", 8200);
+    neu = SCHACH_RUNDE.bereitSetzen(neu, "weiss", true, 8200);
+    neu = SCHACH_RUNDE.bereitSetzen(neu, "schwarz", true, 8200);
+    tafelJetzt = SCHACH_TAFEL.partieEinsetzen(laufend.tafel, neu, 8200);
+
+    TEAM_SCHACH.abschluss = null;
+    TEAM_SCHACH.abgleich.daten = tafelJetzt;
+    TEAM_SCHACH.partieOeffnen(neu.id);
+
+    if (TEAM_SCHACH.abschluss) {
+        throw new Error("der Abschluss der alten Partie hat die laufende verdraengt");
+    }
+    if (!brettSuchen()) {
+        throw new Error("kein Brett gezeichnet");
+    }
+
+    /* Verlaesst man die laufende Partie, darf er kommen — sonst saehe man ihn
+       nie wieder. */
+    TEAM_SCHACH.uebersichtOeffnen();
+
+    if (!TEAM_SCHACH.abschluss || TEAM_SCHACH.abschluss.id !== alt.id) {
+        throw new Error("in der Uebersicht muesste der Abschluss erscheinen");
+    }
+
+    TEAM_SCHACH.abschlussSchliessen(alt.id);
+});
+
+pruefe("Waehrend ein Zug unterwegs ist, sagt es die Leiste", () => {
+    /* Ohne diese Marke tippt man ins Leere: Das Brett nimmt nichts mehr an,
+       sagt es aber niemandem. */
+    TEAM_SCHACH.partieOeffnen(kennungen.standard);
+    const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard);
+
+    TEAM_SCHACH.ziehtGerade = true;
+    try {
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+        const leiste = TEAM_SCHACH.wurzelEl.kinder.find((kind) =>
+            String(kind.className || "").indexOf("stand-leiste") !== -1);
+
+        if (!leiste) {
+            throw new Error("keine Standleiste gefunden");
+        }
+        const marken = leiste.kinder.map((kind) => kind.textInhalt || kind.text || "");
+        if (!leiste.kinder.some((kind) =>
+            String(kind.textContent || "").indexOf("gesendet") !== -1)) {
+            throw new Error("keine Marke 'Wird gesendet': " + marken.join(" | "));
+        }
+    } finally {
+        TEAM_SCHACH.ziehtGerade = false;
+    }
+});
+
 pruefe("Ein Tipp neben die Zielfelder bricht die Faehigkeit ab", () => {
     /* Bis v3.5 passierte hier gar nichts — das sah aus, als haenge die Seite. */
     const angelegt = SCHACH_TAFEL.partieAnlegen(
@@ -1371,5 +1496,74 @@ pruefe("Imposter: ohne Anmeldung wird nur ein Hinweis gezeigt", () => {
     }
 });
 
-console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
-process.exit(anzahlFehler === 0 ? 0 : 1);
+/* ------------------------------------------------------------------ *
+ * Das Zeitlimit der Datenbank-Aufrufe (seit v3.9)
+ *
+ * Diese Pruefungen muessen WARTEN koennen und laufen deshalb am Ende, nach
+ * allen anderen. `pruefe` ist synchron und wuerde ein Versprechen einfach
+ * durchwinken — ein Test, der immer besteht, waere schlimmer als keiner.
+ * ------------------------------------------------------------------ */
+
+async function pruefeMitWarten(bezeichnung, funktion) {
+    try {
+        await funktion();
+        anzahlOk++;
+    } catch (fehler) {
+        anzahlFehler++;
+        console.error("FEHLER: " + bezeichnung);
+        console.error("        " + fehler.message);
+    }
+}
+
+async function zeitlimitPruefen() {
+    const speicher = new SpeicherGemeinsam(
+        "https://beispiel.example", "team-schach", (roh) => roh);
+
+    await pruefeMitWarten("Ein haengendes Laden bricht nach dem Zeitlimit ab", async () => {
+        netz.haengt = true;
+        netz.sofort = true;
+        netz.abgebrochen = false;
+
+        try {
+            await speicher.laden();
+            throw new Error("kein Abbruch — der Aufruf haette ewig gehangen");
+        } catch (fehler) {
+            if (fehler.message.indexOf("zu lange gedauert") === -1) {
+                throw new Error("falscher Fehler: " + fehler.message);
+            }
+            if (!netz.abgebrochen) {
+                throw new Error("der Aufruf wurde nicht wirklich abgebrochen");
+            }
+        } finally {
+            netz.haengt = false;
+            netz.sofort = false;
+        }
+    });
+
+    await pruefeMitWarten("Auch ein haengendes Speichern bricht ab", async () => {
+        netz.haengt = true;
+        netz.sofort = true;
+
+        try {
+            await speicher.speichern({});
+            throw new Error("kein Abbruch beim Speichern");
+        } catch (fehler) {
+            if (fehler.message.indexOf("zu lange gedauert") === -1) {
+                throw new Error("falscher Fehler: " + fehler.message);
+            }
+        } finally {
+            netz.haengt = false;
+            netz.sofort = false;
+        }
+    });
+
+    await pruefeMitWarten("Ein antwortender Aufruf laeuft ganz normal durch", async () => {
+        netz.haengt = false;
+        await speicher.laden();
+    });
+
+    console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
+    process.exit(anzahlFehler === 0 ? 0 : 1);
+}
+
+zeitlimitPruefen();

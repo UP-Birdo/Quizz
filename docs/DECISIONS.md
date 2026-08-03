@@ -88,6 +88,62 @@ alten Zugriffen gesucht, nicht nur nach denen im Modell.
 „klassisch mit Würfeln" im Test gar nicht. Ein Schalter braucht einen Test in
 **beiden** Stellungen; `tests\test-bildschirm.js` prüft jetzt genau das.
 
+### Die Seite fror ein, bis der Gegner zog (v3.9)
+
+Gemeldet als: „Beim Gegner zeigt es den Zug oft nicht direkt an; wenn er öfter
+drückt, wird es rot oder er zeigt dauerhaft die Punkte an, und alles hängt, bis
+ich meinen Zug gemacht habe."
+
+Vier Beobachtungen, und sie gehörten zu **zwei** verschiedenen Fehlern.
+
+**Ursache 1: `fetch` hat kein Zeitlimit.**
+
+Das ist die eigentliche Falle, und sie steht so in keiner Anleitung: `fetch`
+gibt von sich aus niemals auf. Antwortet der Server nicht — Funkloch, Tunnel,
+schlechter Empfang —, bleibt das Versprechen offen, bis der Browser selbst
+abbricht. Das dauert je nach Gerät weit über eine Minute.
+
+Die Folgen ketteten sich:
+
+| Was hing | Warum |
+|---|---|
+| Das Brett nahm keine Tipps an | `TEAM_SCHACH.ziehtGerade` bleibt bis zum `finally` gesetzt |
+| Die Abfrage holte nichts nach | Sie wartet auf offene eigene Vorgänge (seit v3.8) |
+| Die alte Zugauswahl blieb stehen | vor v3.8: gezeichnet wurde erst nach dem Netz |
+| Der Statuspunkt wurde rot | richtig — die Verbindung stand wirklich |
+
+Und die Erlösung „bis ich meinen Zug gemacht habe" erklärt sich von selbst:
+Irgendwann brach der Aufruf doch ab oder ging durch, und alles holte auf einen
+Schlag nach — was zeitlich mit dem Zug des Gegners zusammenfiel.
+
+Seit v3.9 haben alle Aufrufe ein Zeitlimit (`AbortController`, Laden 8,
+Speichern 12 Sekunden). Damit wird aus dem Einfrieren ein normaler Fehler: Er
+wird gemeldet, der Zug zurückgenommen, und man kann es sofort erneut versuchen.
+
+**Merksatz: Jeder Netzaufruf braucht ein Zeitlimit.** Ein Aufruf ohne Zeitlimit
+ist kein „langsamer Aufruf", sondern ein möglicher Totalausfall der Bedienung.
+
+**Ursache 2: Ein alter Abschluss verdrängte die laufende Partie.**
+
+`TEAM_SCHACH.zeichnen` suchte bei JEDEM Durchgang nach einer beendeten Partie,
+deren Abschluss dieses Gerät noch nicht weggeklickt hatte — und zeigte sie
+statt allem anderen. Lag so eine Partie herum, kam sie alle drei Sekunden
+wieder; wer vorher auf „Punktestand ansehen" gedrückt hatte, sah dauerhaft den
+Punktestand. **Das war das „er zeigt dauerhaft die Punkte an".**
+
+Gemerkt wird der Abschluss nämlich erst beim Schliessen (`ICH.abschlussMerken`
+in `abschlussSchliessen`). Wer ihn anders verlässt — Tab wechseln, Seite neu
+laden —, bekommt ihn beim nächsten Zeichnen erneut.
+
+Die Regel lautet seit v3.9: **Der Abschluss drängt sich nicht in eine andere
+laufende Partie.** Er wartet, bis man sie verlässt. Geht die OFFENE Partie
+selbst zu Ende, kommt er sofort — das ist der Moment, für den er gebaut wurde
+(siehe „Der Gewinner-Bildschirm, den niemand fand").
+
+**Was diese Runde lehrt:** Vier Symptome sahen nach einem Fehler aus und waren
+zwei. Hätte man nur das Zeitlimit gebaut, wäre der Punktestand-Hänger geblieben
+— und umgekehrt.
+
 ### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam

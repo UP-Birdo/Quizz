@@ -74,8 +74,60 @@ class SpeicherGemeinsam {
         return this.basis + "/" + this.pfad + ".json";
     }
 
+    /*
+     * Ruft die Datenbank auf — MIT ZEITLIMIT (seit v3.9).
+     *
+     * DAS WAR EIN ECHTER HÄNGER. `fetch` gibt von sich aus NIE auf: Steht das
+     * Handy im Funkloch, bleibt der Aufruf offen, bis der Browser irgendwann
+     * selbst abbricht — das kann über eine Minute dauern. Und solange er offen
+     * war, hing das ganze Spiel:
+     *
+     *   - `TEAM_SCHACH.ziehtGerade` blieb gesetzt, das Brett nahm keinen
+     *     einzigen Tipp mehr an;
+     *   - die regelmässige Abfrage ruhte (sie wartet auf den eigenen Vorgang);
+     *   - und vor v3.8 stand obendrein noch die alte Zugauswahl auf dem
+     *     Bildschirm, weil erst nach dem Netzverkehr neu gezeichnet wurde.
+     *
+     * Von aussen sah das aus, als sei die Seite eingefroren — bis der Zug des
+     * Gegners eintraf und alles auf einen Schlag nachholte.
+     *
+     * Mit Zeitlimit wird daraus ein normaler Fehler: Er wird gemeldet, der Zug
+     * wird zurückgenommen, und man kann es sofort noch einmal versuchen.
+     */
+    async _rufen(einstellungen, zeitlimit, was) {
+        /*
+         * Ältere Browser ohne AbortController bekommen den Aufruf wie bisher —
+         * lieber ohne Zeitlimit als gar nicht.
+         */
+        if (typeof AbortController === "undefined") {
+            return fetch(this.adresse, einstellungen);
+        }
+
+        const abbruch = new AbortController();
+        const uhr = window.setTimeout(() => abbruch.abort(), zeitlimit);
+
+        try {
+            return await fetch(this.adresse,
+                Object.assign({}, einstellungen, { signal: abbruch.signal }));
+        } catch (fehler) {
+            /* Ein Abbruch durch das Zeitlimit ist etwas anderes als „Server
+               antwortet mit Fehler" — und der Unterschied gehört in die
+               Meldung, sonst sucht man an der falschen Stelle. */
+            if (fehler && fehler.name === "AbortError") {
+                throw new Error(was + " hat zu lange gedauert (über "
+                    + Math.round(zeitlimit / 1000) + " Sekunden). Die Verbindung "
+                    + "ist gerade zu schlecht.");
+            }
+            throw fehler;
+        } finally {
+            window.clearTimeout(uhr);
+        }
+    }
+
     async laden() {
-        const antwort = await fetch(this.adresse, { cache: "no-store" });
+        const antwort = await this._rufen({ cache: "no-store" },
+            SpeicherGemeinsam.ZEITLIMIT_LADEN_MS, "Das Laden");
+
         if (!antwort.ok) {
             throw new Error("Laden fehlgeschlagen (HTTP " + antwort.status + ")");
         }
@@ -83,16 +135,28 @@ class SpeicherGemeinsam {
     }
 
     async speichern(daten) {
-        const antwort = await fetch(this.adresse, {
+        const antwort = await this._rufen({
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(daten)
-        });
+        }, SpeicherGemeinsam.ZEITLIMIT_SPEICHERN_MS, "Das Speichern");
+
         if (!antwort.ok) {
             throw new Error("Speichern fehlgeschlagen (HTTP " + antwort.status + ")");
         }
     }
 }
+
+/*
+ * Die Zeitlimits, in Millisekunden.
+ *
+ * Laden darf kürzer sein: Es wird ohnehin alle paar Sekunden wiederholt, und
+ * ein verpasster Durchgang fällt niemandem auf. Speichern bekommt mehr Zeit —
+ * dahinter steht ein Zug, den jemand wirklich machen wollte, und ein Abbruch
+ * kostet ihn den Zug.
+ */
+SpeicherGemeinsam.ZEITLIMIT_LADEN_MS = 8000;
+SpeicherGemeinsam.ZEITLIMIT_SPEICHERN_MS = 12000;
 
 /* ------------------------------------------------------------------ *
  * Auswahl der Rückwand

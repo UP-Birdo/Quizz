@@ -222,6 +222,20 @@ Ausprobieren, weil dann niemand mitspielt.
 REST-Schnittstelle an: `GET …/<pfad>.json` zum Laden, `PUT` zum Schreiben. Kein
 SDK, keine fremde Bibliothek, kein Bauschritt.
 
+### Jeder Aufruf hat ein Zeitlimit (seit v3.9)
+
+`ZEITLIMIT_LADEN_MS` (8 s) und `ZEITLIMIT_SPEICHERN_MS` (12 s), umgesetzt mit
+`AbortController`. Laden darf kürzer sein — es wird ohnehin alle paar Sekunden
+wiederholt; Speichern bekommt mehr Zeit, dahinter steht ein Zug, den jemand
+wirklich machen wollte.
+
+**Das ist keine Feinheit, sondern die Bedingung dafür, dass die Bedienung nicht
+einfriert.** `fetch` gibt von sich aus NIE auf; ein hängender Aufruf blockierte
+das ganze Brett (`ziehtGerade`) und die Abfrage gleich mit. Die ganze
+Fehlerkette steht in `DECISIONS.md`, „Die Seite fror ein, bis der Gegner zog".
+
+**Wer eine dritte Rückwand baut, gibt ihr ebenfalls ein Zeitlimit.**
+
 `speicherErzeugen(KONFIG)` wählt die Rückwand. Ist der gemeinsame Modus
 eingestellt, aber keine Adresse hinterlegt, fällt die App auf `SpeicherLokal`
 zurück und zeigt oben einen Hinweisbalken.
