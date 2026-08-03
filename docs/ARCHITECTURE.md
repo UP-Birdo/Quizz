@@ -624,6 +624,9 @@ ohne dieses Feld verhält sich also unverändert.
 
 `SCHACH_RUNDE.faehigkeitenAn()` ist die einzige Stelle, die die Frage
 beantwortet, ob Würfel erscheinen. Der Schalter der Partie geht der Spielart vor.
+**Auch der Bildschirm fragt sie** — wer stattdessen die Spielart abfragt, baut
+den Fehler aus v3.3 nach (Fähigkeiten-Karte fehlte bei zugeschalteten Würfeln,
+siehe `docs\DECISIONS.md`).
 
 ### Abstimmung im Team
 

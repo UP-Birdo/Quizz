@@ -699,7 +699,7 @@ pruefe("Fessel: die gefesselte Figur darf einen Zug lang nicht ziehen", () => {
         "und keine eigene Figur");
 });
 
-pruefe("Erdbeben: Figuren rundherum werden nach aussen geschoben", () => {
+pruefe("Erdbeben: drei Reihen rutschen zur Seite", () => {
     let runde = faehigkeitenPartie();
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
@@ -715,13 +715,15 @@ pruefe("Erdbeben: Figuren rundherum werden nach aussen geschoben", () => {
         rochade: ""
     });
 
-    const nachher = einsetzen(runde, "erdbeben", SCHACH.feldNummer("e5"));
+    /* f5 liegt in der rechten Haelfte - es schiebt nach rechts. Betroffen sind
+       die angetippte Reihe und je eine darueber und darunter. */
+    const nachher = einsetzen(runde, "erdbeben", SCHACH.feldNummer("f5"));
     wahr(nachher !== null, "eingesetzt");
 
-    /* Der Ring um e5 wird um ein Feld nach aussen geschoben. */
     gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("d6")), ".", "d6 geraeumt");
-    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("c7")), "b", "nach c7 geschoben");
-    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("e5")), ".", "die Mitte bleibt leer");
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("g6")), "b", "bis g6 gerutscht");
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("e5")), "b",
+        "in der Mittelreihe rueckt d5 nach e5 nach");
 });
 
 pruefe("Erdbeben laesst Koenige stehen", () => {
@@ -777,6 +779,204 @@ pruefe("Wiedergeburt geht nur auf der eigenen Grundreihe und nur mit Verlust", (
     mitVerlust.verloren.weiss.push("D");
     gleich(einsetzen(mitVerlust, "wiedergeburt", SCHACH.feldNummer("e4")), null,
         "nicht mitten auf dem Brett");
+});
+
+/* ------------------------------------------------------------------ *
+ * Wiederbelebung (seit v3.3): zurueck an den Ort des Falls
+ * ------------------------------------------------------------------ */
+
+pruefe("Wiederbelebung holt die Figur genau an ihr Grab", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Ein weisser Springer ist auf e4 gefallen. */
+    const grab = SCHACH.feldNummer("e4");
+    runde.gefallen.weiss.push({ art: "S", feld: grab });
+
+    const gelungen = einsetzen(runde, "wiederbelebung", grab);
+
+    wahr(gelungen !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(gelungen.stand, grab), "S", "der Springer steht wieder da");
+    gleich(gelungen.gefallen.weiss.length, 0, "der Eintrag ist verbraucht");
+});
+
+pruefe("Wiederbelebung geht nur auf das eigene Grab", () => {
+    let runde = faehigkeitenPartie();
+    const grab = SCHACH.feldNummer("e4");
+
+    gleich(einsetzen(runde, "wiederbelebung", grab), null,
+        "ohne gefallene Figur geht nichts");
+
+    /* Ein Feld, auf dem NICHTS gefallen ist. */
+    let mitGrab = SCHACH_RUNDE.kopieren(runde);
+    mitGrab.gefallen.weiss.push({ art: "D", feld: grab });
+    gleich(einsetzen(mitGrab, "wiederbelebung", SCHACH.feldNummer("d4")), null,
+        "nicht auf ein beliebiges Feld");
+
+    /* Das Grab eines GEGNERS zaehlt nicht. */
+    let fremdesGrab = SCHACH_RUNDE.kopieren(runde);
+    fremdesGrab.gefallen.schwarz.push({ art: "D", feld: grab });
+    gleich(einsetzen(fremdesGrab, "wiederbelebung", grab), null,
+        "kein fremdes Grab");
+});
+
+pruefe("Wiederbelebung geht nicht auf ein besetztes Grab", () => {
+    let runde = faehigkeitenPartie();
+
+    /* b1 ist besetzt (Springer in der Grundstellung). */
+    const besetzt = SCHACH.feldNummer("b1");
+    runde.gefallen.weiss.push({ art: "T", feld: besetzt });
+
+    gleich(einsetzen(runde, "wiederbelebung", besetzt), null,
+        "dort steht schon jemand");
+});
+
+pruefe("Wiederbelebung kostet den ganzen Zug", () => {
+    let runde = faehigkeitenPartie();
+    const grab = SCHACH.feldNummer("e4");
+    runde.gefallen.weiss.push({ art: "S", feld: grab });
+
+    const nachher = einsetzen(runde, "wiederbelebung", grab);
+    gleich(nachher.stand.amZug, "schwarz", "der Gegner ist dran");
+
+    /* Zum Vergleich: eine gewoehnliche Faehigkeit laesst einen am Zug. */
+    let andere = faehigkeitenPartie();
+    gleich(einsetzen(andere, "sprung", -1).stand.amZug, "weiss", "Sprung nicht");
+});
+
+pruefe("Der Doppelzug geht der Wiederbelebung vor", () => {
+    let runde = faehigkeitenPartie();
+    const grab = SCHACH.feldNummer("e4");
+    runde.gefallen.weiss.push({ art: "S", feld: grab });
+    runde.stand.extraZug = "weiss";
+
+    const nachher = einsetzen(runde, "wiederbelebung", grab);
+
+    gleich(nachher.stand.amZug, "weiss", "Weiss bleibt am Zug");
+    gleich(nachher.stand.extraZug, "", "dafuer ist der Doppelzug aufgebraucht");
+});
+
+pruefe("Wer geschlagen wird, kommt mit seinem Feld in die Grabliste", () => {
+    let runde = faehigkeitenPartie();
+
+    /* 1. e4 d5 2. exd5 - Weiss schlaegt auf d5. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "", "Anna");
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("d7"), SCHACH.feldNummer("d5"), "", "Bert");
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("e4"), SCHACH.feldNummer("d5"), "", "Anna");
+
+    gleich(runde.gefallen.schwarz.length, 1, "ein schwarzer Stein ist gefallen");
+    gleich(runde.gefallen.schwarz[0].art, "B", "ein Bauer");
+    gleich(runde.gefallen.schwarz[0].feld, SCHACH.feldNummer("d5"), "auf d5");
+
+    /* Die alte Liste bleibt unveraendert - sie traegt weiter nur die Art. */
+    gleich(runde.verloren.schwarz.join(","), "B", "verloren unveraendert");
+});
+
+pruefe("Die Grabliste ueberlebt das Speichern", () => {
+    let runde = faehigkeitenPartie();
+    runde.gefallen.weiss.push({ art: "T", feld: SCHACH.feldNummer("h5") });
+
+    const zurueck = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+
+    gleich(zurueck.gefallen.weiss.length, 1, "ein Eintrag");
+    gleich(zurueck.gefallen.weiss[0].feld, SCHACH.feldNummer("h5"), "mit seinem Feld");
+});
+
+/* ------------------------------------------------------------------ *
+ * Haendler (seit v3.3)
+ * ------------------------------------------------------------------ */
+
+pruefe("Jedes Angebot des Haendlers ist ungefaehr gleichwertig", () => {
+    const wert = (seite) => (SCHACH_RUNDE.FIGUR_WERT[seite.art] || 0) * seite.anzahl;
+
+    for (const angebot of SCHACH_VARIANTEN.HANDEL) {
+        const abstand = Math.abs(wert(angebot.gibt) - wert(angebot.bekommt));
+
+        wahr(abstand <= 1, "Abstand hoechstens 1 bei "
+            + angebot.gibt.anzahl + " " + angebot.gibt.art + " gegen "
+            + angebot.bekommt.anzahl + " " + angebot.bekommt.art
+            + " (war " + abstand + ")");
+    }
+});
+
+pruefe("Alle Geraete sehen dasselbe Angebot", () => {
+    const runde = faehigkeitenPartie();
+
+    const einer = SCHACH_RUNDE.handelsAngebot(runde, "weiss");
+    const anderer = SCHACH_RUNDE.handelsAngebot(SCHACH_RUNDE.kopieren(runde), "weiss");
+
+    gleich(JSON.stringify(einer), JSON.stringify(anderer), "gerechnet, nicht gewuerfelt");
+});
+
+pruefe("Der Haendler nimmt die hintersten Figuren", () => {
+    const runde = faehigkeitenPartie();
+    const angebot = SCHACH_RUNDE.handelsAngebot(runde, "weiss");
+
+    if (!angebot) {
+        return;
+    }
+
+    /* Alles, was weggeht, gehoert mir und ist von der richtigen Art. */
+    for (const feld of angebot.gibtFelder) {
+        const figur = SCHACH.figurAuf(runde.stand, feld);
+        gleich(SCHACH.farbeVon(figur), "weiss", "eigene Figur");
+        gleich(SCHACH.artVon(figur), angebot.gibt.art, "richtige Art");
+    }
+    gleich(angebot.gibtFelder.length, angebot.gibt.anzahl, "genau so viele");
+});
+
+pruefe("Ein angenommener Handel tauscht wirklich", () => {
+    let runde = faehigkeitenPartie();
+    const angebot = SCHACH_RUNDE.handelsAngebot(runde, "weiss");
+    wahr(angebot !== null, "es gibt ein Angebot");
+
+    const vorher = angebot.gibtFelder.slice();
+    const nachher = einsetzen(runde, "haendler", -1);
+
+    wahr(nachher !== null, "eingesetzt");
+
+    /* Die abgegebenen Felder tragen jetzt entweder nichts oder das Neue. */
+    const neueArt = angebot.bekommt.art;
+    for (const feld of angebot.bekommtFelder) {
+        gleich(SCHACH.artVon(SCHACH.figurAuf(nachher.stand, feld)), neueArt,
+            "das Eingetauschte steht da");
+    }
+
+    const weg = vorher.filter((feld) => angebot.bekommtFelder.indexOf(feld) === -1);
+    for (const feld of weg) {
+        gleich(SCHACH.figurAuf(nachher.stand, feld), ".", "abgegeben und leer");
+    }
+});
+
+pruefe("Der Handel kostet den ganzen Zug", () => {
+    const runde = faehigkeitenPartie();
+    const nachher = einsetzen(runde, "haendler", -1);
+
+    gleich(nachher.stand.amZug, "schwarz", "der Gegner ist dran");
+});
+
+pruefe("Ohne passende Figuren gibt es kein Angebot", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Ein leeres Brett bis auf die Koenige: Da ist nichts zu handeln. */
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH_RUNDE.handelsAngebot(runde, "weiss"), null, "kein Angebot");
+    gleich(einsetzen(runde, "haendler", -1), null, "und nicht einsetzbar");
 });
 
 pruefe("Geschlagene Figuren landen im Verlust", () => {
@@ -1401,6 +1601,12 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         frost: "b8",
         erdbeben: "d4",
         wiedergeburt: "b1",
+        /* Das Grab liegt dort, wo die Figur fiel — hier von Hand gesetzt. */
+        wiederbelebung: "e4",
+        /* a4 bis c4 ist in der Grundstellung frei. */
+        mauer: "a4",
+        /* Das 2x2-Feld a5/b5/a4/b4 ist frei; Gefallene setzt der Test. */
+        friedhof: "a5",
         /* Ein Bauer hat als Einziger ein freies Nachbarfeld. */
         spiegel: "a2",
         /* Am oberen Rand angetippt heisst: nach oben rollen. */
@@ -1417,6 +1623,13 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         if (art === "wiedergeburt") {
             runde.stand.brett = SCHACH._brettMit(runde.stand.brett, feld, ".");
             runde.verloren.weiss.push("S");
+        }
+        if (art === "wiederbelebung") {
+            runde.gefallen.weiss.push({ art: "S", feld: feld });
+        }
+        if (art === "friedhof") {
+            /* Gefallene GEGNER - sie stehen fuer Weiss wieder auf. */
+            runde.gefallen.schwarz.push({ art: "T", feld: SCHACH.feldNummer("h5") });
         }
         if (art === "erdbeben") {
             /* Rund um d4 steht in der Grundstellung nichts — einen Bauern

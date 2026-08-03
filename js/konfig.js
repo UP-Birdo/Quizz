@@ -14,7 +14,7 @@
 const KONFIG = {
 
     /* Version der App. Wird im Kopf angezeigt und muss zu CHANGELOG.md passen. */
-    APP_VERSION: "3.3",
+    APP_VERSION: "3.4",
 
     speicher: {
 

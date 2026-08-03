@@ -113,6 +113,21 @@ const SCHACH_RUNDE = {
             verloren: { weiss: [], schwarz: [] },
 
             /*
+             * Dasselbe noch einmal, aber MIT DEM ORT: [{ art, feld }] je Farbe,
+             * das Jüngste hinten. Seit v3.3 für die Fähigkeit „Wiederbelebung",
+             * die eine Figur genau dorthin zurückholt, wo sie fiel.
+             *
+             * Warum eine zweite Liste statt `verloren` umzubauen: `verloren`
+             * wird an vier Stellen gelesen (Bilanz, Beutewert, Wiedergeburt,
+             * Anzeige) und steht in jeder laufenden Partie. Eine Liste, deren
+             * Elemente plötzlich Objekte statt Zeichen sind, hätte jede davon
+             * angefasst — für einen Gewinn, den eine zusätzliche Liste genauso
+             * bringt. Partien von vor v3.3 haben sie nicht; dann findet die
+             * Wiederbelebung eben nichts, bis wieder etwas geschlagen wird.
+             */
+            gefallen: { weiss: [], schwarz: [] },
+
+            /*
              * Was beim Anlegen eingestellt wurde. Die Vorgaben entsprechen dem
              * Verhalten von vorher, damit angefangene Partien sich nicht
              * ändern — sie haben diese Felder nicht und bekommen genau das,
@@ -222,6 +237,14 @@ const SCHACH_RUNDE = {
                 ? roh.verloren[farbe] : [];
             runde.verloren[farbe] = liste
                 .filter((art) => typeof art === "string" && SCHACH.artName(art) !== "");
+
+            const gefallene = (roh.gefallen && Array.isArray(roh.gefallen[farbe]))
+                ? roh.gefallen[farbe] : [];
+            runde.gefallen[farbe] = gefallene
+                .filter((eintrag) => eintrag && typeof eintrag.art === "string"
+                    && SCHACH.artName(eintrag.art) !== ""
+                    && Number.isInteger(eintrag.feld) && eintrag.feld >= 0)
+                .map((eintrag) => ({ art: eintrag.art, feld: eintrag.feld }));
         }
 
         if (roh.regeln && typeof roh.regeln === "object") {
@@ -573,12 +596,41 @@ const SCHACH_RUNDE = {
             wege = wirkung.wege || [];
             zusatzText = wirkung.text ? (": " + wirkung.text) : "";
 
+        } else if (beschreibung.art === "handel") {
+            /*
+             * Das Angebot wird HIER neu gerechnet, nicht vom Bildschirm
+             * übergeben: Sonst könnte ein Gerät mit veraltetem Stand einen
+             * Tausch durchsetzen, den es so gar nicht mehr gibt. Der Bildschirm
+             * fragt dasselbe ab, um es zu zeigen — die Wahrheit steht hier.
+             */
+            const wirkung = SCHACH_RUNDE._handelAusfuehren(neu, farbe);
+            if (!wirkung) {
+                return null;
+            }
+            neu.stand = wirkung.stand;
+            betroffen = wirkung.felder;
+            zusatzText = wirkung.text ? (": " + wirkung.text) : "";
+
         } else {
             return null;
         }
 
         neu.faehigkeiten[farbe].splice(stelle, 1);
         neu.zugZaehler = alt.zugZaehler + 1;
+
+        /*
+         * Manche Fähigkeiten kosten den ganzen Zug (`beendetZug`): Danach ist
+         * der Gegner dran. Der Doppelzug geht vor — wer ihn eingesetzt hat,
+         * behält sein Recht auf einen weiteren Zug, sonst wäre die eine
+         * Fähigkeit die andere wert.
+         */
+        if (beschreibung.beendetZug) {
+            if (neu.stand.extraZug === farbe) {
+                neu.stand.extraZug = "";
+            } else {
+                neu.stand = SCHACH.zugAbgeben(neu.stand);
+            }
+        }
 
         neu.verlauf.push({
             text: "Fähigkeit " + SCHACH_VARIANTEN.faehigkeitTitel(art) + " eingesetzt"
@@ -705,6 +757,40 @@ const SCHACH_RUNDE = {
             return SCHACH.erdbeben(runde.stand, feld);
         }
 
+        if (art === "mauer") {
+            return SCHACH.mauerLegen(runde.stand, feld);
+        }
+
+        /*
+         * Friedhof: Es stehen die zuletzt gefallenen GEGNER auf — die jüngsten
+         * zuerst, weil sie am ehesten noch zur Stellung passen. Sie werden aus
+         * der Grabliste verbraucht; `verloren` bleibt unangetastet, damit die
+         * Bilanz weiter zählt, was wirklich geschlagen wurde.
+         */
+        if (art === "friedhof") {
+            const gegner = SCHACH.gegner(farbe);
+            const gefallene = runde.gefallen[gegner] || [];
+
+            if (gefallene.length === 0) {
+                return null;
+            }
+
+            const arten = gefallene
+                .slice(-(SCHACH.FRIEDHOF_KANTE * SCHACH.FRIEDHOF_KANTE))
+                .reverse()
+                .map((eintrag) => eintrag.art);
+
+            const wirkung = SCHACH.friedhof(runde.stand, farbe, feld, arten);
+            if (!wirkung) {
+                return null;
+            }
+
+            runde.gefallen[gegner] = gefallene.slice(0,
+                Math.max(0, gefallene.length - wirkung.felder.length));
+
+            return wirkung;
+        }
+
         if (art === "schutzschild") {
             const figur = SCHACH.figurAuf(runde.stand, feld);
             /* Auf den König wirkt das Schild nicht — sonst wäre "Schachmatt"
@@ -771,6 +857,42 @@ const SCHACH_RUNDE = {
                 (reihe === 0) ? -1 : 1);
         }
 
+        /*
+         * Wiederbelebung: Die Figur kehrt an ihr Grab zurück.
+         *
+         * Gesucht wird der ZULETZT auf diesem Feld gefallene eigene Stein —
+         * fielen dort mehrere nacheinander, kommt der jüngste zuerst wieder.
+         * Der Eintrag wird verbraucht, sonst liesse sich dieselbe Figur mit
+         * einer zweiten Wiederbelebung noch einmal holen.
+         */
+        if (art === "wiederbelebung") {
+            const gefallene = runde.gefallen[farbe];
+            if (!gefallene || gefallene.length === 0) {
+                return null;
+            }
+
+            let stelle = -1;
+            for (let nummer = gefallene.length - 1; nummer >= 0; nummer--) {
+                if (gefallene[nummer].feld === feld) {
+                    stelle = nummer;
+                    break;
+                }
+            }
+            if (stelle === -1) {
+                return null;
+            }
+
+            const wirkung = SCHACH.wiedergeburt(
+                runde.stand, farbe, feld, gefallene[stelle].art);
+
+            if (!wirkung) {
+                return null;
+            }
+
+            gefallene.splice(stelle, 1);
+            return wirkung;
+        }
+
         if (art === "wiedergeburt") {
             const verloren = runde.verloren[farbe];
             if (!verloren || verloren.length === 0) {
@@ -791,6 +913,184 @@ const SCHACH_RUNDE = {
         }
 
         return null;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Der Händler (seit v3.3)
+     *
+     * Er unterscheidet sich von jeder anderen Fähigkeit darin, dass man ihn
+     * ANSEHEN kann, bevor man ihn benutzt: Das Angebot steht fest, sobald die
+     * Fähigkeit im Vorrat liegt, und ändert sich erst mit dem nächsten Zug.
+     * Deshalb kostet ein Ablehnen nichts — man kann nicht so lange neu würfeln,
+     * bis das Angebot passt, denn dazwischen liegt immer ein Zug.
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Das Angebot für diese Farbe, oder null, wenn gerade keines möglich ist.
+     * Liefert:
+     *
+     *     {
+     *         gibt:     { art, anzahl },
+     *         bekommt:  { art, anzahl },
+     *         gibtFelder:    [Felder, die geräumt werden],
+     *         bekommtFelder: [Felder, auf denen Neues erscheint],
+     *         text: "3 Bauern gegen 1 Springer"
+     *     }
+     *
+     * Gerechnet, nicht gewürfelt: Alle Geräte sehen dasselbe Angebot.
+     */
+    handelsAngebot(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+
+        if (farbe !== "weiss" && farbe !== "schwarz") {
+            return null;
+        }
+
+        const marke = (stand.id || "partie") + "|handel|" + stand.zugZaehler + "|" + farbe;
+        const angebot = SCHACH_VARIANTEN.handelZiehen(SCHACH_RUNDE._zufallsWert(marke));
+
+        /*
+         * WELCHE Figuren weggehen, entscheidet nicht der Spieler: Er tippt
+         * sonst fünf Felder nacheinander an, und bei jedem Fehlgriff wäre der
+         * Handel dahin. Genommen werden die HINTERSTEN — die, die am weitesten
+         * von der gegnerischen Grundreihe entfernt stehen. Das ist die Wahl,
+         * die man ohnehin fast immer treffen würde, und sie ist vorhersagbar.
+         */
+        const gibtFelder = SCHACH_RUNDE._hintersteFiguren(
+            stand, farbe, angebot.gibt.art, angebot.gibt.anzahl);
+
+        if (gibtFelder.length < angebot.gibt.anzahl) {
+            return null;
+        }
+
+        /*
+         * Die neuen Figuren erscheinen auf den frei werdenden Feldern; reichen
+         * die nicht, kommen freie Felder der eigenen Grundreihe dazu. So bleibt
+         * der Handel dort, wo die abgegebenen Figuren standen — und nicht
+         * plötzlich in der gegnerischen Hälfte.
+         */
+        const bekommtFelder = SCHACH_RUNDE._handelsPlaetze(
+            stand, farbe, gibtFelder, angebot.bekommt.anzahl);
+
+        if (bekommtFelder.length < angebot.bekommt.anzahl) {
+            return null;
+        }
+
+        return {
+            gibt: angebot.gibt,
+            bekommt: angebot.bekommt,
+            gibtFelder: gibtFelder,
+            bekommtFelder: bekommtFelder,
+            text: SCHACH_RUNDE._handelsText(angebot.gibt)
+                + " gegen " + SCHACH_RUNDE._handelsText(angebot.bekommt)
+        };
+    },
+
+    /* Die Mehrzahl der Figurennamen — im Deutschen nicht ableitbar. */
+    FIGUR_MEHRZAHL: {
+        B: "Bauern", S: "Springer", L: "Läufer",
+        T: "Türme", D: "Damen", K: "Könige"
+    },
+
+    _handelsText(seite) {
+        return seite.anzahl + " " + ((seite.anzahl === 1)
+            ? SCHACH.artName(seite.art)
+            : (SCHACH_RUNDE.FIGUR_MEHRZAHL[seite.art] || SCHACH.artName(seite.art)));
+    },
+
+    /*
+     * Die `anzahl` eigenen Figuren dieser Art, die am weitesten hinten stehen.
+     * „Hinten" heisst: nah an der eigenen Grundreihe.
+     */
+    _hintersteFiguren(runde, farbe, art, anzahl) {
+        const stand = runde.stand;
+        const breite = SCHACH.breiteVon(stand);
+        const eigene = [];
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            const figur = SCHACH.figurAuf(stand, feld);
+
+            if (SCHACH.farbeVon(figur) === farbe && SCHACH.artVon(figur) === art) {
+                eigene.push(feld);
+            }
+        }
+
+        /* Weiss steht unten (grosse Reihennummern), Schwarz oben. */
+        eigene.sort((einer, anderer) => {
+            const reiheEiner = SCHACH.reiheVon(einer, breite);
+            const reiheAnderer = SCHACH.reiheVon(anderer, breite);
+
+            return (farbe === "weiss")
+                ? (reiheAnderer - reiheEiner) || (einer - anderer)
+                : (reiheEiner - reiheAnderer) || (einer - anderer);
+        });
+
+        return eigene.slice(0, anzahl);
+    },
+
+    /*
+     * Den Handel wirklich durchführen: erst alle abgegebenen Felder räumen,
+     * dann die neuen Figuren setzen.
+     *
+     * Die Reihenfolge ist Absicht — Räumen und Setzen können sich dieselben
+     * Felder teilen (die neue Figur erscheint da, wo die alte stand). Würde man
+     * abwechselnd räumen und setzen, löschte das Räumen eine gerade gesetzte
+     * Figur wieder weg. Dieselbe Falle wie bei der Rochade auf schmalen
+     * Brettern (siehe docs\DECISIONS.md).
+     */
+    _handelAusfuehren(runde, farbe) {
+        const angebot = SCHACH_RUNDE.handelsAngebot(runde, farbe);
+        if (!angebot) {
+            return null;
+        }
+
+        let brett = runde.stand.brett;
+
+        for (const feld of angebot.gibtFelder) {
+            brett = SCHACH._brettMit(brett, feld, ".");
+        }
+
+        const figur = (farbe === "weiss")
+            ? angebot.bekommt.art
+            : angebot.bekommt.art.toLowerCase();
+
+        for (const feld of angebot.bekommtFelder) {
+            brett = SCHACH._brettMit(brett, feld, figur);
+        }
+
+        return {
+            stand: Object.assign({}, runde.stand, { brett: brett, enPassant: "" }),
+            felder: angebot.gibtFelder.concat(angebot.bekommtFelder)
+                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle),
+            text: angebot.text
+        };
+    },
+
+    /* Wohin die eingetauschten Figuren kommen: erst die frei werdenden Felder,
+       dann freie Felder der eigenen Grundreihe. */
+    _handelsPlaetze(runde, farbe, gibtFelder, anzahl) {
+        const stand = runde.stand;
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const plaetze = gibtFelder.slice(0, anzahl);
+
+        if (plaetze.length >= anzahl) {
+            return plaetze;
+        }
+
+        const grundreihe = (farbe === "weiss") ? hoehe - 1 : 0;
+
+        for (let spalte = 0; spalte < breite && plaetze.length < anzahl; spalte++) {
+            const feld = SCHACH._feld(stand, grundreihe, spalte);
+
+            if (SCHACH.figurAuf(stand, feld) === "."
+                && !SCHACH.mauerAuf(stand, feld)
+                && plaetze.indexOf(feld) === -1) {
+                plaetze.push(feld);
+            }
+        }
+
+        return plaetze;
     },
 
     _verlaufKuerzen(runde) {
@@ -934,11 +1234,25 @@ const SCHACH_RUNDE = {
         /* Ein Zug beendet jede offene Abstimmung. */
         neu.vorschlag = null;
 
-        /* Verlorene Figuren merken — die Wiedergeburt holt sie zurück. */
+        /*
+         * Verlorene Figuren merken — die Wiedergeburt holt sie zurück.
+         *
+         * Zweimal, weil zwei Fähigkeiten Verschiedenes brauchen: `verloren` nur
+         * die Art (Bilanz, Beute, Grundreihen-Wiedergeburt), `gefallen`
+         * zusätzlich das Feld (Wiederbelebung an Ort und Stelle).
+         */
         if (geschlagen) {
             neu.verloren[SCHACH.gegner(farbe)].push(geschlagen);
+            neu.gefallen[SCHACH.gegner(farbe)].push({ art: geschlagen, feld: nach });
         } else if (ergebnis.zug.enPassant) {
             neu.verloren[SCHACH.gegner(farbe)].push("B");
+
+            /* Beim en passant fällt der Bauer NICHT auf dem Zielfeld, sondern
+               auf dem Feld, das er beim Doppelschritt übersprungen hat. */
+            const geschlagenesFeld = Number.isInteger(ergebnis.zug.enPassantFeld)
+                ? ergebnis.zug.enPassantFeld
+                : nach;
+            neu.gefallen[SCHACH.gegner(farbe)].push({ art: "B", feld: geschlagenesFeld });
         }
 
         /* Bei der Rochade bewegen sich zwei Figuren — beide bekommen ihren

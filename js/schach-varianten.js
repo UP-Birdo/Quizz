@@ -207,6 +207,15 @@ const SCHACH_VARIANTEN = {
      *
      * Wirkung: siehe schach.js. Wer eine Fähigkeit ergänzt, wählt eine dieser
      * vier Arten — dann muss am Bildschirm nichts angepasst werden.
+     *
+     * Dazu ein Schalter, der für jede Art gilt:
+     *
+     *   `beendetZug: true`   Nach dem Einsetzen ist der Gegner dran. Ohne den
+     *                        Schalter bleibt man am Zug und muss noch ziehen —
+     *                        so war es bis v3.3 bei allen Fähigkeiten. Für
+     *                        solche, die eine Figur ZURÜCKBRINGEN, wäre das zu
+     *                        stark: Man bekäme Material geschenkt und dürfte im
+     *                        selben Atemzug damit angreifen.
      */
     FAEHIGKEITEN: {
 
@@ -263,9 +272,12 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "ziel",
             zielArt: "beliebig",
-            beschreibung: "Alle Figuren rund um das gewählte Feld werden ein Feld "
-                + "nach außen geschoben, soweit dort Platz ist. Könige bleiben "
-                + "stehen. Wirkt auf beide Seiten."
+            beschreibung: "Drei Reihen rutschen um ein Feld zur Seite — die "
+                + "angetippte und je eine darüber und darunter. Tippst du links "
+                + "auf das Brett, geht es nach links, tippst du rechts, nach "
+                + "rechts. Wer am Rand steht oder ansteht, bleibt; alle anderen "
+                + "rücken nacheinander auf. Könige bleiben stehen. Wirkt auf "
+                + "beide Seiten."
         },
 
         nudelholz: {
@@ -333,7 +345,120 @@ const SCHACH_VARIANTEN = {
             zielArt: "eigeneFigurKopierbar",
             beschreibung: "Verdoppelt eine eigene Figur: Die Kopie erscheint auf einem "
                 + "freien Feld daneben. Könige lassen sich nicht spiegeln."
+        },
+
+        /*
+         * Wiederbelebung (seit v3.3) — der grosse Bruder der Wiedergeburt.
+         *
+         * Der Unterschied ist der ORT: Die Wiedergeburt setzt auf die eigene
+         * Grundreihe, also weit hinten; die Wiederbelebung holt die Figur genau
+         * dorthin zurück, wo sie fiel — oft mitten im Geschehen. Deshalb kostet
+         * sie den ganzen Zug, und deshalb ist sie legendär.
+         */
+        wiederbelebung: {
+            titel: "Wiederbelebung",
+            stufe: "gelb",
+            art: "ziel",
+            zielArt: "eigenesGrab",
+            beendetZug: true,
+            beschreibung: "Eine eigene geschlagene Figur steht genau dort wieder auf, "
+                + "wo sie fiel — wenn das Feld frei ist. Danach ist der Gegner am Zug."
+        },
+
+        /*
+         * Mauer (seit v3.3) — ungewöhnlich, nicht selten.
+         *
+         * Sie nimmt niemandem Material und gehört keiner Seite: Sie steht
+         * einfach im Weg, für beide. Stark ist sie nur, wenn man sie zur
+         * rechten Zeit legt — und das macht sie zu einer Fähigkeit der
+         * mittleren Stufe, nicht zu einer legendären.
+         */
+        mauer: {
+            titel: "Mauer",
+            stufe: "blau",
+            art: "ziel",
+            zielArt: "mauerplatz",
+            beschreibung: "Legt eine Mauer über drei freie Felder derselben Reihe — "
+                + "das angetippte Feld ist ihr linkes Ende. Niemand zieht hindurch, "
+                + "aber Springer setzen darüber hinweg. Nach einigen Zügen zerfällt sie."
+        },
+
+        /*
+         * Händler (seit v3.3) — die erste Fähigkeit mit einer Rückfrage.
+         *
+         * Sie tauscht Material gegen Material, ungefähr gleichwertig. Genau
+         * darin liegt ihr Reiz: Sie macht einen nicht stärker, sondern ANDERS
+         * stark — fünf Bauern sind so viel wert wie ein Turm, spielen sich aber
+         * völlig verschieden. Wer das Angebot nicht mag, lehnt ab.
+         */
+        haendler: {
+            titel: "Händler",
+            stufe: "lila",
+            art: "handel",
+            beendetZug: true,
+            beschreibung: "Ein Angebot: Figuren gegen andere Figuren, ungefähr "
+                + "gleich viel wert. Du darfst ablehnen — dann bleibt die Fähigkeit "
+                + "dir erhalten. Nimmst du an, ist danach der Gegner am Zug."
+        },
+
+        /*
+         * Friedhof (seit v3.3) — legendär, und zwar mit Abstand die stärkste.
+         *
+         * Sie bringt Material, das eigentlich weg war, zurück auf DEINE Seite:
+         * bis zu vier gefallene GEGNER auf einmal. Dass sie nach ein paar Zügen
+         * zerfallen, ist der Preis — und der Grund, warum sie das Spiel nicht
+         * einfach entscheidet: Man muss etwas mit ihnen anfangen, solange sie
+         * da sind.
+         */
+        friedhof: {
+            titel: "Friedhof",
+            stufe: "gelb",
+            art: "ziel",
+            zielArt: "friedhofsplatz",
+            beendetZug: true,
+            beschreibung: "Bis zu vier gefallene GEGNER stehen auf einem freien "
+                + "2×2-Feld wieder auf — in deiner Farbe, und du ziehst mit ihnen "
+                + "wie mit eigenen. Nach ein paar Zügen zerfallen sie. Danach ist "
+                + "der Gegner am Zug."
         }
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Die Angebote des Händlers
+     *
+     * Jede Zeile ist ein Tausch: `gibt` verschwindet vom Brett, `bekommt`
+     * erscheint dafür. Gezogen wird gerechnet (nicht gewürfelt), damit alle
+     * Geräte dasselbe Angebot sehen.
+     *
+     * ZUM GLEICHGEWICHT: Gerechnet wird mit den üblichen Figurenwerten
+     * (Bauer 1, Springer und Läufer 3, Turm 5, Dame 9). Kein Angebot bringt
+     * mehr als einen Punkt Vorsprung — sonst wäre der Händler keine Wahl,
+     * sondern ein Geschenk, und man würde immer annehmen.
+     *
+     * Beide Richtungen stehen als eigene Zeilen da, statt eine Zeile zu drehen:
+     * So sieht man beim Lesen sofort, was möglich ist, und kann einzelne
+     * Richtungen weglassen, die sich nicht gut spielen.
+     * ---------------------------------------------------------------- */
+
+    HANDEL: [
+        { gibt: { art: "B", anzahl: 3 }, bekommt: { art: "S", anzahl: 1 } },
+        { gibt: { art: "B", anzahl: 3 }, bekommt: { art: "L", anzahl: 1 } },
+        { gibt: { art: "S", anzahl: 1 }, bekommt: { art: "B", anzahl: 3 } },
+        { gibt: { art: "L", anzahl: 1 }, bekommt: { art: "B", anzahl: 3 } },
+        { gibt: { art: "B", anzahl: 5 }, bekommt: { art: "T", anzahl: 1 } },
+        { gibt: { art: "T", anzahl: 1 }, bekommt: { art: "B", anzahl: 5 } },
+        { gibt: { art: "S", anzahl: 1 }, bekommt: { art: "L", anzahl: 1 } },
+        { gibt: { art: "L", anzahl: 1 }, bekommt: { art: "S", anzahl: 1 } },
+        { gibt: { art: "T", anzahl: 2 }, bekommt: { art: "D", anzahl: 1 } },
+        { gibt: { art: "D", anzahl: 1 }, bekommt: { art: "T", anzahl: 2 } }
+    ],
+
+    /* Zieht ein Angebot aus der Tabelle. `wert` ist eine Zahl von 0 bis 1. */
+    handelZiehen(wert) {
+        const sauber = Math.min(Math.max(wert, 0), 0.999999);
+        const stelle = Math.floor(sauber * SCHACH_VARIANTEN.HANDEL.length);
+
+        return SCHACH_VARIANTEN.HANDEL[stelle] || SCHACH_VARIANTEN.HANDEL[0];
     },
 
     liste: [

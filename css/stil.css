@@ -188,6 +188,29 @@ body {
     margin-bottom: var(--abstand);
 }
 
+/*
+ * Die Standleiste EINER Partie klebt oben fest (seit v3.3).
+ *
+ * Warum: Auf dem Handy füllt das Brett den Schirm. Wer daran spielt, hat
+ * „Weiss ist am Zug" längst nach oben weggescrollt — und genau das ist die
+ * Frage, die man am häufigsten hat. Jetzt bleibt sie stehen.
+ *
+ * Der Hintergrund ist Pflicht: Ohne ihn schöbe sich das Brett sichtbar unter
+ * der Schrift durch. Der negative Rand plus das gleiche Polster ziehen die
+ * Fläche über die Ränder von `.tab-inhalt` hinaus, damit auch seitlich nichts
+ * vorbeiläuft.
+ */
+.stand-leiste {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    margin-left: calc(-1 * var(--abstand));
+    margin-right: calc(-1 * var(--abstand));
+    padding: 10px var(--abstand);
+    background: var(--flaeche);
+    border-bottom: 1px solid var(--rahmen);
+}
+
 .phasen-text {
     color: var(--schrift-leise);
     font-size: 0.9rem;
@@ -1182,6 +1205,58 @@ body {
  * Wirkende Fähigkeiten am Brett. Der Schild umrandet die Figur blau, die
  * Fessel violett — beides in der Farbe der Stufe, aus der die Fähigkeit kommt.
  */
+/* ------------------------------------------------------------------ *
+ * Mauer (seit v3.3)
+ *
+ * Ein blauer Riegel quer über drei Felder. Er liegt ÜBER dem Feld, aber
+ * unter den Figuren-Markierungen — dort steht ohnehin nichts, solange die
+ * Mauer steht.
+ *
+ * Die abgerundeten Ecken sitzen nur aussen (`mauer-anfang`/`mauer-ende`),
+ * damit drei Felder wie EIN Block aussehen und nicht wie drei Kacheln.
+ * ------------------------------------------------------------------ */
+
+.feld-mauer::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 22%;
+    bottom: 22%;
+    background: linear-gradient(180deg, #4a8fd6 0%, #2f7fd0 55%, #1f5fa8 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.feld-mauer.mauer-anfang::after {
+    left: 8%;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.feld-mauer.mauer-ende::after {
+    right: 8%;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/*
+ * Geliehene Figur (Fähigkeit „Friedhof", seit v3.3): Sie gehört dir nur
+ * auf Zeit. Der gestrichelte Rahmen sagt „nicht von Dauer" — anders als
+ * die vollen Ringe von Schild, Fessel und Frost, die einen Zustand
+ * anzeigen, der zur Figur gehört.
+ */
+.feld-geliehen::before {
+    content: "";
+    position: absolute;
+    inset: 8%;
+    border: 2px dashed #8b46c8;
+    border-radius: 6px;
+    z-index: 2;
+    pointer-events: none;
+}
+
 .feld-schild::before,
 .feld-fessel::before,
 .feld-frost::before {

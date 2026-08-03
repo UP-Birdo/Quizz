@@ -148,9 +148,18 @@ Object.assign(TEAM_SCHACH, {
      * Fähigkeiten
      * ---------------------------------------------------------------- */
 
+    /*
+     * Gefragt wird die PARTIE, nicht die Spielart.
+     *
+     * Seit v2.5 lassen sich die Würfel zu jeder Spielart zuschalten
+     * (`regeln.faehigkeiten`); nur `SCHACH_RUNDE.faehigkeitenAn` kennt beide
+     * Fälle — Schalter der Partie zuerst, sonst die Vorgabe der Spielart. Diese
+     * Karte fragte weiter die Spielart und blieb deshalb bei „klassisch mit
+     * Würfeln" weg: Die Würfel lagen auf dem Brett, aber die eingesammelten
+     * Fähigkeiten liessen sich nirgends einsetzen.
+     */
     _faehigkeitenBauen(partie, person) {
-        const variante = SCHACH_RUNDE.varianteVon(partie);
-        if (!variante.faehigkeiten) {
+        if (!SCHACH_RUNDE.faehigkeitenAn(partie)) {
             return null;
         }
 

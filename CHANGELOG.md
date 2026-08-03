@@ -3,6 +3,17 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.4 — 2026-08-03
+
+- **Die Fähigkeiten-Karte fehlte, wenn man die Würfel zuschaltete.** Wer eine
+  klassische Partie (oder klein, groß, Doppelbrett) mit dem Haken
+  „Zufalls-Würfel" anlegte, sah die Würfel zwar auf dem Brett und sammelte sie
+  auch ein — die Karte unter dem Brett, in der die eingesammelten Fähigkeiten
+  stehen und eingesetzt werden, kam aber nie. Nur in der Spielart „Fähigkeiten
+  sammeln" war sie da. Grund: Die Karte fragte die Spielart statt die Partie;
+  den Schalter gibt es seit v2.5. Jetzt entscheidet, wie überall sonst,
+  `SCHACH_RUNDE.faehigkeitenAn`.
+
 ## v3.3 — 2026-08-03
 
 Die drei Wünsche, die über den Wunsch-Knopf hereinkamen — plus eine Kleinigkeit

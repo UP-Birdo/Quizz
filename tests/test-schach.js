@@ -611,6 +611,337 @@ pruefe("Auf dem Doppelbrett gewinnt, wer beide Koenige uebrig behaelt", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Erdbeben (seit v3.3: drei Reihen zur Seite)
+ * ------------------------------------------------------------------ */
+
+/* Was steht nach der Wirkung wo? Als lesbare Liste "Feld=Figur". */
+function belegungVon(stand, felderNamen) {
+    return felderNamen
+        .map((name) => name + "=" + SCHACH.figurAuf(stand, SCHACH.feldNummer(name)))
+        .join(" ");
+}
+
+pruefe("Erdbeben schiebt drei Reihen zur Seite", () => {
+    /* Drei Bauern in drei Reihen, alle in Spalte c. Angetippt wird e5 -
+       rechte Haelfte, also nach rechts. */
+    const stand = standAus({
+        "e1": "K", "e8": "k",
+        "c6": "B", "c5": "B", "c4": "B"
+    });
+
+    const wirkung = SCHACH.erdbeben(stand, SCHACH.feldNummer("e5"));
+    wahr(wirkung !== null, "es wirkt");
+
+    gleich(belegungVon(wirkung.stand, ["c6", "d6", "c5", "d5", "c4", "d4"]),
+        "c6=. d6=B c5=. d5=B c4=. d4=B",
+        "alle drei sind ein Feld nach rechts gerueckt");
+});
+
+pruefe("Erdbeben nach links, wenn links angetippt wird", () => {
+    const stand = standAus({ "e1": "K", "e8": "k", "c5": "B" });
+    const wirkung = SCHACH.erdbeben(stand, SCHACH.feldNummer("b5"));
+
+    gleich(belegungVon(wirkung.stand, ["b5", "c5"]), "b5=B c5=.",
+        "nach links");
+});
+
+pruefe("Erdbeben laesst eine Reihe von Figuren wie eine Schlange aufruecken", () => {
+    /*
+     * DIE Probe auf die Reihenfolge: Drei Bauern stehen direkt nebeneinander
+     * auf e5, f5, g5, rechts davon (h5) ist frei. Nach rechts geschoben muss
+     * ZUERST der auf g5 gehen, dann f5, dann e5 - sonst ueberschreiben sie
+     * sich gegenseitig und es bleibt nur einer uebrig.
+     */
+    const stand = standAus({
+        "a1": "K", "a8": "k",
+        "e5": "B", "f5": "S", "g5": "T"
+    });
+
+    const wirkung = SCHACH.erdbeben(stand, SCHACH.feldNummer("f5"));
+
+    gleich(belegungVon(wirkung.stand, ["e5", "f5", "g5", "h5"]),
+        "e5=. f5=B g5=S h5=T",
+        "alle drei sind aufgerueckt, keiner verloren");
+});
+
+pruefe("Wer am Rand ansteht, bleibt stehen - und blockiert dahinter", () => {
+    /* h5 ist besetzt: Der Block g5/h5 kann nicht, f5 auch nicht. */
+    const stand = standAus({
+        "a1": "K", "a8": "k",
+        "f5": "B", "g5": "S", "h5": "T"
+    });
+
+    const wirkung = SCHACH.erdbeben(stand, SCHACH.feldNummer("f5"));
+
+    gleich(wirkung, null, "nichts kann sich bewegen");
+});
+
+pruefe("Erdbeben laesst Koenige stehen", () => {
+    const stand = standAus({ "e5": "K", "e8": "k", "f5": "B" });
+    const wirkung = SCHACH.erdbeben(stand, SCHACH.feldNummer("f5"));
+
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("e5")), "K",
+        "der Koenig bleibt");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("g5")), "B",
+        "der Bauer rueckt");
+});
+
+pruefe("Eine Mauer haelt das Erdbeben auf", () => {
+    const ohne = standAus({ "a1": "K", "a8": "k", "e5": "B" });
+    wahr(SCHACH.erdbeben(ohne, SCHACH.feldNummer("e5")) !== null, "ohne Mauer geht es");
+
+    const mit = SCHACH.standNormalisieren(Object.assign({}, ohne, {
+        mauern: [{ felder: [SCHACH.feldNummer("f5")], bis: 6 }]
+    }));
+
+    gleich(SCHACH.erdbeben(mit, SCHACH.feldNummer("e5")), null,
+        "gegen die Mauer rueckt niemand");
+});
+
+/* ------------------------------------------------------------------ *
+ * Mauern (seit v3.3)
+ * ------------------------------------------------------------------ */
+
+/* Eine Mauer auf den angegebenen Feldern, die noch lange steht. */
+function mitMauer(stand, felderNamen) {
+    return SCHACH.standNormalisieren(Object.assign({}, stand, {
+        mauern: [{
+            felder: felderNamen.map((name) => SCHACH.feldNummer(name)),
+            bis: stand.halbzuege + SCHACH.MAUER_HALBZUEGE
+        }]
+    }));
+}
+
+pruefe("Eine Mauer stoppt den Turm davor", () => {
+    const ohne = standAus({ "e1": "K", "e8": "k", "a1": "T" });
+    gleich(ziele(ohne, "a1").indexOf("a8") !== -1, true, "ohne Mauer bis a8");
+
+    const mit = mitMauer(ohne, ["a4", "b4", "c4"]);
+    const felder = ziele(mit, "a1").split(",");
+
+    wahr(felder.indexOf("a3") !== -1, "bis vor die Mauer");
+    wahr(felder.indexOf("a4") === -1, "nicht auf die Mauer");
+    wahr(felder.indexOf("a5") === -1, "und nicht dahinter");
+});
+
+pruefe("Ein Springer setzt ueber die Mauer hinweg", () => {
+    const stand = mitMauer(
+        standAus({ "e1": "K", "e8": "k", "b1": "S" }),
+        ["a2", "b2", "c2"]);
+
+    const felder = ziele(stand, "b1").split(",");
+
+    /* a3 und c3 liegen JENSEITS der Mauerreihe - der Springer kommt hin. */
+    wahr(felder.indexOf("a3") !== -1, "a3 erreichbar");
+    wahr(felder.indexOf("c3") !== -1, "c3 erreichbar");
+});
+
+pruefe("Auf eine Mauer zieht auch der Springer nicht", () => {
+    const stand = mitMauer(
+        standAus({ "e1": "K", "e8": "k", "b1": "S" }),
+        ["a3", "b3", "c3"]);
+
+    const felder = ziele(stand, "b1").split(",");
+
+    wahr(felder.indexOf("a3") === -1, "a3 ist Mauer");
+    wahr(felder.indexOf("c3") === -1, "c3 ist Mauer");
+    wahr(felder.indexOf("d2") !== -1, "d2 geht weiter");
+});
+
+pruefe("Ein Bauer laeuft nicht in die Mauer", () => {
+    const stand = mitMauer(
+        standAus({ "e1": "K", "e8": "k", "d2": "B" }),
+        ["c3", "d3", "e3"]);
+
+    gleich(ziele(stand, "d2"), "", "kein Feld frei");
+});
+
+pruefe("Ein Bauer setzt nicht ueber die Mauer", () => {
+    /* Der Doppelschritt ist die Falle: Sein Zielfeld liegt HINTER der Mauer. */
+    const stand = mitMauer(
+        standAus({ "e1": "K", "e8": "k", "d2": "B" }),
+        ["c3", "d3", "e3"]);
+
+    gleich(ziele(stand, "d2"), "", "weder ein Feld noch zwei");
+});
+
+pruefe("Eine Mauer verhindert die Rochade", () => {
+    const ohne = SCHACH.standNormalisieren({
+        brett: brettAus({ "e1": "K", "h1": "T", "e8": "k" }),
+        amZug: SCHACH.WEISS,
+        rochade: "K"
+    });
+    wahr(ziele(ohne, "e1").indexOf("g1") !== -1, "ohne Mauer geht die Rochade");
+
+    const mit = mitMauer(ohne, ["f1", "g1", "h1"]);
+    wahr(ziele(mit, "e1").indexOf("g1") === -1, "mit Mauer nicht");
+
+    /* rochadeLage liefert je einen Eintrag fuer kurz und lang. */
+    const kurz = SCHACH.rochadeLage(mit, "weiss")
+        .find((eintrag) => eintrag.seite === "kurz");
+
+    wahr(String(kurz.grund || "").indexOf("Mauer") !== -1,
+        "und die Begruendung nennt sie: " + kurz.grund);
+});
+
+pruefe("Die Mauer zerfaellt nach ihrer Zeit", () => {
+    const stand = SCHACH.standNormalisieren(Object.assign(
+        {}, standAus({ "e1": "K", "e8": "k", "a1": "T" }), {
+            mauern: [{ felder: [SCHACH.feldNummer("a4")], bis: 2 }],
+            /* Der Takt ist die Uhr, nicht `halbzuege` — siehe schach.js. */
+            takt: 5
+        }));
+
+    gleich(SCHACH.mauerAuf(stand, SCHACH.feldNummer("a4")), false, "abgelaufen");
+    wahr(ziele(stand, "a1").indexOf("a8") !== -1, "der Turm kommt wieder durch");
+});
+
+pruefe("Eine Mauer braucht drei freie Felder in einer Reihe", () => {
+    const stand = standAus({ "e1": "K", "e8": "k", "c4": "B" });
+
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("a4")), null,
+        "c4 ist besetzt");
+    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("d4")) !== null,
+        "d4 bis f4 ist frei");
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("g4")), null,
+        "am rechten Rand ist kein Platz mehr");
+});
+
+pruefe("Eine Mauer legt sich nicht auf eine andere", () => {
+    const stand = mitMauer(standAus({ "e1": "K", "e8": "k" }), ["c4", "d4", "e4"]);
+
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("a4")), null,
+        "c4 gehoert schon zu einer Mauer");
+    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("f4")) !== null,
+        "daneben geht es");
+});
+
+pruefe("Die gelegte Mauer deckt genau drei Felder", () => {
+    const stand = standAus({ "e1": "K", "e8": "k" });
+    const wirkung = SCHACH.mauerLegen(stand, SCHACH.feldNummer("c5"));
+
+    gleich(wirkung.felder.length, 3, "drei Felder");
+    gleich(wirkung.felder.map((feld) => SCHACH.feldName(feld)).join(","),
+        "c5,d5,e5", "von links nach rechts");
+});
+
+pruefe("Mauern ueberleben das Speichern", () => {
+    const stand = mitMauer(standAus({ "e1": "K", "e8": "k" }), ["c4", "d4", "e4"]);
+    const zurueck = SCHACH.standNormalisieren(JSON.parse(JSON.stringify(stand)));
+
+    gleich(SCHACH.mauerAuf(zurueck, SCHACH.feldNummer("d4")), true, "steht noch");
+});
+
+/* ------------------------------------------------------------------ *
+ * Friedhof und geliehene Figuren (seit v3.3)
+ * ------------------------------------------------------------------ */
+
+pruefe("Der Friedhof stellt gefallene Gegner in einem 2x2-Feld auf", () => {
+    const stand = standAus({ "a1": "K", "a8": "k" });
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"),
+        ["D", "T", "S", "B"]);
+
+    wahr(wirkung !== null, "es wirkt");
+    gleich(wirkung.felder.length, 4, "vier Figuren");
+
+    /* Sie stehen in MEINER Farbe da - Grossbuchstaben sind Weiss. */
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("d5")), "D", "d5");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("e5")), "T", "e5");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("d4")), "S", "d4");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("e4")), "B", "e4");
+});
+
+pruefe("Der Friedhof braucht vier freie Felder", () => {
+    const stand = standAus({ "a1": "K", "a8": "k", "e5": "B" });
+
+    gleich(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]), null,
+        "e5 ist besetzt");
+    wahr(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("f5"), ["T"]) !== null,
+        "daneben ist Platz");
+});
+
+pruefe("Der Friedhof laesst keinen Koenig aufstehen", () => {
+    const stand = standAus({ "a1": "K", "a8": "k" });
+
+    gleich(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["K"]), null,
+        "ein Koenig steht nicht auf");
+});
+
+pruefe("Eine geliehene Figur zieht wie eine eigene", () => {
+    const stand = standAus({ "a1": "K", "a8": "k" });
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]);
+
+    const felder = ziele(wirkung.stand, "d5").split(",");
+    wahr(felder.length > 3, "der geliehene Turm hat Zuege: " + felder.length);
+});
+
+pruefe("Der Eintrag wandert mit der Figur mit", () => {
+    const stand = standAus({ "a1": "K", "a8": "k" });
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]);
+
+    gleich(SCHACH.istGeliehen(wirkung.stand, SCHACH.feldNummer("d5")), true, "steht auf d5");
+
+    const nachher = SCHACH.ziehen(wirkung.stand,
+        SCHACH.feldNummer("d5"), SCHACH.feldNummer("d7"));
+
+    gleich(SCHACH.istGeliehen(nachher.stand, SCHACH.feldNummer("d7")), true,
+        "und jetzt auf d7");
+    gleich(SCHACH.istGeliehen(nachher.stand, SCHACH.feldNummer("d5")), false,
+        "nicht mehr auf d5");
+});
+
+pruefe("Geliehene Figuren zerfallen nach ihrer Zeit", () => {
+    /*
+     * Ein SPRINGER steht auf - keine Dame: Die haette von d5 aus dem schwarzen
+     * Koenig auf a8 Schach geboten, und dann darf Schwarz seinen Turm nicht
+     * mehr ziehen. Der Test soll den Zerfall pruefen, nicht die Schachregel.
+     */
+    let stand = standAus({ "a1": "K", "a8": "k", "h1": "T", "h8": "t" });
+    stand = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["S"]).stand;
+
+    gleich(SCHACH.figurAuf(stand, SCHACH.feldNummer("d5")), "S", "der Springer steht da");
+
+    /* Die Tuerme schieben sich hin und her, bis die Zeit um ist. */
+    const wege = [
+        ["h1", "h2"], ["h8", "h7"],
+        ["h2", "h1"], ["h7", "h8"],
+        ["h1", "h2"], ["h8", "h7"],
+        ["h2", "h1"], ["h7", "h8"]
+    ];
+
+    for (const weg of wege) {
+        const zug = SCHACH.ziehen(stand, SCHACH.feldNummer(weg[0]), SCHACH.feldNummer(weg[1]));
+        wahr(zug !== null, "Zug " + weg[0] + "-" + weg[1] + " geht");
+        stand = zug.stand;
+    }
+
+    gleich(SCHACH.figurAuf(stand, SCHACH.feldNummer("d5")), ".",
+        "nach " + SCHACH.FRIEDHOF_HALBZUEGE + " Halbzuegen ist sie zerfallen");
+});
+
+pruefe("Der Takt laeuft weiter, auch wenn halbzuege zurueckspringt", () => {
+    /*
+     * DIE Falle: `halbzuege` ist der Zaehler der Fuenfzig-Zuege-Regel und
+     * springt bei jedem Bauernzug auf 0. Als Uhr fuer ablaufende Wirkungen
+     * taugt er deshalb nicht - der Takt schon.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "d2": "B" });
+    const nachher = SCHACH.ziehen(stand,
+        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"));
+
+    gleich(nachher.stand.halbzuege, 0, "halbzuege springt zurueck");
+    gleich(nachher.stand.takt, stand.takt + 1, "der Takt zaehlt weiter");
+});
+
+pruefe("Geliehene Figuren ueberleben das Speichern", () => {
+    const stand = standAus({ "a1": "K", "a8": "k" });
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]);
+    const zurueck = SCHACH.standNormalisieren(JSON.parse(JSON.stringify(wirkung.stand)));
+
+    gleich(SCHACH.istGeliehen(zurueck, SCHACH.feldNummer("d5")), true, "noch geliehen");
+});
+
+/* ------------------------------------------------------------------ *
  * Ergebnis
  * ------------------------------------------------------------------ */
 

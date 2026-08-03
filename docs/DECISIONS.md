@@ -60,6 +60,34 @@ Regeln und Daten ab, nicht die Reihenfolge, in der Bildschirmteile entstehen.
 Genau dafür gibt es die Prüfliste in `docs\DEPLOYMENT.md`; ein neuer Tab gehört
 dort mit einem eigenen Punkt hinein.
 
+### Die Fähigkeiten-Karte fehlte bei zugeschalteten Würfeln (v3.3, gefunden v3.4)
+
+**Was zu sehen war:** In einer klassischen Partie mit gesetztem Haken
+„Zufalls-Würfel" erschienen die Würfel auf dem Brett, das Einsammeln
+funktionierte — aber die Karte unter dem Brett, in der die eingesammelten
+Fähigkeiten stehen und eingesetzt werden, kam nie. In der Spielart „Fähigkeiten
+sammeln" war alles da.
+
+**Die Ursache:** `TEAM_SCHACH._faehigkeitenBauen` fragte
+`SCHACH_RUNDE.varianteVon(partie).faehigkeiten` — also die **Spielart**. Seit
+v2.5 entscheidet aber der Schalter der **Partie** (`regeln.faehigkeiten`), und
+die einzige Stelle, die beide Fälle kennt, ist `SCHACH_RUNDE.faehigkeitenAn`.
+Das Modell benutzte sie überall (`_bonusNachziehen`, Einsammeln, Einsetzen),
+nur der eine Bildschirm-Zweig war beim Einbau des Schalters nicht mitgezogen
+worden. Deshalb war das Bild so widersprüchlich: Alles Gerechnete lief richtig,
+nur das Anzeigen fiel weg.
+
+**Die Lehre:** Wird eine Eigenschaft der Spielart durch einen Schalter der
+Partie überschreibbar gemacht, ist jeder direkte Zugriff auf die Spielart ein
+Fehler — auch im Bildschirm-Code. Die Frage gehört an genau eine Stelle
+(`faehigkeitenAn`), und beim Einbau eines solchen Schalters wird nach allen
+alten Zugriffen gesucht, nicht nur nach denen im Modell.
+
+**Zweite Lehre:** Die Bildschirm-Tests legten ihre Partien alle über
+`SCHACH_TAFEL.partieAnlegen` ohne `regeln` an — damit gab es die Kombination
+„klassisch mit Würfeln" im Test gar nicht. Ein Schalter braucht einen Test in
+**beiden** Stellungen; `tests\test-bildschirm.js` prüft jetzt genau das.
+
 ### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam

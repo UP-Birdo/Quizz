@@ -332,8 +332,14 @@ const TEAM_SCHACH = {
         return kopf;
     },
 
+    /*
+     * Die Leiste über dem Brett: wer am Zug ist, ob Schach steht, welche
+     * Fähigkeiten wirken. Sie trägt `stand-leiste` und klebt damit beim
+     * Scrollen oben fest — auf dem Handy sieht man sonst nur noch das Brett und
+     * weiß nicht mehr, wer dran ist.
+     */
     _standLeisteBauen(partie, person) {
-        const leiste = TEAM_SCHACH._element("div", "phasen-leiste");
+        const leiste = TEAM_SCHACH._element("div", "phasen-leiste stand-leiste");
         const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
 
         if (partie.ergebnis) {
@@ -921,10 +927,23 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /*
+         * Der Händler fragt anders: Er zeigt sein Angebot, statt nur zu
+         * erklären, was die Fähigkeit tut. Wer ablehnt, behält sie — das
+         * Angebot ändert sich mit dem nächsten Zug von selbst.
+         */
+        if (beschreibung.art === "handel") {
+            await TEAM_SCHACH.handelAnbieten(partie, person, art);
+            return;
+        }
+
         const ja = await DIALOG.frage(
             SCHACH_VARIANTEN.faehigkeitTitel(art) + " einsetzen?",
             SCHACH_VARIANTEN.faehigkeitBeschreibung(art)
-                + "\n\nSie ist danach verbraucht.",
+                + "\n\nSie ist danach verbraucht."
+                + (beschreibung.beendetZug
+                    ? " Und sie kostet den ganzen Zug: Danach ist der Gegner dran."
+                    : ""),
             "Einsetzen",
             false
         );
@@ -949,6 +968,50 @@ const TEAM_SCHACH = {
             TEAM_SCHACH.zielFaehigkeit = art;
             TEAM_SCHACH.zielFelder = felder;
             TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            return;
+        }
+
+        await TEAM_SCHACH.faehigkeitAusfuehren(partie, art, -1);
+    },
+
+    /*
+     * Das Angebot des Händlers zeigen und annehmen lassen.
+     *
+     * Es steht ausdrücklich da, WAS weggeht und WO das Neue erscheint — sonst
+     * verschwinden fünf Bauern, und niemand weiss, welche. Abgelehnt kostet es
+     * nichts: Die Fähigkeit bleibt im Vorrat.
+     */
+    async handelAnbieten(partie, person, art) {
+        const farbe = SCHACH_RUNDE.teamVon(partie, person.id);
+        const angebot = SCHACH_RUNDE.handelsAngebot(partie, farbe);
+
+        if (!angebot) {
+            await DIALOG.hinweis("Der Händler hat nichts für dich",
+                "Für sein heutiges Angebot fehlen dir die passenden Figuren — oder "
+                + "es ist kein Platz für das, was du bekämst. Nach dem nächsten Zug "
+                + "bietet er etwas anderes an. Die Fähigkeit bleibt dir erhalten.");
+            return;
+        }
+
+        const breite = SCHACH.breiteVon(partie.stand);
+        const hoehe = SCHACH.hoeheVon(partie.stand);
+        const namen = (felder) => felder
+            .map((feld) => SCHACH.feldName(feld, breite, hoehe))
+            .join(", ");
+
+        const ja = await DIALOG.frage(
+            "Der Händler bietet",
+            angebot.text + "\n\n"
+                + "Du gibst ab: " + namen(angebot.gibtFelder) + "\n"
+                + "Du bekommst auf: " + namen(angebot.bekommtFelder) + "\n\n"
+                + "Nimmst du an, ist danach der Gegner am Zug. Lehnst du ab, "
+                + "behältst du die Fähigkeit — und nach dem nächsten Zug hat der "
+                + "Händler ein anderes Angebot.",
+            "Annehmen",
+            false
+        );
+
+        if (!ja) {
             return;
         }
 

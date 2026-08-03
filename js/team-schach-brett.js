@@ -102,6 +102,49 @@ Object.assign(TEAM_SCHACH, {
             }
 
             /*
+             * Eine geliehene Figur (Fähigkeit „Friedhof"). Sie sieht aus wie
+             * eine eigene und zieht auch so — aber sie zerfällt. Ohne
+             * Kennzeichnung baut man eine Stellung darauf auf und wundert sich,
+             * wenn plötzlich die halbe Armee fehlt.
+             */
+            if (SCHACH.istGeliehen(stand, feld)) {
+                const rest = SCHACH.geliehene(stand)
+                    .find((eintrag) => eintrag.feld === feld);
+
+                zelle.classList.add("feld-geliehen");
+                zelle.title = "Geliehen: zerfällt in "
+                    + (rest.bis - stand.takt) + " Halbzügen";
+                zelle.setAttribute("aria-label",
+                    SCHACH.feldName(feld, breite, hoehe) + ", geliehene Figur");
+            }
+
+            /*
+             * Eine Mauer auf diesem Feld. Sie trägt keine Figur und keinen
+             * Würfel — sie IST das Feld, solange sie steht. Die Ränder werden
+             * gesetzt, damit drei nebeneinander liegende Felder als EIN Block
+             * erscheinen und nicht als drei Kästchen.
+             */
+            if (SCHACH.mauerAuf(stand, feld)) {
+                const spalte = SCHACH.spalteVon(feld, breite);
+                const reihe = SCHACH.reiheVon(feld, breite);
+
+                zelle.classList.add("feld-mauer");
+
+                if (spalte === 0
+                    || !SCHACH.mauerAuf(stand, SCHACH._feld(stand, reihe, spalte - 1))) {
+                    zelle.classList.add("mauer-anfang");
+                }
+                if (spalte + 1 >= breite
+                    || !SCHACH.mauerAuf(stand, SCHACH._feld(stand, reihe, spalte + 1))) {
+                    zelle.classList.add("mauer-ende");
+                }
+
+                zelle.title = "Mauer: hier zieht niemand hindurch";
+                zelle.setAttribute("aria-label",
+                    SCHACH.feldName(feld, breite, hoehe) + ", Mauer");
+            }
+
+            /*
              * Wirkende Fähigkeiten am Brett zeigen: Ohne sie muss man sich
              * merken, welche Figur geschützt ist und welche festhängt — und
              * genau das vergisst man in einer Partie, die über Tage läuft.

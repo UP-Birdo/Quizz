@@ -248,6 +248,19 @@ const SCHACH = {
             rochadeKoenige: SCHACH._koenigStartfelder(variante),
             enPassant: "",
             halbzuege: 0,
+
+            /*
+             * Der Takt (seit v3.3): zählt JEDEN Halbzug und wird nie
+             * zurückgesetzt.
+             *
+             * Warum nicht `halbzuege`: Das ist der Zähler der
+             * Fünfzig-Züge-Regel — er springt bei jedem Bauernzug und jedem
+             * Schlagen auf 0 zurück. Als Uhr für „diese Mauer steht noch sechs
+             * Halbzüge" ist er damit unbrauchbar: Ein einziger Bauernzug würde
+             * die Mauer verewigen. Der Takt ist die ehrliche Uhr.
+             */
+            takt: 0,
+
             zugNummer: 1,
             extraZug: "",
             sprungAktiv: "",
@@ -278,7 +291,28 @@ const SCHACH = {
              * Neuladen und gilt auf jedem Gerät dieses Teams.
              */
             glasFarbe: "",
-            glasBis: 0
+            glasBis: 0,
+
+            /*
+             * Mauern auf dem Brett (seit v3.3): [{ felder: [a, b, c], bis }].
+             *
+             * `bis` ist ein Wert von `halbzuege` — die Mauer gilt, solange
+             * `halbzuege < bis`. Sie ist der erste Eintrag, der ein Feld sperrt,
+             * ohne dass dort eine Figur steht: Niemand betritt sie, niemand
+             * gleitet hindurch, aber ein Springer setzt darüber hinweg.
+             */
+            mauern: [],
+
+            /*
+             * Geliehene Figuren (seit v3.3, Fähigkeit „Friedhof"):
+             * [{ feld, bis }]. Sie stehen in der Farbe dessen auf dem Brett,
+             * der sie geholt hat, und ziehen wie seine eigenen — aber nur bis
+             * `bis` (ein Wert von `halbzuege`), dann zerfallen sie.
+             *
+             * Verfolgt wird das FELD, nicht die Figur: Zieht eine geliehene
+             * Figur, wandert ihr Eintrag mit (siehe `_geliehenNachfuehren`).
+             */
+            geliehen: []
         };
     },
 
@@ -375,6 +409,9 @@ const SCHACH = {
             && SCHACH.feldNummer(roh.enPassant, variante.breite, variante.hoehe) !== -1) {
             stand.enPassant = roh.enPassant;
         }
+        if (typeof roh.takt === "number" && isFinite(roh.takt) && roh.takt >= 0) {
+            stand.takt = Math.floor(roh.takt);
+        }
         if (typeof roh.halbzuege === "number" && isFinite(roh.halbzuege) && roh.halbzuege >= 0) {
             stand.halbzuege = Math.floor(roh.halbzuege);
         }
@@ -422,7 +459,105 @@ const SCHACH = {
             stand.glasBis = roh.glasBis;
         }
 
+        if (Array.isArray(roh.mauern)) {
+            stand.mauern = roh.mauern
+                .filter((eintrag) => eintrag && Array.isArray(eintrag.felder)
+                    && Number.isInteger(eintrag.bis) && eintrag.bis > 0)
+                .map((eintrag) => ({
+                    felder: eintrag.felder
+                        .filter((feld) => Number.isInteger(feld) && feld >= 0 && feld < felder),
+                    bis: eintrag.bis
+                }))
+                .filter((eintrag) => eintrag.felder.length > 0);
+        }
+
+        if (Array.isArray(roh.geliehen)) {
+            stand.geliehen = roh.geliehen
+                .filter((eintrag) => eintrag
+                    && Number.isInteger(eintrag.feld) && eintrag.feld >= 0
+                    && eintrag.feld < felder
+                    && Number.isInteger(eintrag.bis) && eintrag.bis > 0)
+                .map((eintrag) => ({ feld: eintrag.feld, bis: eintrag.bis }));
+        }
+
         return stand;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Mauern (seit v3.3)
+     *
+     * Eine Mauer sperrt Felder, ohne dass dort eine Figur steht. Sie gehört
+     * keiner Seite: Sie behindert beide gleichermassen — auch den, der sie
+     * gelegt hat. Das ist Absicht, sonst wäre sie eine Waffe statt eines
+     * Hindernisses.
+     * ---------------------------------------------------------------- */
+
+    /* Wie lange eine Mauer steht, gerechnet in Halbzügen. */
+    MAUER_HALBZUEGE: 6,
+
+    /* Wie viele Felder eine Mauer breit ist. */
+    MAUER_LAENGE: 3,
+
+    /* Die Mauern, die JETZT noch stehen. Abgelaufene zählen nicht mehr mit. */
+    mauern(stand) {
+        if (!Array.isArray(stand.mauern)) {
+            return [];
+        }
+        return stand.mauern.filter((eintrag) => eintrag.bis > stand.takt);
+    },
+
+    /* Liegt auf diesem Feld eine Mauer? */
+    mauerAuf(stand, feld) {
+        return SCHACH.mauern(stand)
+            .some((eintrag) => eintrag.felder.indexOf(feld) !== -1);
+    },
+
+    /*
+     * Eine Mauer legen: Das angetippte Feld ist ihr LINKES Ende, sie läuft von
+     * dort nach rechts über `MAUER_LAENGE` Felder derselben Reihe.
+     *
+     * Warum das linke Ende und nicht die Mitte: Am Rand gäbe es für die Mitte
+     * keine gültige Lage, und eine Fähigkeit, die je nach Feld etwas anderes
+     * tut, ist nicht vorhersagbar. So zeigen die angebotenen Zielfelder genau
+     * die möglichen Startpunkte — was man antippt, bekommt man auch.
+     */
+    mauerLegen(stand, feld) {
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        if (feld < 0 || feld >= SCHACH.felderVon(stand)) {
+            return null;
+        }
+        if (spalte + SCHACH.MAUER_LAENGE > breite) {
+            return null;
+        }
+
+        const felder = [];
+        for (let schritt = 0; schritt < SCHACH.MAUER_LAENGE; schritt++) {
+            const ziel = SCHACH._feld(stand, reihe, spalte + schritt);
+
+            /* Frei heisst: keine Figur UND keine andere Mauer. */
+            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.mauerAuf(stand, ziel)) {
+                return null;
+            }
+            felder.push(ziel);
+        }
+
+        /* Nur die noch stehenden übernehmen — so räumt sich die Liste beim
+           Legen von selbst auf. */
+        const mauern = SCHACH.mauern(stand).concat([{
+            felder: felder,
+            bis: stand.takt + SCHACH.MAUER_HALBZUEGE
+        }]);
+
+        return {
+            stand: Object.assign({}, stand, { mauern: mauern }),
+            felder: felder,
+            text: "Mauer auf " + SCHACH.feldName(felder[0], breite, SCHACH.hoeheVon(stand))
+                + " bis " + SCHACH.feldName(felder[felder.length - 1], breite,
+                    SCHACH.hoeheVon(stand))
+        };
     },
 
     figurAuf(stand, feld) {
@@ -490,6 +625,17 @@ const SCHACH = {
         }
 
         let roh = SCHACH._rohzuege(stand, von);
+
+        /*
+         * Auf eine Mauer zieht niemand — auch kein Springer.
+         *
+         * Dass ein Springer trotzdem DARÜBER hinwegkommt, ergibt sich von
+         * selbst: Er fragt nie nach den Feldern dazwischen. Umgekehrt bleiben
+         * Turm, Läufer und Dame schon im `_strahlzuege` davor stehen. Hier ist
+         * deshalb nur noch das Zielfeld zu sperren — eine einzige Regel für
+         * alle Figuren statt einer Sonderbehandlung je Gangart.
+         */
+        roh = roh.filter((zug) => !SCHACH.mauerAuf(stand, zug.nach));
 
         /* Fähigkeit Schutzschild: Die geschützte Figur lässt sich nicht
            schlagen — der Gegner kann es gar nicht erst versuchen. */
@@ -685,6 +831,12 @@ const SCHACH = {
                 const ziel = SCHACH._feld(stand, r, s);
                 const dort = SCHACH.figurAuf(stand, ziel);
 
+                /* Eine Mauer stoppt den Strahl wie eine Figur — nur lässt sie
+                   sich nicht schlagen, der Zug endet also davor. */
+                if (SCHACH.mauerAuf(stand, ziel)) {
+                    break;
+                }
+
                 if (dort === ".") {
                     liste.push(SCHACH._zug(stand, von, ziel));
                 } else {
@@ -837,6 +989,25 @@ const SCHACH = {
                 continue;
             }
 
+            /*
+             * Eine Mauer im Weg zählt wie eine Figur — auch hier gilt: Nur der
+             * Springer setzt darüber hinweg, und der rochiert nicht. Geprüft
+             * werden die Felder ZWISCHEN beiden und die beiden Zielfelder.
+             */
+            let mauerImWeg = false;
+            for (let lauf = spalte + richtung; lauf !== turmSpalte; lauf += richtung) {
+                if (SCHACH.mauerAuf(stand, SCHACH._feld(stand, reihe, lauf))) {
+                    mauerImWeg = true;
+                    break;
+                }
+            }
+            if (mauerImWeg || SCHACH.mauerAuf(stand, weg.zielFeld)
+                || SCHACH.mauerAuf(stand, weg.turmZiel)) {
+                weg.grund = "Eine Mauer steht im Weg.";
+                wege.push(weg);
+                continue;
+            }
+
             /* Auf Brettern ohne Schach entfällt die Bedrohungsprüfung. */
             if (!variante.koenigSchlagbar) {
                 if (SCHACH.imSchach(stand, farbe)) {
@@ -924,11 +1095,18 @@ const SCHACH = {
             }
         };
 
-        /* Ein Feld vor. */
+        /*
+         * Ein Feld vor.
+         *
+         * Die Mauer muss hier ausdrücklich geprüft werden: Der Filter in
+         * `zuege()` sperrt nur das ZIELFELD, und beim Doppelschritt liegt das
+         * dahinter. Ohne diese Prüfung setzte ein Bauer über eine Mauer hinweg
+         * — das darf nur der Springer.
+         */
         if (SCHACH._imBrett(stand, reihe + richtung, spalte)) {
             const einsVor = SCHACH._feld(stand, reihe + richtung, spalte);
 
-            if (SCHACH.figurAuf(stand, einsVor) === ".") {
+            if (SCHACH.figurAuf(stand, einsVor) === "." && !SCHACH.mauerAuf(stand, einsVor)) {
                 anhaengen(SCHACH._zug(stand, von, einsVor));
 
                 /* Zwei Felder aus der Grundstellung. */
@@ -955,8 +1133,17 @@ const SCHACH = {
                 anhaengen(SCHACH._zug(stand, von, ziel));
             } else if (dort === "." && stand.enPassant
                 && SCHACH.feldNummer(stand.enPassant, breite, hoehe) === ziel) {
-                /* En passant: schlägt den Bauern, der gerade zwei Felder zog. */
-                liste.push(SCHACH._zug(stand, von, ziel, { enPassant: true, schlaegt: true }));
+                /*
+                 * En passant: schlägt den Bauern, der gerade zwei Felder zog.
+                 * `enPassantFeld` ist das Feld, auf dem er WIRKLICH steht — es
+                 * ist nicht das Zielfeld. Wer sich merken will, wo eine Figur
+                 * fiel (Fähigkeit „Wiederbelebung"), braucht genau dieses.
+                 */
+                liste.push(SCHACH._zug(stand, von, ziel, {
+                    enPassant: true,
+                    schlaegt: true,
+                    enPassantFeld: SCHACH._feld(stand, reihe, s)
+                }));
             }
         }
 
@@ -1159,6 +1346,7 @@ const SCHACH = {
             rochadeKoenige: stand.rochadeKoenige.slice(),
             enPassant: "",
             halbzuege: stand.halbzuege + 1,
+            takt: stand.takt + 1,
             zugNummer: stand.zugNummer + ((stand.amZug === SCHACH.SCHWARZ && !nochmal) ? 1 : 0),
             extraZug: nochmal ? "" : stand.extraZug,
 
@@ -1183,7 +1371,15 @@ const SCHACH = {
 
             /* Das volle Glas läuft nach Zugzähler ab, nicht nach Farbe. */
             glasFarbe: stand.glasFarbe,
-            glasBis: stand.glasBis
+            glasBis: stand.glasBis,
+
+            /* Abgelaufene Mauern verschwinden hier — sonst wüchse die Liste
+               über die ganze Partie, obwohl längst nichts mehr steht. */
+            mauern: SCHACH.mauern(stand),
+
+            /* Geliehene Figuren wandern mit ihrem Zug mit; eine geschlagene
+               verliert ihren Eintrag. */
+            geliehen: SCHACH._geliehenNachfuehren(stand, zug.von, zug.nach)
         };
 
         if (stand.schildFeld >= 0 && stand.schildFarbe === stand.amZug
@@ -1276,10 +1472,19 @@ const SCHACH = {
             neu.enPassant = SCHACH.feldName(zwischen, breite, SCHACH.hoeheVon(stand));
         }
 
-        /* Zähler für die Fünfzig-Züge-Regel. */
+        /*
+         * Zähler für die Fünfzig-Züge-Regel. ACHTUNG: Er springt hier auf 0
+         * zurück und taugt deshalb NICHT als Uhr für ablaufende Wirkungen —
+         * dafür gibt es `takt`.
+         */
         if (art === "B" || zug.schlaegt) {
             neu.halbzuege = 0;
         }
+
+        /* Zerfallene Leihgaben verschwinden vom Brett (Fähigkeit „Friedhof"). */
+        const zerfall = SCHACH._zerfallAnwenden(neu);
+        neu.brett = zerfall.brett;
+        neu.geliehen = SCHACH.geliehene(neu);
 
         return neu;
     },
@@ -1428,40 +1633,77 @@ const SCHACH = {
      * hineinschieben, und die Partie endete durch eine Fähigkeit statt durch
      * einen Zug.
      */
+    /* Wie viele Reihen ein Erdbeben erfasst. */
+    ERDBEBEN_REIHEN: 3,
+
+    /*
+     * Erdbeben (seit v3.3 umgebaut): Es schiebt DREI ganze Reihen um ein Feld
+     * zur Seite.
+     *
+     * Das angetippte Feld sagt beides:
+     *   - seine Reihe ist die MITTLERE der drei (am Rand entsprechend weniger),
+     *   - seine Spalte sagt die RICHTUNG: linke Bretthälfte nach links, rechte
+     *     nach rechts. Dasselbe Muster wie beim Nudelholz, wo oben und unten
+     *     die Richtung bestimmen — ein Tipp beantwortet beide Fragen.
+     *
+     * DIE REIHENFOLGE IST DIE GANZE ARBEIT.
+     * Verschiebt man nach rechts, muss die Figur GANZ RECHTS zuerst gehen: Erst
+     * dann wird das Feld frei, in das ihr Nachbar nachrückt. Läuft man
+     * andersherum, überschreibt die erste Figur ihren Nachbarn — dieselbe
+     * Falle wie bei der Rochade auf dem 6er-Brett (siehe DECISIONS).
+     *
+     * Wer nicht kann, bleibt stehen: die Figur am Rand, und jede, hinter der
+     * sich ein voller Block bis zum Rand staut. Die anderen rücken auf wie eine
+     * Schlange, eine nach der anderen.
+     *
+     * Könige bleiben stehen — sonst liesse sich ein König aus dem Schach oder
+     * in ein Schach hinein schieben, ohne dass jemand einen Zug macht.
+     */
     erdbeben(stand, feld) {
         const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
         const reihe = SCHACH.reiheVon(feld, breite);
         const spalte = SCHACH.spalteVon(feld, breite);
 
+        /* Linke Hälfte schiebt nach links, rechte nach rechts. */
+        const richtung = (spalte < breite / 2) ? -1 : 1;
+
+        /* Die mittlere Reihe ist die angetippte; oben und unten je eine dazu,
+           soweit das Brett reicht. */
+        const halb = Math.floor(SCHACH.ERDBEBEN_REIHEN / 2);
         let brett = stand.brett;
         const felder = [];
         const wege = [];
 
-        for (let dr = -1; dr <= 1; dr++) {
-            for (let ds = -1; ds <= 1; ds++) {
-                if (dr === 0 && ds === 0) {
-                    continue;
-                }
-                const r = reihe + dr;
-                const s = spalte + ds;
-                if (!SCHACH._imBrett(stand, r, s)) {
-                    continue;
-                }
+        for (let r = reihe - halb; r <= reihe + halb; r++) {
+            if (r < 0 || r >= hoehe) {
+                continue;
+            }
 
+            /*
+             * Gegen die Schubrichtung durchlaufen: nach rechts geschoben
+             * beginnt es bei der rechten Spalte.
+             */
+            const start = (richtung === 1) ? breite - 1 : 0;
+            const ende = (richtung === 1) ? -1 : breite;
+
+            for (let s = start; s !== ende; s -= richtung) {
                 const von = SCHACH._feld(stand, r, s);
                 const figur = brett[von];
+
                 if (figur === "." || SCHACH.artVon(figur) === "K") {
                     continue;
                 }
 
-                /* Ein Feld weiter in derselben Richtung. */
-                const zielR = r + dr;
-                const zielS = s + ds;
-                if (!SCHACH._imBrett(stand, zielR, zielS)) {
+                const zielS = s + richtung;
+                if (zielS < 0 || zielS >= breite) {
                     continue;
                 }
-                const ziel = SCHACH._feld(stand, zielR, zielS);
-                if (brett[ziel] !== ".") {
+
+                const ziel = SCHACH._feld(stand, r, zielS);
+
+                /* Besetzt oder vermauert: Diese Figur bleibt, wo sie ist. */
+                if (brett[ziel] !== "." || SCHACH.mauerAuf(stand, ziel)) {
                     continue;
                 }
 
@@ -1477,7 +1719,12 @@ const SCHACH = {
         }
 
         const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
-        return { stand: neu, felder: felder, wege: wege, text: "Erdbeben" };
+        return {
+            stand: neu,
+            felder: felder,
+            wege: wege,
+            text: "Erdbeben nach " + ((richtung === 1) ? "rechts" : "links")
+        };
     },
 
     /*
@@ -1583,6 +1830,184 @@ const SCHACH = {
         }
 
         return null;
+    },
+
+    /*
+     * Den Zug abgeben, ohne zu ziehen (seit v3.3).
+     *
+     * Gebraucht für Fähigkeiten mit `beendetZug`: Sie wirken aufs Brett und
+     * beenden damit den Zug, es bewegt sich aber keine Figur. Was hier alles
+     * passiert, muss zu `_ausfuehren` passen — deshalb steht es HIER in den
+     * Regeln und nicht in schach-runde.js:
+     *
+     *   - die andere Seite kommt an den Zug,
+     *   - die Zugnummer wächst, wenn Schwarz fertig ist,
+     *   - `enPassant` verfällt (das Recht gilt nur unmittelbar danach),
+     *   - ein zusätzliches Zugmuster verfällt, weil der Zug vorbei ist, ohne
+     *     dass es benutzt wurde.
+     *
+     * NICHT angefasst werden Schild, Fessel und Frost: Sie laufen nach dem Zug
+     * der BETROFFENEN Seite ab, und die war hier nicht dran.
+     */
+    zugAbgeben(stand) {
+        const nachher = SCHACH.gegner(stand.amZug);
+
+        const weiter = Object.assign({}, stand, {
+            amZug: nachher,
+            enPassant: "",
+            halbzuege: stand.halbzuege + 1,
+            takt: stand.takt + 1,
+            zugNummer: stand.zugNummer
+                + ((stand.amZug === SCHACH.SCHWARZ) ? 1 : 0),
+            zusatzFarbe: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzFarbe,
+            zusatzMuster: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzMuster,
+            sprungAktiv: "",
+            mauern: SCHACH.mauern(stand),
+            geliehen: SCHACH.geliehene(stand)
+        });
+
+        /* Erst zählen, dann zerfallen lassen — sonst bliebe eine Leihgabe
+           einen Halbzug länger, als versprochen. */
+        const zerfall = SCHACH._zerfallAnwenden(weiter);
+        weiter.brett = zerfall.brett;
+        weiter.geliehen = SCHACH.geliehene(weiter);
+
+        return weiter;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Friedhof (seit v3.3)
+     *
+     * Gefallene GEGNER stehen auf einem 2×2-Feld wieder auf — in DEINER Farbe,
+     * für ein paar Züge. Danach zerfallen sie.
+     *
+     * Die eigentliche Schwierigkeit ist nicht das Aufstellen, sondern das
+     * Mitführen: Eine geliehene Figur zieht wie jede andere, also muss ihr
+     * Eintrag ihr über das Brett folgen. Deshalb steht hier `_geliehenNachfuehren`
+     * und wird von JEDER Stelle gerufen, die eine Figur bewegt.
+     * ---------------------------------------------------------------- */
+
+    /* Wie lange geliehene Figuren bleiben, in Halbzügen. */
+    FRIEDHOF_HALBZUEGE: 8,
+
+    /* Kantenlänge des Feldes, auf dem sie erscheinen. */
+    FRIEDHOF_KANTE: 2,
+
+    /* Die geliehenen Figuren, die JETZT noch stehen. */
+    geliehene(stand) {
+        if (!Array.isArray(stand.geliehen)) {
+            return [];
+        }
+        return stand.geliehen.filter((eintrag) => eintrag.bis > stand.takt);
+    },
+
+    /* Ist die Figur auf diesem Feld geliehen? */
+    istGeliehen(stand, feld) {
+        return SCHACH.geliehene(stand).some((eintrag) => eintrag.feld === feld);
+    },
+
+    /*
+     * Führt die Einträge über einen Zug hinweg nach:
+     *   - zieht eine geliehene Figur, wandert ihr Eintrag mit,
+     *   - wird eine geliehene Figur geschlagen, verfällt ihr Eintrag,
+     *   - abgelaufene verschwinden.
+     *
+     * `nach` darf -1 sein — dann wurde nur geräumt (Handel, Zerfall).
+     */
+    _geliehenNachfuehren(stand, von, nach) {
+        return SCHACH.geliehene(stand)
+            /* Was auf dem Zielfeld stand, ist geschlagen worden. */
+            .filter((eintrag) => eintrag.feld !== nach || eintrag.feld === von)
+            .map((eintrag) => (eintrag.feld === von && nach >= 0)
+                ? { feld: nach, bis: eintrag.bis }
+                : eintrag);
+    },
+
+    /*
+     * Nimmt zerfallene Leihgaben vom Brett. Liefert { brett, felder } —
+     * `felder` sind die Stellen, an denen etwas verschwunden ist.
+     *
+     * Gerufen wird das NACH dem Hochzählen von `halbzuege`, damit eine Figur
+     * genau so viele Züge bleibt, wie versprochen.
+     */
+    _zerfallAnwenden(stand) {
+        const felder = [];
+        let brett = stand.brett;
+
+        for (const eintrag of (stand.geliehen || [])) {
+            if (eintrag.bis <= stand.takt && SCHACH.figurAuf(stand, eintrag.feld) !== ".") {
+                brett = SCHACH._brettMit(brett, eintrag.feld, ".");
+                felder.push(eintrag.feld);
+            }
+        }
+
+        return { brett: brett, felder: felder };
+    },
+
+    /*
+     * Den Friedhof öffnen: `arten` sind die Figuren, die aufstehen sollen,
+     * `feld` ist die obere linke Ecke des 2×2-Blocks.
+     *
+     * Alle vier Felder müssen frei sein — auch wenn weniger Figuren aufstehen.
+     * Das ist Absicht: So sieht man am angebotenen Zielfeld sofort, wo Platz
+     * ist, ohne die Zahl der Gefallenen im Kopf zu haben.
+     */
+    friedhof(stand, farbe, feld, arten) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+        const kante = SCHACH.FRIEDHOF_KANTE;
+
+        if (!arten || arten.length === 0) {
+            return null;
+        }
+        if (reihe + kante > hoehe || spalte + kante > breite) {
+            return null;
+        }
+
+        const plaetze = [];
+        for (let dr = 0; dr < kante; dr++) {
+            for (let ds = 0; ds < kante; ds++) {
+                const ziel = SCHACH._feld(stand, reihe + dr, spalte + ds);
+
+                if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.mauerAuf(stand, ziel)) {
+                    return null;
+                }
+                plaetze.push(ziel);
+            }
+        }
+
+        let brett = stand.brett;
+        const geliehen = SCHACH.geliehene(stand).slice();
+        const felder = [];
+        const bis = stand.takt + SCHACH.FRIEDHOF_HALBZUEGE;
+
+        for (let nummer = 0; nummer < arten.length && nummer < plaetze.length; nummer++) {
+            const art = arten[nummer];
+
+            /* Könige stehen nie auf — sonst gäbe es zwei auf einer Seite, und
+               „Schachmatt" wäre nicht mehr eindeutig. */
+            if (art === "K" || SCHACH.artName(art) === "") {
+                continue;
+            }
+
+            const figur = (farbe === SCHACH.WEISS) ? art : art.toLowerCase();
+            brett = SCHACH._brettMit(brett, plaetze[nummer], figur);
+            geliehen.push({ feld: plaetze[nummer], bis: bis });
+            felder.push(plaetze[nummer]);
+        }
+
+        if (felder.length === 0) {
+            return null;
+        }
+
+        return {
+            stand: Object.assign({}, stand, { brett: brett, geliehen: geliehen }),
+            felder: felder,
+            text: felder.length + ((felder.length === 1)
+                ? " Figur steht auf" : " Figuren stehen auf")
+        };
     },
 
     /* Eine verlorene Figur kehrt auf ein freies Feld zurück. */

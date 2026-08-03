@@ -121,9 +121,23 @@ if ($Schliessen) {
         $adresse = "https://api.github.com/repos/$Besitzer/$Repository/issues/$nummer"
         $koerper = @{ state = "closed" } | ConvertTo-Json
 
-        Invoke-RestMethod -Uri $adresse -Method Patch -Headers $kopf -Body $koerper `
-                          -ContentType "application/json" | Out-Null
-        Write-Host "Eintrag #$nummer geschlossen." -ForegroundColor Green
+        try {
+            Invoke-RestMethod -Uri $adresse -Method Patch -Headers $kopf -Body $koerper `
+                              -ContentType "application/json" | Out-Null
+            Write-Host "Eintrag #$nummer geschlossen." -ForegroundColor Green
+        } catch {
+            # 403 heisst hier fast immer: Der Token darf Dateien schreiben
+            # (dafuer wurde er angelegt), aber keine Eintraege aendern. Das ist
+            # kein Fehler im Skript, sondern eine Einstellung auf GitHub.
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 403) {
+                Write-Host "Eintrag #$nummer NICHT geschlossen: Der Token darf keine Eintraege aendern." -ForegroundColor Yellow
+                Write-Host "  Abhilfe: auf github.com im Token die Berechtigung 'Issues: Read and write' ergaenzen," -ForegroundColor Yellow
+                Write-Host "  danach 'tools\Deploy-Quizz.ps1 -SetToken' erneut ausfuehren. Oder den Eintrag von Hand schliessen." -ForegroundColor Yellow
+                Write-Host "  Das Abholen ist davon nicht betroffen - es braucht keinen Token." -ForegroundColor Yellow
+            } else {
+                Write-Host "Eintrag #$nummer NICHT geschlossen: $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
     }
     exit 0
 }

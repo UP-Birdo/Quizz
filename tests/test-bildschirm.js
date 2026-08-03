@@ -67,6 +67,26 @@ function brettSuchen() {
     return brett;
 }
 
+/*
+ * Die Zeilen der Fähigkeiten-Karte (eine je Farbe). Gesucht wird die Klasse,
+ * nicht die Überschrift: Der sichtbare Text darf sich ändern, die Klasse trägt
+ * die Bedeutung.
+ */
+function faehigkeitenZeilen() {
+    const gefunden = [];
+    const suchen = (element) => {
+        for (const kind of element.kinder || []) {
+            if (String(kind.className || "").indexOf("faehigkeit-zeile") !== -1) {
+                gefunden.push(kind);
+            }
+            suchen(kind);
+        }
+    };
+
+    suchen(TEAM_SCHACH.wurzelEl);
+    return gefunden;
+}
+
 /* ------------------------------------------------------------------ *
  * Das nachgebaute DOM
  *
@@ -627,6 +647,40 @@ pruefe("Ein Wuerfel auf dem Brett wird gezeichnet", () => {
     if (wuerfel.kinder.length !== 4) {
         throw new Error("Wuerfel hat " + wuerfel.kinder.length + " Teile statt 4");
     }
+});
+
+/*
+ * Der Fehler aus v3.3: Die Karte hing an der Spielart statt am Schalter der
+ * Partie. Wer klassisch mit zugeschalteten Wuerfeln spielte, sah die Wuerfel
+ * auf dem Brett, konnte das Eingesammelte aber nirgends einsetzen.
+ */
+pruefe("Klassisch mit zugeschalteten Wuerfeln zeigt die Faehigkeiten-Karte", () => {
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Klassisch mit Wuerfeln", 6100,
+        { faehigkeiten: true, seltenheitZeigen: true, einigkeit: false });
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 6100);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 6100);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 6100);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 6100);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 6100);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    if (faehigkeitenZeilen().length === 0) {
+        throw new Error("keine Faehigkeiten-Karte trotz eingeschalteter Wuerfel");
+    }
+});
+
+pruefe("Klassisch ohne Wuerfel zeigt die Karte weiterhin nicht", () => {
+    TEAM_SCHACH.partieOeffnen(kennungen.standard);
+
+    if (faehigkeitenZeilen().length !== 0) {
+        throw new Error("Faehigkeiten-Karte trotz abgeschalteter Wuerfel");
+    }
+
+    /* Ausgangslage fuer die folgenden Tests wiederherstellen. */
+    TEAM_SCHACH.partieOeffnen(kennungen.faehigkeiten);
 });
 
 pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
