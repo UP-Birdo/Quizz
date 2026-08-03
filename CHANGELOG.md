@@ -3,6 +3,48 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.5 — 2026-08-03
+
+Sechs Punkte aus dem Eingangskorb — einer für die Bedienung, drei neue
+Fähigkeiten, ein Umbau und eine Kleinigkeit, die es in sich hatte.
+
+- **Wer am Zug ist, bleibt auf dem Handy sichtbar.** Die Leiste über dem Brett
+  klebt jetzt oben fest. Vorher hatte man beim Spielen nur noch das Brett vor
+  sich und musste hochscrollen, um zu sehen, wer dran ist.
+- **Neue Fähigkeit „Wiederbelebung" (legendär).** Eine eigene geschlagene Figur
+  steht genau dort wieder auf, wo sie fiel — wenn das Feld frei ist. Sie kostet
+  den ganzen Zug: Danach ist der Gegner dran. Dafür merkt sich der Spielstand ab
+  jetzt, WO jede Figur gefallen ist.
+- **Neue Fähigkeit „Mauer" (ungewöhnlich).** Ein blauer Riegel über drei freie
+  Felder derselben Reihe; das angetippte Feld ist sein linkes Ende. Niemand
+  zieht hindurch — Türme, Läufer und Damen bleiben davor stehen, Bauern kommen
+  weder ein noch zwei Felder vorbei, und die Rochade fällt aus. Nur Springer
+  setzen darüber hinweg. Nach ein paar Zügen zerfällt sie. Sie gehört keiner
+  Seite: Sie behindert auch den, der sie gelegt hat.
+- **Neue Fähigkeit „Friedhof" (legendär).** Bis zu vier gefallene GEGNER stehen
+  auf einem freien 2×2-Feld wieder auf — in deiner Farbe, und du ziehst mit
+  ihnen wie mit eigenen. Nach acht Halbzügen zerfallen sie. Am Brett sind sie
+  gestrichelt umrandet, damit man nicht auf sie baut.
+- **Neue Fähigkeit „Händler" (episch).** Ein Angebot zum Tauschen — etwa fünf
+  Bauern gegen einen Turm, oder umgekehrt. Elf Angebote, keines bringt mehr als
+  einen Punkt Vorsprung; welches kommt, hängt am Spielstand und ist auf jedem
+  Gerät dasselbe. **Ablehnen kostet nichts**: Die Fähigkeit bleibt dir, und nach
+  dem nächsten Zug bietet er etwas anderes an. Der Dialog sagt vorher genau,
+  welche Figuren weggehen und wo die neuen erscheinen.
+- **Erdbeben wurde umgebaut.** Es schiebt nicht mehr die Nachbarfelder nach
+  aussen, sondern **drei ganze Reihen um ein Feld zur Seite** — die angetippte
+  und je eine darüber und darunter. Tippst du links aufs Brett, geht es nach
+  links, tippst du rechts, nach rechts. Wer am Rand steht oder ansteht, bleibt;
+  alle anderen rücken nacheinander auf wie eine Schlange.
+- **Der Zugpfeil zeigt beim Springer das L** statt einer Diagonale über Felder,
+  die er nie berührt hat. Gilt auch für die Fähigkeit „Sprung".
+
+**Unter der Haube, aber wichtig:** Der Spielstand hat einen neuen Zähler
+`takt`, der jeden Halbzug mitzählt. Der vorhandene `halbzuege` ist der Zähler
+der Fünfzig-Züge-Regel und springt bei jedem Bauernzug auf null zurück — als Uhr
+für Mauern und geliehene Figuren hätte er dazu geführt, dass ein einziger
+Bauernzug sie verewigt.
+
 ## v3.4 — 2026-08-03
 
 - **Die Fähigkeiten-Karte fehlte, wenn man die Würfel zuschaltete.** Wer eine

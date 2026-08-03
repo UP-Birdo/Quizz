@@ -1119,6 +1119,58 @@ weil jede CSS-Regel ein Präsentationsattribut überstimmt. Deshalb die Klasse
 `.zug-pfeil-oben` stehen: gleiche Spezifität, und bei Gleichstand gewinnt die
 spätere Regel.
 
+## Die drei neuen Fähigkeiten und der Erdbeben-Umbau (v3.5)
+
+**Warum es einen Schalter `beendetZug` braucht.** Bis v3.3 liess jede Fähigkeit
+einen am Zug: Man setzte sie ein UND zog danach. Für Sprung oder Schutzschild ist
+das richtig — sie verändern den Zug, den man ohnehin macht. Für die drei neuen
+wäre es masslos: Wer eine geschlagene Dame zurückholt und im selben Atemzug mit
+ihr angreift, hat nicht eine Fähigkeit benutzt, sondern zwei Züge gemacht. Der
+Schalter steht deshalb an der Fähigkeit und nicht als Sonderfall im Ablauf.
+
+**Warum der Händler seine Figuren selbst aussucht.** Der Wunsch klang nach „du
+wählst fünf Bauern aus". Gebaut ist es anders: Der Händler nimmt die HINTERSTEN
+Figuren der geforderten Art. Der Grund ist die Bedienung — fünf Felder
+nacheinander antippen heisst fünf Gelegenheiten, sich zu vertippen, und beim
+letzten Fehlgriff ist der Handel dahin. Genommen wird ohnehin fast immer das,
+was am weitesten hinten steht. Der Dialog sagt vorher genau, welche Felder es
+sind; wer nicht einverstanden ist, lehnt ab.
+
+**Warum Ablehnen nichts kostet.** Das Angebot hängt am Zugzähler, nicht am
+Zufall des Moments: Es ist auf jedem Gerät dasselbe und ändert sich erst mit dem
+nächsten Zug. Damit kann niemand so lange neu würfeln, bis das Angebot passt —
+und deshalb darf Ablehnen die Fähigkeit unangetastet lassen.
+
+**Warum das Erdbeben umgebaut und nicht ergänzt wurde.** Es schob bisher die
+acht Nachbarfelder nach aussen. Der Wunsch war etwas anderes: drei ganze Reihen
+zur Seite. Zwei Fähigkeiten mit demselben Namen wären verwirrend gewesen, und
+eine zusätzliche hätte die Tabelle aufgebläht, ohne dass jemand die alte noch
+gewollt hätte. Fähigkeiten haben keinen gespeicherten Zustand — ein Umbau
+bricht also keine laufende Partie.
+
+**Die eigentliche Arbeit am Erdbeben ist die Reihenfolge.** Wer nach rechts
+schiebt, muss die Figur GANZ RECHTS zuerst bewegen: Erst dann wird das Feld
+frei, in das ihr Nachbar nachrückt. Läuft man andersherum, überschreibt die
+erste Figur ihren Nachbarn, und aus drei Figuren wird eine. Dieselbe Falle wie
+bei der Rochade auf dem 6er-Brett und beim Handel — überall dort, wo mehrere
+Figuren gleichzeitig ihre Felder tauschen. Ein Test stellt genau das nach.
+
+## Warum `halbzuege` keine Uhr ist (v3.5)
+
+Die teuerste Erkenntnis dieser Runde, und sie wäre fast unbemerkt geblieben.
+
+Mauern und geliehene Figuren sollten nach ein paar Zügen verschwinden. Der
+naheliegende Weg war `bis = stand.halbzuege + 6`. `halbzuege` ist aber der
+Zähler der **Fünfzig-Züge-Regel** — er springt bei jedem Bauernzug und jedem
+Schlagen auf 0 zurück. Eine Mauer wäre damit nach dem ersten Bauernzug
+unsterblich gewesen, und zwar auf eine Art, die im Spiel wie ein Zufall
+ausgesehen hätte: mal verschwindet sie, mal nicht.
+
+Aufgefallen ist es beim Schreiben des Zerfalls-Tests, nicht beim Lesen des
+Codes. Seitdem gibt es `stand.takt`, der wirklich jeden Halbzug zählt, und einen
+Test, der beide Zähler gegeneinander hält. **Wer eine neue Wirkung mit
+Ablaufzeit baut, nimmt `takt`.**
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

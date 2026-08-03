@@ -489,7 +489,14 @@ im Bildschirm noch im Ablauf eine Zeile:
 | `zugmuster` | Der nächste eigene Zug darf zusätzlich nach diesem Muster gehen. Keine Auswahl nötig. | Sprung, Ausweichen, Teleport |
 | `ablauf` | Greift in die Zugfolge ein. | Doppelzug |
 | `sofort` | Wirkt beim Einsetzen sofort aufs Brett. | Bauernschub |
-| `ziel` | Verlangt EIN angetipptes Feld; `zielArt` sagt, welches. | Verstärkung, Schutzschild, Fessel, Erdbeben, Wiedergeburt |
+| `ziel` | Verlangt EIN angetipptes Feld; `zielArt` sagt, welches. | Verstärkung, Schutzschild, Fessel, Erdbeben, Wiedergeburt, Mauer, Wiederbelebung, Friedhof |
+| `handel` | Zeigt ein Angebot und wirkt erst nach Zustimmung (seit v3.5). | Händler |
+
+Dazu ein Schalter, der für jede Art gilt: **`beendetZug: true`** — nach dem
+Einsetzen ist der Gegner dran. Ohne ihn bleibt man am Zug und muss noch ziehen,
+so war es bis v3.3 bei allen Fähigkeiten. Für die, die Material ZURÜCKBRINGEN
+(Wiederbelebung, Friedhof, Händler), wäre das zu stark: Man bekäme Figuren
+geschenkt und dürfte im selben Atemzug damit angreifen.
 
 Die Wirkung liegt in Feldern des Standes und ist damit gespeichert und für alle
 sichtbar:
@@ -502,10 +509,53 @@ sichtbar:
 | `fesselFeld` / `fesselFarbe` | `zuege()` liefert für dieses Feld nichts. Verfällt nach dem nächsten Zug der gefesselten Seite. |
 
 **Warum König und Matt geschützt sind:** Das Schild wirkt nicht auf den König,
-der König wird nicht gefesselt, und das Erdbeben lässt Könige stehen. Andernfalls
-wäre „Schachmatt" nicht mehr eindeutig — dieselbe Überlegung, die beim
-Doppelbrett zum schlagbaren König geführt hat. Diese drei Ausnahmen sind keine
-Bequemlichkeit, sondern die Bedingung dafür, dass die Spielart noch Schach ist.
+der König wird nicht gefesselt, das Erdbeben lässt Könige stehen, und der
+Friedhof lässt keinen König aufstehen. Andernfalls wäre „Schachmatt" nicht mehr
+eindeutig — dieselbe Überlegung, die beim Doppelbrett zum schlagbaren König
+geführt hat. Diese Ausnahmen sind keine Bequemlichkeit, sondern die Bedingung
+dafür, dass die Spielart noch Schach ist.
+
+### Der Takt — die Uhr für ablaufende Wirkungen (seit v3.5)
+
+`stand.takt` zählt JEDEN Halbzug und wird nie zurückgesetzt. Er ist die
+Grundlage für alles, was nach einer Weile von selbst verschwindet: Mauern und
+geliehene Figuren.
+
+**Warum nicht `halbzuege`:** Das ist der Zähler der Fünfzig-Züge-Regel — er
+springt bei jedem Bauernzug und jedem Schlagen auf 0 zurück. Eine Mauer mit
+`bis = halbzuege + 6` wäre nach einem einzigen Bauernzug unsterblich gewesen.
+Wer eine neue Wirkung mit Ablaufzeit baut, nimmt `takt`; ein Test hält den
+Unterschied fest.
+
+### Mauern (seit v3.5)
+
+`stand.mauern` ist eine Liste `[{ felder, bis }]`. Eine Mauer sperrt Felder,
+ohne dass dort eine Figur steht, und sie gehört **keiner Seite** — sie behindert
+beide gleichermassen, auch den, der sie gelegt hat.
+
+Die Regel steckt an drei Stellen, und alle drei sind nötig:
+
+1. **`_strahlzuege`** bricht vor einer Mauer ab — Turm, Läufer und Dame kommen
+   nicht hindurch.
+2. **`zuege()`** filtert jedes Zielfeld weg, auf dem eine Mauer liegt. Das ist
+   die eine Regel für ALLE Figuren; dass ein Springer trotzdem darüber
+   hinwegkommt, ergibt sich von selbst, weil er nie nach den Feldern dazwischen
+   fragt.
+3. **`_bauernzuege` und `_rochadeWege`** prüfen zusätzlich die Felder, über die
+   hinweg gezogen wird. Ohne sie übersprang ein Bauer beim Doppelschritt die
+   Mauer, und die Rochade zog hindurch — beide Lücken sind beim Bauen
+   aufgefallen und durch Tests festgenagelt.
+
+### Geliehene Figuren (Friedhof, seit v3.5)
+
+`stand.geliehen` ist eine Liste `[{ feld, bis }]`. Die Figuren stehen in der
+Farbe dessen auf dem Brett, der sie geholt hat, und ziehen wie seine eigenen.
+
+**Verfolgt wird das FELD, nicht die Figur.** Deshalb muss jede Stelle, die etwas
+bewegt, den Eintrag nachführen (`_geliehenNachfuehren`): Zieht eine geliehene
+Figur, wandert ihr Eintrag mit; wird sie geschlagen, verfällt er. Der Zerfall
+(`_zerfallAnwenden`) läuft NACH dem Hochzählen des Takts, sonst bliebe eine
+Figur einen Halbzug länger als versprochen.
 
 ### Unglückswürfel
 
