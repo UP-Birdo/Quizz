@@ -398,8 +398,16 @@ pruefe("Wuerfel erscheinen ueber die Zeit, ohne festen Takt", () => {
 
     for (const eintrag of runde.bonus) {
         wahr(SCHACH.figurAuf(runde.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
-        wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]
-            || !!SCHACH_VARIANTEN.PECH[eintrag.art], "traegt einen bekannten Inhalt");
+
+        /* Seit v3.6 traegt ein Faehigkeitswuerfel nur seine STUFE — was drin
+           ist, entscheidet sich erst beim Einsammeln. Ein Unglueckswuerfel
+           traegt weiterhin seine Art. */
+        if (eintrag.pech) {
+            wahr(!!SCHACH_VARIANTEN.PECH[eintrag.art], "Unglueck mit bekannter Art");
+        } else {
+            wahr(SCHACH_VARIANTEN.STUFEN.some((stufe) => stufe.id === eintrag.stufe),
+                "traegt eine bekannte Stufe");
+        }
     }
 
     /* Kein Feld doppelt belegt. */
@@ -590,12 +598,258 @@ pruefe("Ausweichen: eine beliebige Figur zieht ein Feld weit", () => {
 
     const mit = einsetzen(runde, "ausweichen", -1);
     wahr(mit !== null, "eingesetzt");
-    gleich(mit.stand.zusatzMuster, "koenig", "Muster gesetzt");
+    gleich(mit.stand.zusatzMuster, "ausweichen", "Muster gesetzt");
 
     const ziele = SCHACH.zuege(mit.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach));
     wahr(ziele.indexOf("b2") !== -1, "jetzt auch ein Feld schraeg");
     wahr(ziele.indexOf("a2") !== -1, "und weiterhin gerade");
+});
+
+pruefe("Ausweichen schlaegt nicht", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Weisser Turm a1, schwarzer Bauer schraeg daneben auf b2. */
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + ".b......"
+            + "T...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const mit = einsetzen(runde, "ausweichen", -1);
+    const ziele = SCHACH.zuege(mit.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+
+    wahr(ziele.indexOf("b2") === -1, "der besetzte Nachbar ist kein Ziel");
+    wahr(ziele.indexOf("a2") !== -1, "das freie Feld schon");
+});
+
+pruefe("Ausweichen geht auch, waehrend der Gegner am Zug ist", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand.amZug = "schwarz";
+
+    /* Anna ist im weissen Team; Schwarz ist am Zug. */
+    runde.faehigkeiten.weiss.push("ausweichen");
+
+    const neu = SCHACH_RUNDE.faehigkeitEinsetzen(
+        runde, "id-anna", "ausweichen", -1, "Anna", 3000);
+
+    wahr(neu !== null, "eingesetzt, obwohl Schwarz am Zug ist");
+    gleich(neu.stand.amZug, "schwarz", "Schwarz bleibt am Zug");
+    gleich(neu.stand.zusatzFarbe, "weiss", "das Muster gehoert Weiss");
+    gleich(neu.faehigkeiten.weiss.indexOf("ausweichen"), -1, "verbraucht");
+});
+
+pruefe("Andere Faehigkeiten gehen NICHT waehrend des Gegnerzugs", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand.amZug = "schwarz";
+    runde.faehigkeiten.weiss.push("sprung");
+
+    const neu = SCHACH_RUNDE.faehigkeitEinsetzen(
+        runde, "id-anna", "sprung", -1, "Anna", 3000);
+
+    gleich(neu, null, "abgewiesen");
+});
+
+/* ------------------------------------------------------------------ *
+ * Faehigkeiten und das Schach (seit v3.6)
+ * ------------------------------------------------------------------ */
+
+/*
+ * Weiss steht im Schach: schwarze Dame auf e8, weisser Koenig auf e1, die
+ * e-Linie ist frei. Der weisse Turm auf a1 kann nichts dagegen tun.
+ */
+function partieImSchach() {
+    const runde = faehigkeitenPartie();
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....d..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "B......."
+            + "T...K..k",
+        amZug: "weiss",
+        rochade: ""
+    });
+    return runde;
+}
+
+pruefe("Die Lage im Test ist wirklich Schach", () => {
+    wahr(SCHACH.imSchach(partieImSchach().stand, "weiss"), "Weiss steht im Schach");
+});
+
+pruefe("Im Schach ist keine Faehigkeit erlaubt, die den Zug beendet", () => {
+    /* Wiederbelebung beendet den Zug — danach waere der Koenig einfach weg. */
+    const runde = partieImSchach();
+    runde.gefallen.weiss.push({ art: "S", feld: SCHACH.feldNummer("b4") });
+
+    const neu = einsetzen(runde, "wiederbelebung", SCHACH.feldNummer("b4"));
+    gleich(neu, null, "abgewiesen");
+});
+
+pruefe("Im Schach bleibt erlaubt, was den Zug NICHT beendet", () => {
+    /* Sprung kostet keinen Zug — man muss danach ohnehin aus dem Schach
+       ziehen, und dabei kann er helfen. */
+    const neu = einsetzen(partieImSchach(), "sprung", -1);
+
+    wahr(neu !== null, "eingesetzt");
+    gleich(neu.stand.amZug, "weiss", "Weiss bleibt am Zug");
+});
+
+pruefe("Keine Faehigkeit darf den eigenen Koenig ins Schach stellen", () => {
+    /*
+     * Weisser Koenig e1, schwarzer Turm auf e3, dazwischen ein weisser Bauer
+     * auf e2. Der Bauernschub schiebt ihn weg — und legt den Koenig frei.
+     */
+    const runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....t..."
+            + "....B..."
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    wahr(!SCHACH.imSchach(runde.stand, "weiss"), "vorher steht Weiss nicht im Schach");
+    gleich(einsetzen(runde, "bauernschub", -1), null, "der Bauernschub ist abgewiesen");
+});
+
+/* ------------------------------------------------------------------ *
+ * Wuerfel einsammeln und ihr Inhalt (seit v3.6)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein Turm sammelt auch unterwegs ein", () => {
+    const runde = faehigkeitenPartie();
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    /* Ein Wuerfel auf a3 — der Turm zieht von a1 nach a5, also darueber. */
+    runde.bonus = [{ feld: SCHACH.feldNummer("a3"), art: "", stufe: "gruen" }];
+
+    const neu = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("a5"), "D", "Anna", 4000);
+
+    wahr(neu !== null, "gezogen");
+    gleich(neu.bonus.filter((eintrag) => eintrag.feld === SCHACH.feldNummer("a3")).length,
+        0, "der Wuerfel ist weg");
+    gleich(neu.faehigkeiten.weiss.length, 1, "eine Faehigkeit im Vorrat");
+});
+
+pruefe("Ein Springer sammelt unterwegs NICHT ein", () => {
+    const runde = faehigkeitenPartie();
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + ".S..K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    /* b2 und b3 liegen auf dem gezeichneten L von b1 nach c3 — betreten wird
+       aber nur c3. */
+    runde.bonus = [
+        { feld: SCHACH.feldNummer("b3"), art: "", stufe: "gruen" },
+        { feld: SCHACH.feldNummer("b2"), art: "", stufe: "gruen" }
+    ];
+
+    const neu = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("b1"), SCHACH.feldNummer("c3"), "D", "Anna", 4000);
+
+    wahr(neu !== null, "gezogen");
+    gleich(neu.bonus.length, 2, "beide Wuerfel liegen noch");
+    gleich(neu.faehigkeiten.weiss.length, 0, "nichts eingesammelt");
+});
+
+pruefe("Was man schon hat, kommt seltener nach", () => {
+    /*
+     * Ueber viele Ziehungen gemessen: Mit zwei Stueck „Sprung" im Vorrat muss
+     * er deutlich unter einem Drittel liegen (bei drei gewoehnlichen
+     * Faehigkeiten waere ein Drittel die Gleichverteilung).
+     */
+    const schritte = 3000;
+    let mitVorrat = 0;
+    let ohneVorrat = 0;
+
+    for (let nummer = 0; nummer < schritte; nummer++) {
+        const wert = nummer / schritte;
+
+        if (SCHACH_VARIANTEN.faehigkeitAusStufe("gruen", wert, []) === "sprung") {
+            ohneVorrat++;
+        }
+        if (SCHACH_VARIANTEN.faehigkeitAusStufe("gruen", wert,
+            ["sprung", "sprung"]) === "sprung") {
+            mitVorrat++;
+        }
+    }
+
+    const ohne = ohneVorrat / schritte * 100;
+    const mit = mitVorrat / schritte * 100;
+
+    wahr(Math.abs(ohne - 100 / 3) < 1, "ohne Vorrat gleichverteilt (" + ohne.toFixed(1) + ")");
+    wahr(mit < 2, "mit zwei Stueck fast nie (" + mit.toFixed(1) + ")");
+});
+
+pruefe("Bei Legendaer ist die Daempfung viel schwaecher", () => {
+    /*
+     * Der Grund steht in schach-varianten.js: Bei wenigen Faehigkeiten waere
+     * eine harte Daempfung dasselbe wie „du bekommst die anderen garantiert
+     * zuerst" — dann waere der Zufall weg.
+     */
+    const schritte = 3000;
+    let gruen = 0;
+    let gelb = 0;
+
+    const gruenArt = SCHACH_VARIANTEN.faehigkeitenDerStufe("gruen")[0];
+    const gelbArt = SCHACH_VARIANTEN.faehigkeitenDerStufe("gelb")[0];
+
+    for (let nummer = 0; nummer < schritte; nummer++) {
+        const wert = nummer / schritte;
+
+        if (SCHACH_VARIANTEN.faehigkeitAusStufe("gruen", wert, [gruenArt]) === gruenArt) {
+            gruen++;
+        }
+        if (SCHACH_VARIANTEN.faehigkeitAusStufe("gelb", wert, [gelbArt]) === gelbArt) {
+            gelb++;
+        }
+    }
+
+    wahr(gelb > gruen, "legendaer wiederholt sich eher als gewoehnlich ("
+        + gelb + " gegen " + gruen + ")");
 });
 
 pruefe("Teleport: eine Figur springt auf ein freies Feld im Umkreis", () => {

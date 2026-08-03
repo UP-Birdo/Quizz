@@ -38,9 +38,16 @@ Object.assign(TEAM_SCHACH, {
         brett.style.setProperty("--brett-spalten", String(breite));
         brett.style.setProperty("--brett-max", Math.min(64 * breite, 900) + "px");
 
+        /* Gemerkt für _figurGroesseSetzen: Die Schriftgröße der Figuren lässt
+           sich erst messen, wenn das Brett im Bildschirm steht. */
+        TEAM_SCHACH.brettEl = brett;
+
         const darfZiehen = SCHACH_RUNDE.darfZiehen(partie, person.id);
         const bonus = SCHACH_RUNDE.offeneBonusFelder(partie);
         const glas = TEAM_SCHACH._glasWirkt(partie, meinTeam);
+
+        /* Die Felder, über die zuletzt gezogen wurde — siehe _letzteSpur. */
+        const spur = TEAM_SCHACH._letzteSpur(partie);
 
         for (let anzeige = 0; anzeige < felder; anzeige++) {
             const feld = gedreht ? (felder - 1 - anzeige) : anzeige;
@@ -51,6 +58,21 @@ Object.assign(TEAM_SCHACH, {
                 + SCHACH.spalteVon(feld, breite)) % 2 === 0) ? "feld-hell" : "feld-dunkel");
             zelle.dataset.feld = String(feld);
             zelle.setAttribute("aria-label", SCHACH.feldName(feld, breite, hoehe));
+
+            /*
+             * Die Spur des letzten Zuges. Sie liegt VOR allem anderen, damit
+             * eine Zielmarkierung oder ein Schild sie überschreiben kann —
+             * was gerade möglich ist, ist wichtiger als das, was war.
+             */
+            if (spur.weg[feld]) {
+                zelle.classList.add(spur.pech ? "feld-spur-pech" : "feld-spur");
+                if (spur.enden[feld]) {
+                    zelle.classList.add("feld-spur-ende");
+                }
+            }
+            if (spur.wirkung[feld]) {
+                zelle.classList.add("feld-spur-wirkung");
+            }
 
             const figur = SCHACH.figurAuf(stand, feld);
             if (figur !== ".") {
@@ -85,9 +107,7 @@ Object.assign(TEAM_SCHACH, {
                  * er seine Stufenfarbe und das umgedrehte Fragezeichen.
                  */
                 const zeigen = (partie.regeln.seltenheitZeigen !== false);
-                const stufe = bonusHier.pech
-                    ? SCHACH_VARIANTEN.pechStufeVon(bonusHier.art)
-                    : SCHACH_VARIANTEN.stufeVon(bonusHier.art);
+                const stufe = SCHACH_RUNDE.bonusStufe(bonusHier);
 
                 zelle.classList.add("feld-bonus");
                 zelle.title = zeigen
@@ -97,7 +117,7 @@ Object.assign(TEAM_SCHACH, {
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
 
                 zelle.appendChild(TEAM_SCHACH._wuerfelBauen(
-                    zeigen ? bonusHier.art : "",
+                    zeigen ? stufe : SCHACH_VARIANTEN.STUFE_UNBEKANNT,
                     zeigen && bonusHier.pech));
             }
 
@@ -192,13 +212,13 @@ Object.assign(TEAM_SCHACH, {
             zelle.disabled = !darfZiehen;
             zelle.addEventListener("click", () => TEAM_SCHACH.feldAngetippt(partie, person, feld));
 
-            brett.appendChild(zelle);
-        }
+            /* Irgendein Feld genügt, um später die Feldbreite zu messen —
+               alle sind gleich gross (`aspect-ratio: 1 / 1`). */
+            if (anzeige === 0) {
+                TEAM_SCHACH.feldEl = zelle;
+            }
 
-        /* Pfeil über dem Brett: zeigt den zuletzt gezogenen Weg. */
-        const pfeil = TEAM_SCHACH._pfeilBauen(partie, gedreht);
-        if (pfeil) {
-            brett.appendChild(pfeil);
+            brett.appendChild(zelle);
         }
 
         /*
@@ -463,30 +483,49 @@ Object.assign(TEAM_SCHACH, {
         return rand;
     },
 
-    /*
-     * Der Pfeil des letzten Zuges, als Zeichnung über dem Brett.
+    /* ---------------------------------------------------------------- *
+     * Die Spur des letzten Zuges (seit v3.6)
      *
-     * Er beantwortet die Frage „was hat der andere gerade gemacht", ohne dass
-     * man den Verlauf aufklappen muss — und er bleibt stehen, während die
-     * Bewegung nur einmal läuft. Gezeichnet wird in Feldkoordinaten (das
-     * Koordinatenfeld ist so breit wie das Brett Spalten hat), deshalb passt er
-     * ohne Umrechnung auf jede Brettgröße und jede Bildschirmbreite.
+     * BIS v3.5 WAR HIER EIN PFEIL. Er wurde als SVG über das Brett gelegt,
+     * mit Maske, damit er unter den Figuren verschwindet. Drei gemeldete
+     * Fehler hatten dieselbe Ursache — ein Pfeil ist eine gerade Linie:
      *
-     * Zwei Lagen: ein breiter heller Strich darunter, ein schmaler farbiger
-     * darüber. Dieselbe Doppel-Kontur wie bei Figuren und Zielfeldern — sonst
-     * verschwände der Pfeil auf einer der beiden Feldfarben.
-     */
-    _pfeilBauen(partie, gedreht) {
-        const letzter = partie.verlauf[partie.verlauf.length - 1];
-        if (!letzter) {
-            return null;
-        }
+     *   - Beim schlagenden Bauern fehlte er. Die Strecke von einem Feld war
+     *     kürzer als Rand plus Spitze, deshalb wurde gar nichts gezeichnet.
+     *   - Beim Springer fehlte er aus demselben Grund, sobald der kurze
+     *     Schenkel des L die Spitze tragen musste.
+     *   - Und wo er kam, zeigte er über Felder hinweg, die die Figur nie
+     *     berührt hat.
+     *
+     * Jetzt wird der WEG eingefärbt, so wie es Schachprogramme seit jeher
+     * machen. Der kann nie zu kurz sein: Start und Ziel gehören immer dazu.
+     * Damit ist die ganze Maskerei mit Maske, Lagen und Doppelkontur weg —
+     * knapp 300 Zeilen Zeichenarbeit gegen zwei CSS-Klassen.
+     * ---------------------------------------------------------------- */
 
-        /*
-         * Alle Bewegungen des letzten Eintrags. Ein Zug hat einen Weg, ein
-         * Erdbeben oder ein Bauernschub mehrere — jede Figur, die sich bewegt
-         * hat, bekommt ihren Pfeil. Ältere Einträge kennen nur `von`/`nach`.
-         */
+    /*
+     * Welche Felder hat der letzte Eintrag im Verlauf berührt? Liefert
+     *
+     *     {
+     *         weg:     { <Feld>: true },  alle durchlaufenen Felder
+     *         enden:   { <Feld>: true },  nur Start und Ziel (kräftiger)
+     *         wirkung: { <Feld>: true },  Wirkung ohne Bewegung
+     *         pech:    true|false         war es ein Unglückswürfel?
+     *     }
+     *
+     * Ein Zug hat einen Weg, ein Erdbeben oder ein Bauernschub mehrere — jede
+     * Figur, die sich bewegt hat, hinterlässt ihre Spur. Ältere Einträge im
+     * Verlauf kennen nur `von`/`nach`; die tragen genauso.
+     */
+    _letzteSpur(partie) {
+        const spur = { weg: {}, enden: {}, wirkung: {}, pech: false };
+        const letzter = partie.verlauf[partie.verlauf.length - 1];
+
+        if (!letzter) {
+            return spur;
+        }
+        spur.pech = (letzter.wirkung === "pech");
+
         let wege = (letzter.wege && letzter.wege.length > 0) ? letzter.wege : [];
 
         if (wege.length === 0 && Number.isInteger(letzter.von) && letzter.von >= 0
@@ -494,270 +533,36 @@ Object.assign(TEAM_SCHACH, {
             wege = [{ von: letzter.von, nach: letzter.nach }];
         }
 
-        wege = wege.filter((weg) => weg.von !== weg.nach);
-
-        /*
-         * Fähigkeiten, die nichts bewegen (Schutzschild, Fessel, Verstärkung,
-         * Wiedergeburt) und neu erschienene Würfel haben betroffene Felder ohne
-         * Weg. Sie bekommen statt eines Pfeils einen Ring — sonst wäre die
-         * einzige Spur ein kurzes Aufleuchten, das verpasst, wer gerade nicht
-         * hinsieht.
-         */
-        const inWegen = {};
         for (const weg of wege) {
-            inWegen[weg.von] = true;
-            inWegen[weg.nach] = true;
-        }
-
-        /*
-         * Ringe nur für WIRKUNGEN ohne Bewegung — nicht für neu erschienene
-         * Würfel. Sonst bekommt eine frisch erschienene Kiste einen farbigen
-         * Kreis und sieht aus, als wäre gerade etwas mit ihr passiert.
-         */
-        const ringe = (letzter.wirkung === "erscheint")
-            ? []
-            : (letzter.felder || []).filter((feld) => !inWegen[feld]);
-
-        if (wege.length === 0 && ringe.length === 0) {
-            return null;
-        }
-
-        const breite = SCHACH.breiteVon(partie.stand);
-        const hoehe = SCHACH.hoeheVon(partie.stand);
-        const felder = breite * hoehe;
-
-        /* Mittelpunkt eines Feldes in der ANZEIGE (gedrehtes Brett beachten). */
-        const mitte = (feld) => {
-            const anzeige = gedreht ? (felder - 1 - feld) : feld;
-            return {
-                x: (anzeige % breite) + 0.5,
-                y: Math.floor(anzeige / breite) + 0.5
-            };
-        };
-
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        /* Ein Unglückswürfel färbt die Pfeile gelb — man soll auf einen Blick
-           sehen, dass das keine gewollte Bewegung war. */
-        svg.setAttribute("class",
-            "zug-pfeil" + ((letzter.wirkung === "pech") ? " zug-pfeil-pech" : ""));
-        svg.setAttribute("viewBox", "0 0 " + breite + " " + hoehe);
-        svg.setAttribute("preserveAspectRatio", "none");
-        svg.setAttribute("aria-hidden", "true");
-
-        /*
-         * Der Pfeil verschwindet unter den Figuren — richtig, nicht nur
-         * durchscheinend.
-         *
-         * Möglich macht das eine Maske: Sie ist überall weiß (der Pfeil ist zu
-         * sehen) und trägt über jedem besetzten Feld einen schwarzen Kreis (dort
-         * ist er weg). Damit läuft der Strich HINTER den Figuren durch, obwohl
-         * das SVG technisch darüber liegt — die Figuren stecken in den
-         * Feld-Knöpfen und lassen sich nicht überlagern.
-         */
-        const maskenId = "pfeil-maske-" + partie.id;
-        const maske = document.createElementNS("http://www.w3.org/2000/svg", "mask");
-        maske.setAttribute("id", maskenId);
-
-        const grund = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        grund.setAttribute("x", "0");
-        grund.setAttribute("y", "0");
-        grund.setAttribute("width", String(breite));
-        grund.setAttribute("height", String(hoehe));
-        grund.setAttribute("fill", "white");
-        maske.appendChild(grund);
-
-        /*
-         * Nur Figuren ZWISCHEN Start und Ziel stanzen ein Loch. An den Enden
-         * bleibt der Pfeil ganz — sonst verschwänden Spitze und Anfang unter
-         * genau den beiden Figuren, um die es geht.
-         */
-        const enden = {};
-        for (const weg of wege) {
-            enden[weg.von] = true;
-            enden[weg.nach] = true;
-        }
-
-        for (let feld = 0; feld < felder; feld++) {
-            if (SCHACH.figurAuf(partie.stand, feld) === "." || enden[feld]) {
+            if (weg.von === weg.nach) {
                 continue;
             }
-            const punkt = mitte(feld);
-            const loch = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            spur.enden[weg.von] = true;
+            spur.enden[weg.nach] = true;
 
-            loch.setAttribute("cx", String(punkt.x));
-            loch.setAttribute("cy", String(punkt.y));
-            loch.setAttribute("r", String(TEAM_SCHACH.FIGUR_RADIUS));
-            loch.setAttribute("fill", "black");
-            maske.appendChild(loch);
-        }
-
-        svg.appendChild(maske);
-
-        const gruppe = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        gruppe.setAttribute("mask", "url(#" + maskenId + ")");
-        svg.appendChild(gruppe);
-
-        let gezeichnet = 0;
-
-        /* Erst alle hellen Unterlagen, dann alle farbigen Lagen darüber — sonst
-           läge bei sich kreuzenden Pfeilen die Unterlage des einen über der
-           Farbe des anderen. */
-        for (const lage of ["zug-pfeil-unten", "zug-pfeil-oben"]) {
-            for (const feld of ringe) {
-                const punkt = mitte(feld);
-                const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-
-                ring.setAttribute("class", lage + " zug-pfeil-ring");
-                ring.setAttribute("cx", String(punkt.x));
-                ring.setAttribute("cy", String(punkt.y));
-                ring.setAttribute("r", "0.36");
-                gruppe.appendChild(ring);
-                gezeichnet++;
-            }
-
-            for (const weg of wege) {
-                const punkte = TEAM_SCHACH._pfeilPunkte(mitte(weg.von), mitte(weg.nach));
-                if (!punkte) {
-                    continue;
-                }
-
-                /*
-                 * Der Linienzug bis kurz vor die Spitze.
-                 *
-                 * `zug-pfeil-linie` ist Pflicht: Ein <polyline> würde sonst die
-                 * Fläche zwischen seinen Punkten ausfüllen — beim geknickten
-                 * Springerpfeil ein gefülltes Dreieck. Ein `fill="none"` am
-                 * Element genügt dafür NICHT, weil eine CSS-Regel jedes
-                 * Präsentationsattribut überstimmt.
-                 */
-                const strich = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-                strich.setAttribute("class", lage + " zug-pfeil-linie");
-                strich.setAttribute("points", punkte.linie
-                    .map((punkt) => punkt.x + "," + punkt.y).join(" "));
-                gruppe.appendChild(strich);
-
-                /* … und die Spitze am Ende des LETZTEN Abschnitts. */
-                const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                spitze.setAttribute("class", lage);
-                spitze.setAttribute("points", punkte.spitze
-                    .map((punkt) => punkt.x + "," + punkt.y).join(" "));
-                gruppe.appendChild(spitze);
-
-                gezeichnet++;
+            for (const feld of SCHACH.wegFelder(partie.stand, weg.von, weg.nach)) {
+                spur.weg[feld] = true;
             }
         }
-
-        return (gezeichnet > 0) ? svg : null;
-    },
-
-    /*
-     * Aus Start- und Zielmitte die Punkte des Pfeils rechnen. Liefert
-     * { linie: [Punkte], spitze: [drei Punkte] } — oder null, wenn der Weg zu
-     * kurz zum Zeichnen ist.
-     *
-     * DER KNICK BEIM SPRINGER
-     * Bis v3.2 war jeder Pfeil eine gerade Linie. Beim Springer zeigte sie
-     * schräg über Felder hinweg, die er nie berührt hat — man sah eine
-     * Diagonale, wo ein L gezogen wurde. Jetzt bekommt eine 1-zu-2-Bewegung
-     * einen Knick: erst die lange Achse (zwei Felder), dann die kurze. Das ist
-     * die Bewegung, die man auch mit der Hand macht.
-     *
-     * Erkannt wird sie an der GEOMETRIE, nicht an der Figur. Damit gilt sie
-     * auch für die Fähigkeit „Sprung", die eine Figur wie einen Springer
-     * versetzt — und das ist genau richtig, denn der Weg ist derselbe.
-     */
-    _pfeilPunkte(start, ende) {
-        const dx = ende.x - start.x;
-        const dy = ende.y - start.y;
-
-        /* Der Abstand zur Feldmitte an beiden Enden, damit die Figuren
-           vollständig sichtbar bleiben. */
-        const rand = TEAM_SCHACH.PFEIL_ABSTAND;
-        const spitzeLaenge = 0.26;
-        const spitzeBreite = 0.17;
-
-        /* Ecken des Linienzugs: beim Springer drei, sonst zwei. */
-        const ecken = [start];
-
-        if (TEAM_SCHACH._istSprung(dx, dy)) {
-            /* Zuerst die lange Achse — dort liegt der Knick. */
-            ecken.push((Math.abs(dx) > Math.abs(dy))
-                ? { x: ende.x, y: start.y }
-                : { x: start.x, y: ende.y });
-        }
-        ecken.push(ende);
-
-        /* Beide Enden einrücken: das erste Stück am Anfang, das letzte am
-           Ende — bei einem Knick bleibt die Mitte unangetastet. */
-        const ersteRichtung = TEAM_SCHACH._richtung(ecken[0], ecken[1]);
-        const letzteRichtung = TEAM_SCHACH._richtung(
-            ecken[ecken.length - 2], ecken[ecken.length - 1]);
-
-        if (!ersteRichtung || !letzteRichtung) {
-            return null;
-        }
-
-        const anfang = {
-            x: ecken[0].x + ersteRichtung.x * rand,
-            y: ecken[0].y + ersteRichtung.y * rand
-        };
-        const spitzeX = ende.x - letzteRichtung.x * rand;
-        const spitzeY = ende.y - letzteRichtung.y * rand;
-        const strichEndeX = spitzeX - letzteRichtung.x * spitzeLaenge;
-        const strichEndeY = spitzeY - letzteRichtung.y * spitzeLaenge;
 
         /*
-         * Zu kurz für Rand, Strich und Spitze? Dann gar nicht zeichnen —
-         * gemessen am LETZTEN Abschnitt, denn dort sitzt die Spitze. Beim
-         * Springer ist das gerade das kurze Stück von einem Feld.
+         * Fähigkeiten, die nichts bewegen (Schutzschild, Fessel, Verstärkung),
+         * bekommen eine eigene Marke — sonst wäre die einzige Spur ein kurzes
+         * Aufleuchten, das verpasst, wer gerade nicht hinsieht.
+         *
+         * Neu erschienene Würfel bekommen KEINE: Sie sind schon als Würfel zu
+         * sehen, und eine zweite Marke sähe aus, als wäre gerade etwas mit
+         * ihnen passiert.
          */
-        const letzteLaenge = Math.hypot(
-            ecken[ecken.length - 1].x - ecken[ecken.length - 2].x,
-            ecken[ecken.length - 1].y - ecken[ecken.length - 2].y);
-
-        if (ecken.length === 2 && letzteLaenge <= 2 * rand + spitzeLaenge * 0.5) {
-            return null;
-        }
-        if (ecken.length > 2 && letzteLaenge <= rand + spitzeLaenge * 0.5) {
-            return null;
-        }
-
-        const linie = [anfang]
-            .concat(ecken.slice(1, -1))
-            .concat([{ x: strichEndeX, y: strichEndeY }]);
-
-        return {
-            linie: linie,
-            spitze: [
-                { x: spitzeX, y: spitzeY },
-                {
-                    x: strichEndeX - letzteRichtung.y * spitzeBreite,
-                    y: strichEndeY + letzteRichtung.x * spitzeBreite
-                },
-                {
-                    x: strichEndeX + letzteRichtung.y * spitzeBreite,
-                    y: strichEndeY - letzteRichtung.x * spitzeBreite
+        if (letzter.wirkung && letzter.wirkung !== "erscheint") {
+            for (const feld of (letzter.felder || [])) {
+                if (!spur.weg[feld]) {
+                    spur.wirkung[feld] = true;
                 }
-            ]
-        };
-    },
+            }
+        }
 
-    /* Ist das ein Springersprung (ein Feld in der einen, zwei in der anderen
-       Richtung)? Gemessen in Feldern, nicht in Pixeln. */
-    _istSprung(dx, dy) {
-        const einer = Math.abs(Math.round(dx));
-        const anderer = Math.abs(Math.round(dy));
-
-        return (einer === 1 && anderer === 2) || (einer === 2 && anderer === 1);
-    },
-
-    /* Einheitsvektor von einem Punkt zum anderen; null bei Länge 0. */
-    _richtung(von, nach) {
-        const dx = nach.x - von.x;
-        const dy = nach.y - von.y;
-        const laenge = Math.hypot(dx, dy);
-
-        return (laenge === 0) ? null : { x: dx / laenge, y: dy / laenge };
+        return spur;
     },
 
     /*
@@ -773,11 +578,7 @@ Object.assign(TEAM_SCHACH, {
      * Die drei Seitenflächen entstehen aus einer Grundfarbe in drei
      * Helligkeiten — deckend, damit auf hellen Feldern nichts durchscheint.
      */
-    _wuerfelBauen(art, pech) {
-        const stufe = pech
-            ? SCHACH_VARIANTEN.pechStufeVon(art)
-            : SCHACH_VARIANTEN.stufeVon(art);
-
+    _wuerfelBauen(stufe, pech) {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "wuerfel");
         svg.setAttribute("viewBox", "0 0 100 100");
@@ -880,6 +681,31 @@ Object.assign(TEAM_SCHACH, {
             "l": "♝", "s": "♞", "b": "♟"
         };
         return (zeichen[figur] || "") + "︎";
+    },
+
+    /*
+     * Die Schriftgröße der Figuren aus der GEMESSENEN Feldbreite setzen.
+     *
+     * Die Stildatei rechnet sie sonst aus `88vw` — einer Schätzung der
+     * Bildschirmbreite. Die stimmt nicht, sobald das Brett schmaler ausfällt
+     * als geschätzt: am Rechner etwa, sobald ein Scrollbalken erscheint. Und
+     * genau das passiert MITTEN IM SPIEL, weil der Verlauf mit jedem Zug
+     * wächst und die Seite irgendwann über den Bildschirm hinausgeht — die
+     * Figuren ändern dann ihre Größe, ohne dass jemand etwas getan hätte.
+     *
+     * Gemessen kann das nicht passieren: Die Zahl kommt aus dem Feld selbst.
+     * Der Rückfall in der Stildatei bleibt für den Augenblick vor der ersten
+     * Messung stehen.
+     */
+    _figurGroesseSetzen() {
+        const brett = TEAM_SCHACH.brettEl;
+        const zelle = TEAM_SCHACH.feldEl;
+        const breite = (zelle && zelle.offsetWidth) ? zelle.offsetWidth : 0;
+
+        if (brett && breite > 0) {
+            brett.style.setProperty("--figur-groesse",
+                Math.round(breite * TEAM_SCHACH.FIGUR_ANTEIL) + "px");
+        }
     },
 
     /*

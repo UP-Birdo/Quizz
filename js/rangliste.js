@@ -462,15 +462,16 @@ const RANGLISTE = {
             nameKnopf.setAttribute("aria-label", "Profil von " + eintrag.name);
             nameKnopf.addEventListener("click", () => RANGLISTE.profilOeffnen(eintrag.id));
 
+            /*
+             * NUR DER NAME (seit v3.7).
+             *
+             * Darunter stand bis v3.6 eine Zeile „Würfel 5, Schach 30,
+             * Imposter 8 (2 Siege aus 3)". Bei zehn Mitspielern waren das zehn
+             * solcher Zeilen — die Tabelle las sich als Textwand, und der
+             * Punktestand, um den es geht, ging darin unter. Dieselben Zahlen
+             * stehen jetzt im Profil, einen Fingertipp entfernt.
+             */
             nameKnopf.appendChild(RANGLISTE._element("span", "name-text", eintrag.name));
-            nameKnopf.appendChild(RANGLISTE._element(
-                "span", "ergebnis-detail",
-                "Würfel " + eintrag.quizz + ", Schach " + eintrag.schach
-                    + ", Imposter " + eintrag.imposter
-                    + (eintrag.partien > 0
-                        ? " (" + eintrag.siege + " Siege aus " + eintrag.partien + ")"
-                        : "")
-            ));
 
             nameZelle.appendChild(nameKnopf);
             zeile.appendChild(nameZelle);
@@ -542,6 +543,15 @@ const RANGLISTE = {
             aufteilung.appendChild(kasten);
         }
         summen.appendChild(aufteilung);
+
+        /* Die Schach-Bilanz stand bis v3.6 als Untertitel in der Tabelle; sie
+           gehört hierher, wo Platz für einen ganzen Satz ist. */
+        if (person.partien > 0) {
+            summen.appendChild(RANGLISTE._element("p", "erklaerung",
+                RANGLISTE._menge(person.siege, "Sieg", "Siege") + " aus "
+                + RANGLISTE._menge(person.partien, "Schachpartie", "Schachpartien") + "."));
+        }
+
         wurzel.appendChild(summen);
 
         const verlauf = RANGLISTE.verlauf(person.id, staende.schach, staende.imposter);

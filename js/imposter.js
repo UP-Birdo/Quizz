@@ -45,7 +45,9 @@ const IMPOSTER = {
 
     /* Die Einstellungen für den Raum, der gerade angelegt wird. */
     neueEinstellungen: {
-        impostermenge: 1
+        impostermenge: 1,
+        /* Der Wortart-Filter (seit v3.7); "alle" heisst: keiner. */
+        wortart: "alle"
     },
 
     /* Zeitgeber für die laufende Uhr. */
@@ -208,10 +210,23 @@ const IMPOSTER = {
 
         const fuss = IMPOSTER._element("div", "fussleiste");
 
-        /* Die Bibliothek ist von hier erreichbar — der einzige Ort, an dem sie
-           nicht mitten im Spiel steht. */
-        fuss.appendChild(IMPOSTER._knopf("Wortbibliothek", "knopf-still knopf-klein",
-            () => IMPOSTER.bibliothekOeffnen()));
+        /*
+         * DER KNOPF ERSCHEINT NUR MIT VERWALTUNGS-ZUGANG (seit v3.7).
+         *
+         * Bis v3.6 stand er für alle da und fragte beim Drücken nach dem
+         * Passwort. Das war zwar dicht, aber es lud dazu ein, es zu
+         * probieren — und es verriet jedem, dass es hier etwas zu holen gibt.
+         * Wer die Wortliste sieht, hat als Imposter einen Vorteil; also soll
+         * der Weg dorthin gar nicht erst sichtbar sein.
+         *
+         * Den Verwaltungs-Zugang bekommt man im Tab Würfel Quizz. Das steht
+         * auch hinter dem i, damit niemand suchen muss.
+         */
+        if (ICH.verwaltungAktiv()) {
+            fuss.appendChild(IMPOSTER._knopf("Wortbibliothek", "knopf-still knopf-klein",
+                () => IMPOSTER.bibliothekOeffnen()));
+        }
+
         fuss.appendChild(IMPOSTER._knopf("Neuer Raum", "knopf-haupt",
             () => IMPOSTER.raumAnlegen()));
         wurzel.appendChild(fuss);
@@ -295,17 +310,58 @@ const IMPOSTER = {
             + "Einer weiß das Wort immer."));
         wurzel.appendChild(karte);
 
-        /* … dann das Thema als letzter Klick. */
+        /*
+         * … dann die Wortart als Filter (seit v3.7).
+         *
+         * Bis v3.6 stand „Nur Verben" als Kachel neben „Alltag", als wäre es
+         * dasselbe. Ist es nicht: Jedes Wort hat ein Thema UND eine Wortart.
+         * Beides wird jetzt getrennt gewählt — „nur Verben quer durch alle
+         * Themen" ist die Auswahl „Alle Themen" plus „Verb".
+         */
+        const filter = IMPOSTER._element("section", "karte");
+        filter.appendChild(IMPOSTER._element("h3", "", "Welche Sorte Wort?"));
+
+        const arten = IMPOSTER._element("div", "imposter-knopfreihe");
+        const alle = [{ id: IMPOSTER_WOERTER.ALLE, titel: "Alle" }]
+            .concat(IMPOSTER_WOERTER.WORTARTEN);
+
+        for (const wortart of alle) {
+            const gewaehlt = (wortart.id === IMPOSTER.neueEinstellungen.wortart);
+            arten.appendChild(IMPOSTER._knopf(wortart.titel,
+                (gewaehlt ? "knopf-haupt" : "knopf-still") + " knopf-klein",
+                () => IMPOSTER.wortartWaehlen(wortart.id)));
+        }
+
+        filter.appendChild(arten);
+        filter.appendChild(IMPOSTER._element("p", "erklaerung",
+            "Nomen sind Dinge, Verben sind Tätigkeiten, Adjektive beschreiben. "
+            + "„Alle“ mischt sie."));
+        wurzel.appendChild(filter);
+
+        /* … und zuletzt das Thema als letzter Klick. */
         wurzel.appendChild(IMPOSTER._element("h3", "imposter-wahl-titel",
             "Woher kommt das Wort?"));
 
         const feld = IMPOSTER._element("div", "spielart-feld");
 
-        for (const gruppe of IMPOSTER_WOERTER.gruppen) {
+        /* „Alle Themen" zuerst — mit dem Wortart-Filter darüber ist das jetzt
+           eine sinnvolle Auswahl und nicht nur eine Verlegenheit. */
+        feld.appendChild(IMPOSTER._gruppenKachelBauen({
+            id: IMPOSTER_WOERTER.ALLE,
+            titel: "Alle Themen",
+            beschreibung: "Quer durch alles, was im Katalog steht."
+        }));
+
+        for (const gruppe of IMPOSTER_WOERTER.zurAuswahl()) {
             feld.appendChild(IMPOSTER._gruppenKachelBauen(gruppe));
         }
 
         wurzel.appendChild(feld);
+    },
+
+    wortartWaehlen(id) {
+        IMPOSTER.neueEinstellungen.wortart = id;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
     },
 
     _gruppenKachelBauen(gruppe) {
@@ -314,16 +370,26 @@ const IMPOSTER = {
         kachel.className = "spielart-kachel";
         kachel.addEventListener("click", () => IMPOSTER.gruppeGewaehlt(gruppe.id));
 
+        /* Wie viele Wörter es unter dem gewählten Filter wirklich sind — sonst
+           tippt man auf „Alltag" und bekommt mit dem Filter „Verb" eine leere
+           Auswahl, ohne es vorher zu ahnen. */
+        const anzahl = IMPOSTER_WOERTER.woerter(
+            gruppe.id, IMPOSTER.neueEinstellungen.wortart).length;
+
         const kopf = IMPOSTER._element("div", "spielart-kopf");
         kopf.appendChild(IMPOSTER._element("span", "spielart-titel", gruppe.titel));
         kopf.appendChild(IMPOSTER._element("span", "spielart-masse",
-            gruppe.woerter.length + " Wörter"));
+            anzahl + " Wörter"));
         kachel.appendChild(kopf);
 
         kachel.appendChild(IMPOSTER._element("span", "spielart-text",
-            (gruppe.art === "wortart")
-                ? "Nur Wörter dieser Sorte — quer durch alle Themen."
-                : "Alles rund um dieses Thema."));
+            gruppe.beschreibung || "Alles rund um dieses Thema."));
+
+        if (anzahl === 0) {
+            kachel.disabled = true;
+            kachel.appendChild(IMPOSTER._element("span", "erklaerung",
+                "Zu dieser Sorte gibt es hier kein Wort."));
+        }
 
         return kachel;
     },
@@ -372,7 +438,9 @@ const IMPOSTER = {
             + "Liste zieht. Der feste Katalog lässt sich hier nicht ändern; er "
             + "steht in js/imposter-woerter.js."));
 
-        for (const gruppe of IMPOSTER_WOERTER.gruppen) {
+        /* Die festen Themen, dann die selbst angelegten — sonst könnte man die
+           Wörter, die jemand beigesteuert hat, nirgends mehr ansehen. */
+        for (const gruppe of IMPOSTER_RUNDE.gruppenZurAuswahl(tafel)) {
             wurzel.appendChild(IMPOSTER._bibliothekGruppeBauen(tafel, gruppe));
         }
     },
@@ -380,30 +448,55 @@ const IMPOSTER = {
     _bibliothekGruppeBauen(tafel, gruppe) {
         const karte = IMPOSTER._element("section", "karte");
         const eigene = tafel.eigeneWoerter[gruppe.id] || [];
+        const feste = IMPOSTER_WOERTER.gibtEs(gruppe.id)
+            ? IMPOSTER_WOERTER.woerter(gruppe.id)
+            : [];
 
         const kopf = IMPOSTER._element("div", "karte-kopf");
         kopf.appendChild(IMPOSTER._element("h3", "", gruppe.titel));
         kopf.appendChild(IMPOSTER._element("span", "chip chip-offen",
-            (gruppe.woerter.length + eigene.length) + " Wörter"));
+            (feste.length + eigene.length) + " Wörter"));
         karte.appendChild(kopf);
 
-        /* Der feste Teil, zugeklappt — er ist lang und ändert sich nie. */
-        const kasten = document.createElement("details");
-        kasten.className = "verlauf-kasten";
+        /* Der feste Teil, zugeklappt — er ist lang und ändert sich nie.
+           Je Wortart eine Zeile, damit man sieht, was der Filter findet.
+           Ein selbst angelegtes Thema hat keinen; dort entfällt der Kasten. */
+        if (feste.length > 0) {
+            const kasten = document.createElement("details");
+            kasten.className = "verlauf-kasten";
 
-        const titel = document.createElement("summary");
-        titel.className = "verlauf-titel";
-        titel.textContent = "Fest im Katalog (" + gruppe.woerter.length + ")";
-        kasten.appendChild(titel);
-        kasten.appendChild(IMPOSTER._element("p", "erklaerung", gruppe.woerter.join(", ")));
-        karte.appendChild(kasten);
+            const titel = document.createElement("summary");
+            titel.className = "verlauf-titel";
+            titel.textContent = "Fest im Katalog (" + feste.length + ")";
+            kasten.appendChild(titel);
+
+            for (const wortart of IMPOSTER_WOERTER.WORTARTEN) {
+                const liste = IMPOSTER_WOERTER.woerter(gruppe.id, wortart.id);
+                if (liste.length === 0) {
+                    continue;
+                }
+                kasten.appendChild(IMPOSTER._element("p", "erklaerung",
+                    wortart.titel + " (" + liste.length + "): " + liste.join(", ")));
+            }
+
+            karte.appendChild(kasten);
+        } else {
+            karte.appendChild(IMPOSTER._element("p", "erklaerung",
+                "Ein selbst angelegtes Thema — hier steht nur, was die Mitspieler "
+                + "beigesteuert haben."));
+        }
 
         /* Die ergänzten, einzeln entfernbar. */
         if (eigene.length > 0) {
             const liste = IMPOSTER._element("div", "imposter-knopfreihe");
 
             for (const wort of eigene) {
-                liste.appendChild(IMPOSTER._knopf(wort + " ×",
+                /* Die Wortart dahinter, damit man sieht, wo das Wort landet —
+                   sie steht in der Bibliothek und nicht am Wort selbst. */
+                const art = IMPOSTER_WOERTER.wortartTitel(
+                    IMPOSTER_RUNDE.wortartVon(tafel, wort));
+
+                liste.appendChild(IMPOSTER._knopf(wort + " (" + art + ") ×",
                     "knopf-still knopf-klein",
                     () => IMPOSTER.wortEntfernen(gruppe.id, wort)));
             }
@@ -414,17 +507,23 @@ const IMPOSTER = {
         }
 
         const leiste = IMPOSTER._element("div", "karte-fuss");
-        leiste.appendChild(IMPOSTER._knopf("Wörter einfügen", "knopf-still knopf-klein",
-            () => IMPOSTER.woerterImportieren(gruppe.id)));
-        karte.appendChild(leiste);
 
+        for (const wortart of IMPOSTER_WOERTER.WORTARTEN) {
+            leiste.appendChild(IMPOSTER._knopf(wortart.titel + " einfügen",
+                "knopf-still knopf-klein",
+                () => IMPOSTER.woerterImportieren(gruppe.id, wortart.id)));
+        }
+
+        karte.appendChild(leiste);
         return karte;
     },
 
-    async woerterImportieren(gruppeId) {
+    async woerterImportieren(gruppeId, wortart) {
         const text = await DIALOG.eingabe(
-            "Wörter einfügen",
-            "Ein Wort je Zeile. Was schon dasteht, wird übersprungen.",
+            IMPOSTER_WOERTER.wortartTitel(wortart) + " einfügen",
+            "Ein Wort je Zeile. Was schon dasteht, wird übersprungen. Alle Wörter "
+                + "aus diesem Kasten werden als " + IMPOSTER_WOERTER.wortartTitel(wortart)
+                + " eingetragen.",
             "",
             "Einfügen",
             true
@@ -436,7 +535,8 @@ const IMPOSTER = {
         let bericht = null;
 
         const geschrieben = await IMPOSTER._sendenMitLaden((tafel) => {
-            const ergebnis = IMPOSTER_TAFEL.woerterErgaenzen(tafel, gruppeId, text);
+            const ergebnis = IMPOSTER_TAFEL.woerterErgaenzen(
+                tafel, gruppeId, text, undefined, wortart);
             bericht = ergebnis;
             return ergebnis.tafel;
         });
@@ -513,8 +613,18 @@ const IMPOSTER = {
         const zeile = IMPOSTER._element("div", "imposter-zeile");
         zeile.appendChild(IMPOSTER._element("span", "imposter-name", "Thema"));
         zeile.appendChild(IMPOSTER._element("span", "chip chip-offen",
-            IMPOSTER_WOERTER.gruppe(raum.gruppe).titel));
+            (raum.gruppe === IMPOSTER_WOERTER.ALLE)
+                ? "Alle Themen"
+                : IMPOSTER_WOERTER.gruppe(raum.gruppe).titel));
         karte.appendChild(zeile);
+
+        const sorte = IMPOSTER._element("div", "imposter-zeile");
+        sorte.appendChild(IMPOSTER._element("span", "imposter-name", "Sorte Wort"));
+        sorte.appendChild(IMPOSTER._element("span", "chip chip-offen",
+            IMPOSTER_WOERTER.gibtEsWortart(raum.wortart)
+                ? IMPOSTER_WOERTER.wortartTitel(raum.wortart)
+                : "Alle"));
+        karte.appendChild(sorte);
 
         const anzahl = IMPOSTER._element("div", "imposter-zeile");
         anzahl.appendChild(IMPOSTER._element("span", "imposter-name", "Imposter höchstens"));
@@ -814,7 +924,10 @@ const IMPOSTER = {
         }
         IMPOSTER.auswahlOffen = true;
         IMPOSTER.offeneId = "";
-        IMPOSTER.neueEinstellungen = { impostermenge: 1 };
+        IMPOSTER.neueEinstellungen = {
+            impostermenge: 1,
+            wortart: IMPOSTER_WOERTER.ALLE
+        };
         IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
     },
 
@@ -831,14 +944,27 @@ const IMPOSTER = {
     /* Eine Kachel wurde angetippt: Namen erfragen und den Raum anlegen. */
     async gruppeGewaehlt(gruppeId) {
         const person = IMPOSTER._ich();
-        if (!person || !IMPOSTER_WOERTER.gibtEs(gruppeId)) {
+        const alleThemen = (gruppeId === IMPOSTER_WOERTER.ALLE);
+
+        if (!person || (!alleThemen && !IMPOSTER_WOERTER.gibtEs(gruppeId))) {
             return;
         }
+
+        const wortart = IMPOSTER.neueEinstellungen.wortart;
+        const themaTitel = alleThemen
+            ? "Alle Themen"
+            : IMPOSTER_WOERTER.gruppe(gruppeId).titel;
+
+        /* Ein Vorschlag, der beides nennt — sonst heissen mit dem Filter
+           angelegte Räume alle gleich. */
+        const vorschlag = IMPOSTER_WOERTER.gibtEsWortart(wortart)
+            ? (themaTitel + ", " + IMPOSTER_WOERTER.wortartTitel(wortart))
+            : themaTitel;
 
         const titel = await DIALOG.eingabe(
             "Name des Raums",
             "Damit ihr ihn in der Übersicht wiederfindet.",
-            IMPOSTER_WOERTER.gruppe(gruppeId).titel,
+            vorschlag,
             "Anlegen",
             true
         );
@@ -856,6 +982,7 @@ const IMPOSTER = {
         const geschrieben = await IMPOSTER._sendenMitLaden((tafel) => {
             const ergebnis = IMPOSTER_TAFEL.raumAnlegen(tafel, titel, {
                 gruppe: gruppeId,
+                wortart: wortart,
                 impostermenge: IMPOSTER.neueEinstellungen.impostermenge
             });
 
@@ -950,13 +1077,118 @@ const IMPOSTER = {
         IMPOSTER._aendern(IMPOSTER_RUNDE.verlassen(raum, person.id), true);
     },
 
-    bereitUmschalten(bereit) {
+    async bereitUmschalten(bereit) {
         const person = IMPOSTER._ich();
         const raum = IMPOSTER._offenerRaum();
         if (!person || !raum) {
             return;
         }
-        IMPOSTER._aendern(IMPOSTER_RUNDE.bereitSetzen(raum, person.id, bereit));
+
+        /*
+         * VOR JEDER RUNDE EIN EIGENES WORT (seit v3.7).
+         *
+         * Gefragt wird beim „Bereit", nicht beim Beitreten: In einem Raum, in
+         * dem man den ganzen Abend sitzt, wäre eine einmalige Frage am Anfang
+         * wertlos — die Wörter sollen ja mit jeder Runde wachsen. Wer nichts
+         * beisteuern will, überspringt; niemand wird dadurch aufgehalten.
+         */
+        if (bereit) {
+            await IMPOSTER.wortBeisteuern();
+        }
+
+        /* Der Stand kann sich durch das Beisteuern geändert haben — deshalb
+           den Raum neu holen statt den alten weiterzureichen. */
+        const jetzt = IMPOSTER._offenerRaum() || raum;
+        IMPOSTER._aendern(IMPOSTER_RUNDE.bereitSetzen(jetzt, person.id, bereit));
+    },
+
+    /*
+     * Fragt ein Wort ab und legt es in die gemeinsame Bibliothek.
+     *
+     * Drei Schritte, alle abbrechbar: das Wort, seine Wortart, sein Thema.
+     * Beim Thema darf auch ein neues entstehen — es steht danach allen zur
+     * Verfügung, auch in Räumen, die es noch nicht gibt (deshalb liegt es auf
+     * der Tafel und nicht im Raum).
+     */
+    async wortBeisteuern() {
+        const wort = await DIALOG.eingabe(
+            "Dein Wort für später",
+            "Ein Wort, das man beschreiben kann, ohne es zu nennen. Es kommt in "
+                + "den gemeinsamen Vorrat — vielleicht schon in dieser Runde. "
+                + "Leer lassen und weiter, wenn dir keines einfällt.",
+            "",
+            "Weiter",
+            true
+        );
+
+        if (wort === null || wort.trim() === "") {
+            return;
+        }
+
+        const wortart = await DIALOG.liste(
+            "Was für ein Wort ist das?",
+            "Danach lässt es sich später filtern.",
+            IMPOSTER_WOERTER.WORTARTEN.map((eintrag) => ({
+                beschriftung: eintrag.titel,
+                hinweis: eintrag.frage,
+                wert: eintrag.id
+            })),
+            "Abbrechen"
+        );
+        if (!wortart) {
+            return;
+        }
+
+        const raum = IMPOSTER._offenerRaum();
+        const themen = IMPOSTER_RUNDE.gruppenZurAuswahl(raum || {});
+
+        const thema = await DIALOG.liste(
+            "Wohin gehört es?",
+            "Wähle ein Thema — oder leg ein neues an, das dann alle sehen.",
+            themen.map((eintrag) => ({
+                beschriftung: eintrag.titel,
+                hinweis: eintrag.eigen ? "selbst angelegt" : "",
+                wert: eintrag.titel
+            })).concat([{
+                beschriftung: "Neues Thema …",
+                hinweis: "zum Beispiel Gemüse oder Haushalt",
+                wert: "*neu*"
+            }]),
+            "Abbrechen"
+        );
+        if (!thema) {
+            return;
+        }
+
+        let titel = thema;
+
+        if (thema === "*neu*") {
+            titel = await DIALOG.eingabe(
+                "Neues Thema",
+                "Wie soll es heißen? Alle sehen es beim nächsten Mal und können "
+                    + "ihre Wörter hineinlegen.",
+                "",
+                "Anlegen",
+                true
+            );
+            if (titel === null || titel.trim() === "") {
+                return;
+            }
+        }
+
+        let bericht = null;
+
+        await IMPOSTER._sendenMitLaden((tafel) => {
+            const ergebnis = IMPOSTER_TAFEL.wortBeisteuern(tafel, titel, wort, wortart);
+            bericht = ergebnis;
+            return ergebnis.tafel;
+        });
+
+        if (bericht && bericht.hinzugefuegt === 0 && bericht.uebersprungen > 0) {
+            await DIALOG.hinweis("Kennen wir schon",
+                "„" + wort.trim() + "“ steht bereits im Vorrat. Es bleibt dabei — "
+                    + "doppelte Wörter kämen doppelt so oft dran.");
+        }
     },
 
     tippSetzen(zielId, wert) {
@@ -1110,6 +1342,14 @@ const IMPOSTER = {
     async _sendenMitLaden(umbauen) {
         const abgleich = IMPOSTER.abgleich;
 
+        /*
+         * Solange geschrieben wird, übernimmt der Abgleich keinen fremden
+         * Stand (seit v3.8) — sonst setzte seine regelmässige Abfrage den
+         * Bildschirm auf den Stand von vorher zurück, während man noch auf die
+         * Bestätigung wartet. Dieselbe Sperre wie beim Schach.
+         */
+        abgleich.eigenerVorgangBeginnt();
+
         try {
             let tafel = abgleich.daten;
 
@@ -1127,6 +1367,8 @@ const IMPOSTER = {
             await DIALOG.hinweis("Nicht gespeichert",
                 "Die Änderung konnte nicht gesendet werden: " + fehler.message);
             return false;
+        } finally {
+            abgleich.eigenerVorgangEndet();
         }
     },
 

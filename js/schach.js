@@ -578,6 +578,118 @@ const SCHACH = {
         return stand.brett.indexOf(gesucht);
     },
 
+    /* ---------------------------------------------------------------- *
+     * Wege über das Brett (seit v3.6)
+     *
+     * Zwei Fragen, die sich ähneln und trotzdem verschieden beantwortet
+     * werden müssen:
+     *
+     *   wegFelder        Welche Felder ZEICHNET man, um diese Bewegung zu
+     *                    zeigen? Beim Springer das L — auch wenn er die
+     *                    Felder dazwischen nie betreten hat.
+     *   betreteneFelder  Welche Felder hat die Figur WIRKLICH betreten?
+     *                    Beim Springer nur das Zielfeld. Daran hängt, was
+     *                    unterwegs eingesammelt wird.
+     *
+     * Beides steht hier und nicht im Bildschirm-Code: Das Einsammeln ist eine
+     * Regel, und die Anzeige soll dieselbe Rechnung benutzen wie die Regel —
+     * sonst zeigt sie einen Weg, auf dem etwas anderes passiert.
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Verläuft der Weg gerade — waagerecht, senkrecht oder diagonal? Nur dann
+     * gibt es überhaupt Felder dazwischen, die betreten werden.
+     */
+    istGeradeStrecke(stand, von, nach) {
+        const breite = SCHACH.breiteVon(stand);
+        const dReihe = SCHACH.reiheVon(nach, breite) - SCHACH.reiheVon(von, breite);
+        const dSpalte = SCHACH.spalteVon(nach, breite) - SCHACH.spalteVon(von, breite);
+
+        if (dReihe === 0 && dSpalte === 0) {
+            return false;
+        }
+        return (dReihe === 0) || (dSpalte === 0)
+            || (Math.abs(dReihe) === Math.abs(dSpalte));
+    },
+
+    /* Ist das ein Springersprung (ein Feld in der einen, zwei in der anderen
+       Richtung)? Gemessen wird die BEWEGUNG, nicht die Figur — damit gilt es
+       auch für die Fähigkeit „Sprung“. */
+    istSprungWeg(stand, von, nach) {
+        const breite = SCHACH.breiteVon(stand);
+        const dReihe = Math.abs(SCHACH.reiheVon(nach, breite) - SCHACH.reiheVon(von, breite));
+        const dSpalte = Math.abs(SCHACH.spalteVon(nach, breite) - SCHACH.spalteVon(von, breite));
+
+        return (dReihe === 1 && dSpalte === 2) || (dReihe === 2 && dSpalte === 1);
+    },
+
+    /*
+     * Die Felder, über die diese Bewegung führt — Start und Ziel eingeschlossen.
+     *
+     *   Springersprung  das L: erst die lange Achse, dann die kurze.
+     *   Gerade Strecke  jedes Feld dazwischen.
+     *   Alles andere    nur die beiden Enden (Teleport, Wiedergeburt,
+     *                   Friedhof, Handel — dazwischen liegt kein Weg).
+     */
+    wegFelder(stand, von, nach) {
+        if (von === nach) {
+            return [von];
+        }
+
+        const breite = SCHACH.breiteVon(stand);
+        const vonReihe = SCHACH.reiheVon(von, breite);
+        const vonSpalte = SCHACH.spalteVon(von, breite);
+        const dReihe = SCHACH.reiheVon(nach, breite) - vonReihe;
+        const dSpalte = SCHACH.spalteVon(nach, breite) - vonSpalte;
+
+        if (SCHACH.istSprungWeg(stand, von, nach)) {
+            /* Der Knick liegt am Ende der langen Achse. Beide Teilstücke sind
+               danach gerade, die Rekursion endet also sofort. */
+            const knick = (Math.abs(dSpalte) > Math.abs(dReihe))
+                ? SCHACH._feld(stand, vonReihe, vonSpalte + dSpalte)
+                : SCHACH._feld(stand, vonReihe + dReihe, vonSpalte);
+
+            return SCHACH.wegFelder(stand, von, knick)
+                .concat(SCHACH.wegFelder(stand, knick, nach).slice(1));
+        }
+
+        if (!SCHACH.istGeradeStrecke(stand, von, nach)) {
+            return [von, nach];
+        }
+
+        const schritte = Math.max(Math.abs(dReihe), Math.abs(dSpalte));
+        const schrittReihe = Math.sign(dReihe);
+        const schrittSpalte = Math.sign(dSpalte);
+        const felder = [];
+
+        for (let nummer = 0; nummer <= schritte; nummer++) {
+            felder.push(SCHACH._feld(stand,
+                vonReihe + schrittReihe * nummer,
+                vonSpalte + schrittSpalte * nummer));
+        }
+
+        return felder;
+    },
+
+    /*
+     * Die Felder, die die Figur auf diesem Weg WIRKLICH betritt — ohne das
+     * Startfeld, auf dem sie schon stand.
+     *
+     * Wer springt, betritt nur sein Zielfeld: der Springer, die Fähigkeit
+     * „Sprung“ (dieselbe Bewegung) und der Teleport (der über alles hinweg
+     * geht). Alle anderen laufen über jedes Feld dazwischen — und sammeln
+     * dabei ein, was dort liegt.
+     */
+    betreteneFelder(stand, von, nach) {
+        if (von === nach) {
+            return [];
+        }
+        if (!SCHACH.istGeradeStrecke(stand, von, nach)) {
+            return [nach];
+        }
+        return SCHACH.wegFelder(stand, von, nach).slice(1);
+    },
+
     /* Alle Königsfelder einer Farbe — auf dem Doppelbrett sind es zwei. */
     koenigFelder(stand, farbe) {
         const gesucht = (farbe === SCHACH.WEISS) ? "K" : "k";
@@ -721,12 +833,18 @@ const SCHACH = {
         return liste;
     },
 
-    /* Die Zusatzmuster der Fähigkeiten. */
+    /*
+     * Die Zusatzmuster der Fähigkeiten.
+     *
+     * „koenig“ ist der alte Name des Ausweich-Musters (Stände vor v3.6). Er
+     * wird weiter verstanden, damit eine laufende Partie mit gesetztem
+     * Zusatzmuster nicht plötzlich gar nichts mehr kann — additiver Vertrag.
+     */
     _musterzuege(stand, von, farbe, muster) {
         if (muster === "springer") {
             return SCHACH._springerzuege(stand, von, farbe);
         }
-        if (muster === "koenig") {
+        if (muster === "ausweichen" || muster === "koenig") {
             return SCHACH._nachbarzuege(stand, von, farbe);
         }
         if (muster === "umkreis2") {
@@ -735,7 +853,15 @@ const SCHACH = {
         return [];
     },
 
-    /* Ein Feld in jede Richtung — die Gangart des Königs, ohne Rochade. */
+    /*
+     * Ausweichen: ein Feld in jede Richtung, aber NUR auf ein freies.
+     *
+     * Bis v3.5 durfte man damit auch schlagen — dann war Ausweichen keine
+     * Notbremse mehr, sondern ein zusätzlicher Angriff mit jeder Figur. Und
+     * am Bildschirm sah man rote Schlagfelder, auf die der Tipp dann doch
+     * nichts tat. Ausweichen heisst jetzt, was es sagt: sich in Sicherheit
+     * bringen.
+     */
     _nachbarzuege(stand, von, farbe) {
         const liste = [];
         const breite = SCHACH.breiteVon(stand);
@@ -753,7 +879,7 @@ const SCHACH = {
                     continue;
                 }
                 const ziel = SCHACH._feld(stand, r, s);
-                if (SCHACH.farbeVon(SCHACH.figurAuf(stand, ziel)) !== farbe) {
+                if (SCHACH.figurAuf(stand, ziel) === ".") {
                     liste.push(SCHACH._zug(stand, von, ziel));
                 }
             }

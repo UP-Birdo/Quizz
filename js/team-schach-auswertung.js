@@ -164,10 +164,23 @@ Object.assign(TEAM_SCHACH, {
         }
 
         const karte = TEAM_SCHACH._element("section", "karte");
-        karte.appendChild(TEAM_SCHACH._element("h3", "", "Fähigkeiten"));
+
+        /*
+         * Überschrift und i-Knopf in einer Zeile.
+         *
+         * Bis v3.5 stand unter der Überschrift ein Absatz, der die Würfel
+         * erklärte, und der i-Knopf ganz unten. Auf dem Handy schob das die
+         * Fähigkeiten — das Einzige, was man hier anfassen kann — unter den
+         * sichtbaren Bereich. Der Erklärtext steht jetzt im i-Menü, wo er
+         * hingehört: Wer ihn braucht, sucht ihn dort; wer spielt, sieht seine
+         * Fähigkeiten.
+         */
+        const kopf = TEAM_SCHACH._element("div", "karte-kopf");
+        kopf.appendChild(TEAM_SCHACH._element("h3", "", "Fähigkeiten"));
+        kopf.appendChild(TEAM_SCHACH._infoKnopfBauen());
+        karte.appendChild(kopf);
 
         const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
-        const offen = SCHACH_RUNDE.offeneBonusFelder(partie);
 
         /* Wartet gerade eine Fähigkeit auf ihr Ziel? Dann zählt nur das. */
         if (TEAM_SCHACH.zielFaehigkeit) {
@@ -186,14 +199,6 @@ Object.assign(TEAM_SCHACH, {
             return karte;
         }
 
-        karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            ((offen.length === 1)
-                ? "Auf dem Brett liegt ein Würfel. "
-                : "Auf dem Brett liegen " + offen.length + " Würfel. ")
-            + "Nach jedem Halbzug kann ein neuer dazukommen — solange ein Feld "
-            + "frei ist, hört das nicht auf. Liegen gelassene bleiben liegen, "
-            + "bis sie jemand einsammelt."));
-
         for (const farbe of ["weiss", "schwarz"]) {
             const koennen = partie.faehigkeiten[farbe];
             const zeile = TEAM_SCHACH._element("div", "faehigkeit-zeile");
@@ -206,30 +211,78 @@ Object.assign(TEAM_SCHACH, {
             }
 
             for (let stelle = 0; stelle < koennen.length; stelle++) {
-                const art = koennen[stelle];
-                const stufe = SCHACH_VARIANTEN.stufeVon(art);
-                const darf = (meinTeam === farbe)
-                    && SCHACH_RUNDE.darfZiehen(partie, person.id);
-
-                const marke = darf
-                    ? TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
-                        "knopf-still knopf-klein faehigkeit-knopf",
-                        () => TEAM_SCHACH.faehigkeitEinsetzen(partie, art))
-                    : TEAM_SCHACH._element("span", "chip faehigkeit-marke",
-                        SCHACH_VARIANTEN.faehigkeitTitel(art));
-
-                /* Die Farbe der Stufe trägt die Marke — so sieht man sofort,
-                   wie selten die Fähigkeit war. */
-                marke.style.setProperty("--stufe-farbe", stufe.farbe);
-                marke.title = stufe.titel + " — " + SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
-                zeile.appendChild(marke);
+                zeile.appendChild(TEAM_SCHACH._faehigkeitMarkeBauen(
+                    partie, person, farbe, koennen[stelle], meinTeam === farbe));
             }
 
             karte.appendChild(zeile);
         }
 
-        karte.appendChild(TEAM_SCHACH._infoKnopfBauen());
         return karte;
+    },
+
+    /*
+     * Eine Fähigkeit im Vorrat: Knopf, wenn man sie einsetzen darf, sonst nur
+     * eine Marke. Dazu die beiden Zeichen, die sagen, was sie KOSTET:
+     *
+     *     +        Danach bleibt dir dein normaler Zug.
+     *     Blitz    Geht auch, während der Gegner am Zug ist.
+     *
+     * Beides stand bis v3.5 nirgends. Man musste die Fähigkeit einsetzen, um
+     * zu erfahren, ob damit der Zug weg ist — bei einer legendären eine teure
+     * Art, es herauszufinden.
+     */
+    _faehigkeitMarkeBauen(partie, person, farbe, art, meineFarbe) {
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art] || {};
+        const stufe = SCHACH_VARIANTEN.stufeVon(art);
+        const darf = meineFarbe && SCHACH_RUNDE.darfEinsetzen(partie, person.id, art);
+
+        const marke = darf
+            ? TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
+                "knopf-still knopf-klein faehigkeit-knopf",
+                () => TEAM_SCHACH.faehigkeitEinsetzen(partie, art))
+            : TEAM_SCHACH._element("span", "chip faehigkeit-marke",
+                SCHACH_VARIANTEN.faehigkeitTitel(art));
+
+        if (!beschreibung.beendetZug) {
+            const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
+            plus.title = "Danach bleibt dir dein normaler Zug.";
+            marke.appendChild(plus);
+        }
+        if (beschreibung.imGegenzug) {
+            marke.appendChild(TEAM_SCHACH._blitzBauen());
+        }
+
+        /* Die Farbe der Stufe trägt die Marke — so sieht man sofort, wie
+           selten die Fähigkeit war. */
+        marke.style.setProperty("--stufe-farbe", stufe.farbe);
+        marke.title = stufe.titel + " — " + SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+
+        return marke;
+    },
+
+    /*
+     * Der Blitz: geht auch beim gegnerischen Zug.
+     *
+     * Gezeichnet als SVG und nicht als Zeichen aus der Schrift — das Haus
+     * verbietet Emojis, und das einzige passende Schriftzeichen (U+26A1) wird
+     * auf den meisten Geräten genau als solches gezeichnet.
+     */
+    _blitzBauen() {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "faehigkeit-blitz");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("aria-hidden", "true");
+
+        const strich = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        strich.setAttribute("points", "13,2 4,14 10,14 9,22 19,9 13,9");
+        svg.appendChild(strich);
+
+        const titel = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        titel.textContent = "Geht auch, während der Gegner am Zug ist.";
+        svg.appendChild(titel);
+
+        return svg;
     },
 
     /* Der i-Knopf öffnet die Übersicht aller Fähigkeiten. */
@@ -269,10 +322,39 @@ Object.assign(TEAM_SCHACH, {
         wurzel.appendChild(kopf);
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Auf freien Feldern erscheinen Würfel. Wer mit einer Figur darauf zieht, "
-            + "sammelt ein, was darin steckt — welche Fähigkeit es ist, sieht man "
-            + "vorher nie. Ein Würfel mit umgedrehtem Fragezeichen bringt nichts "
-            + "Gutes und wirkt sofort."));
+            "Auf freien Feldern erscheinen Würfel. Wer mit einer Figur darüber oder "
+            + "darauf zieht, sammelt ein, was darin steckt — welche Fähigkeit es ist, "
+            + "sieht man vorher nie. Nur der Springer sammelt unterwegs nichts ein: "
+            + "Er setzt über die Felder dazwischen hinweg. Ein Würfel mit umgedrehtem "
+            + "Fragezeichen bringt nichts Gutes und wirkt sofort."));
+
+        wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            "Nach jedem Halbzug kann ein neuer dazukommen — solange ein Feld frei "
+            + "ist, hört das nicht auf. Liegen gelassene bleiben liegen, bis sie "
+            + "jemand einsammelt. Was du schon im Vorrat hast, kommt seltener nach; "
+            + "bei den seltenen Stufen weniger stark, weil es dort weniger zur "
+            + "Auswahl gibt."));
+
+        /* Die beiden Zeichen aus dem Vorrat erklären — dort ist kein Platz
+           für Text, hier schon. */
+        const legende = TEAM_SCHACH._element("section", "karte");
+        legende.appendChild(TEAM_SCHACH._element("h3", "", "Die Zeichen am Vorrat"));
+
+        const plusZeile = TEAM_SCHACH._element("div", "stufen-eintrag");
+        plusZeile.appendChild(TEAM_SCHACH._element("span", "stufen-name", "Pluszeichen"));
+        plusZeile.appendChild(TEAM_SCHACH._element("span", "stufen-text",
+            "Nach dem Einsetzen bleibt dir dein normaler Zug. Fehlt es, ist danach "
+            + "der Gegner dran."));
+        legende.appendChild(plusZeile);
+
+        const blitzZeile = TEAM_SCHACH._element("div", "stufen-eintrag");
+        blitzZeile.appendChild(TEAM_SCHACH._element("span", "stufen-name", "Blitz"));
+        blitzZeile.appendChild(TEAM_SCHACH._element("span", "stufen-text",
+            "Du darfst sie auch einsetzen, während der Gegner am Zug ist. Wer zuerst "
+            + "drückt, war zuerst."));
+        legende.appendChild(blitzZeile);
+
+        wurzel.appendChild(legende);
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
             wurzel.appendChild(TEAM_SCHACH._stufenKarteBauen(stufe));

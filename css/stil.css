@@ -795,13 +795,17 @@ body {
     --schlag-kern: #b3261e;
     --schlag-rand: #ffffff;
 
-    /* Pfeil des letzten Zuges — eine eigene Farbe, damit er nicht mit den
-       Zielmarkierungen verwechselt wird. */
-    --pfeil: #d97400;
-    --pfeil-rand: #ffffff;
+    /*
+     * Die Spur des letzten Zuges. Ein gedecktes Grün — es muss auf dem weissen
+     * UND auf dem blauen Feld stehen und darf sich nicht mit dem Gelb der
+     * angetippten Figur (`--feld-gewaehlt`) verwechseln lassen.
+     */
+    --spur: #cfe3b8;
+    --spur-ende: #a8ce85;
 
     /* Was ein Unglückswürfel bewegt hat. */
     --pech: #e8c000;
+    --pech-spur: #f2e08a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -820,9 +824,10 @@ body {
         --schlag-kern: #8f1c16;
         --schlag-rand: #ffd9d6;
 
-        --pfeil: #ff9f1a;
-        --pfeil-rand: #1b2430;
+        --spur: #6f8f5c;
+        --spur-ende: #8fb877;
         --pech: #ffe14d;
+        --pech-spur: #8a7a2a;
     }
 }
 
@@ -908,69 +913,8 @@ body {
     border: 2px solid var(--rahmen);
     border-radius: 6px;
     overflow: hidden;
-    /* Der Pfeil des letzten Zuges liegt darüber. */
+    /* Bezugspunkt für alles, was in den Feldern absolut liegt. */
     position: relative;
-}
-
-/*
- * Der Pfeil zeichnet in Feldkoordinaten (so viele Einheiten, wie das Brett
- * Spalten und Reihen hat) und wird auf die volle Fläche gezogen. Deshalb
- * stimmt er auf jeder Brettgröße, ohne dass irgendwo Pixel gerechnet werden.
- */
-/*
- * Der Pfeil liegt über den Feldern, verschwindet aber unter den Figuren: Eine
- * Maske im SVG stanzt an jedem besetzten Feld ein Loch (siehe
- * TEAM_SCHACH._pfeilBauen). Deshalb darf er kräftig sein — er überdeckt keine
- * Figur mehr.
- */
-.zug-pfeil {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 3;
-    opacity: 0.9;
-}
-
-.zug-pfeil-unten {
-    stroke: var(--pfeil-rand);
-    fill: var(--pfeil-rand);
-    stroke-width: 0.16;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.zug-pfeil-oben {
-    stroke: var(--pfeil);
-    fill: var(--pfeil);
-    stroke-width: 0.09;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-/* Wirkung ohne Bewegung: ein Ring statt eines Pfeils. */
-.zug-pfeil-ring {
-    fill: none;
-}
-
-/* Was ein Unglückswürfel angerichtet hat, ist gelb. */
-.zug-pfeil-pech .zug-pfeil-oben {
-    stroke: var(--pech);
-    fill: var(--pech);
-}
-
-/*
- * Der Strich des Pfeils — seit v3.3 ein Linienzug, damit ein Springersprung
- * seinen Knick bekommt. Er darf NICHT gefüllt werden: Sonst wäre das L ein
- * ausgemaltes Dreieck.
- *
- * Diese Regel muss NACH `.zug-pfeil-unten` und `.zug-pfeil-oben` stehen. Sie
- * hat dieselbe Spezifität wie die beiden, und bei Gleichstand gewinnt die
- * spätere Regel — stünde sie oben, wäre sie wirkungslos.
- */
-.zug-pfeil-linie {
-    fill: none;
 }
 
 /* Ein Feld, auf das ein Unglückswürfel gewirkt hat. */
@@ -1136,7 +1080,16 @@ body {
     justify-content: center;
     cursor: pointer;
     position: relative;
-    font-size: calc(min(var(--brett-max, 520px), 88vw) / var(--brett-spalten, 8) * 0.68);
+    /*
+     * Die Figurengröße kommt aus der GEMESSENEN Feldbreite
+     * (TEAM_SCHACH._figurGroesseSetzen). Die Rechnung dahinter ist nur der
+     * Rückfall für den Augenblick vor der ersten Messung: Sie schätzt die
+     * Brettbreite mit `88vw` und liegt daneben, sobald ein Scrollbalken
+     * erscheint — was mitten im Spiel passiert, weil der Verlauf wächst.
+     * Genau daher kam der Eindruck, Figuren würden nach einem Zug kleiner.
+     */
+    font-size: var(--figur-groesse,
+        calc(min(var(--brett-max, 520px), 88vw) / var(--brett-spalten, 8) * 0.68));
     line-height: 1;
     /* Die Figur wandert beim Ziehen über ihr Feld hinaus. */
     overflow: visible;
@@ -1152,6 +1105,54 @@ body {
 
 .feld-dunkel {
     background: var(--feld-dunkel);
+}
+
+/* ------------------------------------------------------------------ *
+ * Die Spur des letzten Zuges (seit v3.6)
+ *
+ * Bis v3.5 lag hier ein gezeichneter Pfeil über dem Brett — mit Maske, damit
+ * er unter den Figuren verschwindet. Er hatte einen Geburtsfehler: Ein Pfeil
+ * ist eine gerade Linie und passte damit zu keiner Gangart ausser der
+ * geraden. Beim schlagenden Bauern und beim Springer war die Strecke sogar zu
+ * kurz, um überhaupt gezeichnet zu werden.
+ *
+ * Jetzt wird der Weg eingefärbt, wie bei jedem anderen Schachprogramm. Die
+ * Felder liegen ohnehin da; es braucht keine zweite Zeichenebene mehr.
+ *
+ * DIE REIHENFOLGE IST PFLICHT — alle diese Regeln haben dieselbe Spezifität
+ * wie `.feld-hell`, `.feld-gewaehlt` und `.feld-ziel`, und bei Gleichstand
+ * gewinnt die SPÄTERE. Die Spur muss deshalb NACH den Feldfarben stehen
+ * (sonst wäre sie unsichtbar) und VOR den Auswahl-Markierungen (denn was
+ * gerade möglich ist, zählt mehr als die Erinnerung an den letzten Zug).
+ * ------------------------------------------------------------------ */
+
+.feld-spur {
+    background: var(--spur);
+}
+
+/* Start und Ziel kräftiger als die Felder dazwischen — man sieht so auf einen
+   Blick, WOHER und WOHIN gezogen wurde. */
+.feld-spur-ende {
+    background: var(--spur-ende);
+}
+
+/* Was ein Unglückswürfel bewegt hat, ist gelb. */
+.feld-spur-pech {
+    background: var(--pech-spur);
+}
+
+/*
+ * Wirkung ohne Bewegung (Schutzschild, Fessel, Verstärkung): kein Weg, nur
+ * ein Punkt. Deshalb ein Ring statt einer Fläche — sonst sähe es aus, als
+ * wäre dorthin gezogen worden.
+ */
+.feld-spur-wirkung::after {
+    content: "";
+    position: absolute;
+    inset: 14%;
+    border: 3px solid var(--spur-ende);
+    border-radius: 50%;
+    pointer-events: none;
 }
 
 /* Die angetippte Figur: gelbes Feld plus dunkler Rahmen, damit sie sich auch
@@ -1369,6 +1370,33 @@ body {
     border-style: solid;
     color: var(--stufe-farbe, var(--schrift-leise));
     font-weight: 600;
+    /* Platz für die beiden Zeichen dahinter (Pluszeichen, Blitz). */
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/*
+ * Die beiden Zeichen am Vorrat (seit v3.6):
+ *
+ *     +      Danach bleibt dir dein normaler Zug.
+ *     Blitz  Geht auch, während der Gegner am Zug ist.
+ *
+ * Sie sind bewusst leise: Sie erklären eine Fähigkeit, sie sind nicht die
+ * Fähigkeit. Wer wissen will, was sie bedeuten, findet es hinter dem i.
+ */
+.faehigkeit-zeichen {
+    font-size: 0.95em;
+    font-weight: 700;
+    opacity: 0.75;
+}
+
+.faehigkeit-blitz {
+    width: 0.85em;
+    height: 0.85em;
+    fill: currentColor;
+    opacity: 0.75;
+    flex: 0 0 auto;
 }
 
 .figur {

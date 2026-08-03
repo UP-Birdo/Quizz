@@ -32,14 +32,24 @@
  *         "id": "r-…",              // Kennung des Raums (seit v3.2)
  *         "titel": "Feierabend",    // Name des Raums (seit v3.2)
  *         "phase": "warten",        // warten | laeuft | aufloesung
- *         "gruppe": "alltag",       // Kennung aus imposter-woerter.js
+ *         "gruppe": "alltag",       // Thema, oder "alle" (seit v3.7)
+ *         "wortart": "alle",        // Filter: alle | nomen | verb | adjektiv
  *         "impostermenge": 1,       // Wunsch: wie viele Imposter höchstens
  *         "salz": "",               // daraus folgen Wort und Rollen
  *         "startAm": 0,             // Zeitpunkt des Starts (für die Uhr)
  *         "endeAm": 0,
- *         "eigeneWoerter": {        // von der Verwaltung ergänzt, je Gruppe
+ *         "eigeneWoerter": {        // ergänzt, je Gruppe
  *             "alltag": ["Kaminfeuer"]
  *         },
+ *         "wortarten": {            // Wortart ergänzter Wörter (seit v3.7);
+ *             "kaminfeuer": "nomen" // Schlüssel klein geschrieben. Fehlt ein
+ *         },                        // Eintrag, gilt "nomen".
+ *         "eigeneGruppen": {        // selbst angelegte Themen (seit v3.7)
+ *             "e-gemuese": "Gemüse"
+ *         },
+ *         "letzteWoerter": [        // was zuletzt dran war, jüngstes zuletzt
+ *             "Zahnbürste"          // (seit v3.7, gegen Wiederholungen)
+ *         ],
  *         "spieler": [
  *             { "id": "…", "bereit": false, "fertig": false,
  *               "tipps": { "<id>": "neutral|imposter|save" },
@@ -72,6 +82,24 @@ const IMPOSTER_RUNDE = {
     TEMPO_SEKUNDEN: 300,
     PUNKTE_TEMPO: 10,
 
+    /*
+     * Wie lange ein gefallenes Wort nachwirkt (in Runden).
+     *
+     * Ein Wort, das gerade dran war, wäre in der nächsten Runde langweilig —
+     * alle wissen ja noch, worum es ging. Es wird deshalb nicht gesperrt,
+     * sondern nur unwahrscheinlicher: In der Runde direkt danach zählt es nur
+     * ein Zehntel so viel wie jedes andere, und mit jeder weiteren Runde
+     * erholt es sich, bis es nach zehn Runden wieder ganz normal mitspielt.
+     *
+     * Eine harte Sperre wäre einfacher gewesen, hätte aber bei kleinen Themen
+     * die Auswahl leergeräumt. So bleibt jedes Wort jederzeit möglich.
+     */
+    WIEDERHOLUNG_RUNDEN: 10,
+
+    /* So viele gefallene Wörter bleiben im Gedächtnis. Mehr braucht es nicht:
+       Was länger her ist als WIEDERHOLUNG_RUNDEN, wirkt ohnehin nicht mehr. */
+    GEDAECHTNIS: 20,
+
     leereRunde(zeitpunkt) {
         return {
             datenVersion: IMPOSTER_RUNDE.DATEN_VERSION,
@@ -84,35 +112,140 @@ const IMPOSTER_RUNDE = {
 
             phase: "warten",
             gruppe: IMPOSTER_WOERTER.gruppen[0].id,
+
+            /* Der Wortart-Filter (seit v3.7). „alle" heisst: keiner — und das
+               ist auch die Vorgabe für Räume, die es noch nicht kennen. */
+            wortart: IMPOSTER_WOERTER.ALLE,
+
             impostermenge: 1,
             salz: "",
             startAm: 0,
             endeAm: 0,
 
             /*
-             * Wörter, die die Verwaltung ergänzt hat, je Gruppe. Sie stehen im
-             * gemeinsamen Stand, damit alle Geräte dieselbe Auswahl haben —
-             * sonst zöge jedes ein anderes Wort aus einem anderen Vorrat.
+             * Wörter, die ergänzt wurden, je Gruppe. Sie stehen im gemeinsamen
+             * Stand, damit alle Geräte dieselbe Auswahl haben — sonst zöge
+             * jedes ein anderes Wort aus einem anderen Vorrat.
              */
             eigeneWoerter: {},
+
+            /* Die Wortart dieser Wörter, klein geschriebener Schlüssel. Wer
+               hier nicht steht, gilt als Nomen. */
+            wortarten: {},
+
+            /* Themen, die die Mitspieler selbst angelegt haben (seit v3.7):
+               Kennung -> Beschriftung. Sie stehen neben dem festen Katalog. */
+            eigeneGruppen: {},
+
+            /* Welche Wörter zuletzt dran waren, das jüngste zuletzt. Daraus
+               folgt die Dämpfung von Wiederholungen. */
+            letzteWoerter: [],
 
             spieler: []
         };
     },
 
     /*
-     * Alle Wörter einer Gruppe: der feste Katalog plus die eigenen.
+     * Alle Wörter, aus denen diese Runde ziehen darf: der feste Katalog plus
+     * die ergänzten — beides gefiltert nach dem eingestellten Thema und der
+     * eingestellten Wortart.
      *
-     * Ergänzte Wörter kommen HINTEN dran. Die Ziehung rechnet mit der Länge
-     * der Liste — dadurch verschieben sich vorhandene Wörter nicht, und eine
+     * `gruppeId` und `wortart` sind wahlfrei; ohne Angabe gelten die
+     * Einstellungen der Runde. Das zweite Argument gab es schon vorher, deshalb
+     * bleibt es an seiner Stelle.
+     *
+     * Ergänzte Wörter kommen HINTEN dran. Die Ziehung rechnet mit der Länge der
+     * Liste — dadurch verschieben sich vorhandene Wörter nicht, und eine
      * laufende Runde behält ihr Wort.
      */
-    woerterVon(runde, gruppeId) {
-        const gruppe = IMPOSTER_WOERTER.gruppe(gruppeId);
+    woerterVon(runde, gruppeId, wortart) {
         const stand = IMPOSTER_RUNDE.normalisieren(runde);
-        const eigene = stand.eigeneWoerter[gruppe.id] || [];
+        const thema = (gruppeId === undefined) ? stand.gruppe : gruppeId;
+        const art = (wortart === undefined) ? stand.wortart : wortart;
 
-        return gruppe.woerter.concat(eigene);
+        /* Ein selbst angelegtes Thema hat keine festen Wörter — nur die, die
+           die Mitspieler hineingeschrieben haben. */
+        const feste = (thema === IMPOSTER_WOERTER.ALLE || IMPOSTER_WOERTER.gibtEs(thema))
+            ? IMPOSTER_WOERTER.woerter(thema, art)
+            : [];
+
+        /*
+         * Aus welchen Gruppen kommen die ergänzten Wörter? Bei „alle Themen"
+         * aus allen — den festen wie den selbst angelegten. Die Reihenfolge ist
+         * dabei so wichtig wie überall sonst: erst der Katalog, dann die
+         * eigenen Themen in der Reihenfolge ihrer Kennung.
+         */
+        const gruppen = (thema === IMPOSTER_WOERTER.ALLE)
+            ? IMPOSTER_WOERTER.zurAuswahl().map((gruppe) => gruppe.id)
+                .concat(Object.keys(stand.eigeneGruppen).sort())
+            : [thema];
+
+        const eigene = [];
+
+        for (const id of gruppen) {
+            for (const wort of (stand.eigeneWoerter[id] || [])) {
+                if (!IMPOSTER_WOERTER.gibtEsWortart(art)
+                    || IMPOSTER_RUNDE.wortartVon(stand, wort) === art) {
+                    eigene.push(wort);
+                }
+            }
+        }
+
+        return feste.concat(eigene);
+    },
+
+    /*
+     * Gibt es dieses Thema — im festen Katalog oder unter den selbst
+     * angelegten? Liefert die Kennung, sonst die des ersten Themas.
+     */
+    gruppeKennung(runde, gruppeId) {
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+
+        if (stand.eigeneGruppen[gruppeId]) {
+            return gruppeId;
+        }
+        return IMPOSTER_WOERTER.gruppe(gruppeId).id;
+    },
+
+    /* Die Beschriftung eines Themas — fester Katalog oder selbst angelegt. */
+    gruppeTitel(runde, gruppeId) {
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+
+        if (gruppeId === IMPOSTER_WOERTER.ALLE) {
+            return "Alle Themen";
+        }
+        if (stand.eigeneGruppen[gruppeId]) {
+            return stand.eigeneGruppen[gruppeId];
+        }
+        return IMPOSTER_WOERTER.gruppe(gruppeId).titel;
+    },
+
+    /* Alle Themen zur Auswahl: der feste Katalog plus die selbst angelegten. */
+    gruppenZurAuswahl(runde) {
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+        const liste = IMPOSTER_WOERTER.zurAuswahl()
+            .map((gruppe) => ({ id: gruppe.id, titel: gruppe.titel, eigen: false }));
+
+        for (const id of Object.keys(stand.eigeneGruppen).sort()) {
+            liste.push({ id: id, titel: stand.eigeneGruppen[id], eigen: true });
+        }
+
+        return liste;
+    },
+
+    /*
+     * Die Wortart eines Wortes: erst der eigene Eintrag, dann der feste
+     * Katalog, sonst die Vorgabe. Ein Wort ohne bekannte Wortart als Nomen zu
+     * führen ist die harmloseste Annahme — die allermeisten sind welche.
+     */
+    wortartVon(runde, wort) {
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+        const schluessel = String(wort || "").toLowerCase();
+
+        if (stand.wortarten[schluessel]) {
+            return stand.wortarten[schluessel];
+        }
+        return IMPOSTER_WOERTER.wortartVon(wort) || IMPOSTER_WOERTER.STANDARD_WORTART;
     },
 
     normalisieren(roh) {
@@ -134,8 +267,32 @@ const IMPOSTER_RUNDE = {
         if (["warten", "laeuft", "aufloesung"].indexOf(roh.phase) !== -1) {
             runde.phase = roh.phase;
         }
-        if (IMPOSTER_WOERTER.gibtEs(roh.gruppe)) {
+        /*
+         * DIE SELBST ANGELEGTEN THEMEN ZUERST: Sie entscheiden mit, ob `gruppe`
+         * und die ergänzten Wörter gültig sind. Stünde das weiter unten, fiele
+         * ein Raum mit eigenem Thema auf „Alltag" zurück.
+         */
+        if (roh.eigeneGruppen && typeof roh.eigeneGruppen === "object") {
+            for (const id of Object.keys(roh.eigeneGruppen)) {
+                const titel = (typeof roh.eigeneGruppen[id] === "string")
+                    ? roh.eigeneGruppen[id].trim().substring(0, 30) : "";
+
+                /* Eine eigene Kennung darf keine aus dem Katalog verdrängen. */
+                if (titel !== "" && !IMPOSTER_WOERTER.gibtEs(id)
+                    && id !== IMPOSTER_WOERTER.ALLE
+                    && /^[a-z0-9-]{1,40}$/.test(id)) {
+                    runde.eigeneGruppen[id] = titel;
+                }
+            }
+        }
+
+        if (IMPOSTER_WOERTER.gibtEs(roh.gruppe) || roh.gruppe === IMPOSTER_WOERTER.ALLE
+            || runde.eigeneGruppen[roh.gruppe]) {
             runde.gruppe = roh.gruppe;
+        }
+        if (IMPOSTER_WOERTER.gibtEsWortart(roh.wortart)
+            || roh.wortart === IMPOSTER_WOERTER.ALLE) {
+            runde.wortart = roh.wortart;
         }
         if (Number.isInteger(roh.impostermenge) && roh.impostermenge >= 1
             && roh.impostermenge <= IMPOSTER_RUNDE.IMPOSTER_HOECHSTENS) {
@@ -151,9 +308,16 @@ const IMPOSTER_RUNDE = {
             runde.endeAm = roh.endeAm;
         }
 
+        if (Array.isArray(roh.letzteWoerter)) {
+            runde.letzteWoerter = roh.letzteWoerter
+                .filter((wort) => typeof wort === "string" && wort.trim() !== "")
+                .map((wort) => wort.trim().substring(0, 40))
+                .slice(-IMPOSTER_RUNDE.GEDAECHTNIS);
+        }
+
         if (roh.eigeneWoerter && typeof roh.eigeneWoerter === "object") {
             for (const gruppe of Object.keys(roh.eigeneWoerter)) {
-                if (!IMPOSTER_WOERTER.gibtEs(gruppe)) {
+                if (!IMPOSTER_WOERTER.gibtEs(gruppe) && !runde.eigeneGruppen[gruppe]) {
                     continue;
                 }
                 const liste = Array.isArray(roh.eigeneWoerter[gruppe])
@@ -167,6 +331,16 @@ const IMPOSTER_RUNDE = {
 
                 if (sauber.length > 0) {
                     runde.eigeneWoerter[gruppe] = sauber;
+                }
+            }
+        }
+
+        /* Die Wortarten der ergänzten Wörter (seit v3.7). */
+        if (roh.wortarten && typeof roh.wortarten === "object") {
+            for (const schluessel of Object.keys(roh.wortarten)) {
+                if (IMPOSTER_WOERTER.gibtEsWortart(roh.wortarten[schluessel])) {
+                    runde.wortarten[String(schluessel).toLowerCase().substring(0, 40)]
+                        = roh.wortarten[schluessel];
                 }
             }
         }
@@ -254,10 +428,67 @@ const IMPOSTER_RUNDE = {
             return "";
         }
 
-        const woerter = IMPOSTER_RUNDE.woerterVon(stand, stand.gruppe);
-        const wert = IMPOSTER_RUNDE._zufallsWert(stand.salz + "|wort");
+        const woerter = IMPOSTER_RUNDE.woerterVon(stand);
+        if (woerter.length === 0) {
+            return "";
+        }
 
-        return woerter[Math.floor(wert * woerter.length) % woerter.length];
+        const wert = IMPOSTER_RUNDE._zufallsWert(stand.salz + "|wort");
+        return IMPOSTER_RUNDE._wortZiehen(stand, woerter, wert);
+    },
+
+    /*
+     * Zieht ein Wort — und meidet dabei, was zuletzt schon dran war.
+     *
+     * Das Gewicht eines Wortes hängt davon ab, wie viele Runden seit seinem
+     * letzten Auftritt vergangen sind: eine Runde danach ein Zehntel, zwei
+     * Runden danach zwei Zehntel, und nach WIEDERHOLUNG_RUNDEN wieder ganz.
+     * Gesperrt wird nie — bei einem kleinen Thema wäre die Auswahl sonst
+     * irgendwann leer.
+     *
+     * OHNE GEDÄCHTNIS ÄNDERT SICH NICHTS: Sind alle Gewichte 1, ergibt die
+     * Rechnung genau `woerter[floor(wert * länge)]` — dieselbe Stelle wie
+     * vorher. Eine laufende Runde behält damit ihr Wort.
+     */
+    _wortZiehen(runde, woerter, wert) {
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+        const gewichte = woerter.map(
+            (wort) => IMPOSTER_RUNDE._wortGewicht(stand, wort));
+        const summe = gewichte.reduce((teil, einzeln) => teil + einzeln, 0);
+
+        if (summe <= 0) {
+            return woerter[Math.floor(wert * woerter.length) % woerter.length];
+        }
+
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * summe;
+
+        for (let stelle = 0; stelle < woerter.length; stelle++) {
+            if (rest < gewichte[stelle]) {
+                return woerter[stelle];
+            }
+            rest -= gewichte[stelle];
+        }
+
+        return woerter[woerter.length - 1];
+    },
+
+    /* Wie stark zählt dieses Wort bei der Ziehung? 1 = wie jedes andere. */
+    _wortGewicht(runde, wort) {
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+        const gesucht = String(wort || "").toLowerCase();
+
+        /* Von hinten suchen: Das jüngste Auftreten zählt. */
+        for (let stelle = stand.letzteWoerter.length - 1; stelle >= 0; stelle--) {
+            if (stand.letzteWoerter[stelle].toLowerCase() !== gesucht) {
+                continue;
+            }
+
+            /* `abstand` ist 1, wenn das Wort in der letzten Runde dran war. */
+            const abstand = stand.letzteWoerter.length - stelle;
+            return Math.min(1, abstand / IMPOSTER_RUNDE.WIEDERHOLUNG_RUNDEN);
+        }
+
+        return 1;
     },
 
     /*
@@ -268,14 +499,20 @@ const IMPOSTER_RUNDE = {
      * leer ist. Doppelte Wörter wären kein Fehler, aber sie verschöben die
      * Wahrscheinlichkeiten — ein zweimal vorhandenes Wort käme doppelt so oft.
      */
-    woerterErgaenzen(runde, gruppeId, text, zeitpunkt) {
+    woerterErgaenzen(runde, gruppeId, text, zeitpunkt, wortart) {
         const neu = IMPOSTER_RUNDE.kopieren(runde);
 
-        if (!IMPOSTER_WOERTER.gibtEs(gruppeId)) {
+        if (!IMPOSTER_WOERTER.gibtEs(gruppeId) && !neu.eigeneGruppen[gruppeId]) {
             return { runde: neu, hinzugefuegt: 0, uebersprungen: 0 };
         }
 
-        const vorhanden = IMPOSTER_RUNDE.woerterVon(neu, gruppeId)
+        /*
+         * Gegen ALLES geprüft, nicht nur gegen dieses Thema und diese Wortart:
+         * Ein Wort, das schon irgendwo steht, würde sonst zweimal auftauchen —
+         * und ein doppeltes Wort käme doppelt so oft.
+         */
+        const vorhanden = IMPOSTER_RUNDE.woerterVon(
+            neu, IMPOSTER_WOERTER.ALLE, IMPOSTER_WOERTER.ALLE)
             .map((wort) => wort.toLowerCase());
         const eigene = (neu.eigeneWoerter[gruppeId] || []).slice();
 
@@ -295,6 +532,14 @@ const IMPOSTER_RUNDE = {
 
             eigene.push(wort);
             vorhanden.push(wort.toLowerCase());
+
+            /* Die Wortart gehört zum Wort, nicht zur Gruppe — deshalb steht sie
+               in einer eigenen Karte (seit v3.7). Ohne Angabe gilt die
+               Vorgabe. */
+            if (IMPOSTER_WOERTER.gibtEsWortart(wortart)) {
+                neu.wortarten[wort.toLowerCase()] = wortart;
+            }
+
             hinzugefuegt++;
         }
 
@@ -304,6 +549,60 @@ const IMPOSTER_RUNDE = {
         }
 
         return { runde: neu, hinzugefuegt: hinzugefuegt, uebersprungen: uebersprungen };
+    },
+
+    /*
+     * Legt ein eigenes Thema an und liefert { runde, id }.
+     *
+     * Die Kennung wird aus dem Titel gebildet („Gemüse" wird zu `e-gemuese`) und
+     * bei einer Kollision hochgezählt. Das Vorzeichen `e-` hält sie von den
+     * Kennungen des festen Katalogs fern — die dürfen nie überdeckt werden,
+     * sonst verlöre ein Raum sein Thema.
+     *
+     * Gibt es den Titel schon, wird NICHTS angelegt: Zurückgeliefert wird die
+     * vorhandene Kennung. Zwei Themen „Gemüse" nebeneinander wären für alle
+     * verwirrend, und die Wörter lägen verteilt.
+     */
+    gruppeAnlegen(runde, titel, zeitpunkt) {
+        const neu = IMPOSTER_RUNDE.kopieren(runde);
+        const name = String(titel || "").trim().substring(0, 30);
+
+        if (name === "") {
+            return { runde: neu, id: "" };
+        }
+
+        /* Schon da — im festen Katalog oder unter den eigenen? */
+        const vorhanden = IMPOSTER_WOERTER.zurAuswahl()
+            .find((gruppe) => gruppe.titel.toLowerCase() === name.toLowerCase());
+        if (vorhanden) {
+            return { runde: neu, id: vorhanden.id };
+        }
+
+        for (const id of Object.keys(neu.eigeneGruppen)) {
+            if (neu.eigeneGruppen[id].toLowerCase() === name.toLowerCase()) {
+                return { runde: neu, id: id };
+            }
+        }
+
+        const grund = "e-" + name.toLowerCase()
+            .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
+            .replace(/ß/g, "ss")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .substring(0, 30);
+
+        let id = (grund === "e-") ? "e-thema" : grund;
+        let nummer = 1;
+
+        while (neu.eigeneGruppen[id] || IMPOSTER_WOERTER.gibtEs(id)) {
+            nummer++;
+            id = grund + "-" + nummer;
+        }
+
+        neu.eigeneGruppen[id] = name;
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+
+        return { runde: neu, id: id };
     },
 
     /* Entfernt ein ergänztes Wort. Der feste Katalog bleibt unberührt. */
@@ -319,6 +618,7 @@ const IMPOSTER_RUNDE = {
         if (neu.eigeneWoerter[gruppeId].length === 0) {
             delete neu.eigeneWoerter[gruppeId];
         }
+        delete neu.wortarten[String(wort || "").toLowerCase()];
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
@@ -421,14 +721,17 @@ const IMPOSTER_RUNDE = {
      * mehr angefasst — wie die Spielart beim Schach. Die Funktion bleibt, weil
      * die Regeln davon nichts wissen müssen und der Datenvertrag additiv ist.
      */
-    einstellen(runde, gruppe, impostermenge, zeitpunkt) {
+    einstellen(runde, gruppe, impostermenge, zeitpunkt, wortart) {
         const neu = IMPOSTER_RUNDE.kopieren(runde);
 
         if (neu.phase !== "warten") {
             return neu;
         }
-        if (IMPOSTER_WOERTER.gibtEs(gruppe)) {
+        if (IMPOSTER_WOERTER.gibtEs(gruppe) || gruppe === IMPOSTER_WOERTER.ALLE) {
             neu.gruppe = gruppe;
+        }
+        if (IMPOSTER_WOERTER.gibtEsWortart(wortart) || wortart === IMPOSTER_WOERTER.ALLE) {
+            neu.wortart = wortart;
         }
         if (Number.isInteger(impostermenge) && impostermenge >= 1
             && impostermenge <= IMPOSTER_RUNDE.IMPOSTER_HOECHSTENS) {
@@ -553,6 +856,25 @@ const IMPOSTER_RUNDE = {
     /* Neue Runde: Mitspieler bleiben, alles andere beginnt von vorn. */
     neueRunde(runde, zeitpunkt) {
         const neu = IMPOSTER_RUNDE.kopieren(runde);
+
+        /*
+         * DAS ALTE WORT WANDERT INS GEDÄCHTNIS — und zwar HIER und nicht beim
+         * Starten.
+         *
+         * Der Grund ist ein Zirkelschluss: `wortVon` rechnet das Wort aus dem
+         * Salz UND dem Gedächtnis. Würde das frisch gezogene Wort sofort
+         * eingetragen, änderte sich damit sein eigenes Gewicht — und die
+         * nächste Abfrage lieferte ein anderes Wort als die erste. Beim
+         * Zurücksetzen ist das Salz dagegen ohnehin gleich weg.
+         */
+        const gefallen = IMPOSTER_RUNDE.wortVon(neu);
+        if (gefallen) {
+            neu.letzteWoerter.push(gefallen);
+
+            while (neu.letzteWoerter.length > IMPOSTER_RUNDE.GEDAECHTNIS) {
+                neu.letzteWoerter.shift();
+            }
+        }
 
         neu.phase = "warten";
         neu.salz = "";
@@ -721,7 +1043,13 @@ const IMPOSTER_RUNDE = {
             + " Punkte Zuschlag.\n\n"
             + "Wie viele Imposter es wirklich werden, entscheidet der Zufall: Es "
             + "können weniger sein als eingestellt, in seltenen Fällen keiner. "
-            + "Einer ist nie Imposter — sonst wüsste niemand das Wort.";
+            + "Einer ist nie Imposter — sonst wüsste niemand das Wort.\n\n"
+            + "Vor jeder Runde darfst du ein eigenes Wort beisteuern. Es kommt in "
+            + "den gemeinsamen Vorrat und kann schon in derselben Runde drankommen. "
+            + "Ein Wort, das gerade dran war, wird dagegen erst nach und nach "
+            + "wieder wahrscheinlich — nach etwa "
+            + IMPOSTER_RUNDE.WIEDERHOLUNG_RUNDEN + " Runden zählt es wieder ganz "
+            + "normal mit. Gesperrt ist es nie.";
     },
 
     /* ---------------------------------------------------------------- *
@@ -734,6 +1062,7 @@ const IMPOSTER_RUNDE = {
 
         return einsA.phase === einsB.phase
             && einsA.gruppe === einsB.gruppe
+            && einsA.wortart === einsB.wortart
             && einsA.impostermenge === einsB.impostermenge
             && einsA.salz === einsB.salz
             && einsA.endeAm === einsB.endeAm

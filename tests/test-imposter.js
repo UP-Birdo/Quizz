@@ -61,19 +61,62 @@ function laufendeRunde(anzahl, salz) {
  * ------------------------------------------------------------------ */
 
 pruefe("Der Katalog hat Gruppen mit genug Woertern", () => {
-    wahr(IMPOSTER_WOERTER.gruppen.length >= 5, "mindestens fuenf Gruppen");
+    wahr(IMPOSTER_WOERTER.zurAuswahl().length >= 5, "mindestens fuenf Themen");
     wahr(IMPOSTER_WOERTER.anzahl() >= 150, "mindestens 150 Woerter insgesamt");
 
     for (const gruppe of IMPOSTER_WOERTER.gruppen) {
-        wahr(gruppe.woerter.length >= 20, gruppe.id + " hat genug Woerter");
-        wahr(["thema", "wortart"].indexOf(gruppe.art) !== -1, gruppe.id + " hat eine Art");
+        wahr(IMPOSTER_WOERTER.woerter(gruppe.id).length >= 20,
+            gruppe.id + " hat genug Woerter");
+
+        for (const art of Object.keys(gruppe.nachWortart)) {
+            wahr(IMPOSTER_WOERTER.gibtEsWortart(art),
+                gruppe.id + ": " + art + " ist eine bekannte Wortart");
+        }
     }
 });
 
 pruefe("Kein Wort steht doppelt in derselben Gruppe", () => {
     for (const gruppe of IMPOSTER_WOERTER.gruppen) {
-        const einmalig = new Set(gruppe.woerter.map((wort) => wort.toLowerCase()));
-        gleich(einmalig.size, gruppe.woerter.length, "Gruppe " + gruppe.id);
+        const alle = IMPOSTER_WOERTER.woerter(gruppe.id);
+        const einmalig = new Set(alle.map((wort) => wort.toLowerCase()));
+        gleich(einmalig.size, alle.length, "Gruppe " + gruppe.id);
+    }
+});
+
+pruefe("Der Wortart-Filter greift auf den Katalog", () => {
+    const alle = IMPOSTER_WOERTER.woerter("gemischt");
+    const nomen = IMPOSTER_WOERTER.woerter("gemischt", "nomen");
+    const verben = IMPOSTER_WOERTER.woerter("gemischt", "verb");
+    const adjektive = IMPOSTER_WOERTER.woerter("gemischt", "adjektiv");
+
+    gleich(nomen.length + verben.length + adjektive.length, alle.length,
+        "die drei ergeben zusammen alles");
+    wahr(verben.indexOf("schlafen") !== -1, "ein Verb ist dabei");
+    gleich(verben.indexOf("Brücke"), -1, "aber kein Nomen");
+});
+
+pruefe("Ein Thema mit nur Nomen liefert bei „Verb“ nichts", () => {
+    gleich(IMPOSTER_WOERTER.woerter("alltag", "verb").length, 0, "keine Verben im Alltag");
+    wahr(IMPOSTER_WOERTER.woerter("alltag", "nomen").length > 20, "Nomen schon");
+});
+
+pruefe("Alle Themen zusammen zaehlen jedes Wort nur einmal", () => {
+    /* Die drei alten Wortart-Gruppen sind versteckt; ihre Woerter stehen unter
+       „Querbeet". Sie duerfen deshalb nicht doppelt gezaehlt werden. */
+    const alle = IMPOSTER_WOERTER.woerter(IMPOSTER_WOERTER.ALLE);
+    const einmalig = new Set(alle.map((wort) => wort.toLowerCase()));
+
+    gleich(einmalig.size, alle.length, "kein Wort doppelt");
+});
+
+pruefe("Die versteckten Wortart-Gruppen bleiben gueltig", () => {
+    /* Ein Raum von vor v3.7 traegt „verben" im Stand und muss weiter genau
+       dieselbe Liste bekommen — sonst wechselt mitten im Spiel das Wort. */
+    for (const id of ["nomen", "verben", "adjektive"]) {
+        wahr(IMPOSTER_WOERTER.gibtEs(id), id + " gibt es noch");
+        wahr(IMPOSTER_WOERTER.woerter(id).length >= 20, id + " hat seine Woerter");
+        wahr(!IMPOSTER_WOERTER.zurAuswahl().some((gruppe) => gruppe.id === id),
+            id + " steht nicht mehr zur Auswahl");
     }
 });
 
@@ -90,7 +133,7 @@ pruefe("Unbekannte Gruppen fallen auf die erste zurueck", () => {
 
 pruefe("Eingefuegte Woerter landen hinten in der Gruppe", () => {
     const gruppe = IMPOSTER_WOERTER.gruppen[0];
-    const vorher = gruppe.woerter.length;
+    const vorher = IMPOSTER_WOERTER.woerter(gruppe.id).length;
 
     const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
         gruppe.id, "Kaminfeuer\nDachrinne\n\n  Fensterbank  ", 2000);
@@ -104,12 +147,31 @@ pruefe("Eingefuegte Woerter landen hinten in der Gruppe", () => {
     gleich(alle[vorher + 2], "Fensterbank", "und ist beschnitten");
 
     /* Der feste Katalog bleibt unberuehrt. */
-    gleich(gruppe.woerter.length, vorher, "Katalog unveraendert");
+    gleich(IMPOSTER_WOERTER.woerter(gruppe.id).length, vorher, "Katalog unveraendert");
+});
+
+pruefe("Ein ergaenztes Wort traegt seine Wortart", () => {
+    const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
+        "alltag", "wischen", 2000, "verb");
+
+    gleich(ergebnis.hinzugefuegt, 1, "eingefuegt");
+    gleich(IMPOSTER_RUNDE.wortartVon(ergebnis.runde, "wischen"), "verb", "als Verb gemerkt");
+
+    /* Und der Filter findet es auch — im Alltag gibt es sonst keine Verben. */
+    gleich(IMPOSTER_RUNDE.woerterVon(ergebnis.runde, "alltag", "verb").join(","),
+        "wischen", "der Filter findet es");
+});
+
+pruefe("Ohne Angabe gilt ein ergaenztes Wort als Nomen", () => {
+    const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
+        "alltag", "Kaminfeuer", 2000);
+
+    gleich(IMPOSTER_RUNDE.wortartVon(ergebnis.runde, "Kaminfeuer"), "nomen", "Vorgabe");
 });
 
 pruefe("Was schon dasteht, wird uebersprungen", () => {
     const gruppe = IMPOSTER_WOERTER.gruppen[0];
-    const schonDa = gruppe.woerter[0];
+    const schonDa = IMPOSTER_WOERTER.woerter(gruppe.id)[0];
 
     let ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(IMPOSTER_RUNDE.leereRunde(1000),
         gruppe.id, schonDa + "\n" + schonDa.toLowerCase() + "\nGanzNeu", 2000);
@@ -129,8 +191,8 @@ pruefe("Ergaenzte Woerter lassen sich wieder entfernen", () => {
 
     runde = IMPOSTER_RUNDE.wortEntfernen(runde, gruppe.id, "Kaminfeuer", 2100);
 
-    gleich(IMPOSTER_RUNDE.woerterVon(runde, gruppe.id).length, gruppe.woerter.length,
-        "wieder wie vorher");
+    gleich(IMPOSTER_RUNDE.woerterVon(runde, gruppe.id).length,
+        IMPOSTER_WOERTER.woerter(gruppe.id).length, "wieder wie vorher");
     gleich(runde.eigeneWoerter[gruppe.id], undefined, "leere Liste faellt weg");
 });
 
@@ -266,9 +328,170 @@ pruefe("Das Wort stammt aus der gewaehlten Gruppe", () => {
         let runde = IMPOSTER_RUNDE.einstellen(bereiteRunde(4), gruppe.id, 1, 1000);
         runde = IMPOSTER_RUNDE.starten(runde, "abc123", 2000);
 
-        wahr(gruppe.woerter.indexOf(IMPOSTER_RUNDE.wortVon(runde)) !== -1,
-            "Wort aus " + gruppe.id);
+        wahr(IMPOSTER_WOERTER.woerter(gruppe.id).indexOf(
+            IMPOSTER_RUNDE.wortVon(runde)) !== -1, "Wort aus " + gruppe.id);
     }
+});
+
+pruefe("Mit Wortart-Filter stammt das Wort aus dieser Sorte", () => {
+    /* Ueber viele Salze: Jedes gezogene Wort muss ein Verb sein. */
+    for (let nummer = 0; nummer < 40; nummer++) {
+        let runde = IMPOSTER_RUNDE.einstellen(bereiteRunde(4),
+            IMPOSTER_WOERTER.ALLE, 1, 1000, "verb");
+        runde = IMPOSTER_RUNDE.starten(runde, "v" + nummer, 2000);
+
+        const wort = IMPOSTER_RUNDE.wortVon(runde);
+        gleich(IMPOSTER_WOERTER.wortartVon(wort), "verb", "gezogen wurde " + wort);
+    }
+});
+
+pruefe("Ein Raum ohne Wortart zieht wie vorher", () => {
+    /*
+     * DER WICHTIGSTE TEST DIESES UMBAUS: Ein Raum, der vor v3.7 angelegt wurde,
+     * hat kein Feld `wortart`. Er muss Zeichen fuer Zeichen dieselbe Wortliste
+     * bekommen wie frueher — sonst wechselt mitten in der Runde das Wort.
+     */
+    for (const id of ["alltag", "essen", "natur", "technik", "freizeit",
+        "nomen", "verben", "adjektive"]) {
+        const alt = IMPOSTER_RUNDE.normalisieren({ gruppe: id });
+
+        gleich(alt.wortart, IMPOSTER_WOERTER.ALLE, id + ": Vorgabe ist alle");
+        gleich(IMPOSTER_RUNDE.woerterVon(alt).join("|"),
+            IMPOSTER_WOERTER.woerter(id).join("|"), id + ": dieselbe Liste");
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Eigene Themen und die Wiederholungssperre (seit v3.7)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein eigenes Thema laesst sich anlegen und traegt Woerter", () => {
+    const angelegt = IMPOSTER_RUNDE.gruppeAnlegen(IMPOSTER_RUNDE.leereRunde(1000),
+        "Gemüse", 2000);
+
+    wahr(angelegt.id.indexOf("e-") === 0, "die Kennung faengt mit e- an");
+    gleich(angelegt.runde.eigeneGruppen[angelegt.id], "Gemüse", "Titel gemerkt");
+
+    const mitWort = IMPOSTER_RUNDE.woerterErgaenzen(
+        angelegt.runde, angelegt.id, "Kohlrabi", 2100, "nomen");
+
+    gleich(mitWort.hinzugefuegt, 1, "Wort eingefuegt");
+    gleich(IMPOSTER_RUNDE.woerterVon(mitWort.runde, angelegt.id).join(","),
+        "Kohlrabi", "und nur dieses eine — ein eigenes Thema hat keinen Katalog");
+});
+
+pruefe("Ein eigenes Thema ueberlebt Speichern und Laden", () => {
+    const angelegt = IMPOSTER_RUNDE.gruppeAnlegen(IMPOSTER_RUNDE.leereRunde(1000),
+        "Gemüse", 2000);
+    let runde = IMPOSTER_RUNDE.woerterErgaenzen(
+        angelegt.runde, angelegt.id, "Kohlrabi", 2100, "nomen").runde;
+
+    runde.gruppe = angelegt.id;
+
+    const wieder = IMPOSTER_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+
+    gleich(wieder.gruppe, angelegt.id, "das Thema bleibt");
+    gleich(IMPOSTER_RUNDE.woerterVon(wieder).join(","), "Kohlrabi", "und sein Wort");
+});
+
+pruefe("Zwei gleiche Themen entstehen nicht", () => {
+    const einmal = IMPOSTER_RUNDE.gruppeAnlegen(IMPOSTER_RUNDE.leereRunde(1000),
+        "Gemüse", 2000);
+    const nochmal = IMPOSTER_RUNDE.gruppeAnlegen(einmal.runde, "gemüse", 2100);
+
+    gleich(nochmal.id, einmal.id, "dieselbe Kennung");
+    gleich(Object.keys(nochmal.runde.eigeneGruppen).length, 1, "nur ein Thema");
+});
+
+pruefe("Ein Thema, das es im Katalog gibt, wird nicht neu angelegt", () => {
+    const angelegt = IMPOSTER_RUNDE.gruppeAnlegen(IMPOSTER_RUNDE.leereRunde(1000),
+        "Alltag", 2000);
+
+    gleich(angelegt.id, "alltag", "die Kennung aus dem Katalog");
+    gleich(Object.keys(angelegt.runde.eigeneGruppen).length, 0, "nichts angelegt");
+});
+
+pruefe("Ohne Gedaechtnis zieht die Runde wie vorher", () => {
+    /*
+     * DER WICHTIGSTE TEST DER WIEDERHOLUNGSSPERRE: Sind alle Gewichte gleich,
+     * muss dieselbe Stelle herauskommen wie bei der einfachen Rechnung —
+     * sonst wechselt jede laufende Runde ihr Wort.
+     */
+    const runde = IMPOSTER_RUNDE.leereRunde(1000);
+    const woerter = ["eins", "zwei", "drei", "vier", "fuenf"];
+
+    for (let nummer = 0; nummer < 100; nummer++) {
+        const wert = nummer / 100;
+        const erwartet = woerter[Math.floor(wert * woerter.length) % woerter.length];
+
+        gleich(IMPOSTER_RUNDE._wortZiehen(runde, woerter, wert), erwartet,
+            "bei " + wert.toFixed(2));
+    }
+});
+
+pruefe("Ein gerade gefallenes Wort kommt viel seltener", () => {
+    const runde = IMPOSTER_RUNDE.normalisieren({ letzteWoerter: ["zwei"] });
+    const woerter = ["eins", "zwei", "drei", "vier", "fuenf"];
+
+    let getroffen = 0;
+    const schritte = 2000;
+
+    for (let nummer = 0; nummer < schritte; nummer++) {
+        if (IMPOSTER_RUNDE._wortZiehen(runde, woerter, nummer / schritte) === "zwei") {
+            getroffen++;
+        }
+    }
+
+    const anteil = getroffen / schritte * 100;
+    wahr(anteil < 5, "unter fuenf Prozent statt zwanzig (" + anteil.toFixed(1) + ")");
+    wahr(anteil > 0, "aber nicht gesperrt (" + anteil.toFixed(1) + ")");
+});
+
+pruefe("Das Gewicht erholt sich mit jeder Runde", () => {
+    const frisch = IMPOSTER_RUNDE.normalisieren({ letzteWoerter: ["zwei"] });
+    const spaeter = IMPOSTER_RUNDE.normalisieren({
+        letzteWoerter: ["zwei", "a", "b", "c", "d"]
+    });
+
+    const einsFrisch = IMPOSTER_RUNDE._wortGewicht(frisch, "zwei");
+    const einsSpaeter = IMPOSTER_RUNDE._wortGewicht(spaeter, "zwei");
+
+    wahr(einsSpaeter > einsFrisch, "spaeter mehr Gewicht ("
+        + einsFrisch + " gegen " + einsSpaeter + ")");
+    gleich(IMPOSTER_RUNDE._wortGewicht(frisch, "unbekannt"), 1, "ein neues Wort zaehlt voll");
+});
+
+pruefe("Nach genug Runden zaehlt ein Wort wieder voll", () => {
+    const lang = [];
+    for (let nummer = 0; nummer < IMPOSTER_RUNDE.WIEDERHOLUNG_RUNDEN; nummer++) {
+        lang.push("f" + nummer);
+    }
+
+    const runde = IMPOSTER_RUNDE.normalisieren({ letzteWoerter: ["zwei"].concat(lang) });
+    gleich(IMPOSTER_RUNDE._wortGewicht(runde, "zwei"), 1, "wieder voll dabei");
+});
+
+pruefe("Eine neue Runde merkt sich das gefallene Wort", () => {
+    const gestartet = laufendeRunde(3, "abc123");
+    const wort = IMPOSTER_RUNDE.wortVon(gestartet);
+
+    const naechste = IMPOSTER_RUNDE.neueRunde(gestartet, 5000);
+
+    gleich(naechste.letzteWoerter[naechste.letzteWoerter.length - 1], wort,
+        "das Wort steht im Gedaechtnis");
+    gleich(naechste.salz, "", "und das Salz ist weg");
+});
+
+pruefe("Das Gedaechtnis waechst nicht ins Unendliche", () => {
+    const lang = [];
+    for (let nummer = 0; nummer < IMPOSTER_RUNDE.GEDAECHTNIS + 10; nummer++) {
+        lang.push("wort-" + nummer);
+    }
+
+    const runde = IMPOSTER_RUNDE.normalisieren({ letzteWoerter: lang });
+    gleich(runde.letzteWoerter.length, IMPOSTER_RUNDE.GEDAECHTNIS, "gekuerzt");
+    gleich(runde.letzteWoerter[runde.letzteWoerter.length - 1],
+        lang[lang.length - 1], "das juengste bleibt");
 });
 
 pruefe("Es ist NIE jeder Imposter — mindestens einer kennt das Wort", () => {

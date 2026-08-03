@@ -148,17 +148,16 @@ const TEAM_SCHACH = {
     WIRKUNG_MS: 900,
 
     /*
-     * Halbmesser einer Figur in Feldbreiten — so groß ist das Loch, das eine
-     * Figur ZWISCHEN Start und Ziel in die Pfeilmaske stanzt.
+     * Wie gross eine Figur im Verhältnis zu ihrem Feld ist. Dieselbe Zahl
+     * steht als Rückfall in der Stildatei (`.feld`, font-size) — gerechnet
+     * wird sie hier aus der gemessenen Feldbreite, siehe
+     * TEAM_SCHACH._figurGroesseSetzen.
      */
-    FIGUR_RADIUS: 0.42,
+    FIGUR_ANTEIL: 0.68,
 
-    /*
-     * Wie weit der Pfeil vor der Feldmitte anfängt und aufhört. Kleiner als
-     * der Figurenradius: Der Pfeil rückt näher an die Figuren heran und bleibt
-     * dabei an beiden Enden vollständig sichtbar.
-     */
-    PFEIL_ABSTAND: 0.3,
+    /* Das Brett und ein Feld daraus, gemerkt beim Zeichnen — nur zum Messen. */
+    brettEl: null,
+    feldEl: null,
 
     verbinden(abgleich) {
         TEAM_SCHACH.abgleich = abgleich;
@@ -281,7 +280,8 @@ const TEAM_SCHACH = {
         wurzel.appendChild(TEAM_SCHACH._fussleisteBauen(partie, person));
 
         /* Erst wenn das Brett im Bildschirm steht, lässt sich die Feldgröße
-           messen — deshalb steht die Bewegung ganz am Ende. */
+           messen — deshalb stehen Größe und Bewegung ganz am Ende. */
+        TEAM_SCHACH._figurGroesseSetzen();
         TEAM_SCHACH._zugAnimieren(halter, partie, person);
         TEAM_SCHACH._wirkungAnimieren(halter, partie);
 
@@ -543,6 +543,17 @@ const TEAM_SCHACH = {
         /* Wartet eine Fähigkeit auf ihr Ziel, gilt jeder Tipp ihr. */
         if (TEAM_SCHACH.zielFaehigkeit) {
             if (TEAM_SCHACH.zielFelder.indexOf(feld) === -1) {
+                /*
+                 * Ein Tipp daneben BRICHT AB, statt stumm nichts zu tun.
+                 *
+                 * Bis v3.5 passierte hier gar nichts: Das Brett nahm keine
+                 * Tipps mehr an, und der einzige Ausweg war ein
+                 * Abbrechen-Knopf unter dem Brett, den man auf dem Handy erst
+                 * einmal finden muss. Von aussen sah das aus, als hinge die
+                 * Seite. Die Fähigkeit bleibt dabei erhalten.
+                 */
+                TEAM_SCHACH._auswahlAufheben();
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
                 return;
             }
             TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit, feld);
@@ -690,8 +701,41 @@ const TEAM_SCHACH = {
     async _sendenMitPruefung(neuePartie, erwarteterZaehler) {
         const abgleich = TEAM_SCHACH.abgleich;
 
+        /*
+         * ERST ANZEIGEN, DANN SENDEN (seit v3.8).
+         *
+         * Bis v3.7 wurde der Zug erst gezeichnet, wenn die Datenbank ihn
+         * bestätigt hatte. Über mobile Daten sind das schnell ein bis zwei
+         * Sekunden, in denen sich nichts rührt — man tippt noch einmal, und die
+         * Seite wirkt hängengeblieben. Jetzt steht der Zug sofort auf dem
+         * Brett; das Schreiben läuft dahinter.
+         *
+         * DREI DINGE MACHEN DAS SICHER:
+         *
+         *   1. Der Zug ist bereits vollständig gerechnet (SCHACH_RUNDE.ziehen)
+         *      — angezeigt wird kein Wunschbild, sondern das Ergebnis.
+         *   2. Die Zugzähler-Prüfung bleibt, wo sie war. Wer aus dem eigenen
+         *      Team schneller war, gewinnt weiterhin; der eigene Zug wird dann
+         *      zurückgenommen. Die Hausregel ändert sich nicht.
+         *   3. Solange gesendet wird, übernimmt der Abgleich keinen fremden
+         *      Stand (`eigenerVorgangBeginnt`). Sonst käme die regelmässige
+         *      Abfrage dazwischen und setzte das Brett auf den Stand von vor
+         *      dem Zug zurück — genau das Zurückspringen, um das es geht.
+         *
+         * Geht das Schreiben schief, wird der Stand von vorher wiederhergestellt
+         * und gesagt, was los ist. Auf einem Stand weiterzuspielen, den niemand
+         * sonst kennt, wäre schlimmer als ein Rücksprung.
+         */
+        const vorher = abgleich.daten;
+        const sofort = SCHACH_TAFEL.partieEinsetzen(abgleich.daten, neuePartie);
+
+        abgleich.daten = sofort;
+        TEAM_SCHACH.zeichnen(sofort);
+
+        abgleich.eigenerVorgangBeginnt();
+
         try {
-            let tafel = abgleich.daten;
+            let tafel = sofort;
 
             if (abgleich.speicher.art === "gemeinsam") {
                 const fremd = SCHACH_TAFEL.normalisieren(await abgleich.speicher.laden());
@@ -707,18 +751,24 @@ const TEAM_SCHACH = {
                     );
                     return false;
                 }
-                tafel = fremd;
+                tafel = SCHACH_TAFEL.partieEinsetzen(fremd, neuePartie);
             }
 
-            const neueTafel = SCHACH_TAFEL.partieEinsetzen(tafel, neuePartie);
-            await abgleich.speicher.speichern(neueTafel);
-            abgleich.daten = neueTafel;
-            TEAM_SCHACH.zeichnen(neueTafel);
+            await abgleich.speicher.speichern(tafel);
+            abgleich.daten = tafel;
+            TEAM_SCHACH.zeichnen(tafel);
             return true;
         } catch (fehler) {
+            abgleich.daten = vorher;
+            TEAM_SCHACH.zeichnen(vorher);
+
             await DIALOG.hinweis("Nicht gespeichert",
-                "Die Änderung konnte nicht gesendet werden: " + fehler.message);
+                "Die Änderung konnte nicht gesendet werden: " + fehler.message
+                    + "\n\nDein Zug wurde deshalb zurückgenommen — sonst würdest du "
+                    + "auf einem Brett weiterspielen, das sonst niemand sieht.");
             return false;
+        } finally {
+            abgleich.eigenerVorgangEndet();
         }
     },
 
@@ -943,7 +993,7 @@ const TEAM_SCHACH = {
                 + "\n\nSie ist danach verbraucht."
                 + (beschreibung.beendetZug
                     ? " Und sie kostet den ganzen Zug: Danach ist der Gegner dran."
-                    : ""),
+                    : " Dein normaler Zug bleibt dir."),
             "Einsetzen",
             false
         );
@@ -1036,9 +1086,16 @@ const TEAM_SCHACH = {
         TEAM_SCHACH._auswahlAufheben();
 
         if (!neu) {
+            const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art] || {};
+
             await DIALOG.hinweis("Geht gerade nicht",
-                "Die Fähigkeit lässt sich nur einsetzen, solange dein Team am Zug "
-                    + "ist — und nur auf ein gültiges Feld.");
+                (beschreibung.imGegenzug
+                    ? "Die Fähigkeit lässt sich nur einsetzen, solange die Partie "
+                        + "läuft und du in einem Team bist."
+                    : "Die Fähigkeit lässt sich nur einsetzen, solange dein Team am "
+                        + "Zug ist — und nur auf ein gültiges Feld.")
+                + " Wenn dein König im Schach steht, geht ausserdem nichts, was "
+                + "deinen Zug beendet: Du müsstest das Schach dabei ja auflösen.");
             TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
         }

@@ -225,9 +225,25 @@ umgebung.ICH = {
     /* Der Gerätespeicher, so weit der Bildschirm ihn braucht. */
     _gesehen: {},
     abschlussGesehen(id) { return umgebung.ICH._gesehen[id] === true; },
-    abschlussMerken(id) { umgebung.ICH._gesehen[id] = true; }
+    abschlussMerken(id) { umgebung.ICH._gesehen[id] = true; },
+
+    /* Verwaltungs-Zugang: Seit v3.7 haengt der Bibliotheks-Knopf im Imposter
+       daran. Standardmaessig aus — ein Test schaltet ihn gezielt ein. */
+    _verwaltung: false,
+    verwaltungAktiv() { return umgebung.ICH._verwaltung === true; },
+    verwaltungSetzen(an) { umgebung.ICH._verwaltung = (an === true); }
 };
-umgebung.DIALOG = { hinweis: async () => true, frage: async () => true };
+/*
+ * Die Dialoge sagen immer ab: `eingabe` und `liste` liefern null. So laufen
+ * Abläufe, die etwas erfragen, sauber in ihren Abbruch-Zweig — geprüft wird
+ * hier, dass der Bildschirm-Code durchläuft, nicht der Dialog selbst.
+ */
+umgebung.DIALOG = {
+    hinweis: async () => true,
+    frage: async () => true,
+    eingabe: async () => null,
+    liste: async () => null
+};
 
 /*
  * Alle Dateien in EINEM Lauf übersetzen: Ein `const` auf oberster Ebene gehört
@@ -292,7 +308,18 @@ for (const variante of SCHACH_VARIANTEN.liste) {
     kennungen[variante.id] = partie.id;
 }
 
-TEAM_SCHACH.abgleich = { daten: tafel, speicher: { art: "lokal" } };
+/*
+ * Der Abgleich-Stellvertreter. `eigenerVorgangBeginnt`/`-Endet` gehoeren dazu,
+ * seit der Bildschirm seine eigenen Schreibvorgaenge anmeldet (v3.8) — der
+ * echte Abgleich haelt damit die regelmaessige Abfrage an.
+ */
+TEAM_SCHACH.abgleich = {
+    daten: tafel,
+    speicher: { art: "lokal" },
+    vorgaenge: 0,
+    eigenerVorgangBeginnt() { this.vorgaenge++; },
+    eigenerVorgangEndet() { this.vorgaenge = Math.max(0, this.vorgaenge - 1); }
+};
 TEAM_SCHACH.aufbauen(neuesElement("div"));
 
 /* ------------------------------------------------------------------ *
@@ -425,17 +452,21 @@ pruefe("Der Koenig macht den eigenen Turm zum Rochade-Ziel", () => {
     }
 });
 
-/* Sucht den Pfeil im gerade gezeichneten Brett. */
-function pfeilImBrett() {
-    const brett = brettSuchen();
-    return brett.kinder.find((kind) => kind.attribute
-        && kind.attribute["class"] === "zug-pfeil") || null;
+/* Die Klassen eines Feldes im gerade gezeichneten Brett. */
+function feldKlassen(feld) {
+    const zelle = brettSuchen().kinder.find((kind) => kind.dataset
+        && kind.dataset.feld === String(feld));
+
+    if (!zelle) {
+        throw new Error("Feld " + feld + " nicht im Brett");
+    }
+    return String(zelle.className || "").split(" ").concat(zelle.classList.liste);
 }
 
-pruefe("Ohne Zug gibt es keinen Pfeil, nach einem Zug schon", () => {
+pruefe("Ohne Zug gibt es keine Spur, nach einem Zug schon", () => {
     /* Eine eigene Partie, damit der Test nicht von der Reihenfolge abhaengt. */
     const angelegt = SCHACH_TAFEL.partieAnlegen(
-        TEAM_SCHACH.abgleich.daten, "standard", "Pfeil", 5000);
+        TEAM_SCHACH.abgleich.daten, "standard", "Spur", 5000);
 
     let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 5000);
     partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 5000);
@@ -445,8 +476,8 @@ pruefe("Ohne Zug gibt es keinen Pfeil, nach einem Zug schon", () => {
     TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 5000);
     TEAM_SCHACH.partieOeffnen(partie.id);
 
-    if (pfeilImBrett()) {
-        throw new Error("ohne Zug darf kein Pfeil da sein");
+    if (feldKlassen(SCHACH.feldNummer("e4")).indexOf("feld-spur") !== -1) {
+        throw new Error("ohne Zug darf keine Spur da sein");
     }
 
     const gezogen = SCHACH_RUNDE.ziehen(partie, "id-anna",
@@ -456,47 +487,22 @@ pruefe("Ohne Zug gibt es keinen Pfeil, nach einem Zug schon", () => {
         TEAM_SCHACH.abgleich.daten, gezogen, 5100);
     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
 
-    const pfeil = pfeilImBrett();
-    if (!pfeil) {
-        throw new Error("kein Pfeil gezeichnet");
+    /* e2 und e4 sind die Enden, e3 liegt dazwischen. */
+    for (const name of ["e2", "e3", "e4"]) {
+        if (feldKlassen(SCHACH.feldNummer(name)).indexOf("feld-spur") === -1) {
+            throw new Error(name + " gehoert zum Weg, ist aber nicht eingefaerbt");
+        }
     }
-
-    /* Maske und maskierte Gruppe; die Striche stecken in der Gruppe. */
-    const gruppe = pfeil.kinder.find((kind) => kind.tagName === "g");
-    if (!gruppe) {
-        throw new Error("keine maskierte Gruppe");
+    for (const name of ["e2", "e4"]) {
+        if (feldKlassen(SCHACH.feldNummer(name)).indexOf("feld-spur-ende") === -1) {
+            throw new Error(name + " ist ein Ende und muesste kraeftiger sein");
+        }
     }
-
-    const maske = pfeil.kinder.find((kind) => kind.tagName === "mask");
-    if (!maske) {
-        throw new Error("keine Maske — der Pfeil wuerde die Figuren ueberdecken");
+    if (feldKlassen(SCHACH.feldNummer("e3")).indexOf("feld-spur-ende") !== -1) {
+        throw new Error("e3 ist kein Ende des Weges");
     }
-
-    /* Zwei Lagen aus je Strich und Spitze. */
-    if (gruppe.kinder.length !== 4) {
-        throw new Error("Pfeil hat " + gruppe.kinder.length + " Teile statt 4");
-    }
-
-    /*
-     * Ein Loch je besetztem Feld, dazu die weisse Grundfläche — ABER nicht für
-     * Start und Ziel: Dort bleibt der Pfeil ganz. Nach 1. e4 stehen 31 Figuren
-     * auf anderen Feldern (32 minus dem Bauern auf e4), macht 32 Teile.
-     */
-    if (maske.kinder.length !== 32) {
-        throw new Error("Maske hat " + maske.kinder.length + " Teile statt 32");
-    }
-
-    /* Und auf dem Zielfeld darf kein Loch sitzen. */
-    const ziel = pfeilImBrett && SCHACH.feldNummer("e4");
-    const punkte = maske.kinder
-        .filter((kind) => kind.tagName === "circle")
-        .map((kind) => kind.attribute.cx + "/" + kind.attribute.cy);
-
-    if (punkte.indexOf("4.5/4.5") !== -1) {
-        throw new Error("das Zielfeld e4 ist maskiert — der Pfeil waere abgeschnitten");
-    }
-    if (ziel < 0) {
-        throw new Error("Zielfeld nicht gefunden");
+    if (feldKlassen(SCHACH.feldNummer("d4")).indexOf("feld-spur") !== -1) {
+        throw new Error("d4 liegt nicht auf dem Weg");
     }
 });
 
@@ -936,55 +942,234 @@ pruefe("Ein Profil eines entfernten Spielers faellt in die Wertung zurueck", () 
 });
 
 /* ------------------------------------------------------------------ *
- * Der Zugpfeil (Geometrie, seit v3.3 mit Knick beim Springer)
+ * Der Weg einer Bewegung (seit v3.6; loest den Zugpfeil ab)
  * ------------------------------------------------------------------ */
 
-pruefe("Ein gerader Zug bekommt einen geraden Pfeil", () => {
-    const punkte = TEAM_SCHACH._pfeilPunkte({ x: 0.5, y: 7.5 }, { x: 0.5, y: 3.5 });
+/* Ein Stand vom klassischen Brett genuegt — gerechnet wird nur mit den Massen. */
+const wegStand = SCHACH.neuerStand("standard");
 
-    if (!punkte) {
-        throw new Error("kein Pfeil");
-    }
-    if (punkte.linie.length !== 2) {
-        throw new Error("erwartet zwei Punkte, waren " + punkte.linie.length);
-    }
-    if (punkte.spitze.length !== 3) {
-        throw new Error("die Spitze braucht drei Punkte");
+/* Kurzform: Feldnamen statt Nummern, damit die Tests lesbar bleiben. */
+function wegVon(vonName, nachName) {
+    return SCHACH.wegFelder(wegStand,
+        SCHACH.feldNummer(vonName), SCHACH.feldNummer(nachName))
+        .map((feld) => SCHACH.feldName(feld));
+}
+
+/* Und dasselbe fuer die Felder, die WIRKLICH betreten werden. */
+function betretenVon(vonName, nachName) {
+    return SCHACH.betreteneFelder(wegStand,
+        SCHACH.feldNummer(vonName), SCHACH.feldNummer(nachName))
+        .map((feld) => SCHACH.feldName(feld));
+}
+
+pruefe("Ein Turm betritt jedes Feld auf seinem Weg, das Startfeld nicht", () => {
+    const betreten = betretenVon("a1", "a4").join(" ");
+
+    if (betreten !== "a2 a3 a4") {
+        throw new Error("erwartet 'a2 a3 a4', war '" + betreten + "'");
     }
 });
 
-pruefe("Ein Springersprung bekommt einen Knick", () => {
-    /* b1 nach c3: zwei Felder hoch, eines zur Seite. */
-    const punkte = TEAM_SCHACH._pfeilPunkte({ x: 1.5, y: 7.5 }, { x: 2.5, y: 5.5 });
+pruefe("Ein Springer betritt nur sein Zielfeld", () => {
+    const betreten = betretenVon("b1", "c3").join(" ");
 
-    if (!punkte) {
-        throw new Error("kein Pfeil");
+    if (betreten !== "c3") {
+        throw new Error("erwartet 'c3', war '" + betreten + "'");
     }
-    if (punkte.linie.length !== 3) {
-        throw new Error("erwartet drei Punkte (mit Knick), waren " + punkte.linie.length);
-    }
+});
 
-    /* Der Knick liegt am Ende der LANGEN Achse — hier also senkrecht ueber
-       dem Start, auf Hoehe des Ziels. */
-    const knick = punkte.linie[1];
-    if (Math.abs(knick.x - 1.5) > 0.001 || Math.abs(knick.y - 5.5) > 0.001) {
-        throw new Error("der Knick sitzt falsch: " + knick.x + "/" + knick.y);
+pruefe("Auch der Teleport betritt nur sein Zielfeld", () => {
+    const betreten = betretenVon("d4", "f7").join(" ");
+
+    if (betreten !== "f7") {
+        throw new Error("erwartet 'f7', war '" + betreten + "'");
+    }
+});
+
+pruefe("Ein gerader Zug faerbt jedes Feld dazwischen", () => {
+    const weg = wegVon("a1", "a4").join(" ");
+
+    if (weg !== "a1 a2 a3 a4") {
+        throw new Error("erwartet 'a1 a2 a3 a4', war '" + weg + "'");
+    }
+});
+
+pruefe("Ein diagonaler Zug faerbt die Diagonale", () => {
+    const weg = wegVon("c1", "f4").join(" ");
+
+    if (weg !== "c1 d2 e3 f4") {
+        throw new Error("erwartet 'c1 d2 e3 f4', war '" + weg + "'");
+    }
+});
+
+pruefe("Ein Springersprung faerbt das L, nicht die Diagonale", () => {
+    /* b1 nach c3: zwei Felder hoch, eines zur Seite. Der Knick liegt am Ende
+       der LANGEN Achse — also senkrecht ueber dem Start. */
+    const weg = wegVon("b1", "c3").join(" ");
+
+    if (weg !== "b1 b2 b3 c3") {
+        throw new Error("erwartet 'b1 b2 b3 c3', war '" + weg + "'");
     }
 });
 
 pruefe("Auch die flache L-Bewegung knickt richtig", () => {
-    /* Zwei Felder zur Seite, eines hoch. */
-    const punkte = TEAM_SCHACH._pfeilPunkte({ x: 1.5, y: 7.5 }, { x: 3.5, y: 6.5 });
-    const knick = punkte.linie[1];
+    /* b1 nach d2: zwei Felder zur Seite, eines hoch. */
+    const weg = wegVon("b1", "d2").join(" ");
 
-    if (Math.abs(knick.x - 3.5) > 0.001 || Math.abs(knick.y - 7.5) > 0.001) {
-        throw new Error("der Knick sitzt falsch: " + knick.x + "/" + knick.y);
+    if (weg !== "b1 c1 d1 d2") {
+        throw new Error("erwartet 'b1 c1 d1 d2', war '" + weg + "'");
     }
 });
 
-pruefe("Ein Zug ins Nachbarfeld ist zu kurz fuer einen Pfeil", () => {
-    if (TEAM_SCHACH._pfeilPunkte({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }) !== null) {
-        throw new Error("ein Weg ohne Laenge darf keinen Pfeil geben");
+pruefe("Beim Teleport gehoert nur Anfang und Ende zum Weg", () => {
+    /* Zwei Felder schraeg — kein Muster, das ueber Felder fuehrt. */
+    const weg = wegVon("d4", "f7").join(" ");
+
+    if (weg !== "d4 f7") {
+        throw new Error("erwartet 'd4 f7', war '" + weg + "'");
+    }
+});
+
+pruefe("Ein Weg ohne Laenge ist genau ein Feld", () => {
+    const weg = wegVon("e4", "e4").join(" ");
+
+    if (weg !== "e4") {
+        throw new Error("erwartet 'e4', war '" + weg + "'");
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Die Zeichen am Faehigkeiten-Vorrat (seit v3.6)
+ * ------------------------------------------------------------------ */
+
+/* Die Klassen aller Kinder einer Marke, als eine Zeichenkette. */
+function zeichenAn(art) {
+    const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard);
+    const marke = TEAM_SCHACH._faehigkeitMarkeBauen(
+        partie, { id: "id-anna", name: "Anna" }, "weiss", art, false);
+
+    return marke.kinder
+        .map((kind) => String(kind.className || (kind.attribute && kind.attribute["class"]) || ""))
+        .join(" ");
+}
+
+pruefe("Ausweichen traegt Pluszeichen und Blitz", () => {
+    const zeichen = zeichenAn("ausweichen");
+
+    if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
+        throw new Error("kein Pluszeichen — Ausweichen kostet keinen Zug");
+    }
+    if (zeichen.indexOf("faehigkeit-blitz") === -1) {
+        throw new Error("kein Blitz — Ausweichen geht im Gegenzug");
+    }
+});
+
+pruefe("Der Friedhof traegt keines von beiden", () => {
+    const zeichen = zeichenAn("friedhof");
+
+    if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
+        throw new Error("Pluszeichen, obwohl der Friedhof den Zug beendet");
+    }
+    if (zeichen.indexOf("faehigkeit-blitz") !== -1) {
+        throw new Error("Blitz, obwohl der Friedhof nur am eigenen Zug geht");
+    }
+});
+
+pruefe("Sprung traegt das Pluszeichen, aber keinen Blitz", () => {
+    const zeichen = zeichenAn("sprung");
+
+    if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
+        throw new Error("kein Pluszeichen — nach dem Sprung zieht man noch normal");
+    }
+    if (zeichen.indexOf("faehigkeit-blitz") !== -1) {
+        throw new Error("Blitz, obwohl Sprung nur am eigenen Zug geht");
+    }
+});
+
+pruefe("Ein Zug steht sofort auf dem Brett, bevor gespeichert ist", () => {
+    /*
+     * Der Kern von v3.8: Nicht erst warten, bis die Datenbank bestaetigt hat.
+     *
+     * Geprueft wird das mit einem Speicher, der NIE fertig wird. Der Aufruf von
+     * `_sendenMitPruefung` wird bewusst nicht abgewartet — alles vor dem ersten
+     * `await` laeuft synchron, und genau dort muss der Zug schon stehen.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Sofort", 7000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 7000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 7000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 7000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 7000);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 7000);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const gezogen = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"), "D", "Anna", 7100);
+
+    const gemerkt = TEAM_SCHACH.abgleich.speicher;
+    TEAM_SCHACH.abgleich.speicher = {
+        art: "lokal",
+        /* Loest nie auf: So bleibt der Ablauf genau an der Stelle stehen, an
+           der frueher der Bildschirm gewartet haette. */
+        speichern() { return new Promise(() => undefined); }
+    };
+
+    try {
+        TEAM_SCHACH._sendenMitPruefung(gezogen, partie.zugZaehler);
+
+        const jetzt = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, partie.id);
+        if (!jetzt || jetzt.zugZaehler !== gezogen.zugZaehler) {
+            throw new Error("der Zug steht noch nicht im Stand");
+        }
+        if (SCHACH.figurAuf(jetzt.stand, SCHACH.feldNummer("d4")) !== "B") {
+            throw new Error("der Bauer steht nicht auf d4");
+        }
+        if (TEAM_SCHACH.abgleich.vorgaenge !== 1) {
+            throw new Error("der Schreibvorgang ist beim Abgleich nicht angemeldet");
+        }
+    } finally {
+        TEAM_SCHACH.abgleich.speicher = gemerkt;
+        TEAM_SCHACH.abgleich.vorgaenge = 0;
+    }
+});
+
+pruefe("Ein Tipp neben die Zielfelder bricht die Faehigkeit ab", () => {
+    /* Bis v3.5 passierte hier gar nichts — das sah aus, als haenge die Seite. */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Abbruch", 6000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 6000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 6000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 6000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 6000);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 6000);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    if (!SCHACH_RUNDE.darfZiehen(partie, "id-anna")) {
+        throw new Error("Anna muesste am Zug sein");
+    }
+
+    TEAM_SCHACH.zielFaehigkeit = "schutzschild";
+    TEAM_SCHACH.zielFelder = [SCHACH.feldNummer("e2")];
+
+    TEAM_SCHACH.feldAngetippt(partie, { id: "id-anna", name: "Anna" },
+        SCHACH.feldNummer("h8"));
+
+    if (TEAM_SCHACH.zielFaehigkeit !== "") {
+        throw new Error("die Zielauswahl laeuft noch");
+    }
+});
+
+pruefe("Ein schlagender Bauer bekommt seine Spur", () => {
+    /* Genau der Fall, in dem der alte Pfeil fehlte: eine Strecke von einem
+       Feld war kuerzer als Rand plus Spitze und wurde gar nicht gezeichnet. */
+    const weg = wegVon("e4", "d5").join(" ");
+
+    if (weg !== "e4 d5") {
+        throw new Error("erwartet 'e4 d5', war '" + weg + "'");
     }
 });
 
@@ -996,8 +1181,14 @@ pruefe("Ein Zug ins Nachbarfeld ist zu kurz fuer einen Pfeil", () => {
 IMPOSTER.aufbauen(neuesElement("div"));
 IMPOSTER.verbinden({
     daten: IMPOSTER_TAFEL.leereTafel(1000),
-    speicher: { art: "lokal" },
-    aendern(neueDaten) { this.daten = neueDaten; }
+    speicher: {
+        art: "lokal",
+        async speichern() { return true; }
+    },
+    aendern(neueDaten) { this.daten = neueDaten; },
+    vorgaenge: 0,
+    eigenerVorgangBeginnt() { this.vorgaenge++; },
+    eigenerVorgangEndet() { this.vorgaenge = Math.max(0, this.vorgaenge - 1); }
 });
 
 /*
@@ -1042,7 +1233,7 @@ pruefe("Imposter: die Uebersicht zeigt jeden Raum", () => {
     }
 });
 
-pruefe("Imposter: die Ansicht zum Anlegen zeigt jede Wortgruppe", () => {
+pruefe("Imposter: die Ansicht zum Anlegen zeigt jedes Thema plus „Alle“", () => {
     IMPOSTER.abgleich.daten = IMPOSTER_TAFEL.leereTafel(1000);
     IMPOSTER.raumAnlegen();
 
@@ -1050,8 +1241,37 @@ pruefe("Imposter: die Ansicht zum Anlegen zeigt jede Wortgruppe", () => {
     if (!feld) {
         throw new Error("keine Kacheln");
     }
-    if (feld.kinder.length !== umgebung.IMPOSTER_WOERTER.gruppen.length) {
-        throw new Error("erwartet eine Kachel je Gruppe, sind: " + feld.kinder.length);
+
+    /* Eine Kachel je Thema, das zur Auswahl steht — plus „Alle Themen".
+       Versteckte Gruppen (die alten Wortart-Gruppen) sind nicht dabei. */
+    const erwartet = umgebung.IMPOSTER_WOERTER.zurAuswahl().length + 1;
+    if (feld.kinder.length !== erwartet) {
+        throw new Error("erwartet " + erwartet + " Kacheln, sind: " + feld.kinder.length);
+    }
+
+    IMPOSTER.auswahlSchliessen();
+});
+
+pruefe("Imposter: der Wortart-Filter laesst sich umstellen", () => {
+    IMPOSTER.abgleich.daten = IMPOSTER_TAFEL.leereTafel(1000);
+    IMPOSTER.raumAnlegen();
+
+    if (IMPOSTER.neueEinstellungen.wortart !== umgebung.IMPOSTER_WOERTER.ALLE) {
+        throw new Error("die Vorgabe muesste 'alle' sein");
+    }
+
+    IMPOSTER.wortartWaehlen("verb");
+    if (IMPOSTER.neueEinstellungen.wortart !== "verb") {
+        throw new Error("der Filter wurde nicht uebernommen");
+    }
+
+    /* Ein Thema ohne Verben muss jetzt gesperrt sein — sonst tippt man darauf
+       und bekommt einen Raum ohne ein einziges Wort. */
+    const feld = imposterSuchen("spielart-feld");
+    const gesperrt = feld.kinder.filter((kachel) => kachel.disabled).length;
+
+    if (gesperrt === 0) {
+        throw new Error("kein Thema gesperrt, obwohl die meisten keine Verben haben");
     }
 
     IMPOSTER.auswahlSchliessen();

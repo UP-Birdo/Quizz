@@ -297,16 +297,31 @@ const SCHACH_RUNDE = {
          * gebaut — angefangene Partien laufen damit unverändert weiter.
          */
         if (roh.bonusFassung === SCHACH_RUNDE.BONUS_FASSUNG) {
+            /*
+             * Ein Würfel trägt entweder eine STUFE (seit v3.6: was drin ist,
+             * entscheidet sich erst beim Einsammeln — nur so kann der eigene
+             * Vorrat die Ziehung dämpfen) oder eine feste ART (Würfel, die
+             * schon vor v3.6 auf dem Brett lagen, und alle Unglückswürfel).
+             * Beides bleibt gültig; der additive Vertrag verlangt genau das.
+             */
             const liste = Array.isArray(roh.bonus) ? roh.bonus : [];
             runde.bonus = liste
                 .filter((eintrag) => eintrag && Number.isInteger(eintrag.feld)
                     && eintrag.feld >= 0
                     && (eintrag.pech
                         ? SCHACH_VARIANTEN.PECH[eintrag.art]
-                        : SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]))
-                .map((eintrag) => (eintrag.pech
-                    ? { feld: eintrag.feld, art: eintrag.art, pech: true }
-                    : { feld: eintrag.feld, art: eintrag.art }))
+                        : (SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]
+                            || SCHACH_VARIANTEN.STUFEN.some(
+                                (stufe) => stufe.id === eintrag.stufe))))
+                .map((eintrag) => {
+                    if (eintrag.pech) {
+                        return { feld: eintrag.feld, art: eintrag.art, pech: true };
+                    }
+                    if (SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]) {
+                        return { feld: eintrag.feld, art: eintrag.art };
+                    }
+                    return { feld: eintrag.feld, art: "", stufe: eintrag.stufe };
+                })
                 .filter((eintrag, stelle, alle) =>
                     alle.findIndex((anderer) => anderer.feld === eintrag.feld) === stelle);
         } else {
@@ -494,20 +509,34 @@ const SCHACH_RUNDE = {
             const istPech = (SCHACH_RUNDE._zufallsWert(marke + "|pech") * 100)
                 < SCHACH_VARIANTEN.PECH_CHANCE;
 
-            const art = istPech
-                ? SCHACH_VARIANTEN.pechZiehen(SCHACH_RUNDE._zufallsWert(marke + "|pechart"))
-                : SCHACH_VARIANTEN.faehigkeitZiehen(SCHACH_RUNDE._zufallsWert(marke + "|art"));
+            /*
+             * BEIM ERSCHEINEN STEHT NUR DIE STUFE FEST (seit v3.6).
+             *
+             * Was in einem Würfel steckt, entscheidet sich erst beim
+             * Einsammeln — und zwar gegen den Vorrat DESSEN, der ihn
+             * einsammelt. Anders ginge die Dämpfung von Wiederholungen nicht:
+             * Beim Erscheinen weiss noch niemand, wer den Würfel bekommt.
+             *
+             * Der Unglückswürfel behält seine feste Art. Er kommt nicht in den
+             * Vorrat und wiederholt sich deshalb auch nicht.
+             */
+            const eintrag = { feld: feld };
 
-            if (!art) {
-                continue;
+            if (istPech) {
+                eintrag.art = SCHACH_VARIANTEN.pechZiehen(
+                    SCHACH_RUNDE._zufallsWert(marke + "|pechart"));
+                eintrag.pech = true;
+
+                if (!eintrag.art) {
+                    continue;
+                }
+            } else {
+                eintrag.art = "";
+                eintrag.stufe = SCHACH_VARIANTEN.stufeZiehen(
+                    SCHACH_RUNDE._zufallsWert(marke + "|art")).stufe.id;
             }
 
             freie.splice(stelle, 1);
-            const eintrag = { feld: feld, art: art };
-            if (istPech) {
-                eintrag.pech = true;
-            }
-
             runde.bonus.push(eintrag);
             neue.push(eintrag);
         }
@@ -547,19 +576,18 @@ const SCHACH_RUNDE = {
      */
     faehigkeitEinsetzen(runde, spielerId, art, zielFeld, wer, zeitpunkt) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
 
-        if (!SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+        if (!beschreibung) {
+            return null;
+        }
+        if (!SCHACH_RUNDE.darfEinsetzen(alt, spielerId, art)) {
             return null;
         }
 
         const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
         const stelle = alt.faehigkeiten[farbe].indexOf(art);
         if (stelle === -1) {
-            return null;
-        }
-
-        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
-        if (!beschreibung) {
             return null;
         }
 
@@ -632,6 +660,35 @@ const SCHACH_RUNDE = {
             }
         }
 
+        /*
+         * DER EIGENE KÖNIG DARF DABEI NICHT IM SCHACH BLEIBEN (seit v3.6).
+         *
+         * Für einen Zug gilt das seit jeher (`SCHACH.zuege` filtert es weg),
+         * für Fähigkeiten galt es nicht — dabei verschieben mehrere von ihnen
+         * ganze Reihen (Erdbeben, Nudelholz, Bauernschub) oder tauschen
+         * Figuren aus (Händler). Zwei Fälle sind verboten:
+         *
+         *   1. Man stellt sich selbst ins Schach. Das darf man mit einem Zug
+         *      auch nicht, und eine Fähigkeit ist kein Freibrief.
+         *   2. Man steht im Schach und gibt den Zug ab, ohne es aufzulösen.
+         *      Dann wäre der König beim nächsten Zug einfach weg — die Partie
+         *      endete, ohne dass Schachmatt gesagt wurde.
+         *
+         * Wer im Schach steht, darf dagegen weiter eine Fähigkeit einsetzen,
+         * die den Zug NICHT beendet: Er muss danach ja ohnehin noch aus dem
+         * Schach ziehen, und genau dabei kann sie helfen.
+         *
+         * Auf Brettern ohne Schachbegriff (Doppelbrett) entfällt das alles.
+         */
+        if (!SCHACH.varianteVon(neu.stand).koenigSchlagbar) {
+            const vorher = SCHACH.imSchach(alt.stand, farbe);
+            const nachher = SCHACH.imSchach(neu.stand, farbe);
+
+            if (nachher && (beschreibung.beendetZug || !vorher)) {
+                return null;
+            }
+        }
+
         neu.verlauf.push({
             text: "Fähigkeit " + SCHACH_VARIANTEN.faehigkeitTitel(art) + " eingesetzt"
                 + zusatzText,
@@ -647,6 +704,108 @@ const SCHACH_RUNDE = {
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
+    },
+
+    /*
+     * Sammelt alle Würfel ein, über die dieser Zug geführt hat. Ändert die
+     * übergebene Runde.
+     *
+     * BIS v3.5 ZÄHLTE NUR DAS ZIELFELD. Wer mit dem Turm über einen Würfel
+     * hinwegzog, liess ihn liegen — was am Brett aussah wie ein Fehler, denn
+     * die Figur war ja sichtbar darüber gelaufen. Jetzt zählt jedes betretene
+     * Feld. Wer springt (Springer, Fähigkeit „Sprung", Teleport), betritt nur
+     * sein Zielfeld und sammelt unterwegs deshalb nichts ein — genau so, wie
+     * es `SCHACH.betreteneFelder` festlegt.
+     *
+     * `altStand` ist der Stand VOR dem Zug: Die Felder gehören zu seiner
+     * Nummerierung, und ein Unglückswürfel kann das Brett vergrössern.
+     */
+    _bonusEinsammeln(runde, altStand, von, nach, farbe, wer) {
+        const betreten = SCHACH.betreteneFelder(altStand, von, nach);
+        const eingesammelt = [];
+
+        for (const feld of betreten) {
+            const stelle = runde.bonus.findIndex((eintrag) => eintrag.feld === feld);
+            if (stelle === -1) {
+                continue;
+            }
+            eingesammelt.push(runde.bonus[stelle]);
+            runde.bonus.splice(stelle, 1);
+            runde.bonusGesammelt.push(feld);
+        }
+
+        /*
+         * Erst alle Fähigkeiten gutschreiben, dann die Unglückswürfel wirken
+         * lassen. Die Reihenfolge ist Absicht: Ein Unglückswürfel kann das
+         * Brett verändern („Ausdehnung" vergrössert es), und danach zeigen die
+         * gemerkten Feldnummern woanders hin.
+         */
+        for (const bonus of eingesammelt) {
+            if (bonus.pech) {
+                continue;
+            }
+
+            /*
+             * WAS DRIN IST, ENTSCHEIDET SICH HIER (seit v3.6) — gegen den
+             * Vorrat dessen, der ihn einsammelt. Ein Würfel von vor v3.6 trägt
+             * seine Art schon; dann bleibt sie stehen.
+             */
+            const art = bonus.art || SCHACH_VARIANTEN.faehigkeitAusStufe(
+                bonus.stufe,
+                SCHACH_RUNDE._zufallsWert((runde.id || "partie") + "|inhalt|"
+                    + runde.zugZaehler + "|" + bonus.feld),
+                runde.faehigkeiten[farbe]);
+
+            if (!art) {
+                continue;
+            }
+            runde.faehigkeiten[farbe].push(art);
+
+            /* Derselbe Weg wie beim Zug davor: Dieser Eintrag beschreibt
+               denselben Zug. So findet der Bildschirm die Bewegung auch dann
+               am Ende des Verlaufs, wenn dabei etwas eingesammelt wurde. */
+            runde.verlauf.push({
+                text: SCHACH_VARIANTEN.faehigkeitTitel(art) + " ("
+                    + SCHACH_VARIANTEN.stufeVon(art).titel + ") eingesammelt",
+                wer: wer || "",
+                farbe: farbe,
+                von: von,
+                nach: nach,
+                wirkung: "eingesammelt",
+                felder: [bonus.feld]
+            });
+            SCHACH_RUNDE._verlaufKuerzen(runde);
+        }
+
+        for (const bonus of eingesammelt) {
+            if (!bonus.pech) {
+                continue;
+            }
+
+            /*
+             * Hat ein früherer Unglückswürfel das Brett schon verändert, sind
+             * alle weiteren Felder verschoben. Dann wirkt keiner mehr — er
+             * wird nur weggeräumt und im Verlauf vermerkt. Das ist selten
+             * (zwei Unglückswürfel auf einem Weg) und allemal besser, als auf
+             * ein falsch gerechnetes Feld zu wirken.
+             */
+            if (SCHACH.felderVon(runde.stand) !== SCHACH.felderVon(altStand)) {
+                runde.verlauf.push({
+                    text: "Ein zweiter Unglückswürfel verpufft — das Brett hat sich "
+                        + "gerade verändert",
+                    wer: wer || "",
+                    farbe: farbe,
+                    von: -1,
+                    nach: -1,
+                    wirkung: "pech",
+                    felder: []
+                });
+                SCHACH_RUNDE._verlaufKuerzen(runde);
+                continue;
+            }
+
+            SCHACH_RUNDE._pechAusloesen(runde, bonus.art, farbe, bonus.feld, wer, von);
+        }
     },
 
     /*
@@ -1185,6 +1344,35 @@ const SCHACH_RUNDE = {
             && stand.bereit.schwarz;
     },
 
+    /*
+     * Darf dieser Spieler diese Fähigkeit gerade einsetzen? (seit v3.6)
+     *
+     * Die Regel war bis dahin dieselbe wie fürs Ziehen: nur, wenn das eigene
+     * Team am Zug ist. Seit v3.6 gibt es Fähigkeiten mit `imGegenzug` — sie
+     * gehen auch, während der Gegner überlegt. Sie kosten keinen Zug und
+     * nehmen niemandem etwas weg; was sie erzeugen, ist ein Rennen: Wer
+     * zuerst drückt, war zuerst. Abgesichert ist es über denselben Zugzähler,
+     * mit dem sich auch zwei Züge aus einem Team nicht überholen können.
+     */
+    darfEinsetzen(runde, spielerId, art) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+
+        if (!beschreibung) {
+            return false;
+        }
+        if (SCHACH_RUNDE.darfZiehen(stand, spielerId)) {
+            return true;
+        }
+        if (!beschreibung.imGegenzug) {
+            return false;
+        }
+
+        /* Im Gegenzug genügt: Die Partie läuft und man ist in einem Team. */
+        return stand.laeuft && !stand.ergebnis
+            && !!SCHACH_RUNDE.teamVon(stand, spielerId);
+    },
+
     /* Darf dieser Spieler gerade ziehen? */
     darfZiehen(runde, spielerId) {
         const stand = SCHACH_RUNDE.normalisieren(runde);
@@ -1272,38 +1460,8 @@ const SCHACH_RUNDE = {
         });
         SCHACH_RUNDE._verlaufKuerzen(neu);
 
-        /* Liegt auf dem Zielfeld ein Würfel, sammelt das Team ihn ein. */
-        const stelle = neu.bonus.findIndex((eintrag) => eintrag.feld === nach);
-
-        if (stelle !== -1) {
-            const bonus = neu.bonus[stelle];
-            neu.bonus.splice(stelle, 1);
-            neu.bonusGesammelt.push(bonus.feld);
-
-            if (bonus.pech) {
-                /* Ein Unglückswürfel kommt nicht in den Vorrat — er wirkt
-                   sofort, und zwar gegen den, der ihn eingesammelt hat. */
-                SCHACH_RUNDE._pechAusloesen(neu, bonus.art, farbe, nach, wer, von);
-            } else {
-                neu.faehigkeiten[farbe].push(bonus.art);
-
-                /* Derselbe Weg wie beim Zug davor: Dieser Eintrag beschreibt
-                   denselben Zug. So findet der Bildschirm die Bewegung auch
-                   dann am Ende des Verlaufs, wenn dabei etwas eingesammelt
-                   wurde. */
-                neu.verlauf.push({
-                    text: SCHACH_VARIANTEN.faehigkeitTitel(bonus.art) + " ("
-                        + SCHACH_VARIANTEN.stufeVon(bonus.art).titel + ") eingesammelt",
-                    wer: wer || "",
-                    farbe: farbe,
-                    von: von,
-                    nach: nach,
-                    wirkung: "eingesammelt",
-                    felder: [nach]
-                });
-                SCHACH_RUNDE._verlaufKuerzen(neu);
-            }
-        }
+        /* Würfel einsammeln — auf dem ganzen Weg, nicht nur auf dem Zielfeld. */
+        SCHACH_RUNDE._bonusEinsammeln(neu, alt.stand, von, nach, farbe, wer);
 
         /* Und alle paar Züge erscheint ein neuer Würfel. */
         SCHACH_RUNDE._bonusNachziehen(neu);
@@ -1416,13 +1574,23 @@ const SCHACH_RUNDE = {
     faehigkeitVorschlagen(runde, spielerId, art, zielFeld, wer, zeitpunkt) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
 
-        if (!SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+        if (!SCHACH_RUNDE.darfEinsetzen(alt, spielerId, art)) {
             return null;
         }
 
         const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
 
-        if (!SCHACH_RUNDE.brauchtEinigkeit(alt) || alt.teams[farbe].length <= 1) {
+        /*
+         * Über eine Fähigkeit, die im Gegenzug geht, wird NICHT abgestimmt.
+         *
+         * Sie lebt davon, schnell zu sein: Bis das Team sich einig ist, hat
+         * der Gegner längst gezogen. Und die Abstimmung selbst läuft über den
+         * Zugzähler — der wandert beim gegnerischen Zug weiter und macht
+         * jeden offenen Vorschlag ungültig.
+         */
+        if (!SCHACH_RUNDE.brauchtEinigkeit(alt) || alt.teams[farbe].length <= 1
+            || beschreibung.imGegenzug) {
             return SCHACH_RUNDE.faehigkeitEinsetzen(
                 alt, spielerId, art, zielFeld, wer, zeitpunkt);
         }
@@ -1671,7 +1839,32 @@ const SCHACH_RUNDE = {
     },
 
     _bonusText(runde) {
-        return runde.bonus.map((eintrag) => eintrag.feld + ":" + eintrag.art).sort().join(",");
+        return runde.bonus
+            .map((eintrag) => eintrag.feld + ":" + eintrag.art + ":" + (eintrag.stufe || ""))
+            .sort().join(",");
+    },
+
+    /*
+     * Die Seltenheitsstufe eines Würfels auf dem Brett — für die Farbe, in der
+     * er gezeichnet wird.
+     *
+     * Seit v3.6 trägt ein Fähigkeitswürfel nur noch seine Stufe; ältere und
+     * alle Unglückswürfel tragen ihre Art. Beides muss dieselbe Frage
+     * beantworten, deshalb steht sie hier an einer Stelle und nicht dreimal
+     * im Bildschirm-Code.
+     */
+    bonusStufe(bonus) {
+        if (!bonus) {
+            return SCHACH_VARIANTEN.STUFE_UNBEKANNT;
+        }
+        if (bonus.pech) {
+            return SCHACH_VARIANTEN.pechStufeVon(bonus.art);
+        }
+        if (bonus.art) {
+            return SCHACH_VARIANTEN.stufeVon(bonus.art);
+        }
+        return SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === bonus.stufe)
+            || SCHACH_VARIANTEN.STUFE_UNBEKANNT;
     }
 };
 

@@ -1171,6 +1171,260 @@ Codes. Seitdem gibt es `stand.takt`, der wirklich jeden Halbzug zählt, und eine
 Test, der beide Zähler gegeneinander hält. **Wer eine neue Wirkung mit
 Ablaufzeit baut, nimmt `takt`.**
 
+## Warum der Zugpfeil verschwunden ist (v3.6)
+
+Der Pfeil war seit v1.9 dabei und wurde dreimal nachgebessert: halbdurchsichtig
+(v2.3), mit Maske (v2.6), mit Knick beim Springer (v3.3). Trotzdem kamen bis
+v3.5 immer neue Meldungen: „bei Bauern fehlt oft der Pfeil", „Pfeil beim Pferd
+nicht vorhanden", „wenn ein Bauer schlägt, soll auch ein Pfeil kommen".
+
+**Es waren nicht drei Fehler, sondern einer.** Ein Pfeil braucht Platz für
+Rand, Strich und Spitze. Ist die Strecke kürzer als das, wird gar nichts
+gezeichnet — und genau das ist eine Bewegung um ein einziges Feld, also jeder
+Bauernzug, jeder Königszug und der kurze Schenkel jedes Springer-L. Die
+Nachbesserungen zielten alle auf das Aussehen, nie auf diese Grenze.
+
+Die Lösung war, den Pfeil wegzuwerfen. Eingefärbte Felder können nicht zu kurz
+sein: Start und Ziel gehören immer dazu. Nebenbei fielen knapp 300 Zeilen
+Zeichenarbeit weg (SVG-Maske, zwei Lagen, Doppelkontur, Geometrie-Rechnung) und
+mit ihnen die Regel, dass `.zug-pfeil-linie` nach `.zug-pfeil-oben` stehen muss.
+
+**Die Lehre ist allgemeiner:** Wenn dieselbe Stelle dreimal nachgebessert wird
+und trotzdem Meldungen kommen, ist meist der Ansatz falsch und nicht die
+Ausführung.
+
+An die Stelle traten zwei Funktionen im Regelwerk, die bewusst getrennt sind:
+
+| Funktion | Frage | Beim Springer |
+|---|---|---|
+| `SCHACH.wegFelder` | Welche Felder ZEICHNET man? | das ganze L |
+| `SCHACH.betreteneFelder` | Welche betritt die Figur WIRKLICH? | nur das Ziel |
+
+Beide stehen in `schach.js` und nicht im Bildschirm, weil an der zweiten eine
+Regel hängt (was man unterwegs einsammelt). Zwei Antworten auf dieselbe Frage an
+zwei Orten wären genau die Art Widerspruch, die man erst im Spiel bemerkt.
+
+## Warum die Figurengröße gemessen und nicht gerechnet wird (v3.6)
+
+Gemeldet war: „Figuren sind nach dem Bewegen kleiner geworden."
+
+Die Schriftgröße im Feld stand in der Stildatei und rechnete mit `88vw` — einer
+Schätzung der Bildschirmbreite. Das Brett selbst ist aber `min(--brett-max,
+100%)` breit, also so breit wie sein Container. Solange beides zusammenpasst,
+fällt nichts auf. Es passt nicht mehr zusammen, sobald ein Scrollbalken
+erscheint: `vw` zählt ihn mit, `100%` nicht. **Und der Scrollbalken erscheint
+mitten im Spiel**, weil der Zugverlauf mit jedem Zug wächst und die Seite
+irgendwann über den Bildschirm hinausgeht.
+
+Die Figuren ändern sich also, ohne dass jemand etwas getan hätte — genau der
+gemeldete Eindruck. Die Feldbreite lag ohnehin schon vor (`_zugAnimieren` misst
+sie, um die Bewegung zu rechnen); jetzt setzt der Bildschirm daraus
+`--figur-groesse`. Die alte Rechnung steht als Rückfall in der Stildatei, für
+den Augenblick vor der ersten Messung.
+
+**Merksatz:** Eine Größe, die von der echten Breite eines Elements abhängt,
+gehört gemessen. `vw` ist die Breite des Fensters, nicht die des Elements.
+
+## Warum sich der Würfel-Inhalt erst beim Einsammeln entscheidet (v3.6)
+
+Gewünscht war: Was man schon hat, soll seltener nachkommen — und zwar
+gestaffelt nach Seltenheit.
+
+Das ging nicht in `_bonusNachziehen`, wo bis dahin Feld UND Inhalt gezogen
+wurden. **Beim Erscheinen weiss noch niemand, wer den Würfel einsammelt**, und
+gegen welchen Vorrat sollte man dann dämpfen? Gegen beide zusammen wäre eine
+Näherung gewesen, die genau dann daneben liegt, wenn eine Seite viel gesammelt
+hat und die andere nichts.
+
+Seit v3.6 trägt ein Würfel beim Erscheinen nur seine **Stufe** — das ist
+ohnehin das Einzige, was die Oberfläche je verraten darf. Die Fähigkeit wird
+beim Einsammeln gezogen, gegen den Vorrat des Sammlers. Gerechnet bleibt es:
+Die Marke enthält Partie, Zugzähler und Feld, also sehen alle Geräte dasselbe.
+
+Der Datenvertrag bleibt additiv: Ein Eintrag trägt entweder `stufe` (neu) oder
+`art` (Würfel, die vor v3.6 auf dem Brett lagen, und alle Unglückswürfel).
+`SCHACH_RUNDE.bonusStufe` beantwortet die Farbfrage für beide Fälle an einer
+Stelle.
+
+**Die Staffelung ist Absicht** und steht in `SCHACH_VARIANTEN.STUFEN`
+(`wiederholung`): 0,15 bei Gewöhnlich bis 0,75 bei Legendär. In der
+gewöhnlichen Stufe stehen drei Fähigkeiten zur Auswahl, da lässt sich eine
+leicht meiden. Bei den legendären wäre dieselbe harte Dämpfung dasselbe wie „du
+bekommst die anderen vier garantiert zuerst" — und damit wäre der Zufall weg.
+
+## Warum Ausweichen im gegnerischen Zug geht (v3.6)
+
+Es ist die erste Fähigkeit mit `imGegenzug`. Der Grund, warum das überhaupt
+vertretbar ist: Sie nimmt niemandem etwas weg, verschiebt nichts und kostet
+keinen Zug — sie erlaubt einer eigenen Figur nur, sich später auf ein FREIES
+Feld zu retten.
+
+Zwei Dinge waren dabei zu klären:
+
+- **Das Rennen.** Wer im gegnerischen Zug etwas schreibt, konkurriert mit dem
+  Gegner um denselben Zugzähler. Das ist kein Fehler, sondern die Regel: Wer
+  zuerst drückt, war zuerst — dieselbe Hausregel wie innerhalb eines Teams.
+  Abgesichert ist es durch dieselbe Prüfung (`_sendenMitPruefung`).
+- **Die Abstimmung entfällt.** In Partien mit „Team muss sich einig sein" wird
+  über eine Gegenzug-Fähigkeit NICHT abgestimmt. Sie lebt davon, schnell zu
+  sein; bis das Team sich einig ist, hat der Gegner längst gezogen. Ausserdem
+  macht sein Zug jeden offenen Vorschlag ohnehin ungültig (Zugzähler).
+
+Dazu wurde Ausweichen das Schlagen genommen. Vorher war es keine Notbremse,
+sondern ein zusätzlicher Angriff mit jeder beliebigen Figur — und am Bildschirm
+sah man rote Schlagfelder, auf die der Tipp dann doch nichts tat.
+
+## Warum eine Fähigkeit den König nicht im Schach lassen darf (v3.6)
+
+Für Züge galt das seit jeher: `SCHACH.zuege` wirft jeden Zug weg, nach dem der
+eigene König im Schach steht. **Für Fähigkeiten galt es nicht** — dabei
+verschieben mehrere von ihnen ganze Reihen (Erdbeben, Nudelholz, Bauernschub)
+oder tauschen Figuren aus (Händler).
+
+Zwei Fälle sind seit v3.6 gesperrt:
+
+1. **Sich selbst ins Schach stellen.** Ein Bauernschub, der die Linie vor dem
+   eigenen König freilegt, ist nichts anderes als ein illegaler Zug.
+2. **Im Schach stehen und den Zug abgeben.** Fähigkeiten mit `beendetZug` sind
+   danach beim Gegner — und der schlüge einen König, der noch im Schach steht.
+   Die Partie endete damit, ohne dass je Schachmatt gesagt wurde. Genau dieser
+   Fehler war schon einmal da, beim Doppelzug in v2.1 (siehe „Der König, den
+   der Doppelzug verschluckte").
+
+Was den Zug NICHT beendet, bleibt im Schach erlaubt: Man muss danach ohnehin
+noch ziehen, und dabei kann eine Fähigkeit gerade helfen.
+
+Auf Brettern ohne Schachbegriff (Doppelbrett, `koenigSchlagbar`) entfällt die
+ganze Prüfung.
+
+## Thema und Wortart sind zwei Fragen (v3.7)
+
+Bis v3.6 standen im Imposter acht Gruppen nebeneinander: fünf Themen („Alltag",
+„Essen und Trinken" …) und drei Wortarten („Nur Nomen", „Nur Verben", „Nur
+Adjektive"). Sie lagen in derselben Liste und hatten sogar ein Feld `art`, das
+sagte, welche Sorte Gruppe es war — ein sicheres Zeichen dafür, dass zwei Dinge
+in einen Topf geworfen wurden.
+
+**Jedes Wort hat ein Thema UND eine Wortart.** Seit v3.7 wird beides getrennt
+gewählt: ein Thema (oder alle) und eine Wortart (oder alle). „Nur Verben" ist
+damit keine Gruppe mehr, sondern die Auswahl „Alle Themen" plus „Verb" — und
+gleichzeitig sind Kombinationen möglich, die es vorher nicht gab („nur die
+Verben aus Sport und Freizeit").
+
+Drei Dinge waren dabei heikel:
+
+- **Die Reihenfolge der Wortliste darf sich nie ändern.** Die Ziehung rechnet
+  `woerter[floor(wert * länge)]`; wer ein Wort dazwischenschiebt, ändert das
+  Wort JEDER laufenden Runde. Die Themengruppen bestehen ausschliesslich aus
+  Nomen, ihre Listen blieben deshalb Zeichen für Zeichen unverändert.
+- **Die drei alten Gruppen bleiben im Katalog**, versteckt (`versteckt: true`).
+  Ein Raum von vor v3.7 trägt `verben` im Stand und verlöre sonst sein Thema
+  mitten im Spiel — dieselbe Regel wie bei den Spielarten des Schachs: löschen
+  nie, verstecken ja. Ihre Wörter stehen inhaltsgleich unter dem neuen Thema
+  „Querbeet". Ein eigener Test prüft für alle acht Kennungen, dass die Liste
+  dieselbe bleibt.
+- **Ein Wort darf nicht in zwei sichtbaren Themen stehen.** Bei der Auswahl
+  „Alle Themen" käme es sonst doppelt vor und damit doppelt so oft. Der Test
+  fand genau einen Fall: „Leiter" stand in „Technik und Arbeit" und in
+  „Querbeet". Dort steht jetzt „Trichter".
+
+Die Wortart eines ERGÄNZTEN Wortes steht in einer eigenen Karte
+(`wortarten: { "kaminfeuer": "verb" }`) und nicht am Wort selbst — der
+Datenvertrag ist additiv, und `eigeneWoerter` war eine Liste von Zeichenketten.
+Wer dort nicht steht, gilt als Nomen: die harmloseste Annahme, denn die
+allermeisten sind welche.
+
+## Warum ein gefallenes Wort gedämpft und nicht gesperrt wird (v3.7)
+
+Gewünscht war: „Die Chance, dass ein Wort, das in derselben Runde erst genannt
+wurde, wiederkommt, soll sehr gering sein, sich aber mit der Rundenzahl immer
+mehr erhöhen."
+
+Eine harte Sperre („die letzten zehn Wörter kommen nicht dran") wäre einfacher
+gewesen und hätte bei kleinen Themen die Auswahl leergeräumt — ein selbst
+angelegtes Thema mit fünf Wörtern hätte nach fünf Runden gar nichts mehr
+gehabt. Stattdessen bekommt jedes Wort ein Gewicht: eine Runde danach ein
+Zehntel, zwei Runden danach zwei Zehntel, nach `WIEDERHOLUNG_RUNDEN` wieder
+ganz. Jedes Wort bleibt jederzeit möglich, nur eben unwahrscheinlich.
+
+**Die teure Erkenntnis steckt im Zeitpunkt.** Das gefallene Wort wird in
+`neueRunde()` ins Gedächtnis geschrieben, NICHT in `starten()`. Der Grund ist
+ein Zirkelschluss: `wortVon` rechnet das Wort aus dem Salz **und** dem
+Gedächtnis. Würde das frisch gezogene Wort sofort eingetragen, änderte sich
+damit sein eigenes Gewicht — und die zweite Abfrage lieferte ein anderes Wort
+als die erste. Beim Zurücksetzen ist das Salz dagegen ohnehin gleich weg.
+
+Und wie überall: **Ohne Gedächtnis muss die Rechnung dasselbe liefern wie
+vorher.** Sind alle Gewichte 1, ergibt die gewichtete Ziehung genau
+`woerter[floor(wert * länge)]`. Ein Test prüft das für hundert Werte — sonst
+wechselte jede laufende Runde beim Laden ihr Wort.
+
+## Warum selbst angelegte Themen auf der Tafel liegen (v3.7)
+
+Sie könnten auch im Raum stehen, in dem sie entstanden sind. Sie liegen aber wie
+die Wortbibliothek auf der TAFEL, und zwar aus demselben Grund: Wer vor einer
+Runde ein Thema „Gemüse" anlegt, soll es allen zur Verfügung stellen — auch in
+Räumen, die es noch gar nicht gibt. Ein Thema, das nur in einem Raum existiert,
+wäre mit diesem Raum verschwunden.
+
+`_bibliothekVerteilen` legt jedem Raum eine Abschrift hinein. Das ist nicht
+kosmetisch: `IMPOSTER_RUNDE.normalisieren` prüft, ob es das Thema eines Raums
+gibt, und liesse ein unbekanntes auf „Alltag" zurückfallen — mitsamt einem
+anderen Wort. Deshalb bekommen die Räume beim Normalisieren der Tafel die
+eigenen Themen mit, BEVOR sie selbst geprüft werden.
+
+Die Kennung entsteht aus dem Titel mit dem Vorzeichen `e-` (aus „Gemüse" wird
+`e-gemuese`). Das Vorzeichen hält sie von den Kennungen des festen Katalogs
+fern — die dürfen nie überdeckt werden, sonst verlöre ein Raum sein Thema.
+
+## Warum der Bibliotheks-Knopf verschwindet statt zu fragen (v3.7)
+
+Er stand bis v3.6 für alle sichtbar in der Fussleiste und fragte beim Drücken
+nach dem Verwaltungs-Passwort. Dicht war das, aber es lud zum Probieren ein und
+verriet jedem, dass es hier etwas zu holen gibt. Wer die Wortliste sieht, hat
+als Imposter einen Vorteil — also soll der Weg dorthin gar nicht erst sichtbar
+sein.
+
+Den Verwaltungs-Zugang bekommt man weiterhin im Tab Würfel Quizz; einmal
+angemeldet, gilt er für die Sitzung. Das ist bewusst der einzige Weg: Ein
+zweites Passwortfeld an anderer Stelle wäre eine zweite Stelle zum Pflegen.
+
+## Erst anzeigen, dann senden (v3.8)
+
+Gemeldet war: „Es hängt noch manchmal, gerade bei schlechter Netzverbindung, was
+oft zu Irritation führt."
+
+Es waren zwei Probleme in einem, und beide mussten weg:
+
+1. **Gezeichnet wurde erst nach der Bestätigung.** `_sendenMitPruefung` lud den
+   Stand vom Server, schrieb, und erst danach kam `zeichnen()`. Über mobile
+   Daten liegen dazwischen leicht ein bis zwei Sekunden ohne jede Rückmeldung —
+   also tippt man noch einmal.
+2. **Die Abfrage funkte dazwischen.** Der Abgleich holt alle drei Sekunden den
+   Stand vom Server. Traf ihre Antwort ein, während der eigene Zug noch
+   unterwegs war, enthielt sie den Stand von VOR dem Zug — und setzte das Brett
+   zurück. Das ist das „Zurückhüpfen", von dem der Wunsch spricht.
+
+Der Abgleich hatte für seinen EIGENEN Schreibweg längst eine Sperre
+(`schreibtGerade`). Schach und Imposter schreiben aber selbst, an ihm vorbei
+(`TEAM_SCHACH._sendenMitPruefung`, `IMPOSTER._sendenMitLaden`) — sie fielen
+durch diese Sperre hindurch. Seit v3.8 melden sie sich an:
+`eigenerVorgangBeginnt()` / `eigenerVorgangEndet()`. Ein Zähler und kein
+Schalter, weil mehrere Vorgänge gleichzeitig offen sein können.
+
+**Was ausdrücklich NICHT verändert wurde:** die Zugzähler-Prüfung. Sie
+entscheidet weiter, wer bei zwei gleichzeitigen Zügen aus einem Team gewinnt —
+wer zuerst drückt, hat gezogen. Der vorgezogene Zug ist keine Vorhersage,
+sondern das fertig gerechnete Ergebnis von `SCHACH_RUNDE.ziehen`; er wird nur
+früher gezeigt. Verliert er das Rennen oder scheitert das Schreiben, wird der
+Stand von vorher wiederhergestellt und gesagt, warum.
+
+**Warum bei einem Fehler zurückgerollt wird**, obwohl der Wunsch „nicht
+zurückhüpfen" lautete: Ein Zug, der nirgends ankommt, existiert für die anderen
+nicht. Wer darauf weiterspielt, baut eine Stellung auf, die niemand sonst sieht
+— und der nächste erfolgreiche Zug würde sie ohnehin wegwischen. Ein Rücksprung
+mit Erklärung ist die kleinere Überraschung.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

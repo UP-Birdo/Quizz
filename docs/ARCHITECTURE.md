@@ -68,9 +68,9 @@ Speicher-Dienst kostet genau eine neue Klasse in `speicher.js`.
 | `js/schach-tafel.js` | Die Sammlung aller Partien: anlegen, einsetzen, entfernen, sortieren — und der Umstieg von der früheren Einzelpartie. Ohne Browser testbar. |
 | `js/team-schach.js` | Der Tab **Team Schach**, Kern: Zustand, Zeichnen, Partie-Kopf, Teams, Bedienung, Zugversand mit Zugzähler-Prüfung, Bausteine. |
 | `js/team-schach-uebersicht.js` | Ergänzt `TEAM_SCHACH`: Liste aller Partien, Auswahl der Spielart mit Vorschaubildern, Einstellungen einer neuen Partie. |
-| `js/team-schach-brett.js` | Ergänzt `TEAM_SCHACH`: Brett, Randbeschriftung, Zugpfeil, Würfel, Abstimmung über einen Vorschlag, Bewegungen. |
+| `js/team-schach-brett.js` | Ergänzt `TEAM_SCHACH`: Brett, Randbeschriftung, Spur des letzten Zuges, Würfel, Abstimmung über einen Vorschlag, Bewegungen. |
 | `js/team-schach-auswertung.js` | Ergänzt `TEAM_SCHACH`: Abschluss-Bildschirm mit Punktestand, Übersicht aller Fähigkeiten, Bilanz und Zugverlauf. |
-| `js/imposter-woerter.js` | Der Wortkatalog als reine Datentabelle: acht Gruppen (Themen und Wortarten). Keine Logik. |
+| `js/imposter-woerter.js` | Der Wortkatalog als reine Datentabelle: Themen, darin die Wörter je Wortart. Keine Logik. |
 | `js/imposter-runde.js` | EIN Raum: beitreten, bereit, starten, Tipps, Auflösung, Punkte. Wort und Rollen werden aus dem Salz gerechnet. Ohne Browser testbar. |
 | `js/imposter-tafel.js` | Die Sammlung aller Räume samt gemeinsamer Wortbibliothek — und der Umstieg von der früheren einzelnen Runde. Ohne Browser testbar. |
 | `js/imposter.js` | Der Tab **Imposter**: Übersicht der Räume, Anlegen, der Raum selbst (Warten, Runde, Auflösung), Wortbibliothek. |
@@ -402,12 +402,20 @@ Jeder aus dem Team, das am Zug ist, darf ziehen (`SCHACH_RUNDE.darfZiehen`).
 Damit bei zwei gleichzeitigen Zügen keiner verloren geht, trägt jede Partie
 einen **Zugzähler**:
 
+0. **Der Zug wird sofort angezeigt** (seit v3.8) — vor allem Netzverkehr. Er ist
+   zu diesem Zeitpunkt bereits fertig gerechnet (`SCHACH_RUNDE.ziehen`), also
+   kein Wunschbild. Gleichzeitig meldet sich der Bildschirm beim Abgleich an
+   (`eigenerVorgangBeginnt`), damit dessen Abfrage nicht mit dem Stand von VOR
+   dem Zug dazwischenfunkt.
 1. `TEAM_SCHACH._sendenMitPruefung` lädt vor dem Schreiben den Stand vom Server.
 2. Stimmt der `zugZaehler` **dieser Partie** nicht mehr mit dem erwarteten
    überein, hat jemand anders gezogen. Der eigene Zug wird **verworfen**, der
    fremde übernommen, und der Spieler bekommt eine Meldung.
 3. Sonst wird die eigene Partie in den Stand vom Server eingesetzt
    (`SCHACH_TAFEL.partieEinsetzen`) und geschrieben.
+4. Scheitert das Schreiben, wird der Stand von vorher wiederhergestellt und
+   gesagt, warum. Auf einem Brett weiterzuspielen, das sonst niemand sieht,
+   wäre schlimmer als ein Rücksprung.
 
 Schritt 3 ist die zweite Hälfte derselben Regel: **Geschrieben wird nie die
 eigene Tafel als Ganzes.** Sonst verschwänden Partien, die inzwischen woanders
@@ -416,6 +424,10 @@ Mitspieler gelöscht hat (siehe DECISIONS.md).
 
 Deshalb bekommt der Schach-Abgleich **kein** `zusammenfuehren`: Er schreibt gar
 nicht. Alles Schreiben läuft über `TEAM_SCHACH._sendenMitPruefung`.
+
+**Schritt 0 ändert an den Schritten 1 bis 3 nichts.** Wer zuerst drückt, hat
+weiterhin gezogen — nur wird das Ergebnis früher gezeigt. Die Begründung steht
+in `DECISIONS.md`, „Erst anzeigen, dann senden".
 
 ### Brett und Felder
 
@@ -492,11 +504,28 @@ im Bildschirm noch im Ablauf eine Zeile:
 | `ziel` | Verlangt EIN angetipptes Feld; `zielArt` sagt, welches. | Verstärkung, Schutzschild, Fessel, Erdbeben, Wiedergeburt, Mauer, Wiederbelebung, Friedhof |
 | `handel` | Zeigt ein Angebot und wirkt erst nach Zustimmung (seit v3.5). | Händler |
 
-Dazu ein Schalter, der für jede Art gilt: **`beendetZug: true`** — nach dem
-Einsetzen ist der Gegner dran. Ohne ihn bleibt man am Zug und muss noch ziehen,
-so war es bis v3.3 bei allen Fähigkeiten. Für die, die Material ZURÜCKBRINGEN
-(Wiederbelebung, Friedhof, Händler), wäre das zu stark: Man bekäme Figuren
-geschenkt und dürfte im selben Atemzug damit angreifen.
+Dazu zwei Schalter, die für jede Art gelten:
+
+| Schalter | Bedeutung | Zeichen am Vorrat |
+|---|---|---|
+| `beendetZug: true` | Nach dem Einsetzen ist der Gegner dran. | kein `+` |
+| `imGegenzug: true` | Geht auch, während der Gegner am Zug ist (seit v3.6). | Blitz |
+
+Ohne `beendetZug` bleibt man am Zug und muss noch ziehen — so war es bis v3.3
+bei allen Fähigkeiten. Für die, die Material ZURÜCKBRINGEN (Wiederbelebung,
+Friedhof, Händler), wäre das zu stark: Man bekäme Figuren geschenkt und dürfte
+im selben Atemzug damit angreifen.
+
+`imGegenzug` hat bisher genau eine Fähigkeit (Ausweichen). Was dabei zu beachten
+war — das Rennen um den Zugzähler und die entfallende Abstimmung — steht in
+`DECISIONS.md`. Geprüft wird beides in `SCHACH_RUNDE.darfEinsetzen`; wer eine
+Fähigkeit einsetzt, fragt nie mehr `darfZiehen`.
+
+**Der eigene König darf dabei nie im Schach bleiben** (seit v3.6). Verboten sind
+zwei Fälle: sich selbst ins Schach stellen, und im Schach stehen und mit einer
+`beendetZug`-Fähigkeit den Zug abgeben. Was den Zug nicht beendet, bleibt
+erlaubt. Die Prüfung steht am Ende von `faehigkeitEinsetzen` und entfällt auf
+Brettern mit `koenigSchlagbar`.
 
 Die Wirkung liegt in Feldern des Standes und ist damit gespeichert und für alle
 sichtbar:
@@ -586,10 +615,11 @@ hinzieht.
 
 ### Der gerechnete Zufall
 
-Würfel erscheinen alle `BONUS_ABSTAND` Halbzüge auf einem freien Feld, höchstens
-`BONUS_HOECHSTENS` gleichzeitig. **Gewürfelt wird dabei nicht:**
-`SCHACH_RUNDE._zufallsWert()` streut Partie-Kennung und Zugzähler (FNV-1a) zu
-einer Zahl zwischen 0 und 1; daraus folgen Feld und Fähigkeit.
+Nach JEDEM Halbzug erscheint mit `BONUS_CHANCE` Prozent ein Würfel auf einem
+freien Feld (meist einer, selten zwei, sehr selten drei — `BONUS_ANZAHL`). Eine
+Höchstzahl gibt es seit v3.3 nicht mehr; die einzige Grenze ist das Brett
+selbst. **Gewürfelt wird dabei nicht:** `SCHACH_RUNDE._zufallsWert()` streut
+Partie-Kennung und Zugzähler (FNV-1a) zu einer Zahl zwischen 0 und 1.
 
 Das ist die wichtigste Festlegung der ganzen Spielart. Mit `Math.random()` sähe
 jedes Gerät ein anderes Brett, und der erste Schreibvorgang gewönne — dieselbe
@@ -597,15 +627,30 @@ Falle wie beim gegenseitigen Überschreiben in v0.8. So rechnet jeder dasselbe
 aus, ohne sich abzustimmen, und die Tests bleiben aussagekräftig, weil das
 Ergebnis vorhersagbar ist. **`Math.random()` hat im Modell nichts zu suchen.**
 
-Die Ziehung läuft zweistufig: erst die Stufe nach ihrer Chance, dann innerhalb
-der Stufe gleichverteilt. Beides aus EINEM Zufallswert, indem der Rest
-weiterverwendet wird — damit bleibt die Ziehung nachrechenbar.
+### Zwei Zeitpunkte: Stufe beim Erscheinen, Fähigkeit beim Einsammeln
+
+Seit v3.6 fällt die Entscheidung in zwei Schritten:
+
+1. **Beim Erscheinen** wird nur die **Stufe** gezogen (`stufeZiehen`). Mehr darf
+   die Oberfläche ohnehin nie verraten.
+2. **Beim Einsammeln** wird die Fähigkeit gezogen (`faehigkeitAusStufe`), und
+   zwar **gegen den Vorrat dessen, der sie einsammelt**: Jedes Exemplar, das er
+   schon hat, drückt ihr Gewicht auf `stufe.wiederholung` (0,15 bei Gewöhnlich
+   bis 0,75 bei Legendär).
+
+Warum nicht beides beim Erscheinen: Da weiss noch niemand, wer den Würfel
+bekommt. Die Begründung samt Staffelung steht in `DECISIONS.md`.
 
 ### Gespeichert wird, was liegt
 
-`partie.bonus` ist die Liste der Würfel auf dem Brett (`[{ feld, art }]`), dazu
-`bonusFassung: 2`. Eine Partie **ohne** diese Angabe stammt aus der Zeit der vier
-festen Felder; für sie wird die Liste einmalig aus `variante.bonusFelder` minus
+`partie.bonus` ist die Liste der Würfel auf dem Brett, dazu `bonusFassung: 2`.
+Ein Eintrag trägt **entweder** `stufe` (seit v3.6, Inhalt noch offen) **oder**
+`art` (Würfel von vorher und alle Unglückswürfel). `SCHACH_RUNDE.bonusStufe()`
+beantwortet die Farbfrage für beide Fälle an einer Stelle — der Bildschirm
+unterscheidet nicht selbst.
+
+Eine Partie **ohne** `bonusFassung` stammt aus der Zeit der vier festen Felder;
+für sie wird die Liste einmalig aus `variante.bonusFelder` minus
 `bonusGesammelt` gebaut. Angefangene Partien laufen dadurch unverändert weiter.
 
 `verloren` sammelt geschlagene Figuren je Farbe — die Wiedergeburt holt daraus
@@ -636,12 +681,40 @@ hat. Zwei Dinge sind dabei wichtig:
 Wer im Betriebssystem weniger Bewegung eingestellt hat
 (`prefers-reduced-motion`), bekommt keine.
 
-Aus denselben Angaben entsteht seit v1.9 der **Pfeil des letzten Zuges**
-(`_pfeilBauen`). Unterschied zur Bewegung: Die Bewegung läuft einmal, der Pfeil
-bleibt stehen, bis der nächste Zug kommt. Er ist ein SVG über dem Brett und
-zeichnet in **Feldkoordinaten** (das Koordinatenfeld ist so breit, wie das Brett
-Spalten hat). Deshalb stimmt er auf jeder Brettgröße und jeder Bildschirmbreite,
-ohne dass irgendwo Pixel gerechnet werden.
+Aus denselben Angaben entsteht die **Spur des letzten Zuges** (`_letzteSpur`).
+Unterschied zur Bewegung: Die Bewegung läuft einmal, die Spur bleibt stehen, bis
+der nächste Zug kommt. Gefärbt wird der Weg — beim Springer das L, beim Läufer
+die Diagonale, beim Turm die Linie; Start und Ziel etwas kräftiger
+(`feld-spur-ende`). Wirkungen ohne Bewegung bekommen einen Ring
+(`feld-spur-wirkung`), neu erschienene Würfel bewusst nichts.
+
+Von v1.9 bis v3.5 war das ein gezeichneter **Pfeil**. Warum er weg ist, steht in
+`DECISIONS.md` („Warum der Zugpfeil verschwunden ist"): Er konnte eine Bewegung
+um ein einziges Feld gar nicht darstellen, und das waren drei der gemeldeten
+Fehler.
+
+### Zwei Fragen an einen Weg
+
+`schach.js` beantwortet sie getrennt, und das ist wichtig:
+
+| Funktion | Frage | Beim Springer |
+|---|---|---|
+| `SCHACH.wegFelder` | Welche Felder ZEICHNET man? | das ganze L |
+| `SCHACH.betreteneFelder` | Welche betritt die Figur WIRKLICH? | nur das Ziel |
+
+An der zweiten hängt eine Regel: Seit v3.6 wird ein Würfel auch dann
+eingesammelt, wenn man nur über sein Feld hinwegzieht. Wer springt (Springer,
+Fähigkeit „Sprung", Teleport), sammelt unterwegs deshalb nichts ein. Beide
+Funktionen stehen im Regelwerk, damit Anzeige und Regel nicht auseinanderlaufen
+können.
+
+### Die Größe der Figuren wird gemessen
+
+`--figur-groesse` setzt `TEAM_SCHACH._figurGroesseSetzen` aus der gemessenen
+Feldbreite, nachdem das Brett im Bildschirm steht. Die Rechnung in der Stildatei
+ist nur der Rückfall. Warum das nötig war, steht in `DECISIONS.md` („Warum die
+Figurengröße gemessen und nicht gerechnet wird"): `88vw` ist die Breite des
+Fensters, nicht die des Bretts.
 
 ### Zwei Farben für jede Markierung
 
@@ -849,6 +922,47 @@ den Abgleich, sondern über `IMPOSTER._sendenMitLaden` — erst den Stand vom
 Server holen, darauf umbauen, dann schreiben. Denselben Weg nehmen Anlegen und
 Löschen eines Raums.
 
+### Thema und Wortart (seit v3.7)
+
+**Jedes Wort hat ein Thema UND eine Wortart.** Beides wird getrennt eingestellt:
+
+| Feld am Raum | Werte |
+|---|---|
+| `gruppe` | eine Themen-Kennung, ein selbst angelegtes Thema, oder `"alle"` |
+| `wortart` | `"nomen"`, `"verb"`, `"adjektiv"` oder `"alle"` |
+
+`IMPOSTER_WOERTER.woerter(gruppeId, wortart)` liefert daraus die Wortliste; die
+Reihenfolge ist fest (erst die Wortarten in der Reihenfolge von `WORTARTEN`,
+bei „alle Themen" diese in der Reihenfolge der Tabelle). **Sie darf sich nie
+ändern** — die Ziehung greift auf eine Stelle in der Liste zu.
+
+Bis v3.6 waren „Nur Verben" und „Alltag" Gruppen derselben Liste. Die drei alten
+Wortart-Gruppen bleiben als `versteckt: true` im Katalog (laufende Räume tragen
+ihre Kennung); ihre Wörter stehen inhaltsgleich unter dem neuen Thema
+„Querbeet". Die Begründung und die drei Fallen stehen in `DECISIONS.md`.
+
+**Ein Wort darf nicht in zwei sichtbaren Themen stehen** — bei „Alle Themen"
+käme es doppelt vor und damit doppelt so oft. Ein Test hält das fest.
+
+### Selbst angelegte Themen und die Wiederholungssperre (seit v3.7)
+
+Vor jeder Runde darf jeder ein Wort beisteuern (`IMPOSTER.wortBeisteuern`,
+gefragt beim „Bereit"). Dabei kann ein neues Thema entstehen:
+
+- `tafel.eigeneGruppen` — Kennung (`e-gemuese`) auf Beschriftung („Gemüse").
+  Sie liegen auf der TAFEL, nicht im Raum: Ein Thema soll allen zur Verfügung
+  stehen, auch in Räumen, die es noch nicht gibt.
+- `tafel.wortarten` — die Wortart je ergänztem Wort, klein geschriebener
+  Schlüssel. Eine eigene Karte, weil `eigeneWoerter` eine Liste von
+  Zeichenketten ist und der Datenvertrag additiv bleibt.
+- `raum.letzteWoerter` — was zuletzt dran war, das jüngste zuletzt. Daraus
+  folgt das Gewicht bei der Ziehung: eine Runde danach ein Zehntel, nach
+  `WIEDERHOLUNG_RUNDEN` wieder ganz. **Gesperrt wird nie.**
+
+**Das gefallene Wort wird in `neueRunde()` gemerkt, nicht in `starten()`.** Der
+Grund ist ein Zirkelschluss — `wortVon` rechnet aus Salz UND Gedächtnis. Die
+ganze Begründung steht in `DECISIONS.md`.
+
 ### Warum Wort und Rollen nicht gespeichert werden
 
 **Im Stand steht nur ein Salz** — eine Zufallszeichenkette, die beim Start
@@ -898,10 +1012,15 @@ sind. Doppelte Einträge verhindert die Nummer `[#12]` in jeder Zeile.
 
 ## Die Wortbibliothek
 
-Hinter dem Verwaltungs-Passwort (`ICH.verwaltungAktiv`). Ergänzte Wörter stehen
-in `runde.eigeneWoerter` — also im **gemeinsamen Stand**, damit alle Geräte aus
-derselben Liste ziehen; läge die Ergänzung lokal, zöge jedes Gerät ein anderes
-Wort.
+Hinter dem Verwaltungs-Passwort (`ICH.verwaltungAktiv`). **Seit v3.7 erscheint
+der Knopf gar nicht erst ohne Zugang** — vorher stand er für alle da und fragte
+beim Drücken nach dem Passwort, was jedem verriet, dass es hier etwas zu holen
+gibt.
+
+Ergänzte Wörter stehen in `tafel.eigeneWoerter` — also im **gemeinsamen Stand**,
+damit alle Geräte aus derselben Liste ziehen; läge die Ergänzung lokal, zöge
+jedes Gerät ein anderes Wort. Dazu die Wortart in `tafel.wortarten` (siehe
+Abschnitt Imposter).
 
 Neue Wörter kommen **hinten** an die Gruppe. Das ist kein Schönheitsdetail: Die
 Ziehung rechnet mit der Länge der Liste, und vorne eingefügte Wörter würden
@@ -912,6 +1031,10 @@ anderes Wort.
 Vorteil. Der feste Katalog steht zwar im Quelltext und ist nicht geheim, aber es
 macht einen Unterschied, ob man ihn in der Konsole sucht oder auf Knopfdruck
 bekommt.
+
+**Wörter beisteuern ist NICHT die Bibliothek.** Das darf jeder, vor jeder Runde,
+und es geht immer nur um ein einzelnes Wort — man bekommt dabei die Liste nicht
+zu sehen und hat deshalb auch keinen Vorteil.
 
 ## Tab-Register
 

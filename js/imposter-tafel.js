@@ -40,6 +40,18 @@ const IMPOSTER_TAFEL = {
             /* Die gemeinsame Wortbibliothek, je Gruppe eine Liste. */
             eigeneWoerter: {},
 
+            /* Die Wortart der ergänzten Wörter (seit v3.7), klein
+               geschriebener Schlüssel. Gehört genauso allen wie die Wörter. */
+            wortarten: {},
+
+            /*
+             * Selbst angelegte Themen (seit v3.7). Sie liegen wie die Wörter
+             * auf der TAFEL und nicht im Raum: Wer beim Beisteuern ein neues
+             * Thema anlegt, soll es allen anderen zur Verfügung stellen — auch
+             * in Räumen, die es noch gar nicht gibt.
+             */
+            eigeneGruppen: {},
+
             raeume: {}
         };
     },
@@ -57,8 +69,15 @@ const IMPOSTER_TAFEL = {
 
         /* Die Prüfung der Wörter steht in IMPOSTER_RUNDE — sie hier ein zweites
            Mal zu schreiben hiesse, sie zweimal pflegen zu müssen. */
-        tafel.eigeneWoerter = IMPOSTER_RUNDE.normalisieren(
-            { eigeneWoerter: roh.eigeneWoerter }).eigeneWoerter;
+        const geprueft = IMPOSTER_RUNDE.normalisieren({
+            eigeneWoerter: roh.eigeneWoerter,
+            wortarten: roh.wortarten,
+            eigeneGruppen: roh.eigeneGruppen
+        });
+
+        tafel.eigeneWoerter = geprueft.eigeneWoerter;
+        tafel.wortarten = geprueft.wortarten;
+        tafel.eigeneGruppen = geprueft.eigeneGruppen;
 
         /* Der Umstieg: ein Stand aus der Zeit der einzelnen Runde. Ihre
            ergänzten Wörter wandern dabei hoch auf die Tafel. */
@@ -69,6 +88,8 @@ const IMPOSTER_TAFEL = {
 
             if (Object.keys(tafel.eigeneWoerter).length === 0) {
                 tafel.eigeneWoerter = einzelne.eigeneWoerter;
+                tafel.wortarten = einzelne.wortarten;
+                tafel.eigeneGruppen = einzelne.eigeneGruppen;
             }
 
             tafel.raeume[IMPOSTER_TAFEL.ERSTE_ID] = einzelne;
@@ -78,7 +99,17 @@ const IMPOSTER_TAFEL = {
 
         if (roh.raeume && typeof roh.raeume === "object") {
             for (const id of Object.keys(roh.raeume)) {
-                const raum = IMPOSTER_RUNDE.normalisieren(roh.raeume[id]);
+                /*
+                 * Die eigenen Themen der TAFEL gehen mit hinein, bevor der Raum
+                 * geprüft wird. Sonst gälte ein Raum mit selbst angelegtem
+                 * Thema als kaputt und fiele auf „Alltag" zurück — mitsamt
+                 * einem anderen Wort.
+                 */
+                const raum = IMPOSTER_RUNDE.normalisieren(
+                    Object.assign({}, roh.raeume[id], {
+                        eigeneGruppen: Object.assign({}, tafel.eigeneGruppen,
+                            (roh.raeume[id] || {}).eigeneGruppen)
+                    }));
                 raum.id = id;
                 if (!raum.titel) {
                     raum.titel = "Raum";
@@ -107,6 +138,15 @@ const IMPOSTER_TAFEL = {
                 abschrift[gruppe] = tafel.eigeneWoerter[gruppe].slice();
             }
             tafel.raeume[id].eigeneWoerter = abschrift;
+
+            /* Die Wortarten gehören dazu: Ohne sie könnte der Raum ein
+               ergänztes Verb nicht als Verb erkennen und würde es beim Filter
+               „nur Verben" übergehen. */
+            tafel.raeume[id].wortarten = Object.assign({}, tafel.wortarten);
+
+            /* Und die selbst angelegten Themen — sonst gälte das Thema eines
+               Raums als unbekannt und seine Wörter fielen weg. */
+            tafel.raeume[id].eigeneGruppen = Object.assign({}, tafel.eigeneGruppen);
         }
     },
 
@@ -168,6 +208,11 @@ const IMPOSTER_TAFEL = {
         }
 
         neu.raeume[raum.id] = IMPOSTER_RUNDE.normalisieren(raum);
+
+        /* Die Bibliothek und die eigenen Themen gehören auch in den frisch
+           eingesetzten Raum — sonst stünde er als Einziger ohne da. */
+        IMPOSTER_TAFEL._bibliothekVerteilen(neu);
+
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
     },
@@ -200,8 +245,13 @@ const IMPOSTER_TAFEL = {
         raum.titel = String(titel || "").trim().substring(0, 40) || "Neuer Raum";
 
         if (einstellungen && typeof einstellungen === "object") {
-            if (IMPOSTER_WOERTER.gibtEs(einstellungen.gruppe)) {
+            if (IMPOSTER_WOERTER.gibtEs(einstellungen.gruppe)
+                || einstellungen.gruppe === IMPOSTER_WOERTER.ALLE) {
                 raum.gruppe = einstellungen.gruppe;
+            }
+            if (IMPOSTER_WOERTER.gibtEsWortart(einstellungen.wortart)
+                || einstellungen.wortart === IMPOSTER_WOERTER.ALLE) {
+                raum.wortart = einstellungen.wortart;
             }
             if (Number.isInteger(einstellungen.impostermenge)
                 && einstellungen.impostermenge >= 1
@@ -224,12 +274,19 @@ const IMPOSTER_TAFEL = {
      * doppelt) stehen dort und nur dort.
      * ---------------------------------------------------------------- */
 
-    woerterErgaenzen(tafel, gruppeId, text, zeitpunkt) {
+    woerterErgaenzen(tafel, gruppeId, text, zeitpunkt, wortart) {
         const neu = IMPOSTER_TAFEL.kopieren(tafel);
         const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(
-            { eigeneWoerter: neu.eigeneWoerter }, gruppeId, text, zeitpunkt);
+            {
+                eigeneWoerter: neu.eigeneWoerter,
+                wortarten: neu.wortarten,
+                eigeneGruppen: neu.eigeneGruppen
+            },
+            gruppeId, text, zeitpunkt, wortart);
 
         neu.eigeneWoerter = ergebnis.runde.eigeneWoerter;
+        neu.wortarten = ergebnis.runde.wortarten;
+
         if (ergebnis.hinzugefuegt > 0) {
             neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         }
@@ -242,11 +299,46 @@ const IMPOSTER_TAFEL = {
         };
     },
 
+    /*
+     * Ein Mitspieler steuert vor der Runde ein Wort bei (seit v3.7).
+     *
+     * Anders als beim Einfügen aus der Bibliothek darf hier auch ein neues
+     * Thema entstehen: `themaTitel` statt `gruppeId`. Gibt es das Thema schon —
+     * im festen Katalog oder unter den eigenen —, wird das vorhandene benutzt;
+     * zwei Themen „Gemüse" nebeneinander wären für alle verwirrend.
+     *
+     * Liefert { tafel, gruppeId, hinzugefuegt, uebersprungen }.
+     */
+    wortBeisteuern(tafel, themaTitel, wort, wortart, zeitpunkt) {
+        let neu = IMPOSTER_TAFEL.kopieren(tafel);
+
+        const angelegt = IMPOSTER_RUNDE.gruppeAnlegen(
+            { eigeneGruppen: neu.eigeneGruppen }, themaTitel, zeitpunkt);
+
+        if (!angelegt.id) {
+            return { tafel: neu, gruppeId: "", hinzugefuegt: 0, uebersprungen: 0 };
+        }
+        neu.eigeneGruppen = angelegt.runde.eigeneGruppen;
+
+        const ergebnis = IMPOSTER_TAFEL.woerterErgaenzen(
+            neu, angelegt.id, wort, zeitpunkt, wortart);
+
+        return {
+            tafel: ergebnis.tafel,
+            gruppeId: angelegt.id,
+            hinzugefuegt: ergebnis.hinzugefuegt,
+            uebersprungen: ergebnis.uebersprungen
+        };
+    },
+
     wortEntfernen(tafel, gruppeId, wort, zeitpunkt) {
         const neu = IMPOSTER_TAFEL.kopieren(tafel);
+        const ergebnis = IMPOSTER_RUNDE.wortEntfernen(
+            { eigeneWoerter: neu.eigeneWoerter, wortarten: neu.wortarten },
+            gruppeId, wort, zeitpunkt);
 
-        neu.eigeneWoerter = IMPOSTER_RUNDE.wortEntfernen(
-            { eigeneWoerter: neu.eigeneWoerter }, gruppeId, wort, zeitpunkt).eigeneWoerter;
+        neu.eigeneWoerter = ergebnis.eigeneWoerter;
+        neu.wortarten = ergebnis.wortarten;
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         IMPOSTER_TAFEL._bibliothekVerteilen(neu);
@@ -288,7 +380,11 @@ const IMPOSTER_TAFEL = {
     _bibliothekText(tafel) {
         return Object.keys(tafel.eigeneWoerter).sort()
             .map((gruppe) => gruppe + "=" + tafel.eigeneWoerter[gruppe].join(","))
-            .join("|");
+            .join("|")
+            + "#" + Object.keys(tafel.wortarten).sort()
+                .map((wort) => wort + ":" + tafel.wortarten[wort]).join(",")
+            + "#" + Object.keys(tafel.eigeneGruppen).sort()
+                .map((id) => id + ":" + tafel.eigeneGruppen[id]).join(",");
     },
 
     /*
@@ -312,6 +408,24 @@ const IMPOSTER_TAFEL = {
             ziel.eigeneWoerter[gruppe] = vorhanden.concat(
                 meine.eigeneWoerter[gruppe].filter(
                     (wort) => vorhanden.indexOf(wort) === -1));
+        }
+
+        /* Die Wortarten wandern mit ihren Wörtern: Was drüben noch nicht steht,
+           kommt dazu. Ein vorhandener Eintrag bleibt — er gehört zu einem Wort,
+           das es dort schon gibt. */
+        for (const wort of Object.keys(meine.wortarten)) {
+            if (!ziel.wortarten[wort]) {
+                ziel.wortarten[wort] = meine.wortarten[wort];
+            }
+        }
+
+        /* Dasselbe für die selbst angelegten Themen: vereinigen, nicht
+           ersetzen. Zwei Geräte, die gleichzeitig eines anlegen, sollen beide
+           behalten. */
+        for (const id of Object.keys(meine.eigeneGruppen)) {
+            if (!ziel.eigeneGruppen[id]) {
+                ziel.eigeneGruppen[id] = meine.eigeneGruppen[id];
+            }
         }
 
         for (const id of Object.keys(meine.raeume)) {

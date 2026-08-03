@@ -40,15 +40,28 @@ const SCHACH_VARIANTEN = {
     /*
      * Die Seltenheitsstufen. Die Summe der Chancen ergibt 100.
      *
-     * Innerhalb einer Stufe sind alle Fähigkeiten gleich wahrscheinlich — die
-     * Chance einer einzelnen ist also `chance / Anzahl in der Stufe`. Das hält
-     * die Rechnung erklärbar: Man muss nur zwei Zahlen kennen.
+     * Innerhalb einer Stufe sind alle Fähigkeiten zunächst gleich
+     * wahrscheinlich — die Chance einer einzelnen ist also
+     * `chance / Anzahl in der Stufe`.
+     *
+     * WIEDERHOLUNG (seit v3.6): Was man schon im Vorrat hat, kommt seltener
+     * nach. Jedes Exemplar drückt das Gewicht dieser Fähigkeit auf den hier
+     * genannten Bruchteil — bei zwei Stück also auf `wiederholung` mal
+     * `wiederholung`. Die Zahl steigt mit der Seltenheit, und zwar aus einem
+     * praktischen Grund: In der gewöhnlichen Stufe stehen drei Fähigkeiten
+     * zur Auswahl, da lässt sich eine leicht meiden. Bei den legendären wäre
+     * eine harte Dämpfung dasselbe wie „du bekommst die restlichen vier
+     * garantiert zuerst" — und damit wäre der Zufall weg.
      */
     STUFEN: [
-        { id: "gruen", titel: "Gewöhnlich", chance: 52, farbe: "#2e9e52" },
-        { id: "blau", titel: "Ungewöhnlich", chance: 33, farbe: "#2f7fd0" },
-        { id: "lila", titel: "Episch", chance: 12, farbe: "#8b46c8" },
-        { id: "gelb", titel: "Legendär", chance: 3, farbe: "#e0a800" }
+        { id: "gruen", titel: "Gewöhnlich", chance: 52, farbe: "#2e9e52",
+            wiederholung: 0.15 },
+        { id: "blau", titel: "Ungewöhnlich", chance: 33, farbe: "#2f7fd0",
+            wiederholung: 0.3 },
+        { id: "lila", titel: "Episch", chance: 12, farbe: "#8b46c8",
+            wiederholung: 0.5 },
+        { id: "gelb", titel: "Legendär", chance: 3, farbe: "#e0a800",
+            wiederholung: 0.75 }
     ],
 
     /*
@@ -208,7 +221,7 @@ const SCHACH_VARIANTEN = {
      * Wirkung: siehe schach.js. Wer eine Fähigkeit ergänzt, wählt eine dieser
      * vier Arten — dann muss am Bildschirm nichts angepasst werden.
      *
-     * Dazu ein Schalter, der für jede Art gilt:
+     * Dazu zwei Schalter, die für jede Art gelten:
      *
      *   `beendetZug: true`   Nach dem Einsetzen ist der Gegner dran. Ohne den
      *                        Schalter bleibt man am Zug und muss noch ziehen —
@@ -216,6 +229,18 @@ const SCHACH_VARIANTEN = {
      *                        solche, die eine Figur ZURÜCKBRINGEN, wäre das zu
      *                        stark: Man bekäme Material geschenkt und dürfte im
      *                        selben Atemzug damit angreifen.
+     *
+     *   `imGegenzug: true`   Darf auch eingesetzt werden, während der Gegner am
+     *                        Zug ist (seit v3.6). Das ist ein echtes Rennen:
+     *                        Wer zuerst drückt, war zuerst — abgesichert über
+     *                        denselben Zugzähler wie ein Zug. Nur für
+     *                        Fähigkeiten, die nichts kosten und niemandem
+     *                        etwas wegnehmen.
+     *
+     * BEIDE SCHALTER SIND SICHTBAR. Am Vorrat trägt eine Fähigkeit ohne
+     * `beendetZug` ein Pluszeichen (danach bleibt der normale Zug) und eine
+     * mit `imGegenzug` einen Blitz. Was eine Fähigkeit kostet, muss man sehen
+     * können, bevor man sie einsetzt — nicht danach.
      */
     FAEHIGKEITEN: {
 
@@ -227,25 +252,31 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "zugmuster",
             muster: "springer",
-            beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur "
-                + "zusätzlich wie ein Springer ziehen."
+            beschreibung: "Du ziehst danach ganz normal — eine Figur deiner Wahl "
+                + "darf dabei aber auch wie ein Springer gehen. Es ist KEIN "
+                + "zusätzlicher Zug, sondern eine zusätzliche Gangart für diesen "
+                + "einen."
         },
         ausweichen: {
             titel: "Ausweichen",
             stufe: "gruen",
             art: "zugmuster",
-            muster: "koenig",
-            beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur "
-                + "zusätzlich ein Feld in jede Richtung ziehen."
+            muster: "ausweichen",
+            imGegenzug: true,
+            beschreibung: "Eine Figur deiner Wahl darf bei deinem nächsten Zug "
+                + "auch ein Feld in jede Richtung gehen — auf ein FREIES Feld, "
+                + "geschlagen wird dabei nicht. Du darfst sie auch einsetzen, "
+                + "während der Gegner am Zug ist; sie kostet dich keinen Zug. "
+                + "Wer zuerst drückt, war zuerst."
         },
         teleport: {
             titel: "Teleport",
             stufe: "gruen",
             art: "zugmuster",
             muster: "umkreis2",
-            beschreibung: "Beim nächsten Zug darf eine beliebige eigene Figur auf "
-                + "ein freies Feld im Umkreis von zwei Feldern springen — über "
-                + "alles hinweg."
+            beschreibung: "Du ziehst danach ganz normal — eine Figur deiner Wahl "
+                + "darf dabei aber auch auf ein freies Feld im Umkreis von zwei "
+                + "Feldern springen, über alles hinweg."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ----
@@ -646,29 +677,81 @@ const SCHACH_VARIANTEN = {
     },
 
     /*
-     * Zieht eine Fähigkeit aus einem Wert zwischen 0 und 1.
-     *
-     * Erst die Stufe nach ihrer Chance, dann innerhalb der Stufe gleichverteilt.
-     * Der Rest des Wertes wird für die zweite Ziehung weiterverwendet, damit
-     * EIN Zufallswert genügt — das hält die Ziehung nachrechenbar.
+     * Welche STUFE zieht dieser Wert? Der Rest, der nach dem Abzug der
+     * durchlaufenen Stufen bleibt, wird als Anteil von 0 bis 1 mitgeliefert —
+     * damit genügt EIN Zufallswert für beide Ziehungen, und die Rechnung
+     * bleibt nachrechenbar.
      */
-    faehigkeitZiehen(wert) {
+    stufeZiehen(wert) {
         let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
             if (rest < stufe.chance) {
-                const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
-                if (arten.length === 0) {
-                    return "";
-                }
-                const anteil = rest / stufe.chance;
-                return arten[Math.min(Math.floor(anteil * arten.length), arten.length - 1)];
+                return { stufe: stufe, anteil: rest / stufe.chance };
             }
             rest -= stufe.chance;
         }
 
         /* Kann nur passieren, wenn die Chancen nicht 100 ergeben. */
-        return SCHACH_VARIANTEN.faehigkeitenDerStufe(SCHACH_VARIANTEN.STUFEN[0].id)[0] || "";
+        return { stufe: SCHACH_VARIANTEN.STUFEN[0], anteil: 0 };
+    },
+
+    /*
+     * Zieht eine Fähigkeit AUS EINER STUFE — und zwar so, dass Wiederholungen
+     * seltener werden.
+     *
+     * `vorrat` ist die Liste der Fähigkeiten, die diese Seite schon hat. Jedes
+     * Exemplar drückt das Gewicht seiner Fähigkeit auf `stufe.wiederholung`
+     * (siehe STUFEN). Beispiel Gewöhnlich mit drei Fähigkeiten: Wer „Sprung"
+     * schon zweimal hat, zieht ihn mit 0,15 mal 0,15 = 0,0225 gegen 1 und 1 —
+     * also mit gut einem Prozent statt mit einem Drittel.
+     *
+     * Ohne Vorrat ist das Ergebnis dasselbe wie vorher: Alle Gewichte sind 1,
+     * die Verteilung damit gleichmässig.
+     */
+    faehigkeitAusStufe(stufeId, wert, vorrat) {
+        const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufeId);
+        if (arten.length === 0) {
+            return "";
+        }
+
+        const stufe = SCHACH_VARIANTEN.STUFEN.find((eintrag) => eintrag.id === stufeId);
+        const daempfung = (stufe && typeof stufe.wiederholung === "number")
+            ? stufe.wiederholung : 1;
+        const schon = Array.isArray(vorrat) ? vorrat : [];
+
+        const gewichte = arten.map((art) => Math.pow(daempfung,
+            schon.filter((eintrag) => eintrag === art).length));
+        const summe = gewichte.reduce((teil, einzeln) => teil + einzeln, 0);
+
+        if (summe <= 0) {
+            return arten[0];
+        }
+
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * summe;
+
+        for (let stelle = 0; stelle < arten.length; stelle++) {
+            if (rest < gewichte[stelle]) {
+                return arten[stelle];
+            }
+            rest -= gewichte[stelle];
+        }
+
+        return arten[arten.length - 1];
+    },
+
+    /*
+     * Zieht eine Fähigkeit aus einem Wert zwischen 0 und 1: erst die Stufe
+     * nach ihrer Chance, dann innerhalb der Stufe.
+     *
+     * Wird seit v3.6 nur noch dort gebraucht, wo kein Vorrat bekannt ist. Beim
+     * Einsammeln geht das Spiel den Weg über `stufeZiehen` und
+     * `faehigkeitAusStufe`, damit die Dämpfung greifen kann.
+     */
+    faehigkeitZiehen(wert, vorrat) {
+        const gezogen = SCHACH_VARIANTEN.stufeZiehen(wert);
+        return SCHACH_VARIANTEN.faehigkeitAusStufe(
+            gezogen.stufe.id, gezogen.anteil, vorrat);
     },
 
     /* Die Chance einer einzelnen Fähigkeit in Prozent. */

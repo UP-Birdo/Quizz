@@ -166,7 +166,8 @@ Object.assign(TEAM_SCHACH, {
             const beispiel = variante.bonusFelder.find((eintrag) => eintrag.feld === feld);
             if (beispiel) {
                 zelle.classList.add("feld-bonus");
-                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(beispiel.art));
+                zelle.appendChild(TEAM_SCHACH._wuerfelBauen(
+                    SCHACH_VARIANTEN.stufeVon(beispiel.art)));
             }
 
             vorschau.appendChild(zelle);

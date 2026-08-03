@@ -3,6 +3,132 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.8 — 2026-08-03
+
+Der letzte Punkt aus dem Eingangskorb — und der einzige, der die Bedienung
+grundsätzlich ändert.
+
+- **Dein Zug erscheint sofort, auch bei schlechter Verbindung.** Bis v3.7 wurde
+  erst gezeichnet, wenn die Datenbank den Zug bestätigt hatte. Über mobile Daten
+  sind das schnell ein bis zwei Sekunden, in denen sich nichts rührt — man tippt
+  noch einmal, und die Seite wirkt hängengeblieben. Jetzt steht der Zug sofort
+  auf dem Brett; gesendet wird dahinter. Dasselbe gilt für Fähigkeiten.
+- **Und er springt nicht mehr zurück.** Solange ein eigener Zug unterwegs ist,
+  übernimmt die regelmässige Abfrage keinen fremden Stand. Genau das war die
+  zweite Hälfte des Problems: Die Abfrage antwortete mit dem Stand von VOR dem
+  Zug und setzte das Brett zurück, während man noch wartete.
+
+**Was sich NICHT geändert hat — und das ist der Punkt:** Die Zugzähler-Prüfung
+bleibt, wo sie war. Wer aus dem eigenen Team schneller war, gewinnt weiterhin;
+der eigene Zug wird dann zurückgenommen und man erfährt es. Geht das Speichern
+schief, wird der Stand von vorher wiederhergestellt — auf einem Brett
+weiterzuspielen, das sonst niemand sieht, wäre schlimmer als ein Rücksprung.
+Angezeigt wird dabei nie ein Wunschbild: Der Zug ist zu diesem Zeitpunkt bereits
+vollständig durchgerechnet, nur eben noch nicht verschickt.
+
+## v3.7 — 2026-08-03
+
+Vier Punkte aus dem Eingangskorb: drei am Imposter, einer an der Rangliste. Der
+grösste: **Thema und Wortart sind zwei verschiedene Fragen.**
+
+- **Verb, Nomen und Adjektiv sind jetzt ein FILTER, kein Thema.** Bis v3.6 stand
+  „Nur Verben" als Kachel neben „Alltag", als wäre es dasselbe. Ist es nicht:
+  Jedes Wort hat ein Thema UND eine Wortart. Beim Anlegen eines Raums wählt man
+  jetzt beides getrennt — „nur Verben quer durch alle Themen" ist die Auswahl
+  „Alle Themen" plus „Verb". Jede Kachel zeigt dabei, wie viele Wörter unter dem
+  gewählten Filter überhaupt übrig bleiben, und ein Thema ohne passende Wörter
+  lässt sich gar nicht erst antippen.
+  Die Wörter der drei alten Gruppen sind nicht verloren: Sie stehen jetzt unter
+  dem Thema **„Querbeet"**, jedes mit seiner Wortart. **Laufende Räume laufen
+  unverändert weiter** — sie tragen ihre alte Kennung, und die alten Gruppen
+  bleiben als versteckte Einträge im Katalog stehen. Ein eigener Test prüft
+  Zeichen für Zeichen, dass die Wortliste dieselbe bleibt.
+- **Vor jeder Runde darfst du ein Wort beisteuern.** Beim „Bereit" wird gefragt:
+  ein Wort, seine Wortart, sein Thema. Beim Thema darf auch ein **neues**
+  entstehen (Gemüse, Haushalt, was ihr wollt) — es steht danach allen zur
+  Verfügung, auch in Räumen, die es noch gar nicht gibt. Wer nichts beisteuern
+  will, lässt das Feld leer und geht weiter.
+  Gefragt wird beim Bereitmachen und nicht beim Beitreten: In einem Raum, in dem
+  man den ganzen Abend sitzt, wäre eine einmalige Frage am Anfang wertlos.
+- **Ein Wort, das gerade dran war, kommt so schnell nicht wieder.** Es wird nicht
+  gesperrt, sondern nur unwahrscheinlich: In der Runde direkt danach zählt es ein
+  Zehntel so viel wie jedes andere, und mit jeder weiteren Runde erholt es sich,
+  bis es nach zehn Runden wieder normal mitspielt. Eine harte Sperre hätte bei
+  kleinen Themen die Auswahl leergeräumt.
+- **Der Knopf zur Wortbibliothek erscheint nur mit Verwaltungs-Zugang.** Vorher
+  stand er für alle da und fragte beim Drücken nach dem Passwort — das war zwar
+  dicht, verriet aber jedem, dass es hier etwas zu holen gibt. Wer die Wortliste
+  sieht, hat als Imposter einen Vorteil. Den Zugang bekommt man wie bisher im Tab
+  Würfel Quizz.
+  Beim Einfügen wählt man jetzt die Wortart mit; in der Bibliothek steht sie
+  hinter jedem ergänzten Wort.
+- **In der Rangliste steht unter dem Namen kein Untertitel mehr.** Die Zeile
+  „Würfel 5, Schach 30, Imposter 8 (2 Siege aus 3)" machte aus der Tabelle bei
+  zehn Mitspielern eine Textwand. Dieselben Zahlen stehen im Profil, einen
+  Fingertipp entfernt — samt der Schach-Bilanz.
+
+## v3.6 — 2026-08-03
+
+Dreizehn Punkte aus dem Eingangskorb, alle am Schach. Der grösste: **Die
+Zugpfeile sind weg.**
+
+- **Statt eines Pfeils wird der WEG eingefärbt** — so, wie es andere
+  Schachprogramme machen. Beim Springer leuchtet das L, beim Läufer die
+  Diagonale, beim Turm die ganze Linie; Start und Ziel etwas kräftiger als die
+  Felder dazwischen. Wo es keinen Weg gibt (Teleport, Wiedergeburt, Friedhof,
+  Händler), sind nur Anfang und Ende markiert.
+  **Damit erledigen sich drei gemeldete Fehler auf einmal**: der fehlende Pfeil
+  beim Bauern, der fehlende Pfeil beim Springer und der fehlende Pfeil beim
+  schrägen Schlagen. Sie hatten dieselbe Ursache — eine Strecke von einem Feld
+  war kürzer als Pfeilrand plus Spitze, also wurde gar nichts gezeichnet. Ein
+  Feld kann nicht zu kurz sein.
+- **Figuren ändern ihre Grösse nicht mehr.** Die Schriftgrösse kommt jetzt aus
+  der gemessenen Feldbreite statt aus einer Schätzung (`88vw`). Die Schätzung
+  lag daneben, sobald das Brett schmaler ausfiel als angenommen — am Rechner
+  etwa, wenn durch den wachsenden Zugverlauf ein Scrollbalken erscheint. Genau
+  das passierte mitten im Spiel.
+- **Jede Fähigkeit sagt, was sie kostet.** Am Vorrat steht neben dem Namen ein
+  **Pluszeichen**, wenn dir danach noch dein normaler Zug bleibt, und ein
+  **Blitz**, wenn du sie auch einsetzen darfst, während der Gegner am Zug ist.
+  Was die Zeichen bedeuten, steht hinter dem i.
+- **Ausweichen geht jetzt im gegnerischen Zug** und kostet keinen. Wer zuerst
+  drückt, war zuerst — abgesichert über denselben Zähler, mit dem sich auch
+  zwei Züge aus einem Team nicht überholen können.
+- **Ausweichen schlägt nicht mehr.** Es bietet nur noch freie Felder an. Vorher
+  standen rote Schlagfelder da, auf die der Tipp dann doch nichts tat.
+- **Ein Tipp neben die Zielfelder bricht ab**, statt stumm nichts zu tun. Bis
+  v3.5 nahm das Brett keine Tipps mehr an, und der einzige Ausweg war ein
+  Abbrechen-Knopf unter dem Brett — von aussen sah das aus, als hinge die Seite.
+- **Im Schach geht keine Fähigkeit mehr, die den König im Schach zurücklässt.**
+  Zwei Fälle sind gesperrt: sich selbst ins Schach stellen (etwa durch einen
+  Bauernschub, der den König freilegt) und im Schach stehen und den Zug abgeben.
+  Was den Zug NICHT beendet, bleibt erlaubt — man muss danach ohnehin aus dem
+  Schach ziehen.
+- **Würfel werden auch beim Durchlaufen eingesammelt.** Wer mit dem Turm über
+  einen Würfel hinwegzieht, nimmt ihn mit. Nur der Springer nicht: Er setzt über
+  die Felder dazwischen hinweg und berührt sie nie. Dasselbe gilt für die
+  Fähigkeiten „Sprung" und „Teleport".
+- **Was du schon hast, kommt seltener nach.** Jedes Exemplar im Vorrat drückt
+  die Chance auf ein weiteres — bei Gewöhnlich hart (auf 15 Prozent je Stück),
+  bei Legendär kaum (75 Prozent). Der Grund für die Staffelung: In der
+  gewöhnlichen Stufe stehen drei Fähigkeiten zur Auswahl, bei den legendären
+  fünf, und eine harte Dämpfung hiesse dort „du bekommst die anderen garantiert
+  zuerst".
+  Dafür entscheidet sich jetzt erst BEIM EINSAMMELN, was in einem Würfel steckt;
+  beim Erscheinen steht nur seine Stufe fest. Anders ginge es nicht — vorher
+  weiss noch niemand, wer ihn bekommt.
+- **Das Fähigkeiten-Fenster ist schlanker.** Der Erklärabsatz über den
+  Fähigkeiten ist ins i-Menü gewandert, der i-Knopf nach oben in die
+  Überschrift. Auf dem Handy schob der Text bisher das Einzige, was man hier
+  anfassen kann, aus dem Bild.
+- **„Sprung" ist richtig beschrieben.** Es ist kein zusätzlicher Zug, sondern
+  eine zusätzliche Gangart für den nächsten. Dasselbe gilt für Teleport.
+
+Unter der Haube: `SCHACH.wegFelder` und `SCHACH.betreteneFelder` beantworten
+zwei verschiedene Fragen — welche Felder man ZEICHNET (beim Springer das L) und
+welche die Figur wirklich BETRITT (beim Springer nur das Ziel). Beide stehen im
+Regelwerk, damit Anzeige und Einsammeln nicht auseinanderlaufen können.
+
 ## v3.5 — 2026-08-03
 
 Sechs Punkte aus dem Eingangskorb — einer für die Bedienung, drei neue

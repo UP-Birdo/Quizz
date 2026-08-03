@@ -52,6 +52,33 @@ class Abgleich {
         /* Steht eine Änderung an, die absichtlich fremde Einträge betrifft
            (neue Runde, Spieler entfernen)? Dann wird nicht zusammengeführt. */
         this.globaleAenderung = false;
+
+        /*
+         * Wie viele eigene Schreibvorgänge gerade laufen, die NICHT über
+         * `schreiben()` gehen (seit v3.8).
+         *
+         * Schach und Imposter schreiben selbst: Sie holen den Stand vom
+         * Server, setzen eine einzelne Partie oder einen einzelnen Raum hinein
+         * und speichern (siehe TEAM_SCHACH._sendenMitPruefung). Der Abgleich
+         * weiss davon nichts — und genau in dieser Zeit könnte seine
+         * regelmässige Abfrage antworten und den noch nicht geschriebenen
+         * eigenen Zug mit dem alten Server-Stand überschreiben. Auf dem
+         * Bildschirm sieht das aus, als spränge die Figur zurück.
+         *
+         * Ein Zähler und kein Schalter: Es können mehrere Vorgänge gleichzeitig
+         * offen sein (Zug abschicken, während eine Abstimmung ausläuft).
+         */
+        this.eigeneVorgaenge = 0;
+    }
+
+    /* Ein eigener Schreibvorgang beginnt — bis er endet, wird kein fremder
+       Stand übernommen. */
+    eigenerVorgangBeginnt() {
+        this.eigeneVorgaenge++;
+    }
+
+    eigenerVorgangEndet() {
+        this.eigeneVorgaenge = Math.max(0, this.eigeneVorgaenge - 1);
     }
 
     /* Wird gesetzt, sobald feststeht, wer an diesem Gerät sitzt. */
@@ -168,7 +195,8 @@ class Abgleich {
     }
 
     async fremdenStandHolen() {
-        if (this.schreibtGerade || this.aenderungOffen || this.schreibZeitgeber !== null) {
+        if (this.schreibtGerade || this.aenderungOffen || this.schreibZeitgeber !== null
+            || this.eigeneVorgaenge > 0) {
             return;
         }
 
