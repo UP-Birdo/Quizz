@@ -395,7 +395,6 @@ pruefe("Wuerfel erscheinen ueber die Zeit, ohne festen Takt", () => {
     const runde = springerZuege(faehigkeitenPartie(), 24);
 
     wahr(runde.bonus.length >= 1, "nach 24 Halbzuegen liegt mindestens einer");
-    wahr(runde.bonus.length <= SCHACH_VARIANTEN.BONUS_HOECHSTENS, "und hoechstens drei");
 
     for (const eintrag of runde.bonus) {
         wahr(SCHACH.figurAuf(runde.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
@@ -471,9 +470,34 @@ pruefe("Zwei Partien ziehen verschiedene Wuerfel", () => {
     wahr(SCHACH_RUNDE._bonusText(eine) !== SCHACH_RUNDE._bonusText(zwei), "nicht identisch");
 });
 
-pruefe("Es liegen nie mehr Wuerfel als erlaubt", () => {
+/*
+ * Seit v3.3 gibt es keine Hoechstzahl mehr (Wunsch [#3]): Der Nachschub darf
+ * nicht mitten in der Partie aufhoeren. Geprueft wird deshalb das Gegenteil von
+ * frueher - dass es ueber viele Zuege WEITERGEHT - und die einzige verbliebene
+ * Grenze: das Brett selbst.
+ */
+pruefe("Der Nachschub hoert nicht auf", () => {
+    const kurz = springerZuege(faehigkeitenPartie(), 24);
+    const lang = springerZuege(faehigkeitenPartie(), 80);
+
+    wahr(lang.bonus.length > kurz.bonus.length,
+        "nach 80 Halbzuegen liegen mehr als nach 24 ("
+        + lang.bonus.length + " gegen " + kurz.bonus.length + ")");
+    wahr(lang.bonus.length > 3, "und mehr als die frueheren drei");
+});
+
+pruefe("Wuerfel liegen nur auf freien Feldern, jedes hoechstens einmal", () => {
     const runde = springerZuege(faehigkeitenPartie(), 80);
-    wahr(runde.bonus.length <= SCHACH_VARIANTEN.BONUS_HOECHSTENS, "Hoechstzahl eingehalten");
+
+    for (const eintrag of runde.bonus) {
+        wahr(SCHACH.figurAuf(runde.stand, eintrag.feld) === ".",
+            "Feld " + eintrag.feld + " ist frei");
+    }
+
+    const felder = runde.bonus.map((eintrag) => eintrag.feld);
+    gleich(new Set(felder).size, felder.length, "kein Feld doppelt belegt");
+    wahr(runde.bonus.length <= SCHACH.felderVon(runde.stand),
+        "nie mehr Wuerfel als Felder");
 });
 
 pruefe("Wer auf einen Wuerfel zieht, sammelt ihn ein", () => {

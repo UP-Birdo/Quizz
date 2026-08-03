@@ -280,5 +280,151 @@ pruefe("Die Erklaerung nennt dieselben Zahlen wie die Rechnung", () => {
     wahr(text.indexOf(String(RANGLISTE.PUNKTE_TEILNAHME)) !== -1, "Teilnahme genannt");
 });
 
+/* ------------------------------------------------------------------ *
+ * Der Verlauf eines Spielers (Spielerprofil, seit v3.3)
+ * ------------------------------------------------------------------ */
+
+const IMPOSTER_RUNDE = globalThis.IMPOSTER_RUNDE;
+const IMPOSTER_TAFEL = globalThis.IMPOSTER_TAFEL;
+
+/* Ein aufgeloester Imposter-Raum mit Anna, Bert und Cem. */
+function aufgeloesterRaum(zeitpunkt) {
+    const angelegt = IMPOSTER_TAFEL.raumAnlegen(
+        IMPOSTER_TAFEL.leereTafel(1000), "Feierabend",
+        { gruppe: "alltag", impostermenge: 1 }, zeitpunkt);
+
+    let raum = angelegt.raum;
+    for (const id of ["id-anna", "id-bert", "id-cem"]) {
+        raum = IMPOSTER_RUNDE.beitreten(raum, id, zeitpunkt);
+        raum = IMPOSTER_RUNDE.bereitSetzen(raum, id, true, zeitpunkt);
+    }
+
+    raum = IMPOSTER_RUNDE.starten(raum, "profilsalz", zeitpunkt);
+    for (const id of ["id-anna", "id-bert", "id-cem"]) {
+        raum = IMPOSTER_RUNDE.fertigSetzen(raum, id, true, zeitpunkt + 300000);
+    }
+
+    return IMPOSTER_TAFEL.raumEinsetzen(angelegt.tafel, raum, zeitpunkt);
+}
+
+pruefe("Der Verlauf zeigt jede Partie, in der jemand mitgespielt hat", () => {
+    let tafel = beendetePartie(SCHACH_TAFEL.leereTafel(1000), "Erste", "weiss", 2000);
+    tafel = beendetePartie(tafel, "Zweite", "schwarz", 3000);
+
+    const annas = RANGLISTE.verlauf("id-anna", tafel, IMPOSTER_TAFEL.leereTafel());
+    gleich(annas.length, 2, "beide Partien");
+
+    const cems = RANGLISTE.verlauf("id-cem", tafel, IMPOSTER_TAFEL.leereTafel());
+    gleich(cems.length, 0, "Cem hat nicht mitgespielt");
+});
+
+pruefe("Der Verlauf nennt Ausgang, Gegner und Mitspieler", () => {
+    const tafel = beendetePartie(SCHACH_TAFEL.leereTafel(1000), "Erste", "weiss", 2000);
+    const eintrag = RANGLISTE.verlauf("id-anna", tafel, IMPOSTER_TAFEL.leereTafel())[0];
+
+    gleich(eintrag.art, "schach", "Art");
+    gleich(eintrag.ausgang, "sieg", "Anna spielt Weiss und Weiss gewinnt");
+    gleich(eintrag.gegner.join(","), "id-bert", "Gegner");
+    gleich(eintrag.mitspieler.length, 0, "allein im Team");
+
+    const berts = RANGLISTE.verlauf("id-bert", tafel, IMPOSTER_TAFEL.leereTafel())[0];
+    gleich(berts.ausgang, "niederlage", "Bert hat verloren");
+});
+
+pruefe("Die Punkte im Verlauf ergeben zusammen die Summe der Wertung", () => {
+    let tafel = beendetePartie(SCHACH_TAFEL.leereTafel(1000), "Erste", "weiss", 2000);
+    tafel = beendetePartie(tafel, "Zweite", "remis", 3000);
+
+    const summe = RANGLISTE.schachPunkte(tafel)["id-anna"].punkte;
+    const einzeln = RANGLISTE.verlauf("id-anna", tafel, IMPOSTER_TAFEL.leereTafel())
+        .reduce((zwischenstand, eintrag) => zwischenstand + eintrag.punkte, 0);
+
+    gleich(einzeln, summe, "Einzelposten und Summe muessen uebereinstimmen");
+});
+
+pruefe("Der Verlauf enthaelt auch aufgeloeste Imposter-Runden", () => {
+    const raeume = aufgeloesterRaum(5000);
+    const verlauf = RANGLISTE.verlauf("id-anna", SCHACH_TAFEL.leereTafel(), raeume);
+
+    gleich(verlauf.length, 1, "eine Runde");
+    gleich(verlauf[0].art, "imposter", "Art");
+    gleich(verlauf[0].titel, "Feierabend", "Name des Raums");
+    wahr(verlauf[0].dauerMs > 0, "die Dauer steht fest");
+
+    const summe = RANGLISTE.imposterPunkte(raeume)["id-anna"].punkte;
+    gleich(verlauf[0].punkte, summe, "dieselben Punkte wie in der Wertung");
+});
+
+pruefe("Das Juengste steht oben", () => {
+    let tafel = beendetePartie(SCHACH_TAFEL.leereTafel(1000), "Alt", "weiss", 2000);
+    tafel = beendetePartie(tafel, "Neu", "weiss", 9000);
+
+    const verlauf = RANGLISTE.verlauf("id-anna", tafel, IMPOSTER_TAFEL.leereTafel());
+    wahr(verlauf[0].wann >= verlauf[1].wann, "absteigend nach Zeitpunkt");
+});
+
+pruefe("Ohne Kennung liefert der Verlauf nichts", () => {
+    gleich(RANGLISTE.verlauf("", SCHACH_TAFEL.leereTafel(), IMPOSTER_TAFEL.leereTafel()).length,
+        0, "leer");
+});
+
+/*
+ * Partien von vor v3.3 haben weder Startzeit noch Zugzahl. Das Profil darf
+ * dann NICHTS erfinden - es laesst die Angabe weg (dauerMs bleibt 0).
+ */
+pruefe("Alte Chronik-Eintraege liefern keine erfundene Dauer", () => {
+    const tafel = SCHACH_TAFEL.normalisieren({
+        chronik: [{
+            id: "p-alt",
+            titel: "Von frueher",
+            variante: "standard",
+            ergebnis: "weiss",
+            beendetAm: 9000,
+            teams: { weiss: ["id-anna"], schwarz: ["id-bert"] }
+        }]
+    });
+
+    const eintrag = RANGLISTE.verlauf("id-anna", tafel, IMPOSTER_TAFEL.leereTafel())[0];
+
+    gleich(eintrag.dauerMs, 0, "keine Dauer");
+    gleich(eintrag.zuege, 0, "keine Zugzahl");
+    gleich(eintrag.wann, 9000, "der Zeitpunkt ist aber bekannt");
+});
+
+pruefe("Eine neue Partie haelt Beginn und Zugzahl fest", () => {
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        SCHACH_TAFEL.leereTafel(1000), "standard", "Frisch", 2000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 2000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 2000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 2000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 5000);
+
+    gleich(partie.gestartetAm, 5000, "gestartet, als beide bereit waren");
+
+    partie.ergebnis = "weiss";
+    partie.laeuft = false;
+    partie.zugZaehler = 24;
+    partie.geaendertAm = 65000;
+
+    const tafel = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 65000);
+    const eintrag = RANGLISTE.verlauf("id-anna", tafel, IMPOSTER_TAFEL.leereTafel())[0];
+
+    gleich(eintrag.dauerMs, 60000, "eine Minute gespielt");
+    gleich(eintrag.zuege, 24, "24 Halbzuege");
+});
+
+pruefe("Die Dauer wird lesbar ausgegeben", () => {
+    /* 30 Sekunden duerfen nicht zu "1 Minute" aufgerundet werden. */
+    gleich(RANGLISTE._dauerText(30000), "unter einer Minute", "Sekunden");
+    gleich(RANGLISTE._dauerText(59999), "unter einer Minute", "knapp darunter");
+    gleich(RANGLISTE._dauerText(60000), "1 Minute", "genau eine");
+    gleich(RANGLISTE._dauerText(5 * 60000), "5 Minuten", "Minuten");
+    gleich(RANGLISTE._dauerText(90 * 60000), "1 Stunde 30 Minuten", "Stunden");
+    gleich(RANGLISTE._dauerText(2 * 60 * 60000), "2 Stunden", "volle Stunden");
+    gleich(RANGLISTE._dauerText(26 * 60 * 60000), "1 Tag 2 Stunden", "Tage");
+    gleich(RANGLISTE._dauerText(48 * 60 * 60000), "2 Tage", "volle Tage");
+});
+
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
 process.exit(anzahlFehler === 0 ? 0 : 1);

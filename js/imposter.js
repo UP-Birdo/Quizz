@@ -341,28 +341,13 @@ const IMPOSTER = {
      * ---------------------------------------------------------------- */
 
     async bibliothekOeffnen() {
-        if (!ICH.verwaltungAktiv()) {
-            const passwort = await DIALOG.zahlen(
-                "Wortbibliothek",
-                "Sie ist der Verwaltung vorbehalten: Wer die Wörter sieht, hat "
-                    + "als Imposter einen Vorteil.",
-                KONFIG.verwaltung.passwortStellen,
-                "Öffnen",
-                true
-            );
-            if (!passwort) {
-                return;
-            }
-
-            const stimmt = await VERSIEGELUNG.verwaltungPruefen(
-                passwort, KONFIG.verwaltung.pruefwert);
-
-            if (!stimmt) {
-                await DIALOG.hinweis("Falsches Passwort",
-                    "Die Bibliothek bleibt zu.");
-                return;
-            }
-            ICH.verwaltungSetzen(true);
+        const darf = await VERWALTUNG.verlangen(
+            "Wortbibliothek",
+            "Sie ist der Verwaltung vorbehalten: Wer die Wörter sieht, hat als "
+                + "Imposter einen Vorteil."
+        );
+        if (!darf) {
+            return;
         }
 
         IMPOSTER.bibliothekOffen = true;
@@ -886,7 +871,24 @@ const IMPOSTER = {
         }
     },
 
+    /*
+     * Löschen ist der Verwaltung vorbehalten (seit v3.3).
+     *
+     * Der Grund ist beim Imposter zwingender als beim Schach: Ein aufgelöster
+     * Raum trägt seine Punkte in der Rangliste, und er ist der EINZIGE Ort, an
+     * dem sie stehen — eine Chronik wie beim Schach gibt es hier nicht. Wer den
+     * Raum wegwirft, nimmt allen Mitspielern ihre Punkte weg.
+     */
     async raumLoeschen(raum) {
+        const darf = await VERWALTUNG.verlangen(
+            "Raum löschen",
+            "Ein gelöschter Raum nimmt allen Mitspielern die Punkte, die sie "
+                + "darin geholt haben. Das darf nur, wer das Passwort kennt."
+        );
+        if (!darf) {
+            return;
+        }
+
         const ja = await DIALOG.frage(
             "Raum löschen?",
             "Der Raum " + raum.titel + " wird für alle entfernt. Das lässt sich "

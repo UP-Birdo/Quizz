@@ -1017,6 +1017,80 @@ Was dabei ausdrücklich NICHT gemacht wurde: Kommentare kürzen. Der Wunsch
 denselben Fehler beim nächsten Mal verhindert. Der Zielkonflikt steht als offene
 Nutzer-Entscheidung in `ROADMAP.md`.
 
+## Die drei Wünsche vom Wunsch-Knopf (v3.3)
+
+Die ersten Punkte, die über den Knopf in der App hereinkamen. Zwei Erkenntnisse
+aus der Umsetzung, die über den Einzelfall hinausgehen:
+
+**Ein Abhol-Skript, das nie etwas findet, sieht aus wie ein leeres Postfach.**
+Die drei Wünsche lagen acht Stunden unbemerkt auf GitHub, weil
+`Wuensche-Abholen.ps1` sie wegfilterte und seelenruhig „Keine offenen Wuensche"
+meldete. Die Ursache steht als Kommentar im Skript (`Invoke-RestMethod` gibt
+eine JSON-Liste als EIN Objekt aus; direkt in eine Pipeline geschickt kommt das
+ganze Array als ein Wert an, und `$_.pull_request` wird zur Member-Enumeration).
+Die Lehre gilt allgemein: **Eine Erfolgsmeldung über eine leere Menge ist kein
+Beweis, dass die Menge leer ist.**
+
+**Rückwirkend geht Statistik nicht.** Das Profil sollte Tag, Uhrzeit, Gegner und
+Spieldauer zeigen. Drei davon standen schon in der Chronik — die Dauer nicht,
+denn niemand hatte je festgehalten, wann eine Partie begann. Die Versuchung war,
+`erstelltAm` als Beginn auszugeben. Dagegen entschieden: Das wäre die Zeit seit
+dem ANLEGEN, bei einer Partie, die zwei Tage auf Mitspieler wartete, also
+schlicht falsch. Stattdessen läuft `gestartetAm` ab jetzt mit, und für alles
+Ältere bleibt die Angabe leer. **Eine fehlende Zahl ist besser als eine
+erfundene.**
+
+## Warum das Löschen ans Passwort gebunden ist (v3.3)
+
+In `ROADMAP.md` stand der Punkt lange unter „Später", mit der Begründung: eine
+Vorsichtsmaßnahme gegen ein Problem, das es noch nicht gibt. Mit dem Wunsch
+[#2] gab es das Problem.
+
+Gebunden wurden BEIDE Spiele, obwohl der Wunsch nur von „Räumen" sprach. Der
+Grund ist nicht Symmetrie, sondern Schadenshöhe: Beim Schach überlebt zwar jedes
+Ergebnis in der Chronik, eine LAUFENDE Partie ist aber unwiederbringlich weg —
+mitsamt der Arbeit aller Beteiligten. Beim Imposter kostet ein gelöschter Raum
+sogar echte Ranglisten-Punkte, weil er der einzige Ort ist, an dem sie stehen.
+
+Was bewusst NICHT gebaut wurde: ein Besitzer je Partie, der als Einziger löschen
+darf. Das wäre feiner, aber es bräuchte eine Rolle im Datenmodell, die es sonst
+nirgends gibt — für einen Freundeskreis, der ohnehin ein gemeinsames Passwort
+teilt, ist das Verhältnis nicht gewahrt.
+
+## Warum die Würfel keine Höchstzahl mehr haben (v3.3)
+
+Bis v3.2 lagen höchstens drei gleichzeitig. Der Gedanke dahinter war, das Brett
+übersichtlich zu halten. In der Praxis las sich die Grenze als Fehler: Wer nicht
+einsammelte, bekam ab dem dritten Würfel gar nichts mehr, und die Partie hörte
+mitten im Spiel auf, welche auszuwerfen — ohne dass irgendetwas das erklärte.
+
+Jetzt ist die einzige Grenze das Brett selbst: Ein Würfel braucht ein freies
+Feld. Sie steht nicht als Zahl im Code, sondern ergibt sich aus der Stellung und
+kann deshalb nicht veralten, wenn ein Unglückswürfel das Feld vergrössert.
+
+Der Test dazu wurde umgedreht: Er prüft nicht mehr, dass die Grenze eingehalten
+wird, sondern dass es über viele Züge WEITERGEHT — und dass kein Würfel auf
+einem besetzten Feld landet.
+
+## Warum der Springerpfeil einen Knick hat (v3.3)
+
+Der Pfeil war seit v1.9 eine gerade Linie von Start nach Ziel. Beim Springer
+zeigte er damit eine Diagonale über Felder, die die Figur nie berührt hat.
+
+Erkannt wird der Sprung an der GEOMETRIE (ein Feld in der einen, zwei in der
+anderen Richtung), nicht an der Figur. Das ist Absicht: Die Fähigkeit „Sprung"
+versetzt eine beliebige Figur wie einen Springer, und der Weg ist derselbe — sie
+bekommt damit automatisch denselben Pfeil, ohne dass irgendwo eine zweite
+Fallunterscheidung nötig wäre.
+
+**Eine Falle steckt in der Umsetzung:** Der Strich ist jetzt ein `<polyline>`
+statt einer `<line>`, und ein Polygonzug wird von SVG standardmässig GEFÜLLT —
+das L wäre ein ausgemaltes Dreieck. Ein `fill="none"` am Element genügt nicht,
+weil jede CSS-Regel ein Präsentationsattribut überstimmt. Deshalb die Klasse
+`.zug-pfeil-linie`, und sie muss in `stil.css` NACH `.zug-pfeil-unten` und
+`.zug-pfeil-oben` stehen: gleiche Spezifität, und bei Gleichstand gewinnt die
+spätere Regel.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

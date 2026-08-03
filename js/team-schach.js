@@ -808,7 +808,24 @@ const TEAM_SCHACH = {
         }
     },
 
+    /*
+     * Löschen ist der Verwaltung vorbehalten (seit v3.3).
+     *
+     * Die Punkte einer beendeten Partie sind zwar in der Chronik festgeschrieben
+     * und überleben das Löschen — eine LAUFENDE Partie ist aber unwiederbringlich
+     * weg, mitsamt der Arbeit aller Beteiligten. Bis v3.2 reichte dafür ein
+     * Fehlgriff auf einem fremden Handy.
+     */
     async partieLoeschen(partie) {
+        const darf = await VERWALTUNG.verlangen(
+            "Partie löschen",
+            "Eine laufende Partie ist danach für alle weg — auch für die, die "
+                + "gerade mitspielen. Das darf nur, wer das Passwort kennt."
+        );
+        if (!darf) {
+            return;
+        }
+
         const ja = await DIALOG.frage(
             "Partie löschen?",
             "Die Partie " + partie.titel + " wird für alle entfernt. Das lässt sich "

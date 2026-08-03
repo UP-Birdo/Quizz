@@ -83,6 +83,16 @@ const SCHACH_RUNDE = {
             titel: titel || "",
             variante: variante.id,
             erstelltAm: wann,
+
+            /*
+             * Wann die Partie wirklich losging (beide Seiten bereit) — seit
+             * v3.3, für die Spieldauer im Spielerprofil. 0 heisst: noch nicht
+             * gestartet, oder eine Partie von vorher. Dann tritt `erstelltAm`
+             * an die Stelle; die Zahl ist dann grosszügiger, aber nie falsch
+             * herum.
+             */
+            gestartetAm: 0,
+
             geaendertAm: wann,
             stand: SCHACH.neuerStand(variante.id),
             zugZaehler: 0,
@@ -163,6 +173,10 @@ const SCHACH_RUNDE = {
         }
         if (typeof roh.erstelltAm === "number" && isFinite(roh.erstelltAm)) {
             runde.erstelltAm = roh.erstelltAm;
+        }
+        if (typeof roh.gestartetAm === "number" && isFinite(roh.gestartetAm)
+            && roh.gestartetAm >= 0) {
+            runde.gestartetAm = roh.gestartetAm;
         }
         if (typeof roh.geaendertAm === "number" && isFinite(roh.geaendertAm)) {
             runde.geaendertAm = roh.geaendertAm;
@@ -414,11 +428,8 @@ const SCHACH_RUNDE = {
         if (!SCHACH_RUNDE.faehigkeitenAn(runde)) {
             return;
         }
-        if (runde.bonus.length >= SCHACH_VARIANTEN.BONUS_HOECHSTENS) {
-            return;
-        }
-
-        /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr. */
+        /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr, und seit
+           v3.3 auch keine Höchstzahl (siehe SCHACH_VARIANTEN.BONUS_CHANCE). */
         const wuerfelt = SCHACH_RUNDE._zufallsWert(
             (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
 
@@ -444,11 +455,10 @@ const SCHACH_RUNDE = {
         const basis = (runde.id || "partie") + "|" + runde.zugZaehler;
 
         /* Meist einer, manchmal zwei, sehr selten drei — und nie mehr, als
-           insgesamt liegen dürfen. */
+           freie Felder da sind. Das ist seit v3.3 die einzige Grenze. */
         const gewuenscht = SCHACH_VARIANTEN.anzahlZiehen(
             SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
-        const moeglich = Math.min(gewuenscht,
-            SCHACH_VARIANTEN.BONUS_HOECHSTENS - runde.bonus.length, freie.length);
+        const moeglich = Math.min(gewuenscht, freie.length);
 
         const neue = [];
 
@@ -855,6 +865,12 @@ const SCHACH_RUNDE = {
            beginnt die Partie von selbst. */
         if (SCHACH_RUNDE.kannStarten(neu)) {
             neu.laeuft = true;
+
+            /* Nur beim ERSTEN Start setzen: „Neu aufstellen" soll die
+               Spieldauer nicht zurückdrehen. */
+            if (!neu.gestartetAm) {
+                neu.gestartetAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+            }
         }
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;

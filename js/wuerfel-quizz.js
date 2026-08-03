@@ -854,27 +854,15 @@ const WUERFEL_QUIZZ = {
             return;
         }
 
-        const passwort = await DIALOG.zahlen(
+        const darf = await VERWALTUNG.verlangen(
             "Verwaltung",
-            "Passwort eingeben. Damit lassen sich Spieler aus der Runde entfernen.",
-            KONFIG.verwaltung.passwortStellen,
-            "Anmelden"
+            "Passwort eingeben. Damit lassen sich Spieler aus der Runde entfernen, "
+                + "Partien und Räume löschen und die Wortbibliothek ändern."
         );
-
-        if (passwort === null) {
+        if (!darf) {
             return;
         }
 
-        const richtig = await VERSIEGELUNG.verwaltungPruefen(
-            passwort, KONFIG.verwaltung.pruefwert
-        );
-
-        if (!richtig) {
-            await DIALOG.hinweis("Passwort falsch", "Das war nicht das richtige Passwort.");
-            return;
-        }
-
-        ICH.verwaltungSetzen(true);
         WUERFEL_QUIZZ.zeichnen(WUERFEL_QUIZZ.abgleich.daten);
     },
 
@@ -1007,30 +995,13 @@ const WUERFEL_QUIZZ = {
      * offen hat, wird nicht noch einmal gefragt.
      */
     async neueRunde() {
-        if (!ICH.verwaltungAktiv()) {
-            const passwort = await DIALOG.zahlen(
-                "Neue Runde",
-                "Eine neue Runde löscht Würfel und Vermutungen bei allen Mitspielern. "
-                    + "Das darf nur, wer das Passwort kennt.",
-                KONFIG.verwaltung.passwortStellen,
-                "Weiter"
-            );
-
-            if (passwort === null) {
-                return;
-            }
-
-            const richtig = await VERSIEGELUNG.verwaltungPruefen(
-                passwort, KONFIG.verwaltung.pruefwert
-            );
-
-            if (!richtig) {
-                await DIALOG.hinweis(
-                    "Passwort falsch",
-                    "Das war nicht das richtige Passwort. Die Runde läuft weiter."
-                );
-                return;
-            }
+        const darf = await VERWALTUNG.verlangen(
+            "Neue Runde",
+            "Eine neue Runde löscht Würfel und Vermutungen bei allen Mitspielern. "
+                + "Das darf nur, wer das Passwort kennt."
+        );
+        if (!darf) {
+            return;
         }
 
         const ja = await DIALOG.frage(

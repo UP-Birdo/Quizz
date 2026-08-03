@@ -132,7 +132,22 @@ if ($Schliessen) {
 # Holen und eintragen
 # ---------------------------------------------------------------------
 
-$anfragen = Anfragen-Holen | Where-Object { -not $_.pull_request }
+# ACHTUNG, stille Falle (gefunden am 2026-08-03, drei Wuensche lagen unbemerkt
+# auf GitHub):
+#
+#     Anfragen-Holen | Where-Object { -not $_.pull_request }      # FALSCH
+#
+# Invoke-RestMethod gibt eine JSON-Liste als EIN Objekt aus, nicht als drei.
+# Direkt in eine Pipeline geschickt kommt deshalb genau ein Wert an: das ganze
+# Array. $_.pull_request laeuft dann als Member-Zugriff ueber alle Elemente und
+# liefert @($null, $null, $null) - ein nicht leeres Array und damit "wahr",
+# also filtert -not alles weg. Das Ergebnis ist $null, und das Skript meldet
+# seelenruhig "Keine offenen Wuensche".
+#
+# Der Umweg ueber die Variable loest es: Eine Variable wird in der Pipeline
+# immer entrollt. Das @(...) haelt Count auch bei null und einem Treffer richtig.
+$roh = Anfragen-Holen
+$anfragen = @($roh | Where-Object { -not $_.pull_request })
 
 if ($anfragen.Count -eq 0) {
     Write-Host "Keine offenen Wuensche." -ForegroundColor Green
@@ -184,10 +199,28 @@ $zeilen = foreach ($eintrag in $neue) {
 $abschnitt = "## Anfragen"
 
 if ($todoText.Contains($abschnitt)) {
-    # Direkt unter die vorhandene Ueberschrift.
-    $stelle = $todoText.IndexOf($abschnitt) + $abschnitt.Length
-    $einfuegen = "`n`n" + ($zeilen -join "`n")
-    $todoText = $todoText.Insert($stelle, $einfuegen)
+    # ANS ENDE des Abschnitts, nicht direkt unter die Ueberschrift: Darunter
+    # steht der erklaerende Absatz ("erst mit dem Wort bestaetigt ..."), und
+    # den wuerde ein Eintrag davor zerreissen. Gesucht wird deshalb die
+    # naechste Ueberschrift danach.
+    $start  = $todoText.IndexOf($abschnitt) + $abschnitt.Length
+    $naechste = $todoText.IndexOf("`n## ", $start)
+    if ($naechste -lt 0) { $naechste = $todoText.Length }
+
+    $bisher = $todoText.Substring($start, $naechste - $start)
+
+    # Der Platzhalter verschwindet, sobald etwas Echtes dasteht.
+    $bisher = $bisher -replace "(?m)^-\s*\(noch nichts\)\s*$", ""
+    $bisher = $bisher.TrimEnd()
+
+    # Nach Fliesstext braucht die Liste eine Leerzeile, hinter einem
+    # vorhandenen Listenpunkt nicht - sonst reisst der Absatz auseinander.
+    $letzte = ($bisher -split "`r?`n")[-1]
+    $trenner = if ($letzte -match "^\s*-\s") { "`n" } else { "`n`n" }
+
+    $bisher = $bisher + $trenner + ($zeilen -join "`n") + "`n"
+
+    $todoText = $todoText.Remove($start, $naechste - $start).Insert($start, $bisher)
 } else {
     # Abschnitt anlegen, direkt ueber "## Neu".
     $vorNeu = $todoText.IndexOf("## Neu")

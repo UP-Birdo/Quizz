@@ -154,14 +154,20 @@ const SCHACH_VARIANTEN = {
      *
      * Bis v2.7 kam alle sechs Halbzüge einer — feste Takte, die man mitzählen
      * konnte. Jetzt wird jede Runde neu gewürfelt (im Schnitt weiterhin einer
-     * je sechs Halbzüge), und wer die liegenden nicht einsammelt, hält den
-     * Nachschub nicht auf: Es kommt einfach nichts, solange kein Platz frei ist
-     * oder die Höchstzahl erreicht ist.
+     * je sechs Halbzüge).
+     *
+     * SEIT v3.3 GIBT ES KEINE HÖCHSTZAHL MEHR.
+     * Vorher durften nur drei gleichzeitig liegen; wer nicht einsammelte, bekam
+     * ab dem dritten gar nichts mehr — die Partie hörte mitten im Spiel auf,
+     * Würfel auszuwerfen, und das wirkte wie ein Fehler. Jetzt erscheint
+     * durchgehend nach Chance einer, solange überhaupt ein Feld frei ist.
+     *
+     * Die einzige verbliebene Grenze ist das Brett selbst: Ein Würfel braucht
+     * ein leeres Feld, und auf ein Feld passt nur einer. Sie steht nicht als
+     * Zahl im Code, sondern ergibt sich aus der Stellung — deshalb kann sie
+     * auch nicht veralten, wenn ein Unglückswürfel das Feld vergrössert.
      */
     BONUS_CHANCE: 18,
-
-    /* So viele dürfen höchstens gleichzeitig liegen. */
-    BONUS_HOECHSTENS: 3,
 
     /*
      * Wie viele Würfel auf einmal erscheinen. Meist einer; zwei sind selten,
@@ -570,9 +576,9 @@ const SCHACH_VARIANTEN = {
             + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
             + "Nach jedem Halbzug kann ein neuer Würfel erscheinen — mit "
             + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent, also im Schnitt etwa jeden "
-            + "sechsten. Meist einer, selten zwei, sehr selten drei; es liegen nie "
-            + "mehr als " + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig. Liegen "
-            + "gelassene Würfel bleiben liegen, bis sie jemand einsammelt.\n\n"
+            + "sechsten. Meist einer, selten zwei, sehr selten drei. Der Nachschub "
+            + "hört nie auf, solange ein Feld frei ist; liegen gelassene Würfel "
+            + "bleiben liegen, bis sie jemand einsammelt.\n\n"
             + "Jeder achte Würfel ist ein Unglückswürfel (" + SCHACH_VARIANTEN.PECH_CHANCE
             + " Prozent) — er wirkt sofort gegen den, der ihn einsammelt.\n\n"
             + "Gewürfelt wird dabei nicht: Feld und Inhalt werden aus dem Spielstand "
@@ -586,8 +592,8 @@ const SCHACH_VARIANTEN = {
 
         let text = "Nach jedem Halbzug erscheint mit "
             + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent ein Würfel auf einem freien "
-            + "Feld — meist einer, manchmal mehr (" + anzahl + "). Es liegen nie mehr "
-            + "als " + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig, und liegen "
+            + "Feld — meist einer, manchmal mehr (" + anzahl + "). Das hört nicht "
+            + "auf: Solange ein Feld frei ist, kommt Nachschub, und liegen "
             + "gelassene bleiben liegen. Wer mit einer Figur darauf zieht, sammelt "
             + "die Fähigkeit für sein Team ein.\n\n"
             + "Welche es wird, hängt von der Stufe ab:\n";

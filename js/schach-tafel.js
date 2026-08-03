@@ -101,6 +101,15 @@ const SCHACH_TAFEL = {
                         ? eintrag.variante : SCHACH_VARIANTEN.STANDARD,
                     ergebnis: eintrag.ergebnis,
                     beendetAm: (typeof eintrag.beendetAm === "number") ? eintrag.beendetAm : 0,
+
+                    /* Seit v3.3, fürs Spielerprofil. Einträge von vorher haben
+                       beides nicht — dann 0, und das Profil lässt die Angabe
+                       weg, statt eine erfundene Zahl zu zeigen. */
+                    begonnenAm: (typeof eintrag.begonnenAm === "number")
+                        ? eintrag.begonnenAm : 0,
+                    zuege: (typeof eintrag.zuege === "number" && eintrag.zuege >= 0)
+                        ? eintrag.zuege : 0,
+
                     teams: {
                         weiss: SCHACH_TAFEL._kennungen(eintrag.teams, "weiss"),
                         schwarz: SCHACH_TAFEL._kennungen(eintrag.teams, "schwarz")
@@ -150,6 +159,16 @@ const SCHACH_TAFEL = {
             variante: partie.variante,
             ergebnis: partie.ergebnis,
             beendetAm: partie.geaendertAm || 0,
+
+            /*
+             * Wann es losging und wie viele Halbzüge es wurden — Grundlage der
+             * Spieldauer im Profil. Ohne `gestartetAm` (Partien von vor v3.3)
+             * tritt der Zeitpunkt des Anlegens ein; das ist grosszügiger, aber
+             * die einzige Zahl, die es dann gibt.
+             */
+            begonnenAm: partie.gestartetAm || partie.erstelltAm || 0,
+            zuege: partie.zugZaehler || 0,
+
             teams: {
                 weiss: partie.teams.weiss.slice(),
                 schwarz: partie.teams.schwarz.slice()

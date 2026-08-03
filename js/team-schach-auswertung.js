@@ -178,12 +178,12 @@ Object.assign(TEAM_SCHACH, {
         }
 
         karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Auf dem Brett liegen " + offen.length + " von höchstens "
-            + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " Würfeln. "
-            + (offen.length >= SCHACH_VARIANTEN.BONUS_HOECHSTENS
-                ? "Es erscheint erst wieder einer, wenn einer eingesammelt wurde."
-                : "Nach jedem Halbzug kann ein neuer dazukommen.")
-            + " Liegen gelassene bleiben liegen, bis sie jemand einsammelt."));
+            ((offen.length === 1)
+                ? "Auf dem Brett liegt ein Würfel. "
+                : "Auf dem Brett liegen " + offen.length + " Würfel. ")
+            + "Nach jedem Halbzug kann ein neuer dazukommen — solange ein Feld "
+            + "frei ist, hört das nicht auf. Liegen gelassene bleiben liegen, "
+            + "bis sie jemand einsammelt."));
 
         for (const farbe of ["weiss", "schwarz"]) {
             const koennen = partie.faehigkeiten[farbe];

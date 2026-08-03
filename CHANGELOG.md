@@ -3,6 +3,32 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.3 — 2026-08-03
+
+Die drei Wünsche, die über den Wunsch-Knopf hereinkamen — plus eine Kleinigkeit
+am Zugpfeil.
+
+- **Auf einen Namen in der Rangliste tippen öffnet sein Profil.** Dort steht,
+  woher die Punkte kamen: jede beendete Partie und jede aufgelöste
+  Imposter-Runde einzeln, das Jüngste zuerst — mit Tag und Uhrzeit, Spieldauer,
+  Zugzahl, Gegnern und Mitspielern.
+
+  *Zwei Einschränkungen, die im Profil auch dastehen:* Der Würfel-Quizz taucht
+  nicht einzeln auf, weil er nur die laufende Runde kennt. Und Partien von vor
+  dieser Fassung haben keine Startzeit — dort fehlt die Dauer, statt geschätzt
+  zu werden. **Ab jetzt läuft beides mit.**
+- **Löschen geht nur noch mit dem Verwaltungs-Passwort** — Räume im Imposter
+  wie Partien im Schach. Beim Imposter ist das der wichtigere Fall: Ein
+  gelöschter Raum nimmt allen Mitspielern die Punkte, die sie darin geholt
+  haben.
+- **Die Würfel hören nicht mehr auf zu erscheinen.** Bisher lagen höchstens drei
+  gleichzeitig; wer nicht einsammelte, bekam ab dem dritten gar nichts mehr —
+  mitten in der Partie war Schluss. Jetzt kommt durchgehend nach Chance
+  Nachschub, solange überhaupt ein Feld frei ist.
+- **Der Pfeil zeigt beim Springer jetzt das L.** Vorher lief er als gerade
+  Diagonale über Felder, die der Springer nie berührt hat. Gilt auch für die
+  Fähigkeit „Sprung" — erkannt wird die Bewegung, nicht die Figur.
+
 ## v3.2 — 2026-08-03
 
 - **Der Imposter hat jetzt Räume — wie das Schach seine Partien.** Bisher gab es

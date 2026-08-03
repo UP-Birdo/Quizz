@@ -573,56 +573,31 @@ Object.assign(TEAM_SCHACH, {
             }
 
             for (const weg of wege) {
-                const start = mitte(weg.von);
-                const ende = mitte(weg.nach);
-
-                const dx = ende.x - start.x;
-                const dy = ende.y - start.y;
-                const laenge = Math.sqrt(dx * dx + dy * dy);
-                if (laenge === 0) {
+                const punkte = TEAM_SCHACH._pfeilPunkte(mitte(weg.von), mitte(weg.nach));
+                if (!punkte) {
                     continue;
                 }
-
-                const ex = dx / laenge;
-                const ey = dy / laenge;
 
                 /*
-                 * Der Pfeil beginnt und endet dicht am Rand der Figur, aber
-                 * nicht erst hinter ihr: Beide Enden bleiben vollständig zu
-                 * sehen. Kürzere Spitze als früher, damit sie nicht über das
-                 * Zielfeld hinausragt.
+                 * Der Linienzug bis kurz vor die Spitze.
+                 *
+                 * `zug-pfeil-linie` ist Pflicht: Ein <polyline> würde sonst die
+                 * Fläche zwischen seinen Punkten ausfüllen — beim geknickten
+                 * Springerpfeil ein gefülltes Dreieck. Ein `fill="none"` am
+                 * Element genügt dafür NICHT, weil eine CSS-Regel jedes
+                 * Präsentationsattribut überstimmt.
                  */
-                const rand = TEAM_SCHACH.PFEIL_ABSTAND;
-                const spitzeLaenge = 0.26;
-                const spitzeBreite = 0.17;
-
-                /* Zu kurz für Rand, Strich und Spitze? Dann gar nicht zeichnen. */
-                if (laenge <= 2 * rand + spitzeLaenge * 0.5) {
-                    continue;
-                }
-
-                const startX = start.x + ex * rand;
-                const startY = start.y + ey * rand;
-                const spitzeX = ende.x - ex * rand;
-                const spitzeY = ende.y - ey * rand;
-                const strichEndeX = spitzeX - ex * spitzeLaenge;
-                const strichEndeY = spitzeY - ey * spitzeLaenge;
-
-                const strich = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                strich.setAttribute("class", lage);
-                strich.setAttribute("x1", String(startX));
-                strich.setAttribute("y1", String(startY));
-                strich.setAttribute("x2", String(strichEndeX));
-                strich.setAttribute("y2", String(strichEndeY));
+                const strich = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+                strich.setAttribute("class", lage + " zug-pfeil-linie");
+                strich.setAttribute("points", punkte.linie
+                    .map((punkt) => punkt.x + "," + punkt.y).join(" "));
                 gruppe.appendChild(strich);
 
+                /* … und die Spitze am Ende des LETZTEN Abschnitts. */
                 const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
                 spitze.setAttribute("class", lage);
-                spitze.setAttribute("points", [
-                    spitzeX + "," + spitzeY,
-                    (strichEndeX - ey * spitzeBreite) + "," + (strichEndeY + ex * spitzeBreite),
-                    (strichEndeX + ey * spitzeBreite) + "," + (strichEndeY - ex * spitzeBreite)
-                ].join(" "));
+                spitze.setAttribute("points", punkte.spitze
+                    .map((punkt) => punkt.x + "," + punkt.y).join(" "));
                 gruppe.appendChild(spitze);
 
                 gezeichnet++;
@@ -630,6 +605,116 @@ Object.assign(TEAM_SCHACH, {
         }
 
         return (gezeichnet > 0) ? svg : null;
+    },
+
+    /*
+     * Aus Start- und Zielmitte die Punkte des Pfeils rechnen. Liefert
+     * { linie: [Punkte], spitze: [drei Punkte] } — oder null, wenn der Weg zu
+     * kurz zum Zeichnen ist.
+     *
+     * DER KNICK BEIM SPRINGER
+     * Bis v3.2 war jeder Pfeil eine gerade Linie. Beim Springer zeigte sie
+     * schräg über Felder hinweg, die er nie berührt hat — man sah eine
+     * Diagonale, wo ein L gezogen wurde. Jetzt bekommt eine 1-zu-2-Bewegung
+     * einen Knick: erst die lange Achse (zwei Felder), dann die kurze. Das ist
+     * die Bewegung, die man auch mit der Hand macht.
+     *
+     * Erkannt wird sie an der GEOMETRIE, nicht an der Figur. Damit gilt sie
+     * auch für die Fähigkeit „Sprung", die eine Figur wie einen Springer
+     * versetzt — und das ist genau richtig, denn der Weg ist derselbe.
+     */
+    _pfeilPunkte(start, ende) {
+        const dx = ende.x - start.x;
+        const dy = ende.y - start.y;
+
+        /* Der Abstand zur Feldmitte an beiden Enden, damit die Figuren
+           vollständig sichtbar bleiben. */
+        const rand = TEAM_SCHACH.PFEIL_ABSTAND;
+        const spitzeLaenge = 0.26;
+        const spitzeBreite = 0.17;
+
+        /* Ecken des Linienzugs: beim Springer drei, sonst zwei. */
+        const ecken = [start];
+
+        if (TEAM_SCHACH._istSprung(dx, dy)) {
+            /* Zuerst die lange Achse — dort liegt der Knick. */
+            ecken.push((Math.abs(dx) > Math.abs(dy))
+                ? { x: ende.x, y: start.y }
+                : { x: start.x, y: ende.y });
+        }
+        ecken.push(ende);
+
+        /* Beide Enden einrücken: das erste Stück am Anfang, das letzte am
+           Ende — bei einem Knick bleibt die Mitte unangetastet. */
+        const ersteRichtung = TEAM_SCHACH._richtung(ecken[0], ecken[1]);
+        const letzteRichtung = TEAM_SCHACH._richtung(
+            ecken[ecken.length - 2], ecken[ecken.length - 1]);
+
+        if (!ersteRichtung || !letzteRichtung) {
+            return null;
+        }
+
+        const anfang = {
+            x: ecken[0].x + ersteRichtung.x * rand,
+            y: ecken[0].y + ersteRichtung.y * rand
+        };
+        const spitzeX = ende.x - letzteRichtung.x * rand;
+        const spitzeY = ende.y - letzteRichtung.y * rand;
+        const strichEndeX = spitzeX - letzteRichtung.x * spitzeLaenge;
+        const strichEndeY = spitzeY - letzteRichtung.y * spitzeLaenge;
+
+        /*
+         * Zu kurz für Rand, Strich und Spitze? Dann gar nicht zeichnen —
+         * gemessen am LETZTEN Abschnitt, denn dort sitzt die Spitze. Beim
+         * Springer ist das gerade das kurze Stück von einem Feld.
+         */
+        const letzteLaenge = Math.hypot(
+            ecken[ecken.length - 1].x - ecken[ecken.length - 2].x,
+            ecken[ecken.length - 1].y - ecken[ecken.length - 2].y);
+
+        if (ecken.length === 2 && letzteLaenge <= 2 * rand + spitzeLaenge * 0.5) {
+            return null;
+        }
+        if (ecken.length > 2 && letzteLaenge <= rand + spitzeLaenge * 0.5) {
+            return null;
+        }
+
+        const linie = [anfang]
+            .concat(ecken.slice(1, -1))
+            .concat([{ x: strichEndeX, y: strichEndeY }]);
+
+        return {
+            linie: linie,
+            spitze: [
+                { x: spitzeX, y: spitzeY },
+                {
+                    x: strichEndeX - letzteRichtung.y * spitzeBreite,
+                    y: strichEndeY + letzteRichtung.x * spitzeBreite
+                },
+                {
+                    x: strichEndeX + letzteRichtung.y * spitzeBreite,
+                    y: strichEndeY - letzteRichtung.x * spitzeBreite
+                }
+            ]
+        };
+    },
+
+    /* Ist das ein Springersprung (ein Feld in der einen, zwei in der anderen
+       Richtung)? Gemessen in Feldern, nicht in Pixeln. */
+    _istSprung(dx, dy) {
+        const einer = Math.abs(Math.round(dx));
+        const anderer = Math.abs(Math.round(dy));
+
+        return (einer === 1 && anderer === 2) || (einer === 2 && anderer === 1);
+    },
+
+    /* Einheitsvektor von einem Punkt zum anderen; null bei Länge 0. */
+    _richtung(von, nach) {
+        const dx = nach.x - von.x;
+        const dy = nach.y - von.y;
+        const laenge = Math.hypot(dx, dy);
+
+        return (laenge === 0) ? null : { x: dx / laenge, y: dy / laenge };
     },
 
     /*

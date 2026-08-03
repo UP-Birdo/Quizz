@@ -119,6 +119,19 @@ function neuesElement(tag) {
             this.hoerer[art] = behandler;
         },
 
+        /*
+         * Löst ein gemerktes Ereignis aus — damit ein Test einen Fingertipp
+         * nachstellen kann, statt die Behandlungsfunktion direkt aufzurufen.
+         * Der Unterschied ist wichtig: So wird auch geprüft, dass der Knopf
+         * überhaupt verdrahtet wurde.
+         */
+        ausloesen(art) {
+            if (!this.hoerer || !this.hoerer[art]) {
+                throw new Error("kein Behandler fuer " + art + " an diesem Element");
+            }
+            this.hoerer[art]({ preventDefault() { }, stopPropagation() { } });
+        },
+
         setAttribute(name, wert) { this.attribute[name] = wert; },
 
         /* Versteht genau zwei Sucharten: nach data-feld und nach einer Klasse. */
@@ -800,6 +813,124 @@ pruefe("Die Rangliste zeichnet, bevor Daten da sind", () => {
         RANGLISTE.zeichnen();
     } finally {
         TEAM_SCHACH.abgleich = gemerkt;
+    }
+});
+
+pruefe("Ein Tipp auf den Namen fuehrt ins Profil und wieder zurueck", () => {
+    RANGLISTE.profilSchliessen();
+    RANGLISTE.zeichnen();
+
+    /* Den Namensknopf in der Tabelle suchen und ausloesen — genau das, was ein
+       Fingertipp tut. */
+    const knoepfe = [];
+    const sammeln = (element) => {
+        if (String(element.className).indexOf("name-knopf") !== -1) {
+            knoepfe.push(element);
+        }
+        for (const kind of element.kinder || []) {
+            sammeln(kind);
+        }
+    };
+    sammeln(RANGLISTE.wurzelEl);
+
+    if (knoepfe.length === 0) {
+        throw new Error("kein anklickbarer Name in der Wertung");
+    }
+
+    knoepfe[0].ausloesen("click");
+
+    if (!RANGLISTE.offenesProfil) {
+        throw new Error("das Profil hat sich nicht geoeffnet");
+    }
+    if (RANGLISTE.wurzelEl.kinder.length === 0) {
+        throw new Error("das Profil zeichnet nichts");
+    }
+
+    /* Der Zurueck-Knopf steht im Kopf und fuehrt in die Wertung. */
+    const kopf = RANGLISTE.wurzelEl.kinder.find(
+        (kind) => String(kind.className).indexOf("partie-kopf") !== -1);
+
+    if (!kopf) {
+        throw new Error("kein Kopf mit Zurueck-Knopf");
+    }
+    kopf.kinder[0].ausloesen("click");
+
+    if (RANGLISTE.offenesProfil !== "") {
+        throw new Error("Zurueck hat das Profil nicht geschlossen");
+    }
+});
+
+pruefe("Ein Profil ohne Partien bricht nicht", () => {
+    /* Cem ist angemeldet, hat aber nie gespielt. */
+    RANGLISTE.profilOeffnen("id-cem");
+    try {
+        if (RANGLISTE.wurzelEl.kinder.length === 0) {
+            throw new Error("nichts gezeichnet");
+        }
+    } finally {
+        RANGLISTE.profilSchliessen();
+    }
+});
+
+pruefe("Ein Profil eines entfernten Spielers faellt in die Wertung zurueck", () => {
+    RANGLISTE.profilOeffnen("id-gibtsnicht");
+    RANGLISTE.zeichnen();
+
+    if (RANGLISTE.offenesProfil !== "") {
+        throw new Error("der Tab haengt an einem Spieler, den es nicht gibt");
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Zugpfeil (Geometrie, seit v3.3 mit Knick beim Springer)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein gerader Zug bekommt einen geraden Pfeil", () => {
+    const punkte = TEAM_SCHACH._pfeilPunkte({ x: 0.5, y: 7.5 }, { x: 0.5, y: 3.5 });
+
+    if (!punkte) {
+        throw new Error("kein Pfeil");
+    }
+    if (punkte.linie.length !== 2) {
+        throw new Error("erwartet zwei Punkte, waren " + punkte.linie.length);
+    }
+    if (punkte.spitze.length !== 3) {
+        throw new Error("die Spitze braucht drei Punkte");
+    }
+});
+
+pruefe("Ein Springersprung bekommt einen Knick", () => {
+    /* b1 nach c3: zwei Felder hoch, eines zur Seite. */
+    const punkte = TEAM_SCHACH._pfeilPunkte({ x: 1.5, y: 7.5 }, { x: 2.5, y: 5.5 });
+
+    if (!punkte) {
+        throw new Error("kein Pfeil");
+    }
+    if (punkte.linie.length !== 3) {
+        throw new Error("erwartet drei Punkte (mit Knick), waren " + punkte.linie.length);
+    }
+
+    /* Der Knick liegt am Ende der LANGEN Achse — hier also senkrecht ueber
+       dem Start, auf Hoehe des Ziels. */
+    const knick = punkte.linie[1];
+    if (Math.abs(knick.x - 1.5) > 0.001 || Math.abs(knick.y - 5.5) > 0.001) {
+        throw new Error("der Knick sitzt falsch: " + knick.x + "/" + knick.y);
+    }
+});
+
+pruefe("Auch die flache L-Bewegung knickt richtig", () => {
+    /* Zwei Felder zur Seite, eines hoch. */
+    const punkte = TEAM_SCHACH._pfeilPunkte({ x: 1.5, y: 7.5 }, { x: 3.5, y: 6.5 });
+    const knick = punkte.linie[1];
+
+    if (Math.abs(knick.x - 3.5) > 0.001 || Math.abs(knick.y - 7.5) > 0.001) {
+        throw new Error("der Knick sitzt falsch: " + knick.x + "/" + knick.y);
+    }
+});
+
+pruefe("Ein Zug ins Nachbarfeld ist zu kurz fuer einen Pfeil", () => {
+    if (TEAM_SCHACH._pfeilPunkte({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }) !== null) {
+        throw new Error("ein Weg ohne Laenge darf keinen Pfeil geben");
     }
 });
 
