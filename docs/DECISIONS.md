@@ -88,6 +88,33 @@ alten Zugriffen gesucht, nicht nur nach denen im Modell.
 „klassisch mit Würfeln" im Test gar nicht. Ein Schalter braucht einen Test in
 **beiden** Stellungen; `tests\test-bildschirm.js` prüft jetzt genau das.
 
+### Die Zielpunkte blieben nach dem Zug stehen (v4.0)
+
+Belegt durch ein Bildschirmfoto: ein Brett voller Zielpunkte und roter
+Schlagringe — und darunter der Satz „Warte, bis dein Team wieder am Zug ist".
+
+**Die Auswahl lebt im Bildschirm, nicht im Spielstand.** `gewaehltesFeld`,
+`moeglicheZiele`, `rochadeZiele` und `zielFelder` sind Felder von
+`TEAM_SCHACH`. Der Bildschirm wird bei jeder Änderung vollständig neu gebaut —
+aus dem neuen Stand, aber mit dem ALTEN Auswahl-Zustand. Zeichnete das Brett
+danach die Marken, gehörten sie zu einer Stellung, die es nicht mehr gab.
+
+Aufgehoben wurde die Auswahl nur an den Stellen, an denen der Bildschirm selbst
+etwas tat (`zugAusfuehren`, `partieOeffnen`, ein Tipp daneben). Kam die Änderung
+dagegen von aussen — der Gegner zieht, jemand aus dem eigenen Team zieht —,
+merkte es niemand. Und `feldAngetippt` steigt oben aus, wenn man nicht ziehen
+darf: Die Marken waren also nicht nur falsch, sondern auch tot.
+
+Seit v4.0 trägt die Auswahl den Zugzähler, zu dem sie gehört
+(`auswahlZaehler`), und `_auswahlPruefen` wirft sie beim Zeichnen weg, sobald
+er nicht mehr passt oder man nicht ziehen darf.
+
+**Die allgemeine Lehre:** Jeder Zustand, der im Bildschirm liegt und sich auf
+den Spielstand bezieht, braucht eine Angabe, auf WELCHEN Stand er sich bezieht.
+Sonst überlebt er dessen Änderung. Dasselbe Muster steckt schon in
+`animiertBis` und `wirkungBis` — dort war es von Anfang an richtig gemacht, hier
+fehlte es.
+
 ### Die Seite fror ein, bis der Gegner zog (v3.9)
 
 Gemeldet als: „Beim Gegner zeigt es den Zug oft nicht direkt an; wenn er öfter

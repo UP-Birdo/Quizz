@@ -742,15 +742,35 @@ pruefe("Klassisch ohne Wuerfel zeigt die Karte weiterhin nicht", () => {
 });
 
 pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
-    const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
-    const felder = SCHACH_RUNDE.zielFelder(partie, "id-anna", "verstaerkung");
+    /*
+     * Eine frische, laufende Partie, in der Anna wirklich am Zug ist. Seit
+     * v4.0 wirft der Bildschirm eine Auswahl weg, sobald man nicht (mehr)
+     * ziehen darf — der Test muss also eine Lage herstellen, die es im echten
+     * Ablauf auch gibt.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "faehigkeiten", "Zielwahl", 9400);
 
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 9400);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 9400);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 9400);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 9400);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 9400);
+
+    const felder = SCHACH_RUNDE.zielFelder(partie, "id-anna", "verstaerkung");
     if (felder.length !== 8) {
         throw new Error("erwartet 8 eigene Bauern, waren " + felder.length);
     }
 
+    TEAM_SCHACH.partieOeffnen(partie.id);
     TEAM_SCHACH.zielFaehigkeit = "verstaerkung";
     TEAM_SCHACH.zielFelder = felder;
+
+    /* Die Auswahl gehoert zu DIESER Stellung — ohne den Zaehler wirft
+       _auswahlPruefen sie beim naechsten Zeichnen weg (seit v4.0). */
+    TEAM_SCHACH.auswahlZaehler = partie.zugZaehler;
+
     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
 
     const zelle = TEAM_SCHACH.wurzelEl.querySelector(
@@ -1184,6 +1204,93 @@ pruefe("Ein Zug steht sofort auf dem Brett, bevor gespeichert ist", () => {
     } finally {
         TEAM_SCHACH.abgleich.speicher = gemerkt;
         TEAM_SCHACH.abgleich.vorgaenge = 0;
+    }
+});
+
+pruefe("Eine Auswahl ueberlebt den naechsten Zug nicht", () => {
+    /*
+     * Der gemeldete Fehler (Screenshot v3.9): Zielpunkte und rote Schlagringe
+     * blieben nach einem Zug auf dem Brett stehen — sie leben im
+     * Bildschirm-Objekt, nicht im Spielstand. Darunter stand dabei „Warte, bis
+     * dein Team wieder am Zug ist".
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Auswahl", 9000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 9000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 9000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 9000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 9000);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 9000);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    /* Anna tippt einen Bauern an — die Ziele erscheinen. */
+    TEAM_SCHACH.feldAngetippt(partie, { id: "id-anna", name: "Anna" },
+        SCHACH.feldNummer("e2"));
+
+    if (TEAM_SCHACH.moeglicheZiele.length === 0) {
+        throw new Error("keine Ziele markiert");
+    }
+
+    /* Jetzt zieht jemand — hier Anna selbst, also wechselt das Zugrecht. */
+    const gezogen = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"), "D", "Anna", 9100);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        TEAM_SCHACH.abgleich.daten, gezogen, 9100);
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    if (TEAM_SCHACH.moeglicheZiele.length !== 0
+        || TEAM_SCHACH.gewaehltesFeld !== -1) {
+        throw new Error("die alte Auswahl steht noch auf dem Brett");
+    }
+
+    /* Und auf dem gezeichneten Brett darf keine Marke mehr kleben. */
+    const marken = brettSuchen().kinder.filter((zelle) => {
+        const klassen = String(zelle.className || "").split(" ")
+            .concat(zelle.classList.liste);
+        return klassen.indexOf("feld-ziel") !== -1
+            || klassen.indexOf("feld-schlag") !== -1
+            || klassen.indexOf("feld-gewaehlt") !== -1;
+    });
+
+    if (marken.length !== 0) {
+        throw new Error(marken.length + " Felder tragen noch eine Auswahl-Marke");
+    }
+});
+
+pruefe("Wer nicht am Zug ist, sieht keine Zielpunkte", () => {
+    /* Eine eigene, frische Partie — die gemeinsamen sind durch fruehere Tests
+       schon bewegt worden. */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Warten", 9300);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 9300);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 9300);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 9300);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 9300);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 9300);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    TEAM_SCHACH.feldAngetippt(partie, { id: "id-anna", name: "Anna" },
+        SCHACH.feldNummer("e2"));
+
+    if (TEAM_SCHACH.moeglicheZiele.length === 0) {
+        throw new Error("keine Ziele markiert");
+    }
+
+    /* Dieselbe Stellung, aber Schwarz ist am Zug: Anna darf nicht ziehen. */
+    const fremd = SCHACH_RUNDE.kopieren(partie);
+    fremd.stand.amZug = "schwarz";
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        TEAM_SCHACH.abgleich.daten, fremd, 9200);
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    if (TEAM_SCHACH.moeglicheZiele.length !== 0) {
+        throw new Error("Ziele bleiben stehen, obwohl das Team nicht am Zug ist");
     }
 });
 

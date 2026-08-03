@@ -83,6 +83,15 @@ const TEAM_SCHACH = {
     /* Gerade angetipptes Feld (Feldnummer) oder -1. */
     gewaehltesFeld: -1,
 
+    /*
+     * Zu welchem Zugzähler die Auswahl gehört (seit v4.0); -1 = keine.
+     *
+     * Ohne diese Zahl überlebt eine Auswahl den nächsten Zug: Die Punkte und
+     * die roten Schlagringe blieben auf dem Brett stehen, obwohl die Figuren
+     * längst woanders standen und man gar nicht mehr am Zug war.
+     */
+    auswahlZaehler: -1,
+
     /* Zielfelder zum gewählten Feld, als Feldnummern. */
     moeglicheZiele: [],
 
@@ -283,6 +292,10 @@ const TEAM_SCHACH = {
      * ---------------------------------------------------------------- */
 
     _partieZeichnen(wurzel, partie, person) {
+        /* Zuerst: Gilt die Auswahl überhaupt noch? Sie lebt in diesem Objekt
+           und nicht im Spielstand — siehe _auswahlPruefen. */
+        TEAM_SCHACH._auswahlPruefen(partie, person);
+
         wurzel.appendChild(TEAM_SCHACH._partieKopfBauen(partie));
         wurzel.appendChild(TEAM_SCHACH._standLeisteBauen(partie, person));
         wurzel.appendChild(TEAM_SCHACH._teamsBauen(partie, person));
@@ -628,6 +641,7 @@ const TEAM_SCHACH = {
     _auswaehlen(partie, feld) {
         const zuege = SCHACH.zuege(partie.stand, feld);
 
+        TEAM_SCHACH.auswahlZaehler = partie.zugZaehler;
         TEAM_SCHACH.gewaehltesFeld = feld;
         TEAM_SCHACH.moeglicheZiele = zuege
             .map((zug) => zug.nach)
@@ -653,6 +667,40 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.rochadeZiele = {};
         TEAM_SCHACH.zielFaehigkeit = "";
         TEAM_SCHACH.zielFelder = [];
+        TEAM_SCHACH.auswahlZaehler = -1;
+    },
+
+    /*
+     * Wirft eine Auswahl weg, die nicht mehr zur Stellung passt (seit v4.0).
+     *
+     * SO SAH DER FEHLER AUS: Man tippt eine Figur an, die Zielpunkte und die
+     * roten Schlagringe erscheinen — und dann zieht jemand. Der Bildschirm
+     * zeichnete das neue Brett, liess die alten Markierungen aber stehen: Sie
+     * leben in diesem Objekt, nicht im Spielstand. Übrig blieb ein Brett voller
+     * Punkte und Ringe, die zu Figuren gehörten, die dort längst nicht mehr
+     * standen — und das, obwohl darunter „Warte, bis dein Team wieder am Zug
+     * ist" stand.
+     *
+     * Zwei Bedingungen, und beide sind nötig:
+     *
+     *   - Der Zugzähler hat sich geändert: Die Auswahl bezog sich auf eine
+     *     andere Stellung. Das trifft auch den eigenen Zug innerhalb des Teams.
+     *   - Man darf gar nicht (mehr) ziehen: Dann ist jede Markierung eine
+     *     Einladung, ins Leere zu tippen.
+     */
+    _auswahlPruefen(partie, person) {
+        const nichtsGewaehlt = (TEAM_SCHACH.gewaehltesFeld === -1
+            && TEAM_SCHACH.zielFaehigkeit === ""
+            && TEAM_SCHACH.moeglicheZiele.length === 0);
+
+        if (nichtsGewaehlt) {
+            return;
+        }
+
+        if (TEAM_SCHACH.auswahlZaehler !== partie.zugZaehler
+            || !SCHACH_RUNDE.darfZiehen(partie, person.id)) {
+            TEAM_SCHACH._auswahlAufheben();
+        }
     },
 
     /*
@@ -1055,6 +1103,11 @@ const TEAM_SCHACH = {
             TEAM_SCHACH.rochadeZiele = {};
             TEAM_SCHACH.zielFaehigkeit = art;
             TEAM_SCHACH.zielFelder = felder;
+
+            /* Auch die Zielauswahl gehört zu genau dieser Stellung: Zieht
+               jemand dazwischen, sind die Felder überholt. */
+            TEAM_SCHACH.auswahlZaehler = partie.zugZaehler;
+
             TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
         }

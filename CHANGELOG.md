@@ -3,6 +3,22 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v4.0 — 2026-08-03
+
+Der dritte Fehler aus derselben Meldung — und der, den man auf dem Bildschirmfoto
+sieht.
+
+- **Eine Auswahl überlebt den nächsten Zug nicht mehr.** Wer eine Figur antippt,
+  sieht ihre Zielpunkte und die roten Schlagringe. Zog danach jemand, blieben
+  diese Marken auf dem Brett stehen — sie leben im Bildschirm und nicht im
+  Spielstand. Übrig blieb ein Brett voller Punkte und Ringe, die zu Figuren
+  gehörten, die dort längst nicht mehr standen. Darunter stand dabei „Warte, bis
+  dein Team wieder am Zug ist": Man konnte auf keine einzige dieser Markierungen
+  tippen.
+  Verworfen wird die Auswahl jetzt, sobald sich der Zugzähler geändert hat oder
+  man nicht (mehr) ziehen darf. Dasselbe gilt für eine Fähigkeit, die auf ihr
+  Zielfeld wartet.
+
 ## v3.9 — 2026-08-03
 
 Ein gemeldeter Fehler, zwei Ursachen — beide behoben.
