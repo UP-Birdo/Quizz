@@ -49,6 +49,9 @@ const TEAM_SCHACH = {
     /* Ist die Fähigkeiten-Übersicht offen (hinter dem i)? */
     infoOffen: false,
 
+    /* Zeitgeber für den Countdown einer laufenden Abstimmung. */
+    fristZeitgeber: null,
+
     /*
      * Die Einstellungen für die NÄCHSTE Partie. Sie leben nur, solange die
      * Auswahl offen ist; mit dem Anlegen wandern sie in die Partie und stehen
@@ -97,18 +100,18 @@ const TEAM_SCHACH = {
     gesehen: {},
 
     /*
-     * Der Vorzug: ein Zug, den man einträgt, während der Gegner dran ist. Er
-     * wird ausgeführt, sobald das eigene Team am Zug ist — ohne dass man noch
-     * etwas drücken muss.
+     * VORZÜGE GIBT ES NICHT MEHR (ausgebaut in v2.8).
      *
-     * { partieId, von, nach, umwandlung }
+     * Sie waren in v2.5 gebaut: ein Zug, den man einträgt, während der Gegner
+     * dran ist, ausgeführt sobald das eigene Team am Zug ist. In der Praxis lief
+     * das nicht rund — der Zug sprang los, während man noch aufs Brett schaute,
+     * und die Vormerkung war nach jedem Neuladen weg.
      *
-     * ER BLEIBT AUF DIESEM GERÄT. Im gemeinsamen Stand hätte er nichts zu
-     * suchen: Die Datenbank ist offen lesbar, der Gegner wüsste den Zug, bevor
-     * er passiert. Dieselbe Überlegung wie beim Würfel-Siegel. Der Preis: Beim
-     * Neuladen der Seite ist er weg — das ist die richtige Seite des Irrtums.
+     * Wer es später erneut versucht, findet die Begründung in
+     * docs\DECISIONS.md. Wichtig bleibt dort die eine Festlegung: Ein Vorzug
+     * darf NIE in den gemeinsamen Stand — sonst liest der Gegner ihn in der
+     * offenen Datenbank mit.
      */
-    vorzug: null,
 
     /* Verhindert zwei Züge gleichzeitig vom selben Gerät. */
     ziehtGerade: false,
@@ -125,6 +128,13 @@ const TEAM_SCHACH = {
 
     /* Dauer des Aufleuchtens bei einer Fähigkeit; ebenfalls in der Stildatei. */
     WIRKUNG_MS: 900,
+
+    /*
+     * Halbmesser einer Figur in Feldbreiten. Er bestimmt beides: wo der Pfeil
+     * anfängt und aufhört, und wie groß das Loch in seiner Maske ist. EINE Zahl
+     * für beides — sonst passt das eine nicht zum anderen.
+     */
+    FIGUR_RADIUS: 0.42,
 
     verbinden(abgleich) {
         TEAM_SCHACH.abgleich = abgleich;
@@ -630,8 +640,6 @@ const TEAM_SCHACH = {
         TEAM_SCHACH._zugAnimieren(halter, partie, person);
         TEAM_SCHACH._wirkungAnimieren(halter, partie);
 
-        /* Zuletzt: Ist ein Vorzug fällig, läuft er jetzt. */
-        TEAM_SCHACH._vorzugPruefen(partie, person);
     },
 
     /*
@@ -819,6 +827,7 @@ const TEAM_SCHACH = {
 
         const darfZiehen = SCHACH_RUNDE.darfZiehen(partie, person.id);
         const bonus = SCHACH_RUNDE.offeneBonusFelder(partie);
+        const glas = TEAM_SCHACH._glasWirkt(partie, meinTeam);
 
         for (let anzeige = 0; anzeige < felder; anzeige++) {
             const feld = gedreht ? (felder - 1 - anzeige) : anzeige;
@@ -832,9 +841,17 @@ const TEAM_SCHACH = {
 
             const figur = SCHACH.figurAuf(stand, feld);
             if (figur !== ".") {
+                /* Unter dem vollen Glas sehen die GEGNERISCHEN Figuren anders
+                   aus, als sie sind — nur für diese Seite. */
+                const getruebt = glas && SCHACH.farbeVon(figur) !== meinTeam;
+                const gezeigt = getruebt
+                    ? TEAM_SCHACH._glasZeichen(partie, feld, figur)
+                    : figur;
+
                 const zeichen = TEAM_SCHACH._element("span",
-                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz"),
-                    TEAM_SCHACH._figurZeichen(figur));
+                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz")
+                    + (getruebt ? " figur-getruebt" : ""),
+                    TEAM_SCHACH._figurZeichen(gezeigt));
                 zelle.appendChild(zeichen);
             }
 
@@ -901,12 +918,6 @@ const TEAM_SCHACH = {
                 zelle.title = "Rochade: hier tippen";
             }
 
-            /* Der vorgemerkte Zug. */
-            if (TEAM_SCHACH.vorzug && TEAM_SCHACH.vorzug.partieId === partie.id
-                && (TEAM_SCHACH.vorzug.von === feld || TEAM_SCHACH.vorzug.nach === feld)) {
-                zelle.classList.add("feld-vorzug");
-                zelle.title = "Vorgemerkter Zug";
-            }
 
             /* Königsfeld hervorheben, wenn es im Schach steht. */
             if (partie.laeuft && SCHACH.artVon(figur) === "K"
@@ -915,10 +926,7 @@ const TEAM_SCHACH = {
                 zelle.classList.add("feld-schach");
             }
 
-            /* Auch wer nicht am Zug ist, darf tippen — für den Vorzug. Gesperrt
-               ist das Brett nur für Zuschauer und beendete Partien. */
-            zelle.disabled = !darfZiehen
-                && !(meinTeam && partie.laeuft && !partie.ergebnis);
+            zelle.disabled = !darfZiehen;
             zelle.addEventListener("click", () => TEAM_SCHACH.feldAngetippt(partie, person, feld));
 
             brett.appendChild(zelle);
@@ -952,33 +960,22 @@ const TEAM_SCHACH = {
                 "Die Partie beginnt, sobald in beiden Teams jemand steht und beide "
                 + "Seiten bereit gedrückt haben."));
         } else if (partie.laeuft && !darfZiehen) {
-            const vorgemerkt = (TEAM_SCHACH.vorzug
-                && TEAM_SCHACH.vorzug.partieId === partie.id);
-
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
                 meinTeam
-                    ? (vorgemerkt
-                        ? "Vorgemerkt: " + SCHACH.feldName(TEAM_SCHACH.vorzug.von, breite, hoehe)
-                            + " nach " + SCHACH.feldName(TEAM_SCHACH.vorzug.nach, breite, hoehe)
-                            + ". Der Zug läuft von selbst, sobald dein Team dran ist."
-                        : "Warte, bis dein Team wieder am Zug ist — oder merk dir schon "
-                            + "jetzt einen Zug vor: Figur antippen, Ziel antippen.")
+                    ? "Warte, bis dein Team wieder am Zug ist."
                     : "Tritt einem Team bei, um mitzuspielen."));
-
-            if (vorgemerkt) {
-                const leiste = TEAM_SCHACH._element("div", "karte-fuss");
-                leiste.appendChild(TEAM_SCHACH._knopf("Vormerkung löschen",
-                    "knopf-still knopf-klein",
-                    () => {
-                        TEAM_SCHACH.vorzug = null;
-                        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
-                    }));
-                halter.appendChild(leiste);
-            }
         } else if (darfZiehen) {
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
                 "Figur antippen, dann ein Feld mit Punkt. Wer aus deinem Team "
                 + "zuerst zieht, hat gezogen."));
+        }
+
+        if (glas) {
+            halter.appendChild(TEAM_SCHACH._element("p", "erklaerung erklaerung-rochade",
+                "Volles Glas: Du siehst die gegnerischen Figuren gerade falsch. "
+                + "Sie ziehen wie immer — verlass dich lieber auf die "
+                + "hervorgehobenen Felder. Noch "
+                + (partie.stand.glasBis - partie.zugZaehler) + " Halbzüge."));
         }
 
         const rochade = TEAM_SCHACH._rochadeHinweis(partie);
@@ -1010,17 +1007,42 @@ const TEAM_SCHACH = {
 
         const breite = SCHACH.breiteVon(partie.stand);
         const hoehe = SCHACH.hoeheVon(partie.stand);
+        const vorschlag = partie.vorschlag;
 
         const karte = TEAM_SCHACH._element("section", "karte abstimmung");
-        karte.appendChild(TEAM_SCHACH._element("h3", "", "Zug vorgeschlagen"));
+        karte.appendChild(TEAM_SCHACH._element("h3", "",
+            (vorschlag.art === "faehigkeit") ? "Fähigkeit vorgeschlagen" : "Zug vorgeschlagen"));
+
+        const was = (vorschlag.art === "faehigkeit")
+            ? SCHACH_VARIANTEN.faehigkeitTitel(vorschlag.faehigkeit)
+                + ((vorschlag.zielFeld >= 0)
+                    ? " auf " + SCHACH.feldName(vorschlag.zielFeld, breite, hoehe)
+                    : "")
+            : SCHACH.feldName(vorschlag.von, breite, hoehe) + " nach "
+                + SCHACH.feldName(vorschlag.nach, breite, hoehe);
 
         karte.appendChild(TEAM_SCHACH._element("p", "abstimmung-zug",
-            (partie.vorschlag.name || "Jemand") + " schlägt vor: "
-            + SCHACH.feldName(partie.vorschlag.von, breite, hoehe) + " nach "
-            + SCHACH.feldName(partie.vorschlag.nach, breite, hoehe)));
+            (vorschlag.name || "Jemand") + " schlägt vor: " + was));
+
+        /* Der Countdown — er läuft für alle gleich, weil die Frist im
+           gemeinsamen Stand steht. */
+        if (vorschlag.frist) {
+            const bleiben = Math.max(0, Math.ceil((vorschlag.frist - Date.now()) / 1000));
+            karte.appendChild(TEAM_SCHACH._element("p", "abstimmung-frist",
+                (bleiben > 0)
+                    ? "Noch " + bleiben + " Sekunden — danach gilt der Vorschlag."
+                    : "Die Zeit ist um."));
+        }
 
         const fehlende = partie.teams[meinTeam]
-            .filter((id) => partie.vorschlag.stimmen.indexOf(id) === -1);
+            .filter((id) => vorschlag.stimmen.indexOf(id) === -1);
+
+        /*
+         * Solange eine Abstimmung läuft, wird jede Sekunde neu gezeichnet —
+         * anders ließe sich kein Countdown zeigen. Und wenn die Frist abläuft,
+         * schiebt ihn das erste Gerät an, das es bemerkt.
+         */
+        TEAM_SCHACH._fristVerfolgen(partie);
 
         karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             fehlende.length === 0
@@ -1042,6 +1064,53 @@ const TEAM_SCHACH = {
 
         karte.appendChild(leiste);
         return karte;
+    },
+
+    /*
+     * Hält den Countdown am Laufen und löst den Vorschlag aus, wenn die Frist
+     * abgelaufen ist.
+     *
+     * Der Zeitgeber wird bei jedem Zeichnen neu gesetzt (und der alte gelöscht),
+     * damit nie zwei nebeneinander laufen. Ausgelöst wird über denselben Weg wie
+     * ein Zug — die Zugzähler-Prüfung sorgt dafür, dass es auch dann nur einmal
+     * passiert, wenn drei Geräte gleichzeitig aufwachen.
+     */
+    _fristVerfolgen(partie) {
+        if (TEAM_SCHACH.fristZeitgeber !== null) {
+            window.clearTimeout(TEAM_SCHACH.fristZeitgeber);
+            TEAM_SCHACH.fristZeitgeber = null;
+        }
+
+        const vorschlag = partie.vorschlag;
+        if (!vorschlag || !vorschlag.frist) {
+            return;
+        }
+
+        const bleiben = vorschlag.frist - Date.now();
+
+        TEAM_SCHACH.fristZeitgeber = window.setTimeout(() => {
+            TEAM_SCHACH.fristZeitgeber = null;
+
+            const jetzt = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, partie.id);
+            if (!jetzt || !jetzt.vorschlag) {
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                return;
+            }
+
+            if (Date.now() >= jetzt.vorschlag.frist) {
+                TEAM_SCHACH.fristAusloesen(jetzt);
+            } else {
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            }
+        }, Math.max(250, Math.min(bleiben, 1000)));
+    },
+
+    async fristAusloesen(partie) {
+        const neu = SCHACH_RUNDE.fristAbgelaufen(partie, Date.now());
+        if (!neu) {
+            return;
+        }
+        await TEAM_SCHACH._sendenMitPruefung(neu, partie.zugZaehler);
     },
 
     async zugMittragen(partie) {
@@ -1177,7 +1246,14 @@ const TEAM_SCHACH = {
             inWegen[weg.nach] = true;
         }
 
-        const ringe = (letzter.felder || []).filter((feld) => !inWegen[feld]);
+        /*
+         * Ringe nur für WIRKUNGEN ohne Bewegung — nicht für neu erschienene
+         * Würfel. Sonst bekommt eine frisch erschienene Kiste einen farbigen
+         * Kreis und sieht aus, als wäre gerade etwas mit ihr passiert.
+         */
+        const ringe = (letzter.wirkung === "erscheint")
+            ? []
+            : (letzter.felder || []).filter((feld) => !inWegen[feld]);
 
         if (wege.length === 0 && ringe.length === 0) {
             return null;
@@ -1236,7 +1312,7 @@ const TEAM_SCHACH = {
 
             loch.setAttribute("cx", String(punkt.x));
             loch.setAttribute("cy", String(punkt.y));
-            loch.setAttribute("r", "0.42");
+            loch.setAttribute("r", String(TEAM_SCHACH.FIGUR_RADIUS));
             loch.setAttribute("fill", "black");
             maske.appendChild(loch);
         }
@@ -1279,16 +1355,32 @@ const TEAM_SCHACH = {
                 const ex = dx / laenge;
                 const ey = dy / laenge;
 
-                /* Die Spitze sitzt am Zielfeld, der Strich endet davor. */
-                const spitzeLaenge = 0.38;
-                const spitzeBreite = 0.22;
-                const strichEndeX = ende.x - ex * spitzeLaenge;
-                const strichEndeY = ende.y - ey * spitzeLaenge;
+                /*
+                 * Der Pfeil beginnt und endet am RAND der Figuren, nicht in
+                 * ihrer Mitte: Er läuft nicht unter ihnen durch, sondern
+                 * zwischen ihnen. Derselbe Radius wie die Maske, damit beides
+                 * zusammenpasst — und einheitlich für jede Art von Bewegung.
+                 */
+                const rand = TEAM_SCHACH.FIGUR_RADIUS;
+                const spitzeLaenge = 0.34;
+                const spitzeBreite = 0.2;
+
+                /* Zu kurz für Rand, Strich und Spitze? Dann gar nicht zeichnen. */
+                if (laenge <= 2 * rand + spitzeLaenge * 0.5) {
+                    continue;
+                }
+
+                const startX = start.x + ex * rand;
+                const startY = start.y + ey * rand;
+                const spitzeX = ende.x - ex * rand;
+                const spitzeY = ende.y - ey * rand;
+                const strichEndeX = spitzeX - ex * spitzeLaenge;
+                const strichEndeY = spitzeY - ey * spitzeLaenge;
 
                 const strich = document.createElementNS("http://www.w3.org/2000/svg", "line");
                 strich.setAttribute("class", lage);
-                strich.setAttribute("x1", String(start.x));
-                strich.setAttribute("y1", String(start.y));
+                strich.setAttribute("x1", String(startX));
+                strich.setAttribute("y1", String(startY));
                 strich.setAttribute("x2", String(strichEndeX));
                 strich.setAttribute("y2", String(strichEndeY));
                 gruppe.appendChild(strich);
@@ -1296,7 +1388,7 @@ const TEAM_SCHACH = {
                 const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
                 spitze.setAttribute("class", lage);
                 spitze.setAttribute("points", [
-                    ende.x + "," + ende.y,
+                    spitzeX + "," + spitzeY,
                     (strichEndeX - ey * spitzeBreite) + "," + (strichEndeY + ex * spitzeBreite),
                     (strichEndeX + ey * spitzeBreite) + "," + (strichEndeY - ex * spitzeBreite)
                 ].join(" "));
@@ -1387,6 +1479,33 @@ const TEAM_SCHACH = {
         ].map((wert) => Math.max(0, Math.min(255, Math.round(wert * faktor))));
 
         return "rgb(" + teile.join(",") + ")";
+    },
+
+    /*
+     * Wirkt das volle Glas für diese Seite gerade?
+     *
+     * Es trübt NUR die Ansicht: Die gegnerischen Figuren sehen aus wie etwas
+     * anderes, ziehen aber wie immer. Deshalb steht das hier im Bildschirm-Code
+     * und nirgends in den Regeln — `SCHACH.zuege` weiß nichts davon.
+     */
+    _glasWirkt(partie, meinTeam) {
+        return !!meinTeam
+            && partie.stand.glasFarbe === meinTeam
+            && partie.zugZaehler < partie.stand.glasBis;
+    },
+
+    /*
+     * Das Zeichen, das eine gegnerische Figur unter dem vollen Glas bekommt.
+     * Gerechnet aus Partie, Feld und Figur — also auf jedem Gerät desselben
+     * Teams gleich, und über die Partie hinweg stabil: Dieselbe Figur sieht
+     * immer gleich falsch aus, sonst wäre es Flackern statt Täuschung.
+     */
+    _glasZeichen(partie, feld, figur) {
+        const arten = ["B", "S", "L", "T", "D"];
+        const wert = SCHACH_RUNDE._zufallsWert(partie.id + "|glas|" + feld);
+        const art = arten[Math.floor(wert * arten.length) % arten.length];
+
+        return (SCHACH.farbeVon(figur) === "weiss") ? art : art.toLowerCase();
     },
 
     /*
@@ -1497,16 +1616,13 @@ const TEAM_SCHACH = {
             return karte;
         }
 
-        const bisNaechster = SCHACH_VARIANTEN.BONUS_ABSTAND
-            - (partie.zugZaehler % SCHACH_VARIANTEN.BONUS_ABSTAND);
-
         karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             "Auf dem Brett liegen " + offen.length + " von höchstens "
             + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " Würfeln. "
             + (offen.length >= SCHACH_VARIANTEN.BONUS_HOECHSTENS
                 ? "Es erscheint erst wieder einer, wenn einer eingesammelt wurde."
-                : "Der nächste erscheint in " + bisNaechster + " Halbzügen.")
-            + " Wer mit einer Figur darauf zieht, sammelt ihn ein."));
+                : "Nach jedem Halbzug kann ein neuer dazukommen.")
+            + " Liegen gelassene bleiben liegen, bis sie jemand einsammelt."));
 
         for (const farbe of ["weiss", "schwarz"]) {
             const koennen = partie.faehigkeiten[farbe];
@@ -1783,9 +1899,7 @@ const TEAM_SCHACH = {
     },
 
     feldAngetippt(partie, person, feld) {
-        /* Nicht am Zug, aber im Team: Der Tipp gilt dem Vorzug. */
         if (!SCHACH_RUNDE.darfZiehen(partie, person.id)) {
-            TEAM_SCHACH._vorzugAngetippt(partie, person, feld);
             return;
         }
 
@@ -1829,95 +1943,6 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
-    /* ---------------------------------------------------------------- *
-     * Vorzüge
-     * ---------------------------------------------------------------- */
-
-    /*
-     * Ein Stand, in dem die eigene Farbe am Zug ist — nur zum Nachsehen, welche
-     * Züge in Frage kämen. Das Original bleibt unberührt; gezogen wird damit
-     * nie.
-     */
-    _vorschauStand(partie, farbe) {
-        return Object.assign({}, partie.stand, { amZug: farbe });
-    },
-
-    _vorzugAngetippt(partie, person, feld) {
-        const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
-
-        /* Nur, wer mitspielt und dessen Partie läuft. */
-        if (!meinTeam || !partie.laeuft || partie.ergebnis) {
-            return;
-        }
-
-        const stand = TEAM_SCHACH._vorschauStand(partie, meinTeam);
-
-        /* Zweiter Tipp auf ein mögliches Ziel: Vorzug merken. */
-        if (TEAM_SCHACH.gewaehltesFeld !== -1
-            && TEAM_SCHACH.moeglicheZiele.indexOf(feld) !== -1) {
-            TEAM_SCHACH.vorzug = {
-                partieId: partie.id,
-                von: TEAM_SCHACH.gewaehltesFeld,
-                nach: feld,
-                umwandlung: "D"
-            };
-            TEAM_SCHACH.gewaehltesFeld = -1;
-            TEAM_SCHACH.moeglicheZiele = [];
-            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
-            return;
-        }
-
-        const figur = SCHACH.figurAuf(stand, feld);
-
-        if (SCHACH.farbeVon(figur) === meinTeam) {
-            if (TEAM_SCHACH.gewaehltesFeld === feld) {
-                TEAM_SCHACH.gewaehltesFeld = -1;
-                TEAM_SCHACH.moeglicheZiele = [];
-            } else {
-                TEAM_SCHACH.gewaehltesFeld = feld;
-                TEAM_SCHACH.moeglicheZiele = SCHACH.zuege(stand, feld)
-                    .map((zug) => zug.nach)
-                    .filter((ziel, stelle, alle) => alle.indexOf(ziel) === stelle);
-            }
-        } else {
-            /* Tipp ins Leere hebt Auswahl und Vorzug auf. */
-            TEAM_SCHACH.gewaehltesFeld = -1;
-            TEAM_SCHACH.moeglicheZiele = [];
-            if (TEAM_SCHACH.vorzug && TEAM_SCHACH.vorzug.partieId === partie.id) {
-                TEAM_SCHACH.vorzug = null;
-            }
-        }
-
-        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
-    },
-
-    /*
-     * Führt den vorgemerkten Zug aus, sobald das eigene Team am Zug ist.
-     * Wird nach jedem Zeichnen geprüft — der Stand kommt ja von aussen.
-     */
-    _vorzugPruefen(partie, person) {
-        const vorzug = TEAM_SCHACH.vorzug;
-
-        if (!vorzug || vorzug.partieId !== partie.id || TEAM_SCHACH.ziehtGerade) {
-            return;
-        }
-        if (!SCHACH_RUNDE.darfZiehen(partie, person.id)) {
-            return;
-        }
-
-        TEAM_SCHACH.vorzug = null;
-
-        /* Ist er nicht mehr möglich (die Figur wurde geschlagen, das Feld ist
-           besetzt), wird er verworfen — nie ersatzweise etwas anderes gezogen. */
-        if (!SCHACH.ziehen(partie.stand, vorzug.von, vorzug.nach, vorzug.umwandlung)) {
-            DIALOG.hinweis("Vorzug verworfen",
-                "Der vorgemerkte Zug ist nach dem Zug des Gegners nicht mehr möglich.");
-            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
-            return;
-        }
-
-        TEAM_SCHACH.zugAusfuehren(partie, vorzug.von, vorzug.nach);
-    },
 
     /* Merkt sich die angetippte Figur samt ihren Zielen. */
     _auswaehlen(partie, feld) {
@@ -2280,8 +2305,13 @@ const TEAM_SCHACH = {
             return;
         }
 
-        const neu = SCHACH_RUNDE.faehigkeitEinsetzen(
-            partie, person.id, art, zielFeld, person.name);
+        /* Braucht die Partie Einigkeit, wird auch die Fähigkeit erst
+           vorgeschlagen — genau wie ein Zug. */
+        const neu = SCHACH_RUNDE.brauchtEinigkeit(partie)
+            ? SCHACH_RUNDE.faehigkeitVorschlagen(
+                partie, person.id, art, zielFeld, person.name)
+            : SCHACH_RUNDE.faehigkeitEinsetzen(
+                partie, person.id, art, zielFeld, person.name);
 
         TEAM_SCHACH._auswahlAufheben();
 

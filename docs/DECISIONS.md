@@ -840,6 +840,65 @@ Ein Würfel, dessen Inhalt man mit der Maus auslesen kann, ist kein
 Hilfe, tatsächlich ein Blick unter die Karten. Jetzt steht dort höchstens die
 Stufe, und auch die nur, wenn die Partie „Seltenheit anzeigen" eingeschaltet hat.
 
+## Warum die Vorzüge wieder ausgebaut sind (v2.8)
+
+Gebaut in v2.5, ausgebaut in v2.8 — auf ausdrückliche Ansage: „läuft nicht rund
+und sieht nicht gut aus".
+
+Woran es lag, ist im Nachhinein klar: Ein Vorzug wird ausgeführt, sobald der
+Stand vom Server kommt. Für den, der ihn eingetragen hat, passiert das
+unangekündigt — man schaut aufs Brett, und plötzlich hat die eigene Figur
+gezogen. Dazu kam, dass die Vormerkung nur im Arbeitsspeicher lag und jedes
+Neuladen sie verschluckte.
+
+**Die Lehre:** Etwas, das ohne Zutun losläuft, braucht eine Ankündigung — einen
+Countdown, eine Rückfrage, irgendetwas. Wer es erneut versucht, fängt bei dieser
+Frage an und nicht beim Datenmodell.
+
+**Was bleibt:** Die eine Festlegung von damals gilt weiter — ein Vorzug darf NIE
+in den gemeinsamen Stand, sonst liest der Gegner ihn in der offenen Datenbank
+mit. Ein Team-*Vorschlag* (Einigkeit) steht dagegen absichtlich drin.
+
+## Warum die Abstimmung eine Frist braucht
+
+Mit „Team muss sich einig sein" konnte ein Team komplett stillstehen: Zwei
+Leute, einer hört auf mitzuspielen — und der andere kann nie wieder ziehen. Das
+ist kein theoretischer Fall, sondern der Normalfall bei einer Partie über
+mehrere Tage.
+
+Deshalb läuft die Abstimmung jetzt gegen die Uhr: zehn Sekunden, dann gilt der
+Vorschlag. Wer **zweimal** nicht abstimmt, verkürzt sie auf fünf, dann auf drei
+Sekunden — und sobald er wieder mitstimmt, gilt wieder die volle Zeit. Die
+Staffelung bestraft also nicht das einmalige Verpassen, sondern nur das
+dauerhafte Fernbleiben.
+
+Die Frist steht **im gemeinsamen Stand**, nicht in jedem Browser: Sonst liefe
+sie auf jedem Gerät anders, und wer eine langsame Verbindung hat, wäre immer der
+Säumige. Ausgelöst wird sie vom ersten Gerät, das den Ablauf bemerkt; die
+Zugzähler-Prüfung sorgt dafür, dass sie trotzdem nur einmal greift.
+
+## Warum das volle Glas keine Regel anfasst
+
+„Volles Glas" ändert nur, was EINE Seite sieht — die Figuren ziehen unverändert.
+Der Eintrag steht trotzdem im Spielstand und nicht im Bildschirm-Code, aus zwei
+Gründen: Er soll das Neuladen überleben, und er soll auf jedem Gerät desselben
+Teams gelten (im Team-Schach spielen mehrere Leute dieselbe Farbe).
+
+Welches falsche Zeichen eine Figur bekommt, wird aus Partie-Kennung und Feld
+gerechnet. Damit sieht dieselbe Figur immer gleich falsch aus — sonst wäre es
+Flackern statt Täuschung, und man könnte die Wahrheit durch mehrmaliges
+Hinsehen herausfinden.
+
+## Warum die Würfel keinen festen Takt mehr haben
+
+Bis v2.7 erschien alle sechs Halbzüge einer. Das war vorhersagbar: Wer zählen
+konnte, wusste, wann sich ein Umweg lohnt. Jetzt wird nach jedem Halbzug neu
+gewürfelt — im Schnitt derselbe Nachschub, aber nicht mehr planbar.
+
+Nebenwirkung, die ausdrücklich gewünscht war: Liegen gelassene Würfel halten
+nichts mehr auf. Vorher lief der Takt weiter, während das Brett voll war;
+jetzt kommt einfach nichts, bis wieder Platz ist.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

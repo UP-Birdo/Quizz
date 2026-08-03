@@ -932,6 +932,13 @@ body {
     font-weight: 600;
 }
 
+.abstimmung-frist {
+    margin: 0 0 6px 0;
+    color: var(--warnung);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------------------------ *
  * Bilanz der geschlagenen Figuren
  * ------------------------------------------------------------------ */
@@ -1088,20 +1095,6 @@ body {
     box-shadow: 0 0 0 1px var(--ziel-rand), inset 0 0 8px rgba(255, 255, 255, 0.6);
 }
 
-/* Der vorgemerkte Zug: gestrichelt, weil er noch nicht passiert ist. */
-.feld-vorzug {
-    box-shadow:
-        inset 0 0 0 2px var(--ziel-rand),
-        inset 0 0 0 4px var(--pfeil);
-}
-
-.feld-vorzug::before {
-    content: "";
-    position: absolute;
-    inset: 12%;
-    border: 2px dashed var(--pfeil);
-    border-radius: 4px;
-}
 
 /* Mögliches Schlagfeld: derselbe Aufbau in Rot, dazu ein Ring um die Figur. */
 .feld-schlag {
@@ -1206,6 +1199,13 @@ body {
 
 .figur-weiss {
     color: var(--figur-weiss);
+}
+
+/* Unter dem vollen Glas: leicht verschwommen, damit man ahnt, dass etwas
+   nicht stimmt — ohne zu verraten, was in Wirklichkeit dort steht. */
+.figur-getruebt {
+    filter: blur(0.4px) saturate(0.85);
+    opacity: 0.92;
 }
 
 .figur-schwarz {

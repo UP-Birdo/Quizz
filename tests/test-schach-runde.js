@@ -389,24 +389,40 @@ pruefe("Zu Beginn liegt kein Wuerfel auf dem Brett", () => {
     gleich(SCHACH_RUNDE.offeneBonusFelder(laufendePartie()).length, 0, "klassisch: nie");
 });
 
-pruefe("Nach dem festgelegten Abstand erscheinen Wuerfel", () => {
-    const abstand = SCHACH_VARIANTEN.BONUS_ABSTAND;
+pruefe("Wuerfel erscheinen ueber die Zeit, ohne festen Takt", () => {
+    /* Seit v2.8 wird nach JEDEM Halbzug neu gewuerfelt. Ueber viele Zuege
+       muessen deshalb welche auftauchen — wann genau, ist Sache der Ziehung. */
+    const runde = springerZuege(faehigkeitenPartie(), 24);
 
-    const vorher = springerZuege(faehigkeitenPartie(), abstand - 1);
-    gleich(vorher.bonus.length, 0, "vor dem Abstand noch keiner");
+    wahr(runde.bonus.length >= 1, "nach 24 Halbzuegen liegt mindestens einer");
+    wahr(runde.bonus.length <= SCHACH_VARIANTEN.BONUS_HOECHSTENS, "und hoechstens drei");
 
-    const nachher = springerZuege(faehigkeitenPartie(), abstand);
-    wahr(nachher.bonus.length >= 1 && nachher.bonus.length <= SCHACH_VARIANTEN.BONUS_HOECHSTENS,
-        "danach mindestens einer, hoechstens drei");
-
-    for (const eintrag of nachher.bonus) {
-        wahr(SCHACH.figurAuf(nachher.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
-        wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art], "traegt eine bekannte Faehigkeit");
+    for (const eintrag of runde.bonus) {
+        wahr(SCHACH.figurAuf(runde.stand, eintrag.feld) === ".", "liegt auf einem leeren Feld");
+        wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]
+            || !!SCHACH_VARIANTEN.PECH[eintrag.art], "traegt einen bekannten Inhalt");
     }
 
     /* Kein Feld doppelt belegt. */
-    const felder = nachher.bonus.map((eintrag) => eintrag.feld);
+    const felder = runde.bonus.map((eintrag) => eintrag.feld);
     gleich(new Set(felder).size, felder.length, "jedes Feld nur einmal");
+});
+
+pruefe("Die Erscheinungsrate trifft ihren Wert", () => {
+    /* Ueber viele Zugzaehler gemittelt muss die Chance stimmen. */
+    let treffer = 0;
+    const schritte = 4000;
+
+    for (let nummer = 0; nummer < schritte; nummer++) {
+        const wert = SCHACH_RUNDE._zufallsWert("p-messung|" + nummer + "|ob") * 100;
+        if (wert < SCHACH_VARIANTEN.BONUS_CHANCE) {
+            treffer++;
+        }
+    }
+
+    const anteil = treffer / schritte * 100;
+    wahr(Math.abs(anteil - SCHACH_VARIANTEN.BONUS_CHANCE) < 3,
+        "Anteil " + anteil.toFixed(1) + " statt " + SCHACH_VARIANTEN.BONUS_CHANCE);
 });
 
 pruefe("Die Anzahl der Wuerfel folgt ihren Chancen", () => {
@@ -431,13 +447,13 @@ pruefe("Die Anzahl der Wuerfel folgt ihren Chancen", () => {
 
 pruefe("Die Ziehung ist auf jedem Geraet dieselbe", () => {
     /* Der Kern der Sache: gerechnet statt gewuerfelt. Zwei getrennte Laeufe
-       muessen Feld UND Faehigkeit gleich ergeben — sonst saehe jedes Geraet
-       ein anderes Brett. */
-    const einmal = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
-    const zweimal = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
+       muessen Feld UND Inhalt gleich ergeben — sonst saehe jedes Geraet ein
+       anderes Brett. */
+    const einmal = springerZuege(faehigkeitenPartie(), 24);
+    const zweimal = springerZuege(faehigkeitenPartie(), 24);
 
-    gleich(einmal.bonus[0].feld, zweimal.bonus[0].feld, "dasselbe Feld");
-    gleich(einmal.bonus[0].art, zweimal.bonus[0].art, "dieselbe Faehigkeit");
+    gleich(SCHACH_RUNDE._bonusText(einmal), SCHACH_RUNDE._bonusText(zweimal),
+        "dieselben Wuerfel");
 });
 
 pruefe("Zwei Partien ziehen verschiedene Wuerfel", () => {
@@ -449,18 +465,15 @@ pruefe("Zwei Partien ziehen verschiedene Wuerfel", () => {
     andere = SCHACH_RUNDE.bereitSetzen(andere, "weiss", true, 1000);
     andere = SCHACH_RUNDE.bereitSetzen(andere, "schwarz", true, 1000);
 
-    const eine = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
-    const zwei = springerZuege(andere, SCHACH_VARIANTEN.BONUS_ABSTAND);
+    const eine = springerZuege(faehigkeitenPartie(), 24);
+    const zwei = springerZuege(andere, 24);
 
-    wahr(eine.bonus[0].feld !== zwei.bonus[0].feld
-        || eine.bonus[0].art !== zwei.bonus[0].art, "nicht identisch");
+    wahr(SCHACH_RUNDE._bonusText(eine) !== SCHACH_RUNDE._bonusText(zwei), "nicht identisch");
 });
 
 pruefe("Es liegen nie mehr Wuerfel als erlaubt", () => {
-    const runde = springerZuege(faehigkeitenPartie(),
-        SCHACH_VARIANTEN.BONUS_ABSTAND * (SCHACH_VARIANTEN.BONUS_HOECHSTENS + 2));
-
-    gleich(runde.bonus.length, SCHACH_VARIANTEN.BONUS_HOECHSTENS, "Hoechstzahl eingehalten");
+    const runde = springerZuege(faehigkeitenPartie(), 80);
+    wahr(runde.bonus.length <= SCHACH_VARIANTEN.BONUS_HOECHSTENS, "Hoechstzahl eingehalten");
 });
 
 pruefe("Wer auf einen Wuerfel zieht, sammelt ihn ein", () => {
@@ -858,6 +871,75 @@ pruefe("Der Gegner kann nicht mitstimmen, und ein Vorschlag laesst sich verwerfe
     gleich(runde.zugZaehler, 0, "und nichts gezogen");
 });
 
+pruefe("Auch Faehigkeiten werden abgestimmt", () => {
+    let runde = einigkeitsPartie();
+    runde.faehigkeiten.weiss.push("bauernschub");
+
+    runde = SCHACH_RUNDE.faehigkeitVorschlagen(runde, "id-anna", "bauernschub", -1,
+        "Anna", 2000);
+
+    wahr(runde !== null, "vorgeschlagen");
+    gleich(runde.vorschlag.art, "faehigkeit", "als Faehigkeit vermerkt");
+    gleich(runde.vorschlag.faehigkeit, "bauernschub", "die richtige");
+    gleich(runde.faehigkeiten.weiss.length, 1, "noch nicht verbraucht");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a3")), ".", "Brett unveraendert");
+
+    runde = SCHACH_RUNDE.zugMittragen(runde, "id-cem", 2100);
+    gleich(runde.faehigkeiten.weiss.length, 0, "jetzt verbraucht");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a3")), "B", "die Bauern sind vor");
+    gleich(runde.vorschlag, null, "Abstimmung erledigt");
+});
+
+pruefe("Die Frist steht im Vorschlag und laeuft ab", () => {
+    let runde = SCHACH_RUNDE.zugVorschlagen(einigkeitsPartie(), "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 10000);
+
+    gleich(runde.vorschlag.frist, 10000 + SCHACH_RUNDE.FRIST_SEKUNDEN[0] * 1000,
+        "zehn Sekunden ab dem Vorschlag");
+
+    /* Vorher passiert nichts. */
+    gleich(SCHACH_RUNDE.fristAbgelaufen(runde, 12000), null, "vor Ablauf nichts");
+
+    /* Danach geht der Zug durch, auch ohne Cems Stimme. */
+    const danach = SCHACH_RUNDE.fristAbgelaufen(runde, 20001);
+    wahr(danach !== null, "nach Ablauf ausgefuehrt");
+    gleich(danach.zugZaehler, 1, "gezogen");
+    gleich(danach.versaeumt["id-cem"], 1, "Cem hat einen Strich");
+    gleich(danach.versaeumt["id-anna"], undefined, "Anna nicht");
+});
+
+pruefe("Wer zweimal nicht abstimmt, verkuerzt die Frist — bis er wieder mitmacht", () => {
+    let runde = einigkeitsPartie();
+    gleich(SCHACH_RUNDE.fristFuer(runde, "weiss"), SCHACH_RUNDE.FRIST_SEKUNDEN[0] * 1000,
+        "am Anfang die volle Frist");
+
+    runde.versaeumt["id-cem"] = 1;
+    gleich(SCHACH_RUNDE.fristFuer(runde, "weiss"), SCHACH_RUNDE.FRIST_SEKUNDEN[0] * 1000,
+        "nach einem Mal noch nicht");
+
+    runde.versaeumt["id-cem"] = 2;
+    gleich(SCHACH_RUNDE.fristFuer(runde, "weiss"), SCHACH_RUNDE.FRIST_SEKUNDEN[1] * 1000,
+        "nach zweimal kuerzer");
+
+    runde.versaeumt["id-cem"] = 4;
+    gleich(SCHACH_RUNDE.fristFuer(runde, "weiss"), SCHACH_RUNDE.FRIST_SEKUNDEN[2] * 1000,
+        "nach viermal noch kuerzer");
+
+    runde.versaeumt["id-cem"] = 20;
+    gleich(SCHACH_RUNDE.fristFuer(runde, "weiss"),
+        SCHACH_RUNDE.FRIST_SEKUNDEN[SCHACH_RUNDE.FRIST_SEKUNDEN.length - 1] * 1000,
+        "aber nie unter die letzte Stufe");
+
+    /* Stimmt er wieder mit, faengt es von vorn an. */
+    let mit = SCHACH_RUNDE.zugVorschlagen(runde, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 10000);
+    mit = SCHACH_RUNDE.zugMittragen(mit, "id-cem", 10100);
+
+    gleich(mit.versaeumt["id-cem"], undefined, "Zaehler zurueckgesetzt");
+    gleich(SCHACH_RUNDE.fristFuer(mit, "weiss"), SCHACH_RUNDE.FRIST_SEKUNDEN[0] * 1000,
+        "und wieder die volle Frist");
+});
+
 pruefe("Ein Vorschlag muss regelkonform sein", () => {
     gleich(SCHACH_RUNDE.zugVorschlagen(einigkeitsPartie(), "id-anna",
         SCHACH.feldNummer("e2"), SCHACH.feldNummer("e5"), "D", "Anna", 2000),
@@ -1067,12 +1149,42 @@ function pechEinsammeln(runde, art, von, nach) {
         SCHACH.feldNummer(von), SCHACH.feldNummer(nach), "D", "Anna", 4000);
 }
 
-pruefe("Jede Stufe hat genau einen Unglueckswuerfel", () => {
+pruefe("Jede Stufe hat mindestens einen Unglueckswuerfel", () => {
     for (const stufe of SCHACH_VARIANTEN.STUFEN) {
-        const arten = Object.keys(SCHACH_VARIANTEN.PECH)
-            .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufe.id);
-        gleich(arten.length, 1, "Stufe " + stufe.id);
+        wahr(SCHACH_VARIANTEN.pechDerStufe(stufe.id).length > 0, "Stufe " + stufe.id);
     }
+
+    /* Und die Ziehung erreicht auch den zweiten Eintrag einer Stufe. */
+    const gezogen = new Set();
+    for (let schritt = 0; schritt < 1000; schritt++) {
+        gezogen.add(SCHACH_VARIANTEN.pechZiehen(schritt / 1000));
+    }
+
+    for (const art of Object.keys(SCHACH_VARIANTEN.PECH)) {
+        wahr(gezogen.has(art), "wird gezogen: " + art);
+    }
+});
+
+pruefe("Volles Glas truebt die Sicht, ohne das Brett zu aendern", () => {
+    let runde = faehigkeitenPartie();
+    const vorher = runde.stand.brett;
+
+    runde = pechEinsammeln(runde, "vollesGlas", "e2", "e4");
+    wahr(runde !== null, "eingesammelt");
+
+    /* Das Brett ist nur um den eigenen Zug veraendert — keine Figur wurde
+       verschoben oder getauscht. */
+    gleich(runde.stand.glasFarbe, "weiss", "Weiss sieht falsch");
+    gleich(runde.stand.glasBis, SCHACH_RUNDE.GLAS_HALBZUEGE + 1, "und zwar begrenzt");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e4")), "B", "der Bauer steht auf e4");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e7")), "b",
+        "die gegnerischen Figuren stehen unveraendert");
+
+    /* Und die Regeln bleiben unberuehrt: Schwarz zieht ganz normal. */
+    const danach = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("e7"), SCHACH.feldNummer("e5"), "D", "Bert", 4100);
+    wahr(danach !== null, "Schwarz kann ziehen");
+    gleich(danach.stand.glasFarbe, "weiss", "das Glas bleibt bis zum Ablauf");
 });
 
 pruefe("Ein Unglueckswuerfel kommt nicht in den Vorrat, sondern wirkt sofort", () => {
@@ -1190,7 +1302,7 @@ pruefe("Erdrutsch schiebt alle eigenen Figuren zurueck", () => {
 });
 
 pruefe("Der Verlauf verraet nicht, was in einem Wuerfel steckt", () => {
-    const runde = springerZuege(faehigkeitenPartie(), SCHACH_VARIANTEN.BONUS_ABSTAND);
+    const runde = springerZuege(faehigkeitenPartie(), 24);
     const eintrag = runde.verlauf.find((zeile) => zeile.wirkung === "erscheint");
 
     wahr(!!eintrag, "ein Erscheinen im Verlauf");

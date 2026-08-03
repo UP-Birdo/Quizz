@@ -3,6 +3,32 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.8 — 2026-08-03
+
+- **Würfel erscheinen ohne festen Takt.** Bisher kam alle sechs Halbzüge einer —
+  man konnte mitzählen. Jetzt wird nach **jedem** Halbzug neu gewürfelt (18
+  Prozent, im Schnitt also weiterhin jeder sechste). Liegen gelassene Würfel
+  bleiben liegen und halten den Nachschub nicht auf.
+- **Neuer Unglückswürfel „Volles Glas" (gewöhnlich):** Wer ihn einsammelt, sieht
+  die gegnerischen Figuren acht Halbzüge lang falsch — sie ziehen wie immer,
+  sehen aber aus wie etwas anderes. **Nur die eigene Ansicht ist betroffen**, der
+  Gegner merkt nichts. Die Regeln bleiben unangetastet.
+- **Auch Fähigkeiten werden abgestimmt**, wenn die Partie mit „Team muss sich
+  einig sein" angelegt wurde — vorher galt das nur für Züge.
+- **Eine Abstimmung hat jetzt eine Frist:** zehn Sekunden, danach gilt der
+  Vorschlag auch ohne alle Stimmen. Wer **zweimal** nicht abstimmt, verkürzt sie
+  auf fünf, danach auf drei Sekunden. Sobald er wieder mitstimmt, gilt wieder die
+  volle Zeit. Damit steht ein Team nicht still, nur weil einer aufgehört hat.
+- **Fehler behoben: Ein neu erschienener Würfel bekam einen farbigen Kreis** —
+  er sah aus, als wäre gerade etwas mit ihm passiert. Ringe gibt es jetzt nur
+  noch für Wirkungen, nicht fürs Erscheinen.
+- **Der Pfeil endet am Rand der Figuren**, statt unter ihnen anzufangen und
+  aufzuhören — einheitlich für Züge, Rochaden und jede Fähigkeit.
+- **Vorzüge sind wieder ausgebaut.** Sie liefen nicht rund: Der Zug sprang los,
+  während man noch aufs Brett schaute, und die Vormerkung war nach jedem
+  Neuladen weg. Die Begründung steht in `docs/DECISIONS.md`, falls es jemand
+  später erneut versucht.
+
 ## v2.7 — 2026-08-03
 
 - **Unglückswürfel.** Manche Würfel tragen ein **umgedrehtes Fragezeichen** und

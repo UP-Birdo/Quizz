@@ -76,6 +76,14 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Das Spielfeld wächst an einer zufälligen Seite um eine "
                 + "Reihe oder Spalte. Alle Wege werden länger."
         },
+        vollesGlas: {
+            titel: "Volles Glas",
+            stufe: "gruen",
+            beschreibung: "Wer ihn einsammelt, sieht die gegnerischen Figuren eine "
+                + "Weile falsch: Sie ziehen wie immer, sehen aber aus wie etwas "
+                + "anderes. Nur die eigene Ansicht ist betroffen — der Gegner "
+                + "merkt nichts."
+        },
         meuterei: {
             titel: "Meuterei",
             stufe: "lila",
@@ -111,17 +119,28 @@ const SCHACH_VARIANTEN = {
             || SCHACH_VARIANTEN.STUFEN[0];
     },
 
-    /* Zieht einen Unglückswürfel — dieselbe Stufenverteilung wie bei den
-       Fähigkeiten, damit „selten“ überall dasselbe heißt. */
+    /* Alle Unglückswürfel einer Stufe, in fester Reihenfolge. */
+    pechDerStufe(stufeId) {
+        return Object.keys(SCHACH_VARIANTEN.PECH)
+            .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufeId)
+            .sort();
+    },
+
+    /*
+     * Zieht einen Unglückswürfel — dieselbe Rechnung wie bei den Fähigkeiten:
+     * erst die Stufe nach ihrer Chance, dann innerhalb der Stufe gleichverteilt.
+     */
     pechZiehen(wert) {
         let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
             if (rest < stufe.chance) {
-                const arten = Object.keys(SCHACH_VARIANTEN.PECH)
-                    .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufe.id)
-                    .sort();
-                return arten.length > 0 ? arten[0] : "";
+                const arten = SCHACH_VARIANTEN.pechDerStufe(stufe.id);
+                if (arten.length === 0) {
+                    return "";
+                }
+                const anteil = rest / stufe.chance;
+                return arten[Math.min(Math.floor(anteil * arten.length), arten.length - 1)];
             }
             rest -= stufe.chance;
         }
@@ -129,8 +148,17 @@ const SCHACH_VARIANTEN = {
         return "stolperstein";
     },
 
-    /* Alle wie viele Halbzüge erscheint eine neue Fähigkeit auf dem Brett. */
-    BONUS_ABSTAND: 6,
+    /*
+     * Mit welcher Chance (in Prozent) nach JEDEM Halbzug ein neuer Würfel
+     * erscheint.
+     *
+     * Bis v2.7 kam alle sechs Halbzüge einer — feste Takte, die man mitzählen
+     * konnte. Jetzt wird jede Runde neu gewürfelt (im Schnitt weiterhin einer
+     * je sechs Halbzüge), und wer die liegenden nicht einsammelt, hält den
+     * Nachschub nicht auf: Es kommt einfach nichts, solange kein Platz frei ist
+     * oder die Höchstzahl erreicht ist.
+     */
+    BONUS_CHANCE: 18,
 
     /* So viele dürfen höchstens gleichzeitig liegen. */
     BONUS_HOECHSTENS: 3,
@@ -520,9 +548,11 @@ const SCHACH_VARIANTEN = {
             + " Prozent eine Fähigkeit dieser Stufe.\n\n"
             + "Innerhalb der Stufe sind alle gleich wahrscheinlich — bei "
             + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
-            + "Alle " + SCHACH_VARIANTEN.BONUS_ABSTAND + " Halbzüge erscheinen neue "
-            + "Würfel (meist einer, selten zwei, sehr selten drei); es liegen nie "
-            + "mehr als " + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig.\n\n"
+            + "Nach jedem Halbzug kann ein neuer Würfel erscheinen — mit "
+            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent, also im Schnitt etwa jeden "
+            + "sechsten. Meist einer, selten zwei, sehr selten drei; es liegen nie "
+            + "mehr als " + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig. Liegen "
+            + "gelassene Würfel bleiben liegen, bis sie jemand einsammelt.\n\n"
             + "Jeder achte Würfel ist ein Unglückswürfel (" + SCHACH_VARIANTEN.PECH_CHANCE
             + " Prozent) — er wirkt sofort gegen den, der ihn einsammelt.\n\n"
             + "Gewürfelt wird dabei nicht: Feld und Inhalt werden aus dem Spielstand "
@@ -534,11 +564,12 @@ const SCHACH_VARIANTEN = {
             .map((eintrag) => eintrag.anzahl + " mit " + eintrag.chance + " Prozent")
             .join(", ");
 
-        let text = "Alle " + SCHACH_VARIANTEN.BONUS_ABSTAND
-            + " Halbzüge erscheinen Würfel auf freien Feldern — meist einer, "
-            + "manchmal mehr (" + anzahl + "). Es liegen nie mehr als "
-            + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig. Wer mit einer "
-            + "Figur darauf zieht, sammelt die Fähigkeit für sein Team ein.\n\n"
+        let text = "Nach jedem Halbzug erscheint mit "
+            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent ein Würfel auf einem freien "
+            + "Feld — meist einer, manchmal mehr (" + anzahl + "). Es liegen nie mehr "
+            + "als " + SCHACH_VARIANTEN.BONUS_HOECHSTENS + " gleichzeitig, und liegen "
+            + "gelassene bleiben liegen. Wer mit einer Figur darauf zieht, sammelt "
+            + "die Fähigkeit für sein Team ein.\n\n"
             + "Welche es wird, hängt von der Stufe ab:\n";
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {

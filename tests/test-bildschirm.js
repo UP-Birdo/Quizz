@@ -664,10 +664,13 @@ pruefe("Ein Unglueckswuerfel traegt ein umgedrehtes Fragezeichen", () => {
     }
 });
 
-pruefe("Wer nicht am Zug ist, kann einen Zug vormerken", () => {
-    /* Eine Partie, in der Schwarz am Zug ist — Anna (Weiss) merkt vor. */
+pruefe("Wer nicht am Zug ist, kann das Brett nicht bedienen", () => {
+    /*
+     * Vorzuege gibt es seit v2.8 nicht mehr (siehe docs\DECISIONS.md). Das
+     * Brett ist gesperrt, solange das eigene Team nicht am Zug ist.
+     */
     const angelegt = SCHACH_TAFEL.partieAnlegen(
-        TEAM_SCHACH.abgleich.daten, "standard", "Vorzug", 6000);
+        TEAM_SCHACH.abgleich.daten, "standard", "Wartend", 6000);
 
     let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 6000);
     partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 6000);
@@ -682,35 +685,22 @@ pruefe("Wer nicht am Zug ist, kann einen Zug vormerken", () => {
     const person = { id: "id-anna", name: "Anna" };
     const offene = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, partie.id);
 
-    /* Schwarz ist am Zug — Anna darf nicht ziehen, aber vormerken. */
     if (SCHACH_RUNDE.darfZiehen(offene, person.id)) {
         throw new Error("Anna duerfte gar nicht ziehen");
     }
 
     TEAM_SCHACH.feldAngetippt(offene, person, SCHACH.feldNummer("e2"));
-    if (TEAM_SCHACH.moeglicheZiele.length === 0) {
-        throw new Error("keine Vorschau-Ziele");
+    if (TEAM_SCHACH.gewaehltesFeld !== -1 || TEAM_SCHACH.moeglicheZiele.length !== 0) {
+        throw new Error("das Brett haette nicht reagieren duerfen");
     }
 
-    TEAM_SCHACH.feldAngetippt(offene, person, SCHACH.feldNummer("e4"));
-
-    if (!TEAM_SCHACH.vorzug || TEAM_SCHACH.vorzug.nach !== SCHACH.feldNummer("e4")) {
-        throw new Error("nichts vorgemerkt");
+    /* Und die Felder sind gesperrt. */
+    const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+        "[data-feld=\"" + SCHACH.feldNummer("e2") + "\"]");
+    if (!zelle.disabled) {
+        throw new Error("das Feld ist nicht gesperrt");
     }
 
-    /* Das Brett ist unveraendert — vorgemerkt heisst nicht gezogen. */
-    const jetzt = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, partie.id);
-    if (SCHACH.figurAuf(jetzt.stand, SCHACH.feldNummer("e4")) !== ".") {
-        throw new Error("der Zug wurde ausgefuehrt statt vorgemerkt");
-    }
-
-    /* Und er steht nirgends im gemeinsamen Stand. */
-    if (JSON.stringify(TEAM_SCHACH.abgleich.daten).indexOf("vorzug") !== -1) {
-        throw new Error("der Vorzug ist in den gemeinsamen Stand geraten");
-    }
-
-    TEAM_SCHACH.vorzug = null;
-    TEAM_SCHACH._auswahlAufheben();
     TEAM_SCHACH.offeneId = "";
 });
 

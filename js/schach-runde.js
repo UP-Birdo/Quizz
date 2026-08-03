@@ -49,6 +49,23 @@ const SCHACH_RUNDE = {
     /* So viele Züge bleiben im Verlauf stehen. */
     VERLAUF_LAENGE: 40,
 
+    /* Wie lange das volle Glas die Sicht trübt (in Halbzügen). */
+    GLAS_HALBZUEGE: 8,
+
+    /*
+     * Wie lange auf die Zustimmung des Teams gewartet wird (in Sekunden), je
+     * nachdem wie oft jemand schon nicht mitgestimmt hat.
+     *
+     * Der Grund für die Staffelung: Ein Team mit zwei Leuten könnte sonst gar
+     * nichts mehr tun, sobald einer aufhört mitzuspielen. Wer zweimal nicht
+     * abstimmt, verkürzt die Frist — bis sie bei fünf Sekunden liegt, dann bei
+     * drei. Sobald er wieder mitstimmt, fängt sie von vorn an.
+     */
+    FRIST_SEKUNDEN: [10, 5, 3],
+
+    /* Nach so vielen versäumten Abstimmungen rutscht man eine Stufe tiefer. */
+    FRIST_NACH_VERSAEUMNISSEN: 2,
+
     /*
      * Fassung der Fähigkeiten-Ablage. 1 hieß: vier feste Felder von Beginn an.
      * 2 heißt: Würfel erscheinen über die Partie verteilt. Partien ohne diese
@@ -102,10 +119,20 @@ const SCHACH_RUNDE = {
             },
 
             /*
-             * Vorschläge, über die gerade abgestimmt wird (nur bei `einigkeit`):
-             * { von, nach, umwandlung, wer, name, zugZaehler, stimmen: [ids] }
+             * Der Vorschlag, über den gerade abgestimmt wird (nur bei
+             * `einigkeit`). Er trägt entweder einen Zug oder eine Fähigkeit:
+             *
+             *   { art: "zug", von, nach, umwandlung, wer, name, zugZaehler,
+             *     stimmen: [ids], frist: <Zeitpunkt in ms> }
+             *   { art: "faehigkeit", faehigkeit, zielFeld, … }
              */
             vorschlag: null,
+
+            /*
+             * Wie oft jemand eine Abstimmung hat verstreichen lassen. Daraus
+             * folgt die Frist beim nächsten Mal — siehe FRIST_SEKUNDEN.
+             */
+            versaeumt: {},
 
             verlauf: []
         };
@@ -191,23 +218,39 @@ const SCHACH_RUNDE = {
             runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
         }
 
-        if (roh.vorschlag && typeof roh.vorschlag === "object"
-            && Number.isInteger(roh.vorschlag.von) && Number.isInteger(roh.vorschlag.nach)) {
-            const stimmen = Array.isArray(roh.vorschlag.stimmen) ? roh.vorschlag.stimmen : [];
+        if (roh.vorschlag && typeof roh.vorschlag === "object") {
+            const roher = roh.vorschlag;
+            const stimmen = Array.isArray(roher.stimmen) ? roher.stimmen : [];
+            const istFaehigkeit = (roher.art === "faehigkeit")
+                && !!SCHACH_VARIANTEN.FAEHIGKEITEN[roher.faehigkeit];
 
-            runde.vorschlag = {
-                von: roh.vorschlag.von,
-                nach: roh.vorschlag.nach,
-                umwandlung: (typeof roh.vorschlag.umwandlung === "string")
-                    ? roh.vorschlag.umwandlung : "D",
-                wer: (typeof roh.vorschlag.wer === "string") ? roh.vorschlag.wer : "",
-                name: (typeof roh.vorschlag.name === "string") ? roh.vorschlag.name : "",
-                zugZaehler: Number.isInteger(roh.vorschlag.zugZaehler)
-                    ? roh.vorschlag.zugZaehler : 0,
-                stimmen: stimmen
-                    .filter((id) => typeof id === "string" && id !== "")
-                    .filter((id, stelle, alle) => alle.indexOf(id) === stelle)
-            };
+            if (istFaehigkeit || (Number.isInteger(roher.von) && Number.isInteger(roher.nach))) {
+                runde.vorschlag = {
+                    art: istFaehigkeit ? "faehigkeit" : "zug",
+                    faehigkeit: istFaehigkeit ? roher.faehigkeit : "",
+                    zielFeld: Number.isInteger(roher.zielFeld) ? roher.zielFeld : -1,
+                    von: Number.isInteger(roher.von) ? roher.von : -1,
+                    nach: Number.isInteger(roher.nach) ? roher.nach : -1,
+                    umwandlung: (typeof roher.umwandlung === "string") ? roher.umwandlung : "D",
+                    wer: (typeof roher.wer === "string") ? roher.wer : "",
+                    name: (typeof roher.name === "string") ? roher.name : "",
+                    zugZaehler: Number.isInteger(roher.zugZaehler) ? roher.zugZaehler : 0,
+                    frist: (typeof roher.frist === "number" && isFinite(roher.frist))
+                        ? roher.frist : 0,
+                    stimmen: stimmen
+                        .filter((id) => typeof id === "string" && id !== "")
+                        .filter((id, stelle, alle) => alle.indexOf(id) === stelle)
+                };
+            }
+        }
+
+        if (roh.versaeumt && typeof roh.versaeumt === "object") {
+            for (const id of Object.keys(roh.versaeumt)) {
+                const wert = roh.versaeumt[id];
+                if (Number.isInteger(wert) && wert > 0) {
+                    runde.versaeumt[id] = wert;
+                }
+            }
         }
 
         /*
@@ -362,10 +405,15 @@ const SCHACH_RUNDE = {
         if (!SCHACH_RUNDE.faehigkeitenAn(runde)) {
             return;
         }
-        if (runde.zugZaehler % SCHACH_VARIANTEN.BONUS_ABSTAND !== 0) {
+        if (runde.bonus.length >= SCHACH_VARIANTEN.BONUS_HOECHSTENS) {
             return;
         }
-        if (runde.bonus.length >= SCHACH_VARIANTEN.BONUS_HOECHSTENS) {
+
+        /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr. */
+        const wuerfelt = SCHACH_RUNDE._zufallsWert(
+            (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
+
+        if (wuerfelt >= SCHACH_VARIANTEN.BONUS_CHANCE) {
             return;
         }
 
@@ -555,6 +603,19 @@ const SCHACH_RUNDE = {
 
         } else if (art === "erdrutsch") {
             wirkung = SCHACH.erdrutsch(runde.stand, farbe);
+
+        } else if (art === "vollesGlas") {
+            /* Ändert nichts am Brett — nur daran, wie EINE Seite es sieht. */
+            wirkung = {
+                stand: Object.assign({}, runde.stand, {
+                    glasFarbe: farbe,
+                    glasBis: runde.zugZaehler + SCHACH_RUNDE.GLAS_HALBZUEGE
+                }),
+                felder: [],
+                wege: [],
+                text: "die Sicht verschwimmt für "
+                    + ((farbe === "weiss") ? "Weiss" : "Schwarz")
+            };
         }
 
         const stufe = SCHACH_VARIANTEN.pechStufeVon(art);
@@ -941,6 +1002,28 @@ const SCHACH_RUNDE = {
     },
 
     /*
+     * Wie lange das Team für diese Abstimmung Zeit hat (in Millisekunden).
+     *
+     * Maßgeblich ist der Säumigste: Wer wiederholt nicht abstimmt, verkürzt die
+     * Frist für alle — sonst könnte ein Team mit zwei Leuten gar nichts mehr
+     * tun, sobald einer aufhört mitzuspielen.
+     */
+    fristFuer(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        let hoechste = 0;
+
+        for (const id of stand.teams[farbe]) {
+            hoechste = Math.max(hoechste, stand.versaeumt[id] || 0);
+        }
+
+        const stufe = Math.min(
+            Math.floor(hoechste / SCHACH_RUNDE.FRIST_NACH_VERSAEUMNISSEN),
+            SCHACH_RUNDE.FRIST_SEKUNDEN.length - 1);
+
+        return SCHACH_RUNDE.FRIST_SEKUNDEN[stufe] * 1000;
+    },
+
+    /*
      * Schlägt einen Zug vor. Ist man allein im Team, wird er sofort ausgeführt —
      * Einigkeit mit sich selbst ist keine Abstimmung wert.
      * Liefert die neue Runde oder null.
@@ -966,18 +1049,68 @@ const SCHACH_RUNDE = {
             return null;
         }
 
+        const wann = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         const neu = SCHACH_RUNDE.kopieren(alt);
+
         neu.vorschlag = {
+            art: "zug",
+            faehigkeit: "",
+            zielFeld: -1,
             von: von,
             nach: nach,
             umwandlung: umwandlung || "D",
             wer: spielerId,
             name: wer || "",
             zugZaehler: alt.zugZaehler,
+            frist: wann + SCHACH_RUNDE.fristFuer(alt, farbe),
             stimmen: [spielerId]
         };
 
-        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        neu.geaendertAm = wann;
+        return neu;
+    },
+
+    /*
+     * Schlägt den Einsatz einer Fähigkeit vor. Wie beim Zug: allein im Team
+     * wird sofort eingesetzt, sonst wird abgestimmt.
+     */
+    faehigkeitVorschlagen(runde, spielerId, art, zielFeld, wer, zeitpunkt) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+
+        if (!SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+            return null;
+        }
+
+        const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+
+        if (!SCHACH_RUNDE.brauchtEinigkeit(alt) || alt.teams[farbe].length <= 1) {
+            return SCHACH_RUNDE.faehigkeitEinsetzen(
+                alt, spielerId, art, zielFeld, wer, zeitpunkt);
+        }
+
+        /* Erst prüfen, ob sie überhaupt einsetzbar wäre. */
+        if (!SCHACH_RUNDE.faehigkeitEinsetzen(alt, spielerId, art, zielFeld, wer, zeitpunkt)) {
+            return null;
+        }
+
+        const wann = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        const neu = SCHACH_RUNDE.kopieren(alt);
+
+        neu.vorschlag = {
+            art: "faehigkeit",
+            faehigkeit: art,
+            zielFeld: Number.isInteger(zielFeld) ? zielFeld : -1,
+            von: -1,
+            nach: -1,
+            umwandlung: "D",
+            wer: spielerId,
+            name: wer || "",
+            zugZaehler: alt.zugZaehler,
+            frist: wann + SCHACH_RUNDE.fristFuer(alt, farbe),
+            stimmen: [spielerId]
+        };
+
+        neu.geaendertAm = wann;
         return neu;
     },
 
@@ -1003,6 +1136,10 @@ const SCHACH_RUNDE = {
             neu.vorschlag.stimmen.push(spielerId);
         }
 
+        /* Wer mitstimmt, ist wieder dabei: Sein Säumnis-Zähler beginnt von
+           vorn, und damit auch die volle Frist. */
+        delete neu.versaeumt[spielerId];
+
         const fehlen = neu.teams[farbe]
             .filter((id) => neu.vorschlag.stimmen.indexOf(id) === -1);
 
@@ -1011,19 +1148,61 @@ const SCHACH_RUNDE = {
             return neu;
         }
 
-        /* Alle dafür: ziehen. */
-        const vorschlag = neu.vorschlag;
-        const gezogen = SCHACH_RUNDE.ziehen(neu, vorschlag.wer, vorschlag.von, vorschlag.nach,
-            vorschlag.umwandlung, vorschlag.name, zeitpunkt);
+        return SCHACH_RUNDE._vorschlagAusfuehren(neu, zeitpunkt);
+    },
 
-        if (!gezogen) {
-            /* Inzwischen nicht mehr möglich — Vorschlag fällt weg. */
-            neu.vorschlag = null;
-            neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
-            return neu;
+    /*
+     * Die Frist ist abgelaufen: Der Vorschlag geht durch, auch ohne alle
+     * Stimmen. Wer nicht abgestimmt hat, bekommt einen Strich — beim nächsten
+     * Mal ist die Frist dadurch kürzer.
+     *
+     * Ausgelöst wird das vom ERSTEN Gerät, das den Ablauf bemerkt; die Prüfung
+     * über den Zugzähler beim Schreiben sorgt dafür, dass es trotzdem nur
+     * einmal passiert.
+     */
+    fristAbgelaufen(runde, jetzt) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+
+        if (!alt.vorschlag || alt.vorschlag.zugZaehler !== alt.zugZaehler) {
+            return null;
+        }
+        if (!alt.vorschlag.frist || jetzt < alt.vorschlag.frist) {
+            return null;
         }
 
-        return gezogen;
+        const farbe = alt.stand.amZug;
+        const neu = SCHACH_RUNDE.kopieren(alt);
+
+        for (const id of neu.teams[farbe]) {
+            if (neu.vorschlag.stimmen.indexOf(id) === -1) {
+                neu.versaeumt[id] = (neu.versaeumt[id] || 0) + 1;
+            }
+        }
+
+        return SCHACH_RUNDE._vorschlagAusfuehren(neu, jetzt);
+    },
+
+    /* Führt den offenen Vorschlag aus — Zug oder Fähigkeit. */
+    _vorschlagAusfuehren(runde, zeitpunkt) {
+        const vorschlag = runde.vorschlag;
+        runde.vorschlag = null;
+
+        const ergebnis = (vorschlag.art === "faehigkeit")
+            ? SCHACH_RUNDE.faehigkeitEinsetzen(runde, vorschlag.wer, vorschlag.faehigkeit,
+                vorschlag.zielFeld, vorschlag.name, zeitpunkt)
+            : SCHACH_RUNDE.ziehen(runde, vorschlag.wer, vorschlag.von, vorschlag.nach,
+                vorschlag.umwandlung, vorschlag.name, zeitpunkt);
+
+        if (!ergebnis) {
+            /* Inzwischen nicht mehr möglich — der Vorschlag fällt weg. */
+            runde.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+            return runde;
+        }
+
+        /* Die Säumnis-Zähler aus der Abstimmung müssen mitgenommen werden:
+           `ziehen` und `faehigkeitEinsetzen` arbeiten auf einer Kopie. */
+        ergebnis.versaeumt = runde.versaeumt;
+        return ergebnis;
     },
 
     /* Verwirft den offenen Vorschlag. */

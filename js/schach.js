@@ -267,7 +267,18 @@ const SCHACH = {
             /* Frost: wie die Fessel, aber die Figur ist zusätzlich unantastbar
                — eingefroren zieht sie nicht und wird nicht geschlagen. */
             frostFeld: -1,
-            frostFarbe: ""
+            frostFarbe: "",
+
+            /*
+             * Volles Glas: WER die gegnerischen Figuren falsch sieht, und bis zu
+             * welchem Zugzähler. Das ist der einzige Eintrag im Stand, der die
+             * Regeln überhaupt nicht berührt — er ändert nur, was EIN Team auf
+             * dem Bildschirm sieht. Er steht trotzdem hier und nicht im
+             * Bildschirm-Code, weil er zum Spielstand gehört: Er überlebt das
+             * Neuladen und gilt auf jedem Gerät dieses Teams.
+             */
+            glasFarbe: "",
+            glasBis: 0
         };
     },
 
@@ -404,6 +415,11 @@ const SCHACH = {
             && roh.frostFeld < felder && farben.indexOf(roh.frostFarbe) !== -1) {
             stand.frostFeld = roh.frostFeld;
             stand.frostFarbe = roh.frostFarbe;
+        }
+        if (farben.indexOf(roh.glasFarbe) !== -1 && Number.isInteger(roh.glasBis)
+            && roh.glasBis > 0) {
+            stand.glasFarbe = roh.glasFarbe;
+            stand.glasBis = roh.glasBis;
         }
 
         return stand;
@@ -1163,7 +1179,11 @@ const SCHACH = {
             fesselFeld: (stand.fesselFarbe === stand.amZug) ? -1 : stand.fesselFeld,
             fesselFarbe: (stand.fesselFarbe === stand.amZug) ? "" : stand.fesselFarbe,
             frostFeld: (stand.frostFarbe === stand.amZug) ? -1 : stand.frostFeld,
-            frostFarbe: (stand.frostFarbe === stand.amZug) ? "" : stand.frostFarbe
+            frostFarbe: (stand.frostFarbe === stand.amZug) ? "" : stand.frostFarbe,
+
+            /* Das volle Glas läuft nach Zugzähler ab, nicht nach Farbe. */
+            glasFarbe: stand.glasFarbe,
+            glasBis: stand.glasBis
         };
 
         if (stand.schildFeld >= 0 && stand.schildFarbe === stand.amZug
