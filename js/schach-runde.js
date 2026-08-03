@@ -581,6 +581,43 @@ const SCHACH_RUNDE = {
             return { stand: stand, felder: [feld], text: SCHACH.artName(SCHACH.artVon(figur)) };
         }
 
+        if (art === "frost") {
+            const figur = SCHACH.figurAuf(runde.stand, feld);
+            const gegner = SCHACH.gegner(farbe);
+
+            /* Wie bei der Fessel: nicht auf den König. */
+            if (SCHACH.farbeVon(figur) !== gegner || SCHACH.artVon(figur) === "K") {
+                return null;
+            }
+            const stand = Object.assign({}, runde.stand, {
+                frostFeld: feld,
+                frostFarbe: gegner
+            });
+            return { stand: stand, felder: [feld], wege: [],
+                text: SCHACH.artName(SCHACH.artVon(figur)) };
+        }
+
+        if (art === "spiegel") {
+            return SCHACH.spiegel(runde.stand, farbe, feld);
+        }
+
+        if (art === "nudelholz") {
+            /*
+             * Das Zielfeld liegt am Rand: Ein Feld der OBERSTEN Reihe rollt
+             * nach oben, eines der UNTERSTEN nach unten. So beantwortet ein
+             * einziger Tipp beide Fragen — welche Spalten und wohin.
+             */
+            const breite = SCHACH.breiteVon(runde.stand);
+            const reihe = SCHACH.reiheVon(feld, breite);
+            const letzte = SCHACH.hoeheVon(runde.stand) - 1;
+
+            if (reihe !== 0 && reihe !== letzte) {
+                return null;
+            }
+            return SCHACH.nudelholz(runde.stand, SCHACH.spalteVon(feld, breite),
+                (reihe === 0) ? -1 : 1);
+        }
+
         if (art === "wiedergeburt") {
             const verloren = runde.verloren[farbe];
             if (!verloren || verloren.length === 0) {

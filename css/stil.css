@@ -724,6 +724,47 @@ body {
 }
 
 /*
+ * Brett mit Randbeschriftung. Die Buchstaben unten sind genauso breit wie die
+ * Felder darüber (dieselbe Spaltenzahl), die Zahlen links stehen in einer
+ * schmalen Spalte daneben. Beides wächst mit dem Brett — auch auf dem
+ * Doppelbrett mit sechzehn Spalten.
+ */
+.brett-rahmen {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px;
+    width: 100%;
+    max-width: min(calc(var(--brett-max, 520px) + 18px), 100%);
+    margin: 0 auto;
+}
+
+.brett-rand {
+    display: grid;
+    color: var(--schrift-leise);
+    font-size: clamp(0.55rem, calc(min(var(--brett-max, 520px), 88vw) / var(--brett-spalten, 8) * 0.32), 0.8rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.brett-rand-reihen {
+    grid-template-rows: repeat(var(--brett-reihen, 8), 1fr);
+    align-items: center;
+    justify-items: center;
+    width: 16px;
+}
+
+.brett-rand-spalten {
+    grid-column: 2;
+    grid-template-columns: repeat(var(--brett-spalten, 8), 1fr);
+    justify-items: center;
+    padding-top: 2px;
+}
+
+.brett-marke {
+    text-transform: uppercase;
+}
+
+/*
  * Spaltenzahl und Höchstbreite setzt team-schach.js als Variablen, weil sie
  * von der Spielart abhängen (6 mal 6 bis 16 mal 8). Alles Übrige — Größe der
  * Felder, Schriftgröße der Figuren — rechnet sich hier daraus aus. Deshalb
@@ -748,11 +789,10 @@ body {
  * stimmt er auf jeder Brettgröße, ohne dass irgendwo Pixel gerechnet werden.
  */
 /*
- * Der Pfeil liegt über den Feldern, aber hinter den Figuren — technisch geht
- * das nur über die Deckkraft: Die Figuren stecken in den Feld-Knöpfen, ein
- * Element darüber lässt sich nicht zwischen Feld und Figur schieben. Mit
- * halber Deckkraft und schmalem Strich bleibt jede Figur voll lesbar, und der
- * Pfeil stört sie nicht.
+ * Der Pfeil liegt über den Feldern, verschwindet aber unter den Figuren: Eine
+ * Maske im SVG stanzt an jedem besetzten Feld ein Loch (siehe
+ * TEAM_SCHACH._pfeilBauen). Deshalb darf er kräftig sein — er überdeckt keine
+ * Figur mehr.
  */
 .zug-pfeil {
     position: absolute;
@@ -761,7 +801,7 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 3;
-    opacity: 0.5;
+    opacity: 0.9;
 }
 
 .zug-pfeil-unten {
@@ -954,6 +994,38 @@ body {
 
 .erklaerung-rochade {
     font-weight: 600;
+}
+
+/*
+ * Wirkende Fähigkeiten am Brett. Der Schild umrandet die Figur blau, die
+ * Fessel violett — beides in der Farbe der Stufe, aus der die Fähigkeit kommt.
+ */
+.feld-schild::before,
+.feld-fessel::before,
+.feld-frost::before {
+    content: "";
+    position: absolute;
+    inset: 6%;
+    border-radius: 50%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.feld-schild::before {
+    border: 3px solid #2f7fd0;
+    box-shadow: 0 0 0 1px var(--ziel-rand), inset 0 0 6px rgba(47, 127, 208, 0.8);
+}
+
+.feld-fessel::before {
+    border: 3px dashed #8b46c8;
+    box-shadow: 0 0 0 1px var(--ziel-rand);
+}
+
+/* Frost: hellblau und flächig — eingefroren ist mehr als nur festgehalten. */
+.feld-frost::before {
+    border: 3px solid #56b4e9;
+    background: rgba(86, 180, 233, 0.3);
+    box-shadow: 0 0 0 1px var(--ziel-rand), inset 0 0 8px rgba(255, 255, 255, 0.6);
 }
 
 /* Der vorgemerkte Zug: gestrichelt, weil er noch nicht passiert ist. */

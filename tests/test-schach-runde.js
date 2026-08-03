@@ -966,6 +966,94 @@ pruefe("Die Bilanz zaehlt Beute und Verlust nach Figurenwert", () => {
     gleich(schwarz.punkte, -1, "ein Punkt Rueckstand");
 });
 
+pruefe("Frost: eingefroren zieht nicht und wird nicht geschlagen", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "...s...."
+            + "........"
+            + "...T...."
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const eingefroren = einsetzen(runde, "frost", SCHACH.feldNummer("d6"));
+    wahr(eingefroren !== null, "eingesetzt");
+    gleich(eingefroren.stand.frostFeld, SCHACH.feldNummer("d6"), "Frost liegt auf d6");
+
+    /* Der weisse Turm darf den Springer nicht schlagen. */
+    const ziele = SCHACH.zuege(eingefroren.stand, SCHACH.feldNummer("d4"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ziele.indexOf("d6") === -1, "d6 ist unantastbar");
+    wahr(ziele.indexOf("d5") !== -1, "davor darf der Turm ziehen");
+
+    /* Und die eingefrorene Figur selbst zieht nicht. */
+    const danach = SCHACH_RUNDE.ziehen(eingefroren, "id-anna",
+        SCHACH.feldNummer("d4"), SCHACH.feldNummer("d5"), "D", "Anna", 3100);
+    gleich(SCHACH.zuege(danach.stand, SCHACH.feldNummer("d6")).length, 0,
+        "der Springer steht fest");
+
+    gleich(einsetzen(runde, "frost", SCHACH.feldNummer("e8")), null,
+        "der Koenig wird nicht eingefroren");
+});
+
+pruefe("Spiegel: eine Figur wird auf ein freies Nachbarfeld verdoppelt", () => {
+    const runde = einsetzen(faehigkeitenPartie(), "spiegel", SCHACH.feldNummer("a2"));
+    wahr(runde !== null, "eingesetzt");
+
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a2")), "B", "das Original bleibt");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a3")), "B", "die Kopie daneben");
+
+    gleich(einsetzen(faehigkeitenPartie(), "spiegel", SCHACH.feldNummer("e1")), null,
+        "der Koenig wird nicht gespiegelt");
+    gleich(einsetzen(faehigkeitenPartie(), "spiegel", SCHACH.feldNummer("e7")), null,
+        "und keine gegnerische Figur");
+    gleich(einsetzen(faehigkeitenPartie(), "spiegel", SCHACH.feldNummer("b1")), null,
+        "ohne freies Nachbarfeld geht es nicht");
+});
+
+pruefe("Nudelholz: zwei Spalten rollen in die getippte Richtung", () => {
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "bb......"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    /* Oben angetippt: nach oben. */
+    const hoch = einsetzen(runde, "nudelholz", SCHACH.feldNummer("a8"));
+    wahr(hoch !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("a6")), "b", "a5 nach a6");
+    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("b6")), "b", "b5 nach b6");
+    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("a5")), ".", "a5 ist leer");
+    gleich(hoch.verlauf[hoch.verlauf.length - 1].wege.length, 2, "zwei Wege im Verlauf");
+
+    /* Unten angetippt: nach unten. */
+    const runter = einsetzen(runde, "nudelholz", SCHACH.feldNummer("a1"));
+    wahr(runter !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(runter.stand, SCHACH.feldNummer("a4")), "b", "a5 nach a4");
+
+    /* Mitten auf dem Brett gibt es keine Richtung. */
+    gleich(einsetzen(runde, "nudelholz", SCHACH.feldNummer("d4")), null,
+        "nur am Rand");
+
+    /* Koenige bleiben stehen. */
+    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("e8")), "k", "der Koenig blieb");
+});
+
 pruefe("Die Zielfelder passen zu dem, was die Wirkung wirklich zulaesst", () => {
     const runde = faehigkeitenPartie();
 
@@ -994,8 +1082,13 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         verstaerkung: "e2",
         schutzschild: "d1",
         fessel: "b8",
+        frost: "b8",
         erdbeben: "d4",
-        wiedergeburt: "b1"
+        wiedergeburt: "b1",
+        /* Ein Bauer hat als Einziger ein freies Nachbarfeld. */
+        spiegel: "a2",
+        /* Am oberen Rand angetippt heisst: nach oben rollen. */
+        nudelholz: "a8"
     };
 
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
@@ -1014,6 +1107,12 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
                hinstellen, damit es etwas zu verschieben gibt. */
             runde.stand.brett = SCHACH._brettMit(runde.stand.brett,
                 SCHACH.feldNummer("d5"), "b");
+        }
+        if (art === "nudelholz") {
+            /* In den Spalten a und b muss etwas stehen, das Platz nach oben
+               hat. */
+            runde.stand.brett = SCHACH._brettMit(runde.stand.brett,
+                SCHACH.feldNummer("a5"), "b");
         }
 
         const nachher = einsetzen(runde, art, feld);

@@ -175,14 +175,22 @@ const TEAM_SCHACH = {
         }
 
         /*
-         * Ist die offene Partie gerade zu Ende gegangen und dieses Gerät hat
-         * den Abschluss noch nicht gesehen, kommt er von selbst.
+         * Ist eine Partie zu Ende gegangen, in der dieses Gerät mitgespielt
+         * hat, kommt der Abschluss von selbst — egal, ob die Partie gerade
+         * offen ist oder man in der Übersicht steht.
+         *
+         * Bis v2.5 hing er an der geöffneten Partie. Wer beim letzten Zug
+         * gerade in der Übersicht war (oder erst Stunden später wiederkam),
+         * bekam ihn nie zu sehen: Beendete Partien liegen seither zugeklappt
+         * unter „Beendet", und niemand sucht dort nach einem Sieg.
          */
-        if (!TEAM_SCHACH.abschluss && TEAM_SCHACH.offeneId) {
-            const fertig = SCHACH_TAFEL.partie(tafel, TEAM_SCHACH.offeneId);
+        if (!TEAM_SCHACH.abschluss) {
+            const fertig = SCHACH_TAFEL.liste(tafel).find((partie) =>
+                partie.ergebnis
+                && !TEAM_SCHACH.gesehen[partie.id]
+                && SCHACH_RUNDE.teamVon(partie, person.id));
 
-            if (fertig && fertig.ergebnis && !TEAM_SCHACH.gesehen[fertig.id]
-                && SCHACH_RUNDE.teamVon(fertig, person.id)) {
+            if (fertig) {
                 TEAM_SCHACH.abschluss = { id: fertig.id, schritt: 1 };
             }
         }
@@ -322,6 +330,13 @@ const TEAM_SCHACH = {
         flaeche.appendChild(leiste);
 
         wurzel.appendChild(flaeche);
+    },
+
+    /* Den Abschluss einer beendeten Partie noch einmal ansehen. */
+    abschlussZeigen(id) {
+        TEAM_SCHACH.abschluss = { id: id, schritt: 1 };
+        TEAM_SCHACH.offeneId = "";
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
     /* Abschluss weglegen: Die Partie gilt auf diesem Gerät als erledigt. */
@@ -520,7 +535,19 @@ const TEAM_SCHACH = {
             kasten.appendChild(titel);
 
             for (const partie of beendete) {
-                kasten.appendChild(TEAM_SCHACH._partieKarteBauen(partie, person));
+                const karte = TEAM_SCHACH._partieKarteBauen(partie, person);
+
+                /* Wer mitgespielt hat, kann sein Ergebnis jederzeit wieder
+                   ansehen — auch nachdem er den Abschluss weggeklickt hat. */
+                if (SCHACH_RUNDE.teamVon(partie, person.id)) {
+                    const leiste = TEAM_SCHACH._element("div", "karte-fuss");
+                    leiste.appendChild(TEAM_SCHACH._knopf("Ergebnis ansehen",
+                        "knopf-still knopf-klein",
+                        () => TEAM_SCHACH.abschlussZeigen(partie.id)));
+                    karte.appendChild(leiste);
+                }
+
+                kasten.appendChild(karte);
             }
 
             wurzel.appendChild(kasten);
@@ -804,18 +831,40 @@ const TEAM_SCHACH = {
             /* Liegt hier ein Würfel mit einer Fähigkeit? */
             const bonusHier = bonus.find((eintrag) => eintrag.feld === feld);
             if (bonusHier) {
-                /* Ist „Seltenheit anzeigen“ aus, sehen alle Würfel gleich aus —
-                   man weiß erst beim Einsammeln, was drin war. */
+                /*
+                 * Ist „Seltenheit anzeigen“ aus, sehen alle Würfel gleich aus.
+                 *
+                 * WELCHE Fähigkeit drin ist, verrät die Oberfläche NIE — auch
+                 * nicht beim Darüberfahren. Ein Würfel, dessen Inhalt man
+                 * vorher lesen kann, ist kein Überraschungswürfel mehr.
+                 */
                 const zeigen = (partie.regeln.seltenheitZeigen !== false);
 
                 zelle.classList.add("feld-bonus");
                 zelle.title = zeigen
-                    ? (SCHACH_VARIANTEN.faehigkeitTitel(bonusHier.art)
-                        + " (" + SCHACH_VARIANTEN.stufeVon(bonusHier.art).titel + ")")
-                    : "Würfel mit einer unbekannten Fähigkeit";
+                    ? ("Würfel — " + SCHACH_VARIANTEN.stufeVon(bonusHier.art).titel)
+                    : "Würfel";
                 zelle.setAttribute("aria-label",
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
                 zelle.appendChild(TEAM_SCHACH._wuerfelBauen(zeigen ? bonusHier.art : ""));
+            }
+
+            /*
+             * Wirkende Fähigkeiten am Brett zeigen: Ohne sie muss man sich
+             * merken, welche Figur geschützt ist und welche festhängt — und
+             * genau das vergisst man in einer Partie, die über Tage läuft.
+             */
+            if (partie.stand.schildFeld === feld) {
+                zelle.classList.add("feld-schild");
+                zelle.title = "Geschützt: lässt sich nicht schlagen";
+            }
+            if (partie.stand.fesselFeld === feld) {
+                zelle.classList.add("feld-fessel");
+                zelle.title = "Gefesselt: darf einen Zug lang nicht ziehen";
+            }
+            if (partie.stand.frostFeld === feld) {
+                zelle.classList.add("feld-frost");
+                zelle.title = "Eingefroren: zieht nicht und ist unantastbar";
             }
 
             /* Wartet die Fähigkeit auf ein Ziel? Dann sind die möglichen
@@ -866,7 +915,22 @@ const TEAM_SCHACH = {
             brett.appendChild(pfeil);
         }
 
-        halter.appendChild(brett);
+        /*
+         * Die Beschriftung am Rand (a, b, c … und 8, 7, 6 …). Sie entsteht aus
+         * denselben Maßen wie das Brett — auf dem 6er-Brett steht a bis f, auf
+         * dem Doppelbrett a bis p, und die Zahlen zählen bis zur Höhe. Damit
+         * wächst sie mit jeder Spielart mit, ohne Sonderfall.
+         */
+        const rahmen = TEAM_SCHACH._element("div", "brett-rahmen");
+        rahmen.style.setProperty("--brett-spalten", String(breite));
+        rahmen.style.setProperty("--brett-reihen", String(hoehe));
+        rahmen.style.setProperty("--brett-max", Math.min(64 * breite, 900) + "px");
+
+        rahmen.appendChild(TEAM_SCHACH._randBauen(partie, gedreht, "reihen"));
+        rahmen.appendChild(brett);
+        rahmen.appendChild(TEAM_SCHACH._randBauen(partie, gedreht, "spalten"));
+
+        halter.appendChild(rahmen);
 
         if (!partie.laeuft && !partie.ergebnis) {
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
@@ -1026,6 +1090,33 @@ const TEAM_SCHACH = {
     },
 
     /*
+     * Eine Randbeschriftung: die Spaltenbuchstaben unter dem Brett oder die
+     * Reihenzahlen links daneben. Beide kommen aus den Maßen der Spielart und
+     * beachten das gedrehte Brett.
+     */
+    _randBauen(partie, gedreht, art) {
+        const breite = SCHACH.breiteVon(partie.stand);
+        const hoehe = SCHACH.hoeheVon(partie.stand);
+        const rand = TEAM_SCHACH._element("div", "brett-rand brett-rand-" + art);
+
+        if (art === "spalten") {
+            for (let spalte = 0; spalte < breite; spalte++) {
+                const stelle = gedreht ? (breite - 1 - spalte) : spalte;
+                rand.appendChild(TEAM_SCHACH._element("span", "brett-marke",
+                    SCHACH.SPALTEN[stelle]));
+            }
+        } else {
+            for (let reihe = 0; reihe < hoehe; reihe++) {
+                const stelle = gedreht ? (hoehe - 1 - reihe) : reihe;
+                rand.appendChild(TEAM_SCHACH._element("span", "brett-marke",
+                    String(hoehe - stelle)));
+            }
+        }
+
+        return rand;
+    },
+
+    /*
      * Der Pfeil des letzten Zuges, als Zeichnung über dem Brett.
      *
      * Er beantwortet die Frage „was hat der andere gerade gemacht", ohne dass
@@ -1096,6 +1187,48 @@ const TEAM_SCHACH = {
         svg.setAttribute("preserveAspectRatio", "none");
         svg.setAttribute("aria-hidden", "true");
 
+        /*
+         * Der Pfeil verschwindet unter den Figuren — richtig, nicht nur
+         * durchscheinend.
+         *
+         * Möglich macht das eine Maske: Sie ist überall weiß (der Pfeil ist zu
+         * sehen) und trägt über jedem besetzten Feld einen schwarzen Kreis (dort
+         * ist er weg). Damit läuft der Strich HINTER den Figuren durch, obwohl
+         * das SVG technisch darüber liegt — die Figuren stecken in den
+         * Feld-Knöpfen und lassen sich nicht überlagern.
+         */
+        const maskenId = "pfeil-maske-" + partie.id;
+        const maske = document.createElementNS("http://www.w3.org/2000/svg", "mask");
+        maske.setAttribute("id", maskenId);
+
+        const grund = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        grund.setAttribute("x", "0");
+        grund.setAttribute("y", "0");
+        grund.setAttribute("width", String(breite));
+        grund.setAttribute("height", String(hoehe));
+        grund.setAttribute("fill", "white");
+        maske.appendChild(grund);
+
+        for (let feld = 0; feld < felder; feld++) {
+            if (SCHACH.figurAuf(partie.stand, feld) === ".") {
+                continue;
+            }
+            const punkt = mitte(feld);
+            const loch = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+
+            loch.setAttribute("cx", String(punkt.x));
+            loch.setAttribute("cy", String(punkt.y));
+            loch.setAttribute("r", "0.42");
+            loch.setAttribute("fill", "black");
+            maske.appendChild(loch);
+        }
+
+        svg.appendChild(maske);
+
+        const gruppe = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gruppe.setAttribute("mask", "url(#" + maskenId + ")");
+        svg.appendChild(gruppe);
+
         let gezeichnet = 0;
 
         /* Erst alle hellen Unterlagen, dann alle farbigen Lagen darüber — sonst
@@ -1110,7 +1243,7 @@ const TEAM_SCHACH = {
                 ring.setAttribute("cx", String(punkt.x));
                 ring.setAttribute("cy", String(punkt.y));
                 ring.setAttribute("r", "0.36");
-                svg.appendChild(ring);
+                gruppe.appendChild(ring);
                 gezeichnet++;
             }
 
@@ -1140,7 +1273,7 @@ const TEAM_SCHACH = {
                 strich.setAttribute("y1", String(start.y));
                 strich.setAttribute("x2", String(strichEndeX));
                 strich.setAttribute("y2", String(strichEndeY));
-                svg.appendChild(strich);
+                gruppe.appendChild(strich);
 
                 const spitze = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
                 spitze.setAttribute("class", lage);
@@ -1149,7 +1282,7 @@ const TEAM_SCHACH = {
                     (strichEndeX - ey * spitzeBreite) + "," + (strichEndeY + ex * spitzeBreite),
                     (strichEndeX + ey * spitzeBreite) + "," + (strichEndeY - ex * spitzeBreite)
                 ].join(" "));
-                svg.appendChild(spitze);
+                gruppe.appendChild(spitze);
 
                 gezeichnet++;
             }

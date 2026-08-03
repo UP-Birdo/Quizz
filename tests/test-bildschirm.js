@@ -39,6 +39,34 @@ function pruefe(bezeichnung, funktion) {
     }
 }
 
+/*
+ * Sucht das Brett im gerade gezeichneten Bereich.
+ *
+ * Nach Klasse statt nach Stelle: Über und um das Brett sind schon mehrfach
+ * Sachen dazugekommen (Randbeschriftung, Rahmen), und jedes Mal brachen sonst
+ * alle Tests auf einmal.
+ */
+function brettSuchen() {
+    const suchen = (element) => {
+        for (const kind of element.kinder || []) {
+            if (kind.className === "brett" || kind.className === "brett brett-gedreht") {
+                return kind;
+            }
+            const gefunden = suchen(kind);
+            if (gefunden) {
+                return gefunden;
+            }
+        }
+        return null;
+    };
+
+    const brett = suchen(TEAM_SCHACH.wurzelEl);
+    if (!brett) {
+        throw new Error("kein Brett gezeichnet");
+    }
+    return brett;
+}
+
 /* ------------------------------------------------------------------ *
  * Das nachgebaute DOM
  *
@@ -244,8 +272,7 @@ pruefe("Das Brett hat so viele Felder wie die Spielart Stellen", () => {
     for (const variante of SCHACH_VARIANTEN.liste) {
         TEAM_SCHACH.partieOeffnen(kennungen[variante.id]);
 
-        const halter = TEAM_SCHACH.wurzelEl.kinder[3];
-        const brett = halter.kinder[0];
+        const brett = brettSuchen();
         const erwartet = variante.breite * variante.hoehe;
 
         /* Neben den Feldern kann der Pfeil des letzten Zuges im Brett liegen —
@@ -344,8 +371,7 @@ pruefe("Der Koenig macht den eigenen Turm zum Rochade-Ziel", () => {
 
 /* Sucht den Pfeil im gerade gezeichneten Brett. */
 function pfeilImBrett() {
-    const halter = TEAM_SCHACH.wurzelEl.kinder[3];
-    const brett = halter.kinder[0];
+    const brett = brettSuchen();
     return brett.kinder.find((kind) => kind.attribute
         && kind.attribute["class"] === "zug-pfeil") || null;
 }
@@ -378,9 +404,26 @@ pruefe("Ohne Zug gibt es keinen Pfeil, nach einem Zug schon", () => {
     if (!pfeil) {
         throw new Error("kein Pfeil gezeichnet");
     }
+
+    /* Maske und maskierte Gruppe; die Striche stecken in der Gruppe. */
+    const gruppe = pfeil.kinder.find((kind) => kind.tagName === "g");
+    if (!gruppe) {
+        throw new Error("keine maskierte Gruppe");
+    }
+
+    const maske = pfeil.kinder.find((kind) => kind.tagName === "mask");
+    if (!maske) {
+        throw new Error("keine Maske — der Pfeil wuerde die Figuren ueberdecken");
+    }
+
     /* Zwei Lagen aus je Strich und Spitze. */
-    if (pfeil.kinder.length !== 4) {
-        throw new Error("Pfeil hat " + pfeil.kinder.length + " Teile statt 4");
+    if (gruppe.kinder.length !== 4) {
+        throw new Error("Pfeil hat " + gruppe.kinder.length + " Teile statt 4");
+    }
+
+    /* Ein Loch je besetztem Feld, dazu die weisse Grundfläche. */
+    if (maske.kinder.length !== 33) {
+        throw new Error("Maske hat " + maske.kinder.length + " Teile statt 33");
     }
 });
 

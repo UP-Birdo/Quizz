@@ -262,7 +262,12 @@ const SCHACH = {
             schildFeld: -1,
             schildFarbe: "",
             fesselFeld: -1,
-            fesselFarbe: ""
+            fesselFarbe: "",
+
+            /* Frost: wie die Fessel, aber die Figur ist zusätzlich unantastbar
+               — eingefroren zieht sie nicht und wird nicht geschlagen. */
+            frostFeld: -1,
+            frostFarbe: ""
         };
     },
 
@@ -379,6 +384,11 @@ const SCHACH = {
             stand.fesselFeld = roh.fesselFeld;
             stand.fesselFarbe = roh.fesselFarbe;
         }
+        if (Number.isInteger(roh.frostFeld) && roh.frostFeld >= 0
+            && roh.frostFeld < felder && farben.indexOf(roh.frostFarbe) !== -1) {
+            stand.frostFeld = roh.frostFeld;
+            stand.frostFarbe = roh.frostFarbe;
+        }
 
         return stand;
     },
@@ -439,8 +449,11 @@ const SCHACH = {
             return [];
         }
 
-        /* Fähigkeit Fessel: Diese Figur darf gerade nicht ziehen. */
+        /* Fessel und Frost: Diese Figur darf gerade nicht ziehen. */
         if (stand.fesselFeld === von && stand.fesselFarbe === farbe) {
+            return [];
+        }
+        if (stand.frostFeld === von && stand.frostFarbe === farbe) {
             return [];
         }
 
@@ -450,6 +463,13 @@ const SCHACH = {
            schlagen — der Gegner kann es gar nicht erst versuchen. */
         if (stand.schildFeld >= 0 && stand.schildFarbe !== farbe) {
             roh = roh.filter((zug) => zug.nach !== stand.schildFeld);
+        }
+
+        /* Eingefroren heißt auch: unantastbar. Sonst wäre Frost nur eine
+           teurere Fessel — und eine Figur, die sich nicht wehren kann, einfach
+           nur ein Geschenk an den Gegner. */
+        if (stand.frostFeld >= 0 && stand.frostFarbe !== farbe) {
+            roh = roh.filter((zug) => zug.nach !== stand.frostFeld);
         }
 
         if (SCHACH.varianteVon(stand).koenigSchlagbar) {
@@ -1123,9 +1143,11 @@ const SCHACH = {
             schildFeld: -1,
             schildFarbe: "",
 
-            /* Die Fessel gilt für den nächsten Zug der gefesselten Seite. */
+            /* Fessel und Frost gelten für den nächsten Zug der betroffenen Seite. */
             fesselFeld: (stand.fesselFarbe === stand.amZug) ? -1 : stand.fesselFeld,
-            fesselFarbe: (stand.fesselFarbe === stand.amZug) ? "" : stand.fesselFarbe
+            fesselFarbe: (stand.fesselFarbe === stand.amZug) ? "" : stand.fesselFarbe,
+            frostFeld: (stand.frostFarbe === stand.amZug) ? -1 : stand.frostFeld,
+            frostFarbe: (stand.frostFarbe === stand.amZug) ? "" : stand.frostFarbe
         };
 
         if (stand.schildFeld >= 0 && stand.schildFarbe === stand.amZug
@@ -1420,6 +1442,111 @@ const SCHACH = {
 
         const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
         return { stand: neu, felder: felder, wege: wege, text: "Erdbeben" };
+    },
+
+    /*
+     * Nudelholz: Zwei benachbarte Spalten werden um ein Feld verschoben.
+     * `richtung` ist -1 (nach oben) oder +1 (nach unten). Könige bleiben
+     * stehen, und wo kein Platz ist, bleibt die Figur ebenfalls.
+     */
+    nudelholz(stand, spalte, richtung) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const spalten = [spalte, spalte + 1].filter((wert) => wert >= 0 && wert < breite);
+
+        let brett = stand.brett;
+        const felder = [];
+        const wege = [];
+
+        /* In Laufrichtung von vorn abarbeiten, damit eine Figur Platz macht,
+           bevor die nächste nachrückt. */
+        const reihen = [];
+        for (let reihe = 0; reihe < hoehe; reihe++) {
+            reihen.push(reihe);
+        }
+        if (richtung === 1) {
+            reihen.reverse();
+        }
+
+        for (const reihe of reihen) {
+            for (const lauf of spalten) {
+                const von = SCHACH._feld(stand, reihe, lauf);
+                const figur = brett[von];
+
+                if (figur === "." || SCHACH.artVon(figur) === "K") {
+                    continue;
+                }
+                if (!SCHACH._imBrett(stand, reihe + richtung, lauf)) {
+                    continue;
+                }
+
+                const ziel = SCHACH._feld(stand, reihe + richtung, lauf);
+                if (brett[ziel] !== ".") {
+                    continue;
+                }
+
+                brett = SCHACH._brettMit(brett, von, ".");
+                brett = SCHACH._brettMit(brett, ziel, figur);
+                felder.push(von, ziel);
+                wege.push({ von: von, nach: ziel });
+            }
+        }
+
+        if (felder.length === 0) {
+            return null;
+        }
+
+        const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
+        return {
+            stand: neu,
+            felder: felder,
+            wege: wege,
+            text: "Spalten " + SCHACH.SPALTEN[spalten[0]]
+                + (spalten.length > 1 ? " und " + SCHACH.SPALTEN[spalten[1]] : "")
+                + ((richtung === -1) ? " nach oben" : " nach unten")
+        };
+    },
+
+    /* Spiegel: Eine Figur wird auf ein freies Nachbarfeld verdoppelt. */
+    spiegel(stand, farbe, feld) {
+        const figur = SCHACH.figurAuf(stand, feld);
+
+        if (SCHACH.farbeVon(figur) !== farbe || SCHACH.artVon(figur) === "K") {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        /* Das erste freie Nachbarfeld — feste Reihenfolge, damit alle Geräte
+           dasselbe Ergebnis bekommen. */
+        for (const richtung of [[0, 1], [0, -1], [1, 0], [-1, 0],
+            [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            const r = reihe + richtung[0];
+            const s = spalte + richtung[1];
+
+            if (!SCHACH._imBrett(stand, r, s)) {
+                continue;
+            }
+            const ziel = SCHACH._feld(stand, r, s);
+            if (SCHACH.figurAuf(stand, ziel) !== ".") {
+                continue;
+            }
+
+            const neu = Object.assign({}, stand, {
+                brett: SCHACH._brettMit(stand.brett, ziel, figur)
+            });
+
+            return {
+                stand: neu,
+                felder: [feld, ziel],
+                wege: [],
+                text: SCHACH.artName(SCHACH.artVon(figur)) + " verdoppelt"
+            };
+        }
+
+        return null;
     },
 
     /* Eine verlorene Figur kehrt auf ein freies Feld zurück. */

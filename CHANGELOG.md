@@ -3,6 +3,37 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v2.6 — 2026-08-03
+
+- **Fehler behoben: Der Gewinner-Bildschirm blieb aus.** Er kam nur, wenn die
+  Partie gerade offen war. Wer beim letzten Zug in der Übersicht stand oder erst
+  später wiederkam, sah ihn nie — beendete Partien liegen seit v2.4 zugeklappt,
+  und dort sucht niemand nach einem Sieg. Jetzt erscheint er von selbst, sobald
+  eine Partie mit eigener Beteiligung zu Ende ist. Über **Ergebnis ansehen** an
+  der beendeten Partie lässt er sich jederzeit wieder aufrufen.
+- **Wirkende Fähigkeiten stehen am Brett:** Eine geschützte Figur bekommt einen
+  blauen Ring, eine gefesselte einen violett gestrichelten, eine eingefrorene
+  einen hellblauen Kreis. Vorher musste man sich merken, was gerade wirkt.
+- **Der Pfeil verschwindet jetzt wirklich unter den Figuren** — nicht mehr nur
+  halbdurchsichtig. Eine Maske im SVG stanzt an jedem besetzten Feld ein Loch;
+  dafür darf der Pfeil kräftiger sein als zuvor.
+- **Koordinaten am Brett:** a bis h unten, 8 bis 1 links — und sie wachsen mit
+  der Spielart mit (a bis f auf dem kleinen, a bis p auf dem Doppelbrett).
+  Beim gedrehten Brett zählen sie andersherum.
+- **Der Hover verrät nichts mehr.** Ein Würfel zeigt höchstens seine Stufe, nie
+  die Fähigkeit darin — sonst wäre es kein Überraschungswürfel.
+- **Drei neue Fähigkeiten:**
+  - **Nudelholz** (ungewöhnlich) — rollt über zwei Spalten und schiebt alle
+    Figuren darin ein Feld vor oder zurück. Angetippt wird der Rand: oben rollt
+    nach oben, unten nach unten.
+  - **Frost** (episch) — friert eine gegnerische Figur einen Zug lang ein. Sie
+    zieht nicht und lässt sich in dieser Zeit auch nicht schlagen.
+  - **Spiegel** (legendär) — verdoppelt eine eigene Figur auf ein freies
+    Nachbarfeld. Könige nicht.
+- **Seltene Fähigkeiten sind wieder selten:** Gewöhnlich 52 Prozent (vorher 45),
+  Ungewöhnlich 33 (30), Episch 12 (18), Legendär 3 (7). Episch und Legendär
+  kamen deutlich zu häufig.
+
 ## v2.5 — 2026-08-02
 
 - **Drei Einstellungen beim Anlegen einer Partie**, gültig für jede Spielart:

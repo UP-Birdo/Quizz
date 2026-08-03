@@ -45,10 +45,10 @@ const SCHACH_VARIANTEN = {
      * die Rechnung erklärbar: Man muss nur zwei Zahlen kennen.
      */
     STUFEN: [
-        { id: "gruen", titel: "Gewöhnlich", chance: 45, farbe: "#2e9e52" },
-        { id: "blau", titel: "Ungewöhnlich", chance: 30, farbe: "#2f7fd0" },
-        { id: "lila", titel: "Episch", chance: 18, farbe: "#8b46c8" },
-        { id: "gelb", titel: "Legendär", chance: 7, farbe: "#e0a800" }
+        { id: "gruen", titel: "Gewöhnlich", chance: 52, farbe: "#2e9e52" },
+        { id: "blau", titel: "Ungewöhnlich", chance: 33, farbe: "#2f7fd0" },
+        { id: "lila", titel: "Episch", chance: 12, farbe: "#8b46c8" },
+        { id: "gelb", titel: "Legendär", chance: 3, farbe: "#e0a800" }
     ],
 
     /* Alle wie viele Halbzüge erscheint eine neue Fähigkeit auf dem Brett. */
@@ -156,9 +156,28 @@ const SCHACH_VARIANTEN = {
                 + "stehen. Wirkt auf beide Seiten."
         },
 
+        nudelholz: {
+            titel: "Nudelholz",
+            stufe: "blau",
+            art: "ziel",
+            zielArt: "spalte",
+            beschreibung: "Rollt über zwei Spalten: Alle Figuren darin rücken ein Feld "
+                + "vor oder zurück. Angetippt wird der Buchstabe am oberen oder unteren "
+                + "Rand — er bestimmt die Richtung. Wo kein Platz ist, bleibt die Figur "
+                + "stehen; Könige bleiben immer stehen."
+        },
+
         /* ---- Episch: kostet den Gegner wirklich etwas ----
            Sie verschieben das Kräfteverhältnis, ohne die Partie zu entscheiden. */
 
+        frost: {
+            titel: "Frost",
+            stufe: "lila",
+            art: "ziel",
+            zielArt: "gegnerFigur",
+            beschreibung: "Friert eine gegnerische Figur für einen Zug ein — sie darf "
+                + "nicht ziehen und kann in dieser Zeit auch nicht geschlagen werden."
+        },
         verstaerkung: {
             titel: "Verstärkung",
             stufe: "lila",
@@ -194,6 +213,14 @@ const SCHACH_VARIANTEN = {
             zielArt: "eigeneGrundreihe",
             beschreibung: "Die zuletzt verlorene eigene Figur kehrt auf ein freies "
                 + "Feld der eigenen Grundreihe zurück."
+        },
+        spiegel: {
+            titel: "Spiegel",
+            stufe: "gelb",
+            art: "ziel",
+            zielArt: "eigeneFigurKopierbar",
+            beschreibung: "Verdoppelt eine eigene Figur: Die Kopie erscheint auf einem "
+                + "freien Feld daneben. Könige lassen sich nicht spiegeln."
         }
     },
 

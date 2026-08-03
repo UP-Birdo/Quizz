@@ -776,6 +776,70 @@ zurückgeholte Dame ist mehr wert als jede andere Wirkung im Spiel. Beide sind
 jetzt legendär. **Schutzschild** und **Erdbeben** waren umgekehrt zu teuer
 eingestuft — das eine rettet eine Figur, das andere wirkt auf beide Seiten.
 
+## Der Gewinner-Bildschirm, der niemand fand (v2.6)
+
+Gemeldet als Frage: „Wo ist der Gewinner-Screen?" Gebaut war er in v2.4, und er
+funktionierte — nur sah ihn niemand.
+
+Zwei für sich richtige Entscheidungen hatten sich gegenseitig ausgehebelt:
+
+1. Der Abschluss erschien, wenn die **geöffnete** Partie ein Ergebnis hatte.
+2. Beendete Partien wanderten in einen **zugeklappten** Kasten (ebenfalls v2.4).
+
+Wer beim entscheidenden Zug gerade in der Übersicht stand — oder erst Stunden
+später wiederkam, was bei einer Partie über mehrere Tage der Normalfall ist —
+hatte die Partie nicht offen. Und danach lag sie zugeklappt unter „Beendet", wo
+niemand nach einem Sieg sucht.
+
+Jetzt sucht die App selbst: Gibt es eine beendete Partie mit eigener
+Beteiligung, deren Abschluss dieses Gerät noch nicht gesehen hat, erscheint er —
+unabhängig davon, wo man gerade ist.
+
+**Die Lehre ist dieselbe wie beim leeren Schach-Tab in v1.2:** Zwei Regeln, die
+einzeln stimmen, können zusammen ein Loch ergeben. Beide Male ging es darum, dass
+etwas *nur bei einer Gelegenheit* passiert, die im echten Ablauf nicht eintritt.
+Beide Male hätte kein Test es gefunden — er hätte die Gelegenheit ja
+hergestellt.
+
+## Warum der Pfeil jetzt eine Maske hat
+
+In v2.3 lag der Pfeil halbdurchsichtig über den Figuren, mit der Begründung,
+„hinter den Figuren" ginge nicht: Sie stecken in den Feld-Knöpfen, und ein
+Element darüber lässt sich nicht dazwischenschieben.
+
+Das stimmte für die Anordnung im Dokument — nicht für das Ergebnis. Eine
+**Maske** im SVG stanzt an jedem besetzten Feld ein Loch: Der Pfeil ist dort
+schlicht nicht gezeichnet. Optisch läuft er damit hinter den Figuren durch,
+obwohl er technisch darüber liegt, und darf endlich kräftig sein.
+
+**Die Lehre:** „Geht nicht" hieß hier „geht nicht auf dem Weg, den ich zuerst
+gedacht habe". Der Nutzer hat zu Recht nachgehakt.
+
+## Wie die Fähigkeiten eingestuft werden (Stand v2.6)
+
+Die Chancen sind zum zweiten Mal nachjustiert worden, diesmal auf die Meldung,
+Episch und Legendär kämen zu oft: 52 / 33 / 12 / 3 statt 45 / 30 / 18 / 7.
+
+Das ist kein Feinschliff, sondern ein Faktor: Legendär erscheint jetzt in etwa
+jeder achten Ziehung statt jeder vierzehnten — Verzeihung, umgekehrt: in jeder
+33. statt jeder 14. Bei rund 13 Würfeln je Partie heißt das etwa alle drei
+Partien einer statt einem pro Partie. Genau das war gemeint mit „zu hoch".
+
+Die drei neuen Fähigkeiten sind danach eingeordnet, was sie kosten:
+
+| Fähigkeit | Stufe | Warum |
+|---|---|---|
+| **Nudelholz** | Ungewöhnlich | Verschiebt viel, gewinnt aber nichts — es trifft beide Seiten und lässt sich schwer zielgenau nutzen. |
+| **Frost** | Episch | Wie die Fessel, aber die Figur ist zusätzlich unantastbar. Ohne diesen Zusatz wäre sie nur eine teurere Fessel. |
+| **Spiegel** | Legendär | Eine Figur aus dem Nichts — dieselbe Größenordnung wie die Wiedergeburt, nur ohne die Bedingung, vorher etwas verloren zu haben. |
+
+## Warum der Hover nichts mehr verrät
+
+Ein Würfel, dessen Inhalt man mit der Maus auslesen kann, ist kein
+Überraschungswürfel. Bis v2.5 stand die Fähigkeit im Titel-Text — gedacht als
+Hilfe, tatsächlich ein Blick unter die Karten. Jetzt steht dort höchstens die
+Stufe, und auch die nur, wenn die Partie „Seltenheit anzeigen" eingeschaltet hat.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
