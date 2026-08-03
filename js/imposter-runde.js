@@ -29,6 +29,8 @@
  *     {
  *         "datenVersion": 1,
  *         "geaendertAm": 1750000000000,
+ *         "id": "r-…",              // Kennung des Raums (seit v3.2)
+ *         "titel": "Feierabend",    // Name des Raums (seit v3.2)
  *         "phase": "warten",        // warten | laeuft | aufloesung
  *         "gruppe": "alltag",       // Kennung aus imposter-woerter.js
  *         "impostermenge": 1,       // Wunsch: wie viele Imposter höchstens
@@ -74,6 +76,12 @@ const IMPOSTER_RUNDE = {
         return {
             datenVersion: IMPOSTER_RUNDE.DATEN_VERSION,
             geaendertAm: (zeitpunkt === undefined) ? 0 : zeitpunkt,
+
+            /* Kennung und Name des Raums — seit v3.2 liegen mehrere
+               nebeneinander (siehe imposter-tafel.js). */
+            id: "",
+            titel: "",
+
             phase: "warten",
             gruppe: IMPOSTER_WOERTER.gruppen[0].id,
             impostermenge: 1,
@@ -116,6 +124,12 @@ const IMPOSTER_RUNDE = {
 
         if (typeof roh.geaendertAm === "number" && isFinite(roh.geaendertAm)) {
             runde.geaendertAm = roh.geaendertAm;
+        }
+        if (typeof roh.id === "string") {
+            runde.id = roh.id;
+        }
+        if (typeof roh.titel === "string") {
+            runde.titel = roh.titel.trim().substring(0, 40);
         }
         if (["warten", "laeuft", "aufloesung"].indexOf(roh.phase) !== -1) {
             runde.phase = roh.phase;
@@ -386,7 +400,27 @@ const IMPOSTER_RUNDE = {
         return neu;
     },
 
-    /* Thema und Anzahl lassen sich nur vor dem Start ändern. */
+    /* Den Raum umbenennen — geht jederzeit, der Name ändert am Spiel nichts. */
+    umbenennen(runde, titel, zeitpunkt) {
+        const neu = IMPOSTER_RUNDE.kopieren(runde);
+        const name = String(titel || "").trim().substring(0, 40);
+
+        if (name === "") {
+            return neu;
+        }
+        neu.titel = name;
+
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        return neu;
+    },
+
+    /*
+     * Thema und Anzahl lassen sich nur vor dem Start ändern.
+     *
+     * Seit v3.2 werden sie beim Anlegen des Raums festgelegt und danach nicht
+     * mehr angefasst — wie die Spielart beim Schach. Die Funktion bleibt, weil
+     * die Regeln davon nichts wissen müssen und der Datenvertrag additiv ist.
+     */
     einstellen(runde, gruppe, impostermenge, zeitpunkt) {
         const neu = IMPOSTER_RUNDE.kopieren(runde);
 

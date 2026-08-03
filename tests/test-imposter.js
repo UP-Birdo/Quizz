@@ -9,7 +9,9 @@
 const pfad = require("path");
 
 globalThis.IMPOSTER_WOERTER = require(pfad.join(__dirname, "..", "js", "imposter-woerter.js"));
-const IMPOSTER_RUNDE = require(pfad.join(__dirname, "..", "js", "imposter-runde.js"));
+globalThis.IMPOSTER_RUNDE = require(pfad.join(__dirname, "..", "js", "imposter-runde.js"));
+const IMPOSTER_RUNDE = globalThis.IMPOSTER_RUNDE;
+const IMPOSTER_TAFEL = require(pfad.join(__dirname, "..", "js", "imposter-tafel.js"));
 const IMPOSTER_WOERTER = globalThis.IMPOSTER_WOERTER;
 
 let anzahlOk = 0;
@@ -559,6 +561,180 @@ pruefe("Der Vergleich erkennt Aenderungen", () => {
 
     const fertig = IMPOSTER_RUNDE.fertigSetzen(einer, "id-1", true, 2100);
     gleich(IMPOSTER_RUNDE.inhaltGleich(einer, fertig), false, "Fertig faellt auf");
+});
+
+/* ------------------------------------------------------------------ *
+ * Die Tafel: mehrere Räume nebeneinander (seit v3.2)
+ * ------------------------------------------------------------------ */
+
+/* Eine Tafel mit einem Raum, in dem `anzahl` Mitspieler sitzen. */
+function tafelMitRaum(anzahl, titel) {
+    const angelegt = IMPOSTER_TAFEL.raumAnlegen(
+        IMPOSTER_TAFEL.leereTafel(1000), titel || "Raum",
+        { gruppe: "essen", impostermenge: 2 }, 1000);
+
+    let raum = angelegt.raum;
+    for (let nummer = 1; nummer <= (anzahl || 2); nummer++) {
+        raum = IMPOSTER_RUNDE.beitreten(raum, "id-" + nummer, 1000);
+    }
+
+    return { tafel: IMPOSTER_TAFEL.raumEinsetzen(angelegt.tafel, raum, 1000), id: raum.id };
+}
+
+pruefe("Ein angelegter Raum behaelt Name und Einstellungen", () => {
+    const stand = tafelMitRaum(2, "Feierabend");
+    const raum = IMPOSTER_TAFEL.raum(stand.tafel, stand.id);
+
+    gleich(raum.titel, "Feierabend", "Name");
+    gleich(raum.gruppe, "essen", "Thema");
+    gleich(raum.impostermenge, 2, "Anzahl");
+    gleich(raum.spieler.length, 2, "Mitspieler");
+});
+
+pruefe("Name und Einstellungen ueberleben das Speichern", () => {
+    const stand = tafelMitRaum(2, "Feierabend");
+
+    /* Wie bei Firebase: einmal durch JSON und zurueck. */
+    const zurueck = IMPOSTER_TAFEL.normalisieren(JSON.parse(JSON.stringify(stand.tafel)));
+    const raum = IMPOSTER_TAFEL.raum(zurueck, stand.id);
+
+    gleich(raum.titel, "Feierabend", "Name");
+    gleich(raum.id, stand.id, "Kennung");
+    gleich(raum.gruppe, "essen", "Thema");
+});
+
+pruefe("Zwei Raeume stehen unabhaengig nebeneinander", () => {
+    const erster = tafelMitRaum(2, "Erster");
+    const zweiter = IMPOSTER_TAFEL.raumAnlegen(erster.tafel, "Zweiter",
+        { gruppe: "natur", impostermenge: 1 }, 2000);
+
+    gleich(IMPOSTER_TAFEL.anzahl(zweiter.tafel), 2, "zwei Raeume");
+    gleich(IMPOSTER_TAFEL.raum(zweiter.tafel, erster.id).titel, "Erster", "der erste bleibt");
+    gleich(IMPOSTER_TAFEL.raum(zweiter.tafel, zweiter.raum.id).gruppe, "natur", "eigenes Thema");
+});
+
+pruefe("Ein Raum laesst sich entfernen, ohne die anderen zu treffen", () => {
+    const erster = tafelMitRaum(2, "Erster");
+    const zweiter = IMPOSTER_TAFEL.raumAnlegen(erster.tafel, "Zweiter", {}, 2000);
+
+    const ohne = IMPOSTER_TAFEL.raumEntfernen(zweiter.tafel, zweiter.raum.id, 3000);
+
+    gleich(IMPOSTER_TAFEL.anzahl(ohne), 1, "einer bleibt");
+    wahr(IMPOSTER_TAFEL.raum(ohne, erster.id) !== null, "und zwar der erste");
+});
+
+pruefe("Eine alte Einzel-Runde wird zum Raum 'start'", () => {
+    /* Genau der Stand, der bis v3.1 in der Datenbank lag. */
+    let alt = IMPOSTER_RUNDE.beitreten(IMPOSTER_RUNDE.leereRunde(1000), "id-1", 1000);
+    alt = IMPOSTER_RUNDE.beitreten(alt, "id-2", 1000);
+    alt = IMPOSTER_RUNDE.bereitSetzen(alt, "id-1", true, 1000);
+    alt = IMPOSTER_RUNDE.bereitSetzen(alt, "id-2", true, 1000);
+    alt = IMPOSTER_RUNDE.starten(alt, "altsalz", 2000);
+
+    const tafel = IMPOSTER_TAFEL.normalisieren(alt);
+    const raum = IMPOSTER_TAFEL.raum(tafel, IMPOSTER_TAFEL.ERSTE_ID);
+
+    wahr(raum !== null, "der Raum entsteht");
+    gleich(raum.phase, "laeuft", "die Runde laeuft weiter");
+    gleich(raum.salz, "altsalz", "mit demselben Salz");
+    gleich(raum.spieler.length, 2, "mit denselben Mitspielern");
+    gleich(IMPOSTER_RUNDE.wortVon(raum), IMPOSTER_RUNDE.wortVon(alt), "und demselben Wort");
+});
+
+pruefe("Eine leere Ablage wird nicht zum Raum", () => {
+    gleich(IMPOSTER_TAFEL.anzahl(IMPOSTER_TAFEL.normalisieren(null)), 0, "aus null");
+    gleich(IMPOSTER_TAFEL.anzahl(IMPOSTER_TAFEL.normalisieren({})), 0, "aus leer");
+});
+
+pruefe("Die Wortbibliothek gilt fuer alle Raeume", () => {
+    const erster = tafelMitRaum(2, "Erster");
+    const zweiter = IMPOSTER_TAFEL.raumAnlegen(erster.tafel, "Zweiter", {}, 2000);
+
+    const ergebnis = IMPOSTER_TAFEL.woerterErgaenzen(
+        zweiter.tafel, "essen", "Kartoffelpuffer\nSpaghetti", 3000);
+
+    gleich(ergebnis.hinzugefuegt, 1, "eines ist neu");
+    gleich(ergebnis.uebersprungen, 1, "Spaghetti gibt es schon");
+
+    for (const raum of IMPOSTER_TAFEL.liste(ergebnis.tafel)) {
+        wahr(IMPOSTER_RUNDE.woerterVon(raum, "essen").indexOf("Kartoffelpuffer") !== -1,
+            "der Raum " + raum.titel + " kennt das Wort");
+    }
+});
+
+pruefe("Ein entferntes Wort kommt nicht aus einem Raum zurueck", () => {
+    const stand = tafelMitRaum(2, "Erster");
+    const mit = IMPOSTER_TAFEL.woerterErgaenzen(stand.tafel, "essen", "Kartoffelpuffer", 2000);
+    const ohne = IMPOSTER_TAFEL.wortEntfernen(mit.tafel, "essen", "Kartoffelpuffer", 3000);
+
+    /* Der Weg ueber JSON ist der entscheidende: Beim Laden darf das Wort nicht
+       aus dem Raum wieder auf die Tafel wandern. */
+    const zurueck = IMPOSTER_TAFEL.normalisieren(JSON.parse(JSON.stringify(ohne)));
+    const raum = IMPOSTER_TAFEL.raum(zurueck, stand.id);
+
+    gleich(IMPOSTER_RUNDE.woerterVon(raum, "essen").indexOf("Kartoffelpuffer"), -1,
+        "das Wort ist weg");
+});
+
+pruefe("Zusammenfuehren behaelt fremde Raeume und fremde Woerter", () => {
+    const gemeinsam = tafelMitRaum(2, "Gemeinsam");
+
+    /* Der Server kennt zusaetzlich einen Raum, den jemand anders angelegt hat. */
+    const fremd = IMPOSTER_TAFEL.raumAnlegen(gemeinsam.tafel, "Fremd", {}, 2000).tafel;
+    const fremdMitWort = IMPOSTER_TAFEL.woerterErgaenzen(
+        fremd, "essen", "Ofenkaese", 2100).tafel;
+
+    /* Mein Stand kennt den fremden Raum nicht, dafuer ein eigenes Wort. */
+    const meinsMitWort = IMPOSTER_TAFEL.woerterErgaenzen(
+        gemeinsam.tafel, "essen", "Kartoffelpuffer", 2200).tafel;
+
+    const zusammen = IMPOSTER_TAFEL.zusammenfuehren(fremdMitWort, meinsMitWort, "id-1");
+
+    gleich(IMPOSTER_TAFEL.anzahl(zusammen), 2, "beide Raeume");
+
+    const woerter = zusammen.eigeneWoerter.essen;
+    wahr(woerter.indexOf("Ofenkaese") !== -1, "das fremde Wort bleibt");
+    wahr(woerter.indexOf("Kartoffelpuffer") !== -1, "das eigene Wort kommt dazu");
+});
+
+pruefe("Zusammenfuehren rettet den eigenen Tipp in einem Raum", () => {
+    const stand = tafelMitRaum(3, "Runde");
+
+    let raum = IMPOSTER_TAFEL.raum(stand.tafel, stand.id);
+    for (let nummer = 1; nummer <= 3; nummer++) {
+        raum = IMPOSTER_RUNDE.bereitSetzen(raum, "id-" + nummer, true, 1000);
+    }
+    raum = IMPOSTER_RUNDE.starten(raum, "salzsalz", 2000);
+
+    const gestartet = IMPOSTER_TAFEL.raumEinsetzen(stand.tafel, raum, 2000);
+
+    /* Auf dem Server tippt id-2, bei mir tippt id-1. Beide muessen bleiben. */
+    const fremd = IMPOSTER_TAFEL.raumEinsetzen(gestartet,
+        IMPOSTER_RUNDE.tippSetzen(raum, "id-2", "id-3", "imposter", 2100), 2100);
+    const meins = IMPOSTER_TAFEL.raumEinsetzen(gestartet,
+        IMPOSTER_RUNDE.tippSetzen(raum, "id-1", "id-3", "imposter", 2200), 2200);
+
+    const zusammen = IMPOSTER_TAFEL.zusammenfuehren(fremd, meins, "id-1");
+    const ergebnis = IMPOSTER_TAFEL.raum(zusammen, stand.id);
+
+    gleich(IMPOSTER_RUNDE.spielerFinden(ergebnis, "id-1").tipps["id-3"], "imposter",
+        "mein Tipp");
+    gleich(IMPOSTER_RUNDE.spielerFinden(ergebnis, "id-2").tipps["id-3"], "imposter",
+        "der fremde Tipp");
+});
+
+pruefe("Der Vergleich der Tafel erkennt neue Raeume und neue Woerter", () => {
+    const stand = tafelMitRaum(2, "Erster");
+
+    wahr(IMPOSTER_TAFEL.inhaltGleich(stand.tafel, IMPOSTER_TAFEL.kopieren(stand.tafel)),
+        "gleich bleibt gleich");
+
+    const mehr = IMPOSTER_TAFEL.raumAnlegen(stand.tafel, "Zweiter", {}, 2000).tafel;
+    gleich(IMPOSTER_TAFEL.inhaltGleich(stand.tafel, mehr), false, "ein Raum mehr faellt auf");
+
+    const mitWort = IMPOSTER_TAFEL.woerterErgaenzen(
+        stand.tafel, "essen", "Kartoffelpuffer", 2000).tafel;
+    gleich(IMPOSTER_TAFEL.inhaltGleich(stand.tafel, mitWort), false, "ein Wort mehr faellt auf");
 });
 
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");

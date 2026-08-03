@@ -960,6 +960,63 @@ Das ist eine bewusste Vereinfachung für den ersten Bau, keine
 Grundsatzentscheidung. Soll es anders werden, ist der Weg schon gebahnt — die
 Chronik des Schachs ist das Vorbild.
 
+## Warum der Imposter Räume bekommen hat (v3.2)
+
+Der Wunsch kam aus der Praxis: „das Prinzip mit Räumen und diese benennen und
+die Einstellungen für die Räume jetzt bitte auch bei Imposter."
+
+Bis v3.1 gab es genau EINE Runde. Thema und Anzahl der Imposter standen im
+gemeinsamen Stand und konnten von **jedem** verstellt werden — mit dem Ergebnis,
+dass zwei Leute abwechselnd hin- und herstellten und niemand wusste, was gleich
+gilt. Der Fehler lag nicht in der Bedienung, sondern im Modell: Eine Einstellung,
+die allen gehört, gehört niemandem.
+
+Die Lösung ist dieselbe wie beim Schach: **Wer anlegt, entscheidet.** Danach sind
+die Einstellungen fest, und wer andere Regeln will, legt einen zweiten Raum an.
+Das kostet nichts, weil beliebig viele Räume nebeneinander liegen können.
+
+Bewusst NICHT gebaut:
+
+- **Einstellungen im Raum nachträglich ändern.** Wäre technisch leicht
+  (`IMPOSTER_RUNDE.einstellen` gibt es weiterhin), bringt aber genau das Problem
+  zurück, das der Umbau löst. Die Funktion bleibt nur stehen, weil der
+  Datenvertrag additiv ist.
+- **Ein Besitzer je Raum, der als Einziger löschen darf.** Löschen darf weiter
+  jeder nach einer Rückfrage — dieselbe Regel wie beim Schach. Eine Sperre wäre
+  eine Vorsichtsmaßnahme gegen ein Problem, das es noch nicht gibt.
+
+Die Fragefolge beim Anlegen folgt bewusst der des Schachs: erst die
+Einstellungen (wie viele Imposter), dann als **letzter Klick** die Kachel mit
+dem Thema, dann der Name. So ist die Kachel immer die Handlung, die etwas
+auslöst — man kann oben in Ruhe einstellen, ohne versehentlich anzulegen.
+
+## Warum team-schach.js in vier Dateien liegt (v3.2)
+
+Die Datei war auf 2476 Zeilen gewachsen. Das ist keine Frage des Geschmacks
+mehr: Wer am Brett arbeitet, musste die Übersicht und den Abschluss mitlesen.
+
+Zwei Wege standen zur Wahl:
+
+1. **Vier eigene Objekte** (`SCHACH_BRETT`, `SCHACH_UEBERSICHT`, …). Sauberer im
+   Sinne der Schichten — aber jede der 67 Funktionen wäre umzubenennen gewesen,
+   und jede Aufrufstelle mit. Bei laufenden Partien das grössere Risiko.
+2. **Ein Objekt, vier Dateien** (`Object.assign(TEAM_SCHACH, …)`). Das Verhalten
+   ändert sich nachweislich nicht: Jeder Aufruf heisst weiter `TEAM_SCHACH.…`.
+
+Gewählt wurde 2. Die Prüfung dazu war einfach und gehört zum Verfahren: Die
+Liste der Funktionsnamen vor und nach der Aufteilung muss identisch sein — 67
+vorher, 67 nachher, keine doppelt.
+
+**Die Reihenfolge in `index.html` ist Pflicht**: Die drei ergänzenden Dateien
+müssen nach `team-schach.js` stehen, sonst gibt es das Objekt noch nicht.
+`tests/test-bildschirm.js` baut dieselbe Reihenfolge nach und würde es merken.
+
+Was dabei ausdrücklich NICHT gemacht wurde: Kommentare kürzen. Der Wunsch
+„weniger Tokens" zielt auch darauf, aber das widerspricht der Haus-Regel
+„Lesbarkeit vor Effizienz" — und die Begründungen im Code sind genau das, was
+denselben Fehler beim nächsten Mal verhindert. Der Zielkonflikt steht als offene
+Nutzer-Entscheidung in `ROADMAP.md`.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
@@ -985,6 +1042,10 @@ Register kostet wenige Zeilen und erspart später den Umbau der Seite.
 - **Lizenz** für das öffentliche Repository.
 - Ob es eine **Runden-Historie** geben soll (heute überschreibt eine neue Runde
   die alte).
+- **Wie weit „weniger Tokens" gehen soll.** Die Aufteilung grosser Dateien ist
+  gemacht (v3.2). Weiter sparen ginge nur an den Kommentaren und damit an den
+  Begründungen. Drei Wege stehen in `ROADMAP.md`, Punkt 2; bis zur Entscheidung
+  wird nichts gekürzt.
 
 ## Warum das Ändern der PIN die alte verlangt
 

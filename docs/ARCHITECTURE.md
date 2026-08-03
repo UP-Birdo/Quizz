@@ -66,10 +66,17 @@ Speicher-Dienst kostet genau eine neue Klasse in `speicher.js`.
 | `js/schach.js` | Reine Schachregeln: Brett **beliebiger Größe**, Zugerzeugung, Bedrohung, Rochade, en passant, Umwandlung, Matt und Patt, Wirkung der Fähigkeiten. Ohne Browser testbar. |
 | `js/schach-runde.js` | EINE Partie mit ihren Teams: beitreten, bereit, Zugrecht, Verlauf, Fähigkeiten einsammeln und einsetzen, Ergebnis. Ebenfalls ohne Browser testbar. |
 | `js/schach-tafel.js` | Die Sammlung aller Partien: anlegen, einsetzen, entfernen, sortieren — und der Umstieg von der früheren Einzelpartie. Ohne Browser testbar. |
-| `js/team-schach.js` | Der Tab **Team Schach**: Übersicht der Partien, Brett zeichnen, Felder antippen, Teams, Zugbewegung, Zugversand mit Zugzähler-Prüfung. |
-| `js/rangliste.js` | Der Tab **Rangliste**: Punkte aus beiden Spielen zusammengezählt. Rechnender Teil ohne Browser testbar. |
+| `js/team-schach.js` | Der Tab **Team Schach**, Kern: Zustand, Zeichnen, Partie-Kopf, Teams, Bedienung, Zugversand mit Zugzähler-Prüfung, Bausteine. |
+| `js/team-schach-uebersicht.js` | Ergänzt `TEAM_SCHACH`: Liste aller Partien, Auswahl der Spielart mit Vorschaubildern, Einstellungen einer neuen Partie. |
+| `js/team-schach-brett.js` | Ergänzt `TEAM_SCHACH`: Brett, Randbeschriftung, Zugpfeil, Würfel, Abstimmung über einen Vorschlag, Bewegungen. |
+| `js/team-schach-auswertung.js` | Ergänzt `TEAM_SCHACH`: Abschluss-Bildschirm mit Punktestand, Übersicht aller Fähigkeiten, Bilanz und Zugverlauf. |
+| `js/imposter-woerter.js` | Der Wortkatalog als reine Datentabelle: acht Gruppen (Themen und Wortarten). Keine Logik. |
+| `js/imposter-runde.js` | EIN Raum: beitreten, bereit, starten, Tipps, Auflösung, Punkte. Wort und Rollen werden aus dem Salz gerechnet. Ohne Browser testbar. |
+| `js/imposter-tafel.js` | Die Sammlung aller Räume samt gemeinsamer Wortbibliothek — und der Umstieg von der früheren einzelnen Runde. Ohne Browser testbar. |
+| `js/imposter.js` | Der Tab **Imposter**: Übersicht der Räume, Anlegen, der Raum selbst (Warten, Runde, Auflösung), Wortbibliothek. |
+| `js/rangliste.js` | Der Tab **Rangliste**: Punkte aus allen drei Spielen zusammengezählt. Rechnender Teil ohne Browser testbar. |
 | `js/app.js` | Startpunkt (`DOMContentLoaded`), Statusanzeige, Hinweisbalken; erzeugt **beide** Speicher und Abgleiche. |
-| `tests/` | Regressionstests (`test-modell.js` Spiellogik, `test-versiegelung.js` Siegel, `test-schach.js` Regeln, `test-schach-runde.js` Partie, `test-schach-tafel.js` Sammlung und Umstieg, `test-rangliste.js` Gesamtwertung, `test-bildschirm.js` Bildschirm gegen ein nachgebautes DOM, `test-syntax.js` Übersetzbarkeit) plus Startskript. |
+| `tests/` | Regressionstests (`test-modell.js` Spiellogik, `test-versiegelung.js` Siegel, `test-schach.js` Regeln, `test-schach-runde.js` Partie, `test-schach-tafel.js` Sammlung und Umstieg, `test-imposter.js` Rollen, Wortziehung, Räume und Umstieg, `test-rangliste.js` Gesamtwertung, `test-bildschirm.js` Bildschirm gegen ein nachgebautes DOM, `test-syntax.js` Übersetzbarkeit) plus Startskript. |
 | `tools/Lokal-Starten.ps1` | Kleiner Test-Server (HttpListener) für `http://localhost:8080/`; `Quizz lokal starten.cmd` startet ihn per Doppelklick. |
 | `icon.svg` | Das Zeichen der App als Vektor: Würfelfläche, vier Augen, Stern in der Mitte. **Quelle** für alle Bildgrössen. |
 | `icons/` | Die PNG-Fassungen (512, 192, 180, 32) — erzeugt von `tools/Icons-Erzeugen.ps1`, nicht von Hand bearbeiten. |
@@ -717,8 +724,41 @@ Abgleich, eigene Dateien:
 | Datei | Weiß nichts über |
 |---|---|
 | `imposter-woerter.js` — der Wortkatalog | alles andere (reine Datentabelle) |
-| `imposter-runde.js` — Regeln und Auswertung | Speicher, Bildschirm |
-| `imposter.js` — Bildschirm | die Wortauswahl (fragt immer die Runde) |
+| `imposter-runde.js` — Regeln und Auswertung EINES Raums | Speicher, Bildschirm, die anderen Räume |
+| `imposter-tafel.js` — alle Räume und die Wortbibliothek | Speicher, Bildschirm |
+| `imposter.js` — Bildschirm | die Wortauswahl (fragt immer den Raum) |
+
+### Räume statt einer einzigen Runde (seit v3.2)
+
+Bis v3.1 lag unter dem Imposter-Pfad genau EINE Runde, und jeder konnte Thema
+und Anzahl der Imposter umstellen. In der Praxis verstellten sie sich
+gegenseitig. Seit v3.2 gilt dasselbe Muster wie beim Schach (`schach-tafel.js`):
+
+- **Ein Objekt statt einer Liste** (`tafel.raeume`), weil Firebase Listen mit
+  Lücken unzuverlässig speichert.
+- **Beim Schreiben wird nur der eigene Raum eingesetzt** (`raumEinsetzen`), nie
+  die ganze Sammlung überschrieben — sonst löscht ein Gerät mit veraltetem Stand
+  die Räume weg, die inzwischen woanders entstanden sind.
+- **Die Einstellungen gehören dem Raum**, nicht dem Gerät: Wer anlegt,
+  entscheidet Thema und Anzahl; danach werden sie nicht mehr angefasst. Für
+  andere Regeln legt man einen neuen Raum an.
+- **Der Umstieg:** Ein Stand ohne `raeume`, aber mit `spieler`/`salz`/`phase`
+  ist eine Runde von früher. Sie wird zum Raum `start` mit demselben Salz —
+  Wort, Rollen und Mitspieler bleiben, eine laufende Runde bricht nicht. Ein
+  Test hält das fest (`test-imposter.js`).
+
+**Die Wortbibliothek liegt auf der Tafel, nicht im Raum.** Ergänzte Wörter
+gelten für alle Räume und stehen deshalb einmal an der Wurzel;
+`normalisieren()` verteilt eine Abschrift in jeden Raum, damit `IMPOSTER_RUNDE`
+weiterhin allein aus der Runde rechnen kann. Das Verteilen geschieht
+**bedingungslos** — stünde dort „nur wenn nicht leer", käme ein entferntes Wort
+aus einem alten Raum wieder zurück.
+
+Beim Zusammenführen werden die Wortlisten **vereinigt**, damit zwei gleichzeitig
+ergänzende Geräte beide Ergänzungen behalten. Entfernen läuft deshalb nicht über
+den Abgleich, sondern über `IMPOSTER._sendenMitLaden` — erst den Stand vom
+Server holen, darauf umbauen, dann schreiben. Denselben Weg nehmen Anlegen und
+Löschen eines Raums.
 
 ### Warum Wort und Rollen nicht gespeichert werden
 

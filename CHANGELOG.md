@@ -3,6 +3,33 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.2 — 2026-08-03
+
+- **Der Imposter hat jetzt Räume — wie das Schach seine Partien.** Bisher gab es
+  genau EINE Runde, und jeder konnte Thema und Anzahl der Imposter umstellen;
+  in der Praxis verstellten sie sich gegenseitig. Jetzt legt **eine** Person
+  einen Raum an und entscheidet dabei:
+  1. wie viele Imposter es höchstens geben soll,
+  2. aus welchem Thema das Wort kommt (eine Kachel je Wortgruppe),
+  3. wie der Raum heißen soll.
+
+  Danach stehen die Regeln fest, und die anderen treten einfach bei. Wer anlegt,
+  ist sofort dabei. **Mehrere Räume laufen nebeneinander** — für andere Regeln
+  legt man einen zweiten an, statt den ersten umzustellen. Die Rangliste zählt
+  die Punkte aus allen aufgelösten Räumen zusammen.
+
+  *Eine laufende Runde bricht dabei nicht:* Der bisherige Stand wird beim ersten
+  Laden zum Raum **„Erster Raum"** und läuft mit demselben Wort, denselben
+  Rollen und denselben Mitspielern weiter.
+- **Die Wortbibliothek gilt jetzt für alle Räume gemeinsam.** Sie liegt eine
+  Ebene höher als die Räume; ein ergänztes Wort steht damit sofort in jedem.
+- **`team-schach.js` liegt in vier Dateien statt in einer.** Die Datei war auf
+  2476 Zeilen gewachsen. Jetzt: Kern (Zustand, Zeichnen, Teams, Bedienung),
+  Übersicht, Brett und Auswertung. **Am Verhalten ändert das nichts** — die
+  drei neuen Dateien ergänzen dasselbe Objekt, jeder Aufruf heißt weiter
+  `TEAM_SCHACH.…`. Nachgewiesen: alle 67 Funktionen sind unverändert vorhanden,
+  keine doppelt, keine verloren.
+
 ## v3.1 — 2026-08-03
 
 - **Wunsch-Knopf im Kopf.** Ein Satz hineinschreiben, und die App öffnet ein

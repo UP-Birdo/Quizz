@@ -2,16 +2,25 @@
  * imposter.js — der Tab "Imposter": das Spiel auf dem Bildschirm.
  *
  * So läuft es:
- *   1. Beitreten. Thema und Anzahl der Imposter einstellen (vor dem Start).
- *   2. Alle drücken "bereit" — dann beginnt die Runde.
- *   3. Jeder sieht GROSS das Wort; die Imposter sehen stattdessen "Imposter".
- *   4. Die Uhr läuft. Am Tisch stellt man sich Fragen; nebenbei tippt jeder
+ *   1. Einer legt einen RAUM an: Thema, wie viele Imposter, Name. Damit stehen
+ *      die Regeln fest — er tritt gleich selbst bei.
+ *   2. Die anderen sehen den Raum in der Übersicht und treten bei.
+ *   3. Alle drücken "bereit" — dann beginnt die Runde.
+ *   4. Jeder sieht GROSS das Wort; die Imposter sehen stattdessen "Imposter".
+ *   5. Die Uhr läuft. Am Tisch stellt man sich Fragen; nebenbei tippt jeder
  *      die anderen als Neutral, Verdächtig oder Unverdächtig ein, und der
  *      Imposter rät das Wort.
- *   5. Sind alle fertig, kommt die Auflösung mit Punkten.
+ *   6. Sind alle fertig, kommt die Auflösung mit Punkten.
+ *
+ * SEIT v3.2: RÄUME STATT EINER RUNDE
+ * Vorher gab es genau eine Runde, und jeder konnte Thema und Anzahl umstellen —
+ * mit dem Ergebnis, dass sie sich gegenseitig verstellt wurden. Jetzt gilt
+ * dasselbe Prinzip wie beim Team Schach: Wer anlegt, entscheidet; danach sind
+ * die Einstellungen fest, und mehrere Räume laufen nebeneinander.
  *
  * Diese Datei kennt nur den Bildschirm. Die Regeln stehen in
- * imposter-runde.js, die Wörter in imposter-woerter.js.
+ * imposter-runde.js, die Räume in imposter-tafel.js, die Wörter in
+ * imposter-woerter.js.
  *
  * DAS WORT WIRD NUR GEZEIGT, NIE GESPEICHERT: Es wird bei jedem Zeichnen neu
  * aus dem Salz gerechnet (IMPOSTER_RUNDE.wortVon). Was in der Datenbank steht,
@@ -27,6 +36,17 @@ const IMPOSTER = {
     abgleich: null,
 
     wurzelEl: null,
+
+    /* Welcher Raum ist offen? Leer heißt: die Übersicht. */
+    offeneId: "",
+
+    /* Ist die Ansicht zum Anlegen offen? */
+    auswahlOffen: false,
+
+    /* Die Einstellungen für den Raum, der gerade angelegt wird. */
+    neueEinstellungen: {
+        impostermenge: 1
+    },
 
     /* Zeitgeber für die laufende Uhr. */
     uhrZeitgeber: null,
@@ -77,7 +97,7 @@ const IMPOSTER = {
      * Zeichnen
      * ---------------------------------------------------------------- */
 
-    zeichnen(runde) {
+    zeichnen(tafel) {
         const wurzel = IMPOSTER.wurzelEl;
         if (!wurzel) {
             return;
@@ -95,17 +115,217 @@ const IMPOSTER = {
 
         /* Die Bibliothek liegt vor allem anderen — sie ist ein eigener Raum. */
         if (IMPOSTER.bibliothekOffen && ICH.verwaltungAktiv()) {
-            IMPOSTER._bibliothekZeichnen(wurzel, runde);
+            IMPOSTER._bibliothekZeichnen(wurzel, tafel);
             return;
         }
 
-        if (runde.phase === "aufloesung") {
-            IMPOSTER._aufloesungZeichnen(wurzel, runde, person);
-        } else if (runde.phase === "laeuft") {
-            IMPOSTER._rundeZeichnen(wurzel, runde, person);
-        } else {
-            IMPOSTER._wartenZeichnen(wurzel, runde, person);
+        if (IMPOSTER.auswahlOffen) {
+            IMPOSTER._auswahlZeichnen(wurzel);
+            return;
         }
+
+        const raum = IMPOSTER.offeneId
+            ? IMPOSTER_TAFEL.raum(tafel, IMPOSTER.offeneId)
+            : null;
+
+        if (!raum) {
+            IMPOSTER.offeneId = "";
+            IMPOSTER._uebersichtZeichnen(wurzel, tafel, person);
+            return;
+        }
+
+        wurzel.appendChild(IMPOSTER._raumKopfBauen(raum));
+
+        if (raum.phase === "aufloesung") {
+            IMPOSTER._aufloesungZeichnen(wurzel, raum, person);
+        } else if (raum.phase === "laeuft") {
+            IMPOSTER._rundeZeichnen(wurzel, raum, person);
+        } else {
+            IMPOSTER._wartenZeichnen(wurzel, raum, person);
+        }
+    },
+
+    _raumKopfBauen(raum) {
+        const kopf = IMPOSTER._element("div", "partie-kopf");
+        kopf.appendChild(IMPOSTER._knopf("Zurück", "knopf-still knopf-klein",
+            () => IMPOSTER.uebersichtOeffnen()));
+        kopf.appendChild(IMPOSTER._element("h2", "partie-titel", raum.titel));
+        kopf.appendChild(IMPOSTER._knopf("Umbenennen", "knopf-still knopf-klein",
+            () => IMPOSTER.umbenennen(raum)));
+        return kopf;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Übersicht: alle Räume
+     * ---------------------------------------------------------------- */
+
+    _uebersichtZeichnen(wurzel, tafel, person) {
+        const alle = IMPOSTER_TAFEL.liste(tafel);
+        const offene = alle.filter((raum) => raum.phase !== "aufloesung");
+        const fertige = alle.filter((raum) => raum.phase === "aufloesung");
+
+        const leiste = IMPOSTER._element("div", "phasen-leiste");
+        leiste.appendChild(IMPOSTER._element("span", "phasen-text",
+            "Offene Räume: " + offene.length));
+        leiste.appendChild(IMPOSTER._infoKnopfBauen());
+        wurzel.appendChild(leiste);
+
+        wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
+            "Alle bekommen dasselbe Wort — bis auf die Imposter, die nur wissen, "
+            + "dass sie es nicht wissen. Stellt euch am Tisch Fragen dazu und "
+            + "findet heraus, wer nichts weiß."));
+
+        if (offene.length === 0) {
+            wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
+                "Es ist kein Raum offen. Leg einen an, wähle das Thema — und die "
+                + "anderen treten bei."));
+        }
+
+        for (const raum of offene) {
+            wurzel.appendChild(IMPOSTER._raumKarteBauen(raum, person));
+        }
+
+        /*
+         * Aufgelöste Räume stehen nicht mehr zwischen den offenen: Sie sind
+         * gespielt, ihre Punkte sind festgeschrieben. Weggeworfen werden sie
+         * trotzdem nicht — man kann die Auflösung noch einmal nachlesen.
+         */
+        if (fertige.length > 0) {
+            const kasten = document.createElement("details");
+            kasten.className = "verlauf-kasten";
+
+            const titel = document.createElement("summary");
+            titel.className = "verlauf-titel";
+            titel.textContent = "Aufgelöst (" + fertige.length + ")";
+            kasten.appendChild(titel);
+
+            for (const raum of fertige) {
+                kasten.appendChild(IMPOSTER._raumKarteBauen(raum, person));
+            }
+
+            wurzel.appendChild(kasten);
+        }
+
+        const fuss = IMPOSTER._element("div", "fussleiste");
+
+        /* Die Bibliothek ist von hier erreichbar — der einzige Ort, an dem sie
+           nicht mitten im Spiel steht. */
+        fuss.appendChild(IMPOSTER._knopf("Wortbibliothek", "knopf-still knopf-klein",
+            () => IMPOSTER.bibliothekOeffnen()));
+        fuss.appendChild(IMPOSTER._knopf("Neuer Raum", "knopf-haupt",
+            () => IMPOSTER.raumAnlegen()));
+        wurzel.appendChild(fuss);
+    },
+
+    _raumKarteBauen(raum, person) {
+        const karte = IMPOSTER._element("section", "karte partie-karte");
+        const dabei = !!IMPOSTER_RUNDE.spielerFinden(raum, person.id);
+
+        const kopf = IMPOSTER._element("div", "karte-kopf");
+        kopf.appendChild(IMPOSTER._element("h3", "", raum.titel));
+
+        if (dabei) {
+            kopf.appendChild(IMPOSTER._element("span", "chip chip-fertig", "Du bist dabei"));
+        }
+        if (raum.phase === "laeuft") {
+            kopf.appendChild(IMPOSTER._element("span", "chip chip-laeuft", "läuft"));
+        } else if (raum.phase === "aufloesung") {
+            kopf.appendChild(IMPOSTER._element("span", "chip chip-offen", "aufgelöst"));
+        }
+        karte.appendChild(kopf);
+
+        /*
+         * Das THEMA steht hier — die Wörter nicht. Zu wissen, dass es um Essen
+         * geht, gehört zum Spiel; die Liste zu kennen, wäre ein Vorteil für den
+         * Imposter (deshalb liegt sie hinter dem Verwaltungs-Passwort).
+         */
+        karte.appendChild(IMPOSTER._element("p", "partie-zeile",
+            IMPOSTER_WOERTER.gruppe(raum.gruppe).titel
+            + " — höchstens " + raum.impostermenge + " Imposter"));
+
+        const namen = raum.spieler.map((eintrag) => IMPOSTER._nameVon(eintrag.id));
+        karte.appendChild(IMPOSTER._element("p", "team-namen",
+            "Dabei: " + (namen.length ? namen.join(", ") : "noch niemand")));
+
+        const leiste = IMPOSTER._element("div", "karte-fuss");
+        leiste.appendChild(IMPOSTER._knopf("Öffnen", "knopf-still knopf-klein",
+            () => IMPOSTER.raumOeffnen(raum.id)));
+        leiste.appendChild(IMPOSTER._knopf("Löschen", "knopf-gefahr knopf-klein",
+            () => IMPOSTER.raumLoeschen(raum)));
+        karte.appendChild(leiste);
+
+        return karte;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Einen Raum anlegen
+     *
+     * Eine eigene Ansicht statt eines Dialogs — genau wie beim Schach: Erst die
+     * Einstellungen, dann als letzter Klick das Thema, dann der Name. Auf dem
+     * Handy ist eine volle Seite mit Kacheln besser zu treffen als ein Dialog.
+     * ---------------------------------------------------------------- */
+
+    _auswahlZeichnen(wurzel) {
+        const kopf = IMPOSTER._element("div", "partie-kopf");
+        kopf.appendChild(IMPOSTER._knopf("Zurück", "knopf-still knopf-klein",
+            () => IMPOSTER.auswahlSchliessen()));
+        kopf.appendChild(IMPOSTER._element("h2", "partie-titel", "Neuer Raum"));
+        wurzel.appendChild(kopf);
+
+        wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
+            "Die Einstellungen stehen mit dem Anlegen fest und lassen sich später "
+            + "nicht mehr ändern. Zuletzt gibst du dem Raum einen Namen."));
+
+        /* Erst die Anzahl … */
+        const karte = IMPOSTER._element("section", "karte");
+        karte.appendChild(IMPOSTER._element("h3", "", "Wie viele Imposter höchstens?"));
+
+        const zahlen = IMPOSTER._element("div", "imposter-knopfreihe");
+
+        for (let nummer = 1; nummer <= IMPOSTER_RUNDE.IMPOSTER_HOECHSTENS; nummer++) {
+            const gewaehlt = (nummer === IMPOSTER.neueEinstellungen.impostermenge);
+            zahlen.appendChild(IMPOSTER._knopf(String(nummer),
+                (gewaehlt ? "knopf-haupt" : "knopf-still") + " knopf-klein",
+                () => IMPOSTER.anzahlWaehlen(nummer)));
+        }
+
+        karte.appendChild(zahlen);
+        karte.appendChild(IMPOSTER._element("p", "erklaerung",
+            "Es können auch weniger werden — und ganz selten gar keiner. "
+            + "Einer weiß das Wort immer."));
+        wurzel.appendChild(karte);
+
+        /* … dann das Thema als letzter Klick. */
+        wurzel.appendChild(IMPOSTER._element("h3", "imposter-wahl-titel",
+            "Woher kommt das Wort?"));
+
+        const feld = IMPOSTER._element("div", "spielart-feld");
+
+        for (const gruppe of IMPOSTER_WOERTER.gruppen) {
+            feld.appendChild(IMPOSTER._gruppenKachelBauen(gruppe));
+        }
+
+        wurzel.appendChild(feld);
+    },
+
+    _gruppenKachelBauen(gruppe) {
+        const kachel = document.createElement("button");
+        kachel.type = "button";
+        kachel.className = "spielart-kachel";
+        kachel.addEventListener("click", () => IMPOSTER.gruppeGewaehlt(gruppe.id));
+
+        const kopf = IMPOSTER._element("div", "spielart-kopf");
+        kopf.appendChild(IMPOSTER._element("span", "spielart-titel", gruppe.titel));
+        kopf.appendChild(IMPOSTER._element("span", "spielart-masse",
+            gruppe.woerter.length + " Wörter"));
+        kachel.appendChild(kopf);
+
+        kachel.appendChild(IMPOSTER._element("span", "spielart-text",
+            (gruppe.art === "wortart")
+                ? "Nur Wörter dieser Sorte — quer durch alle Themen."
+                : "Alles rund um dieses Thema."));
+
+        return kachel;
     },
 
     /* ---------------------------------------------------------------- *
@@ -116,6 +336,8 @@ const IMPOSTER = {
      * zwar im Quelltext und ist damit nicht geheim, aber es macht einen
      * Unterschied, ob man ihn in der Entwicklerkonsole sucht oder ihn auf
      * Knopfdruck bekommt.
+     *
+     * Sie gilt für ALLE Räume gemeinsam und liegt deshalb auf der Tafel.
      * ---------------------------------------------------------------- */
 
     async bibliothekOeffnen() {
@@ -152,7 +374,7 @@ const IMPOSTER = {
         IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
     },
 
-    _bibliothekZeichnen(wurzel, runde) {
+    _bibliothekZeichnen(wurzel, tafel) {
         const kopf = IMPOSTER._element("div", "partie-kopf");
         kopf.appendChild(IMPOSTER._knopf("Zurück", "knopf-still knopf-klein",
             () => IMPOSTER.bibliothekSchliessen()));
@@ -160,19 +382,19 @@ const IMPOSTER = {
         wurzel.appendChild(kopf);
 
         wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
-            "Hier stehen alle Wörter. Ergänzte Wörter liegen im gemeinsamen "
-            + "Stand — alle Mitspieler ziehen aus derselben Liste. Der feste "
-            + "Katalog lässt sich hier nicht ändern; er steht in "
-            + "js/imposter-woerter.js."));
+            "Hier stehen alle Wörter. Ergänzte Wörter gelten für alle Räume — "
+            + "sie liegen im gemeinsamen Stand, damit jedes Gerät aus derselben "
+            + "Liste zieht. Der feste Katalog lässt sich hier nicht ändern; er "
+            + "steht in js/imposter-woerter.js."));
 
         for (const gruppe of IMPOSTER_WOERTER.gruppen) {
-            wurzel.appendChild(IMPOSTER._bibliothekGruppeBauen(runde, gruppe));
+            wurzel.appendChild(IMPOSTER._bibliothekGruppeBauen(tafel, gruppe));
         }
     },
 
-    _bibliothekGruppeBauen(runde, gruppe) {
+    _bibliothekGruppeBauen(tafel, gruppe) {
         const karte = IMPOSTER._element("section", "karte");
-        const eigene = runde.eigeneWoerter[gruppe.id] || [];
+        const eigene = tafel.eigeneWoerter[gruppe.id] || [];
 
         const kopf = IMPOSTER._element("div", "karte-kopf");
         kopf.appendChild(IMPOSTER._element("h3", "", gruppe.titel));
@@ -226,57 +448,52 @@ const IMPOSTER = {
             return;
         }
 
-        const ergebnis = IMPOSTER_RUNDE.woerterErgaenzen(
-            IMPOSTER.abgleich.daten, gruppeId, text);
+        let bericht = null;
 
-        IMPOSTER._aendern(ergebnis.runde, true);
+        const geschrieben = await IMPOSTER._sendenMitLaden((tafel) => {
+            const ergebnis = IMPOSTER_TAFEL.woerterErgaenzen(tafel, gruppeId, text);
+            bericht = ergebnis;
+            return ergebnis.tafel;
+        });
 
-        await DIALOG.hinweis("Eingefügt",
-            ergebnis.hinzugefuegt + " Wörter hinzugefügt"
-            + (ergebnis.uebersprungen > 0
-                ? ", " + ergebnis.uebersprungen + " übersprungen (schon vorhanden)."
-                : "."));
+        if (geschrieben && bericht) {
+            await DIALOG.hinweis("Eingefügt",
+                bericht.hinzugefuegt + " Wörter hinzugefügt"
+                + (bericht.uebersprungen > 0
+                    ? ", " + bericht.uebersprungen + " übersprungen (schon vorhanden)."
+                    : "."));
+        }
     },
 
-    wortEntfernen(gruppeId, wort) {
-        IMPOSTER._aendern(
-            IMPOSTER_RUNDE.wortEntfernen(IMPOSTER.abgleich.daten, gruppeId, wort), true);
+    async wortEntfernen(gruppeId, wort) {
+        await IMPOSTER._sendenMitLaden(
+            (tafel) => IMPOSTER_TAFEL.wortEntfernen(tafel, gruppeId, wort));
     },
 
     /* ---------------------------------------------------------------- *
      * Vor dem Start
      * ---------------------------------------------------------------- */
 
-    _wartenZeichnen(wurzel, runde, person) {
-        const dabei = !!IMPOSTER_RUNDE.spielerFinden(runde, person.id);
+    _wartenZeichnen(wurzel, raum, person) {
+        const dabei = !!IMPOSTER_RUNDE.spielerFinden(raum, person.id);
 
         const leiste = IMPOSTER._element("div", "phasen-leiste");
         leiste.appendChild(IMPOSTER._element("span", "chip chip-offen", "Noch nicht gestartet"));
         leiste.appendChild(IMPOSTER._element("span", "phasen-text",
-            runde.spieler.length + " dabei"));
+            raum.spieler.length + " dabei"));
         leiste.appendChild(IMPOSTER._infoKnopfBauen());
         wurzel.appendChild(leiste);
 
-        wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
-            "Alle bekommen dasselbe Wort — bis auf die Imposter, die nur wissen, "
-            + "dass sie es nicht wissen. Stellt euch am Tisch Fragen dazu und "
-            + "findet heraus, wer nichts weiß."));
-
-        wurzel.appendChild(IMPOSTER._einstellungenBauen(runde, dabei));
-        wurzel.appendChild(IMPOSTER._mitspielerBauen(runde, person));
+        wurzel.appendChild(IMPOSTER._einstellungenBauen(raum));
+        wurzel.appendChild(IMPOSTER._mitspielerBauen(raum, person));
 
         const fuss = IMPOSTER._element("div", "fussleiste");
-
-        /* Die Bibliothek ist von hier erreichbar — der einzige Ort, an dem sie
-           nicht mitten im Spiel steht. */
-        fuss.appendChild(IMPOSTER._knopf("Wortbibliothek", "knopf-still knopf-klein",
-            () => IMPOSTER.bibliothekOeffnen()));
 
         if (!dabei) {
             fuss.appendChild(IMPOSTER._knopf("Mitspielen", "knopf-haupt",
                 () => IMPOSTER.beitreten()));
         } else {
-            const eigener = IMPOSTER_RUNDE.spielerFinden(runde, person.id);
+            const eigener = IMPOSTER_RUNDE.spielerFinden(raum, person.id);
 
             fuss.appendChild(IMPOSTER._knopf(
                 eigener.bereit ? "Doch nicht bereit" : "Bereit",
@@ -289,77 +506,54 @@ const IMPOSTER = {
 
         wurzel.appendChild(fuss);
 
-        if (IMPOSTER_RUNDE.kannStarten(runde)) {
+        if (IMPOSTER_RUNDE.kannStarten(raum)) {
             wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
                 "Alle sind bereit — die Runde startet gleich von selbst."));
-            IMPOSTER._startPruefen(runde, person);
-        } else if (runde.spieler.length < 2) {
+            IMPOSTER._startPruefen(raum, person);
+        } else if (raum.spieler.length < 2) {
             wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
                 "Es fehlt noch mindestens ein Mitspieler."));
         }
     },
 
-    _einstellungenBauen(runde, dabei) {
+    /*
+     * Die Einstellungen des Raums — nur zum Nachlesen. Geändert werden sie
+     * beim Anlegen; danach würde ein Umstellen mitten im Warten allen anderen
+     * unter den Händen die Regeln verändern.
+     */
+    _einstellungenBauen(raum) {
         const karte = IMPOSTER._element("section", "karte");
-        karte.appendChild(IMPOSTER._element("h3", "", "Einstellungen"));
+        karte.appendChild(IMPOSTER._element("h3", "", "Einstellungen dieses Raums"));
 
-        /* Thema oder Wortart. */
-        const themaZeile = IMPOSTER._element("div", "imposter-wahl");
-        themaZeile.appendChild(IMPOSTER._element("span", "imposter-wahl-titel",
-            "Woher kommt das Wort?"));
+        const zeile = IMPOSTER._element("div", "imposter-zeile");
+        zeile.appendChild(IMPOSTER._element("span", "imposter-name", "Thema"));
+        zeile.appendChild(IMPOSTER._element("span", "chip chip-offen",
+            IMPOSTER_WOERTER.gruppe(raum.gruppe).titel));
+        karte.appendChild(zeile);
 
-        const knoepfe = IMPOSTER._element("div", "imposter-knopfreihe");
-
-        for (const gruppe of IMPOSTER_WOERTER.gruppen) {
-            const gewaehlt = (gruppe.id === runde.gruppe);
-            const knopf = IMPOSTER._knopf(gruppe.titel,
-                gewaehlt ? "knopf-haupt knopf-klein" : "knopf-still knopf-klein",
-                () => IMPOSTER.einstellen(gruppe.id, runde.impostermenge));
-
-            knopf.disabled = !dabei;
-            knoepfe.appendChild(knopf);
-        }
-
-        themaZeile.appendChild(knoepfe);
-        karte.appendChild(themaZeile);
-
-        /* Anzahl der Imposter. */
-        const anzahlZeile = IMPOSTER._element("div", "imposter-wahl");
-        anzahlZeile.appendChild(IMPOSTER._element("span", "imposter-wahl-titel",
-            "Wie viele Imposter höchstens?"));
-
-        const zahlen = IMPOSTER._element("div", "imposter-knopfreihe");
-
-        for (let nummer = 1; nummer <= IMPOSTER_RUNDE.IMPOSTER_HOECHSTENS; nummer++) {
-            const gewaehlt = (nummer === runde.impostermenge);
-            const knopf = IMPOSTER._knopf(String(nummer),
-                gewaehlt ? "knopf-haupt knopf-klein" : "knopf-still knopf-klein",
-                () => IMPOSTER.einstellen(runde.gruppe, nummer));
-
-            knopf.disabled = !dabei;
-            zahlen.appendChild(knopf);
-        }
-
-        anzahlZeile.appendChild(zahlen);
-        karte.appendChild(anzahlZeile);
+        const anzahl = IMPOSTER._element("div", "imposter-zeile");
+        anzahl.appendChild(IMPOSTER._element("span", "imposter-name", "Imposter höchstens"));
+        anzahl.appendChild(IMPOSTER._element("span", "chip chip-offen",
+            String(raum.impostermenge)));
+        karte.appendChild(anzahl);
 
         karte.appendChild(IMPOSTER._element("p", "erklaerung",
-            "Es können auch weniger werden — und ganz selten gar keiner. "
-            + "Einer weiß das Wort immer."));
+            "Sie stehen seit dem Anlegen fest. Für andere Regeln legt einfach "
+            + "einen neuen Raum an — es können mehrere nebeneinander laufen."));
 
         return karte;
     },
 
-    _mitspielerBauen(runde, person) {
+    _mitspielerBauen(raum, person) {
         const karte = IMPOSTER._element("section", "karte");
         karte.appendChild(IMPOSTER._element("h3", "", "Wer ist dabei?"));
 
-        if (runde.spieler.length === 0) {
+        if (raum.spieler.length === 0) {
             karte.appendChild(IMPOSTER._element("p", "erklaerung", "Noch niemand."));
             return karte;
         }
 
-        for (const spieler of runde.spieler) {
+        for (const spieler of raum.spieler) {
             const zeile = IMPOSTER._element("div", "imposter-zeile");
 
             zeile.appendChild(IMPOSTER._element("span",
@@ -380,8 +574,8 @@ const IMPOSTER = {
      * Während der Runde
      * ---------------------------------------------------------------- */
 
-    _rundeZeichnen(wurzel, runde, person) {
-        const dabei = IMPOSTER_RUNDE.spielerFinden(runde, person.id);
+    _rundeZeichnen(wurzel, raum, person) {
+        const dabei = IMPOSTER_RUNDE.spielerFinden(raum, person.id);
 
         if (!dabei) {
             wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
@@ -390,7 +584,7 @@ const IMPOSTER = {
             return;
         }
 
-        const istImposter = IMPOSTER_RUNDE.istImposter(runde, person.id);
+        const istImposter = IMPOSTER_RUNDE.istImposter(raum, person.id);
 
         /* Das Wort — oder die Nachricht, dass man es nicht bekommt. */
         const kasten = IMPOSTER._element("div",
@@ -399,7 +593,7 @@ const IMPOSTER = {
         kasten.appendChild(IMPOSTER._element("span", "imposter-wort-marke",
             istImposter ? "Deine Rolle" : "Das Wort"));
         kasten.appendChild(IMPOSTER._element("span", "imposter-wort-text",
-            istImposter ? "Imposter" : IMPOSTER_RUNDE.wortVon(runde)));
+            istImposter ? "Imposter" : IMPOSTER_RUNDE.wortVon(raum)));
         kasten.appendChild(IMPOSTER._element("span", "imposter-wort-hinweis",
             istImposter
                 ? "Du kennst das Wort nicht. Tu so, als wüsstest du es — und rate es."
@@ -410,10 +604,10 @@ const IMPOSTER = {
         const leiste = IMPOSTER._element("div", "phasen-leiste");
         leiste.appendChild(IMPOSTER._element("span", "chip chip-laeuft", "läuft"));
         leiste.appendChild(IMPOSTER._element("span", "imposter-uhr",
-            IMPOSTER._uhrText(runde)));
+            IMPOSTER._uhrText(raum)));
         leiste.appendChild(IMPOSTER._element("span", "phasen-text",
-            runde.spieler.filter((eintrag) => eintrag.fertig).length
-            + " von " + runde.spieler.length + " fertig"));
+            raum.spieler.filter((eintrag) => eintrag.fertig).length
+            + " von " + raum.spieler.length + " fertig"));
         wurzel.appendChild(leiste);
 
         /*
@@ -422,9 +616,9 @@ const IMPOSTER = {
          * Notizfeld ohne Wirkung auf die Punkte; gewertet wird nur der Tipp
          * eines Imposters.
          */
-        wurzel.appendChild(IMPOSTER._wortTippBauen(runde, dabei, istImposter));
+        wurzel.appendChild(IMPOSTER._wortTippBauen(dabei, istImposter));
 
-        wurzel.appendChild(IMPOSTER._tippsBauen(runde, person, dabei));
+        wurzel.appendChild(IMPOSTER._tippsBauen(raum, person, dabei));
 
         const fuss = IMPOSTER._element("div", "fussleiste");
         fuss.appendChild(IMPOSTER._knopf(
@@ -437,10 +631,10 @@ const IMPOSTER = {
         wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
             "Sobald alle auf Fertig gedrückt haben, wird aufgelöst."));
 
-        IMPOSTER._uhrVerfolgen(runde);
+        IMPOSTER._uhrVerfolgen(raum);
     },
 
-    _wortTippBauen(runde, eigener, istImposter) {
+    _wortTippBauen(eigener, istImposter) {
         const karte = IMPOSTER._element("section", "karte karte-ich");
 
         /* Dieselbe Überschrift für alle wäre eine Lüge, verschiedene verraten
@@ -467,11 +661,11 @@ const IMPOSTER = {
         return karte;
     },
 
-    _tippsBauen(runde, person, eigener) {
+    _tippsBauen(raum, person, eigener) {
         const karte = IMPOSTER._element("section", "karte");
         karte.appendChild(IMPOSTER._element("h3", "", "Wer ist der Imposter?"));
 
-        const andere = runde.spieler.filter((eintrag) => eintrag.id !== person.id);
+        const andere = raum.spieler.filter((eintrag) => eintrag.id !== person.id);
 
         if (andere.length === 0) {
             karte.appendChild(IMPOSTER._element("p", "erklaerung", "Niemand sonst da."));
@@ -516,15 +710,15 @@ const IMPOSTER = {
      * Auflösung
      * ---------------------------------------------------------------- */
 
-    _aufloesungZeichnen(wurzel, runde, person) {
-        const ergebnis = IMPOSTER_RUNDE.ergebnis(runde);
+    _aufloesungZeichnen(wurzel, raum, person) {
+        const ergebnis = IMPOSTER_RUNDE.ergebnis(raum);
         const meiner = ergebnis.find((eintrag) => eintrag.id === person.id);
-        const imposter = IMPOSTER_RUNDE.imposterListe(runde);
+        const imposter = IMPOSTER_RUNDE.imposterListe(raum);
 
         const kasten = IMPOSTER._element("div", "imposter-wort");
         kasten.appendChild(IMPOSTER._element("span", "imposter-wort-marke", "Das Wort war"));
         kasten.appendChild(IMPOSTER._element("span", "imposter-wort-text",
-            IMPOSTER_RUNDE.wortVon(runde)));
+            IMPOSTER_RUNDE.wortVon(raum)));
         kasten.appendChild(IMPOSTER._element("span", "imposter-wort-hinweis",
             (imposter.length === 0)
                 ? "Diesmal gab es gar keinen Imposter."
@@ -532,7 +726,7 @@ const IMPOSTER = {
                     : imposter.length + " Imposter waren dabei.")));
         wurzel.appendChild(kasten);
 
-        const dauer = Math.max(0, Math.round((runde.endeAm - runde.startAm) / 1000));
+        const dauer = Math.max(0, Math.round((raum.endeAm - raum.startAm) / 1000));
         const leiste = IMPOSTER._element("div", "phasen-leiste");
         leiste.appendChild(IMPOSTER._element("span", "chip chip-fertig", "Aufgelöst"));
         leiste.appendChild(IMPOSTER._element("span", "phasen-text",
@@ -583,11 +777,11 @@ const IMPOSTER = {
      * Uhr
      * ---------------------------------------------------------------- */
 
-    _uhrText(runde) {
-        if (!runde.startAm) {
+    _uhrText(raum) {
+        if (!raum.startAm) {
             return "";
         }
-        return IMPOSTER._zeitText(Math.max(0, Math.round((Date.now() - runde.startAm) / 1000)));
+        return IMPOSTER._zeitText(Math.max(0, Math.round((Date.now() - raum.startAm) / 1000)));
     },
 
     _zeitText(sekunden) {
@@ -597,12 +791,12 @@ const IMPOSTER = {
     },
 
     /* Hält die Uhr am Laufen, solange die Runde läuft. */
-    _uhrVerfolgen(runde) {
+    _uhrVerfolgen(raum) {
         if (IMPOSTER.uhrZeitgeber !== null) {
             window.clearTimeout(IMPOSTER.uhrZeitgeber);
             IMPOSTER.uhrZeitgeber = null;
         }
-        if (runde.phase !== "laeuft") {
+        if (raum.phase !== "laeuft") {
             return;
         }
 
@@ -613,67 +807,190 @@ const IMPOSTER = {
     },
 
     /* ---------------------------------------------------------------- *
-     * Bedienung
+     * Bedienung: Räume
      * ---------------------------------------------------------------- */
+
+    raumOeffnen(id) {
+        IMPOSTER.offeneId = id;
+        IMPOSTER.auswahlOffen = false;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    uebersichtOeffnen() {
+        IMPOSTER.offeneId = "";
+        IMPOSTER.auswahlOffen = false;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    /* Der Knopf "Neuer Raum" führt in die Anlege-Ansicht. */
+    raumAnlegen() {
+        if (!IMPOSTER._ich()) {
+            return;
+        }
+        IMPOSTER.auswahlOffen = true;
+        IMPOSTER.offeneId = "";
+        IMPOSTER.neueEinstellungen = { impostermenge: 1 };
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    auswahlSchliessen() {
+        IMPOSTER.auswahlOffen = false;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    anzahlWaehlen(nummer) {
+        IMPOSTER.neueEinstellungen.impostermenge = nummer;
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+    },
+
+    /* Eine Kachel wurde angetippt: Namen erfragen und den Raum anlegen. */
+    async gruppeGewaehlt(gruppeId) {
+        const person = IMPOSTER._ich();
+        if (!person || !IMPOSTER_WOERTER.gibtEs(gruppeId)) {
+            return;
+        }
+
+        const titel = await DIALOG.eingabe(
+            "Name des Raums",
+            "Damit ihr ihn in der Übersicht wiederfindet.",
+            IMPOSTER_WOERTER.gruppe(gruppeId).titel,
+            "Anlegen",
+            true
+        );
+        if (titel === null) {
+            return;
+        }
+
+        let neuerRaum = null;
+
+        /*
+         * Wer anlegt, spielt mit: Er kommt gleich in den Raum und landet direkt
+         * darin. Sonst müsste er erst zurück in die Übersicht und dort
+         * beitreten.
+         */
+        const geschrieben = await IMPOSTER._sendenMitLaden((tafel) => {
+            const ergebnis = IMPOSTER_TAFEL.raumAnlegen(tafel, titel, {
+                gruppe: gruppeId,
+                impostermenge: IMPOSTER.neueEinstellungen.impostermenge
+            });
+
+            neuerRaum = ergebnis.raum;
+
+            return IMPOSTER_TAFEL.raumEinsetzen(ergebnis.tafel,
+                IMPOSTER_RUNDE.beitreten(ergebnis.raum, person.id));
+        });
+
+        if (geschrieben && neuerRaum) {
+            IMPOSTER.auswahlOffen = false;
+            IMPOSTER.raumOeffnen(neuerRaum.id);
+        }
+    },
+
+    async raumLoeschen(raum) {
+        const ja = await DIALOG.frage(
+            "Raum löschen?",
+            "Der Raum " + raum.titel + " wird für alle entfernt. Das lässt sich "
+                + "nicht rückgängig machen. Punkte aus schon aufgelösten Runden "
+                + "gehen damit auch aus der Rangliste.",
+            "Löschen",
+            true
+        );
+        if (!ja) {
+            return;
+        }
+
+        const geschrieben = await IMPOSTER._sendenMitLaden(
+            (tafel) => IMPOSTER_TAFEL.raumEntfernen(tafel, raum.id));
+
+        if (geschrieben && IMPOSTER.offeneId === raum.id) {
+            IMPOSTER.uebersichtOeffnen();
+        }
+    },
+
+    async umbenennen(raum) {
+        const titel = await DIALOG.eingabe(
+            "Raum umbenennen",
+            "Wie soll der Raum in der Übersicht heißen?",
+            raum.titel,
+            "Übernehmen",
+            true
+        );
+        if (titel === null || titel.trim() === "") {
+            return;
+        }
+        IMPOSTER._aendern(IMPOSTER_RUNDE.umbenennen(raum, titel), true);
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Bedienung: im Raum
+     * ---------------------------------------------------------------- */
+
+    /* Holt den offenen Raum aus dem aktuellen Stand. */
+    _offenerRaum() {
+        return IMPOSTER_TAFEL.raum(IMPOSTER.abgleich.daten, IMPOSTER.offeneId);
+    },
 
     beitreten() {
         const person = IMPOSTER._ich();
-        if (!person) {
+        const raum = IMPOSTER._offenerRaum();
+        if (!person || !raum) {
             return;
         }
-        IMPOSTER._aendern(IMPOSTER_RUNDE.beitreten(IMPOSTER.abgleich.daten, person.id));
+        IMPOSTER._aendern(IMPOSTER_RUNDE.beitreten(raum, person.id));
     },
 
     verlassen() {
         const person = IMPOSTER._ich();
-        if (!person) {
+        const raum = IMPOSTER._offenerRaum();
+        if (!person || !raum) {
             return;
         }
-        IMPOSTER._aendern(IMPOSTER_RUNDE.verlassen(IMPOSTER.abgleich.daten, person.id), true);
-    },
-
-    einstellen(gruppe, anzahl) {
-        IMPOSTER._aendern(
-            IMPOSTER_RUNDE.einstellen(IMPOSTER.abgleich.daten, gruppe, anzahl), true);
+        IMPOSTER._aendern(IMPOSTER_RUNDE.verlassen(raum, person.id), true);
     },
 
     bereitUmschalten(bereit) {
         const person = IMPOSTER._ich();
-        if (!person) {
+        const raum = IMPOSTER._offenerRaum();
+        if (!person || !raum) {
             return;
         }
-        IMPOSTER._aendern(
-            IMPOSTER_RUNDE.bereitSetzen(IMPOSTER.abgleich.daten, person.id, bereit));
+        IMPOSTER._aendern(IMPOSTER_RUNDE.bereitSetzen(raum, person.id, bereit));
     },
 
     tippSetzen(zielId, wert) {
         const person = IMPOSTER._ich();
-        if (!person) {
+        const raum = IMPOSTER._offenerRaum();
+        if (!person || !raum) {
             return;
         }
-        IMPOSTER._aendern(
-            IMPOSTER_RUNDE.tippSetzen(IMPOSTER.abgleich.daten, person.id, zielId, wert));
+        IMPOSTER._aendern(IMPOSTER_RUNDE.tippSetzen(raum, person.id, zielId, wert));
     },
 
     wortTippSetzen(wort) {
         const person = IMPOSTER._ich();
-        if (!person) {
+        const raum = IMPOSTER._offenerRaum();
+        if (!person || !raum) {
             return;
         }
         IMPOSTER._aendern(
-            IMPOSTER_RUNDE.wortTippSetzen(IMPOSTER.abgleich.daten, person.id, wort), false);
+            IMPOSTER_RUNDE.wortTippSetzen(raum, person.id, wort), false, false);
     },
 
     fertigUmschalten(fertig) {
         const person = IMPOSTER._ich();
-        if (!person) {
+        const raum = IMPOSTER._offenerRaum();
+        if (!person || !raum) {
             return;
         }
-        IMPOSTER._aendern(
-            IMPOSTER_RUNDE.fertigSetzen(IMPOSTER.abgleich.daten, person.id, fertig));
+        IMPOSTER._aendern(IMPOSTER_RUNDE.fertigSetzen(raum, person.id, fertig));
     },
 
     async neueRunde() {
+        const raum = IMPOSTER._offenerRaum();
+        if (!raum) {
+            return;
+        }
+
         const ja = await DIALOG.frage(
             "Neue Runde?",
             "Alle Mitspieler bleiben dabei, aber Wort und Rollen werden neu "
@@ -684,7 +1001,7 @@ const IMPOSTER = {
         if (!ja) {
             return;
         }
-        IMPOSTER._aendern(IMPOSTER_RUNDE.neueRunde(IMPOSTER.abgleich.daten), true);
+        IMPOSTER._aendern(IMPOSTER_RUNDE.neueRunde(raum), true);
     },
 
     /*
@@ -692,40 +1009,42 @@ const IMPOSTER = {
      *
      * Das Salz erzeugt das Gerät, das zuerst dazu kommt — daraus folgen Wort
      * und Rollen für alle. Damit nicht zwei Geräte gleichzeitig starten, wird
-     * vorher der Stand vom Server geholt und nur geschrieben, wenn dort noch
-     * nichts steht.
+     * vorher der Stand vom Server geholt und nur geschrieben, wenn der Raum
+     * dort noch wartet.
      */
-    async _startPruefen(runde, person) {
-        if (IMPOSTER.schreibtGerade || runde.phase !== "warten") {
+    async _startPruefen(raum, person) {
+        if (IMPOSTER.schreibtGerade || raum.phase !== "warten") {
             return;
         }
         IMPOSTER.schreibtGerade = true;
 
         try {
             const abgleich = IMPOSTER.abgleich;
-            let aktuell = runde;
+            let tafel = abgleich.daten;
 
             if (abgleich.speicher.art === "gemeinsam") {
-                aktuell = IMPOSTER_RUNDE.normalisieren(await abgleich.speicher.laden());
+                tafel = IMPOSTER_TAFEL.normalisieren(await abgleich.speicher.laden());
             }
 
-            /* Inzwischen gestartet oder nicht mehr startbereit? */
-            if (aktuell.phase !== "warten" || !IMPOSTER_RUNDE.kannStarten(aktuell)) {
-                abgleich.daten = aktuell;
-                IMPOSTER.zeichnen(aktuell);
+            const aktuell = IMPOSTER_TAFEL.raum(tafel, raum.id);
+
+            /* Inzwischen gestartet, gelöscht oder nicht mehr startbereit? */
+            if (!aktuell || aktuell.phase !== "warten"
+                || !IMPOSTER_RUNDE.kannStarten(aktuell)) {
+                abgleich.daten = tafel;
+                IMPOSTER.zeichnen(tafel);
                 return;
             }
 
-            const salz = IMPOSTER._salzErzeugen();
-            const gestartet = IMPOSTER_RUNDE.starten(aktuell, salz);
-
+            const gestartet = IMPOSTER_RUNDE.starten(aktuell, IMPOSTER._salzErzeugen());
             if (!gestartet) {
                 return;
             }
 
-            await abgleich.speicher.speichern(gestartet);
-            abgleich.daten = gestartet;
-            IMPOSTER.zeichnen(gestartet);
+            const neueTafel = IMPOSTER_TAFEL.raumEinsetzen(tafel, gestartet);
+            await abgleich.speicher.speichern(neueTafel);
+            abgleich.daten = neueTafel;
+            IMPOSTER.zeichnen(neueTafel);
         } catch (fehler) {
             console.warn("Start nicht möglich:", fehler);
         } finally {
@@ -758,13 +1077,55 @@ const IMPOSTER = {
         return salz;
     },
 
+    /* ---------------------------------------------------------------- *
+     * Schreiben
+     * ---------------------------------------------------------------- */
+
     /*
-     * Eine Änderung übernehmen. `global` heißt: Sie betrifft absichtlich die
-     * ganze Runde (Start, neue Runde, Einstellungen) und wird nicht mit dem
-     * Stand vom Server zusammengeführt.
+     * Eine Änderung an EINEM Raum übernehmen. Der Rest der Tafel bleibt, wie er
+     * ist — nie die ganze Tafel überschreiben (dieselbe Lehre wie beim Schach
+     * und beim Würfel-Quizz, siehe docs\DECISIONS.md).
+     *
+     * `global` heißt: Die Änderung betrifft absichtlich die ganze Runde (Start,
+     * neue Runde, jemanden entfernen) und wird nicht mit dem Stand vom Server
+     * zusammengeführt.
      */
-    _aendern(neueRunde, global) {
-        IMPOSTER.abgleich.aendern(neueRunde, true, global === true);
+    _aendern(neuerRaum, global, neuZeichnen) {
+        const tafel = IMPOSTER_TAFEL.raumEinsetzen(IMPOSTER.abgleich.daten, neuerRaum);
+        IMPOSTER.abgleich.aendern(tafel, neuZeichnen !== false, global === true);
+    },
+
+    /*
+     * Für Änderungen an der TAFEL selbst (Raum anlegen, löschen, Bibliothek):
+     * erst den Stand vom Server holen, dann darauf umbauen, dann schreiben.
+     *
+     * Ohne das Laden ginge ein Raum verloren, den in der Zwischenzeit jemand
+     * anders angelegt hat — der Abgleich könnte das nicht auffangen, weil er
+     * nur den eigenen Spieler-Eintrag zusammenführt.
+     *
+     * Liefert true, wenn geschrieben wurde.
+     */
+    async _sendenMitLaden(umbauen) {
+        const abgleich = IMPOSTER.abgleich;
+
+        try {
+            let tafel = abgleich.daten;
+
+            if (abgleich.speicher.art === "gemeinsam") {
+                tafel = IMPOSTER_TAFEL.normalisieren(await abgleich.speicher.laden());
+            }
+
+            const neueTafel = umbauen(tafel);
+
+            await abgleich.speicher.speichern(neueTafel);
+            abgleich.daten = neueTafel;
+            IMPOSTER.zeichnen(neueTafel);
+            return true;
+        } catch (fehler) {
+            await DIALOG.hinweis("Nicht gespeichert",
+                "Die Änderung konnte nicht gesendet werden: " + fehler.message);
+            return false;
+        }
     },
 
     /* ---------------------------------------------------------------- *

@@ -91,21 +91,22 @@ const APP = {
             KONFIG,
             KONFIG.speicher.imposterPfad,
             KONFIG.speicher.lokalerSchluesselImposter,
-            (roh) => IMPOSTER_RUNDE.normalisieren(roh)
+            (roh) => IMPOSTER_TAFEL.normalisieren(roh)
         );
 
         /* MIT `zusammenfuehren`: Hier hat jeder seinen eigenen Eintrag (Tipps,
            bereit, fertig) — wie im Würfel-Quizz. Ohne das löschte ein Gerät mit
-           veraltetem Stand die Tipps der anderen weg. */
+           veraltetem Stand die Tipps der anderen weg. Seit v3.2 geht das über
+           die Tafel, weil mehrere Räume nebeneinander laufen. */
         const imposterAbgleich = new Abgleich(imposterSpeicher.speicher, KONFIG.speicher, {
-            beiDaten: (runde) => {
-                IMPOSTER.zeichnen(runde);
+            beiDaten: (tafel) => {
+                IMPOSTER.zeichnen(tafel);
                 RANGLISTE.zeichnen();
             },
             beiStatus: () => { /* Der Kopf zeigt den Stand des Würfel-Quizz. */ },
-            leereDaten: () => IMPOSTER_RUNDE.leereRunde(),
-            inhaltGleich: (a, b) => IMPOSTER_RUNDE.inhaltGleich(a, b),
-            zusammenfuehren: (fremd, eigen, id) => IMPOSTER_RUNDE.zusammenfuehren(fremd, eigen, id)
+            leereDaten: () => IMPOSTER_TAFEL.leereTafel(),
+            inhaltGleich: (a, b) => IMPOSTER_TAFEL.inhaltGleich(a, b),
+            zusammenfuehren: (fremd, eigen, id) => IMPOSTER_TAFEL.zusammenfuehren(fremd, eigen, id)
         });
 
         IMPOSTER.verbinden(imposterAbgleich);

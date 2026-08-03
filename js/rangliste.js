@@ -117,32 +117,38 @@ const RANGLISTE = {
      * Kennungen ohne Namen in der Liste.
      */
     /*
-     * Punkte aus dem Imposter, je Spieler-Kennung.
+     * Punkte aus dem Imposter, je Spieler-Kennung — über ALLE Räume summiert.
      *
      * Gewertet wird nur eine aufgelöste Runde — vorher stünden Rollen und Wort
-     * noch nicht fest. Anders als beim Schach gibt es hier keine Chronik: Es
-     * läuft immer nur EINE Runde, und mit der nächsten sind die alten Punkte
-     * weg. Wer das ändern will, braucht dieselbe Lösung wie beim Schach.
+     * noch nicht fest. Innerhalb eines Raums gibt es keine Chronik: Mit der
+     * nächsten Runde sind die alten Punkte dieses Raums weg. Wer sie behalten
+     * will, legt einen neuen Raum an, statt im alten neu zu starten.
      */
-    imposterPunkte(runde) {
+    imposterPunkte(tafel) {
         const ergebnis = {};
-        const stand = IMPOSTER_RUNDE.normalisieren(runde);
 
-        if (stand.phase !== "aufloesung") {
-            return ergebnis;
-        }
+        for (const raum of IMPOSTER_TAFEL.liste(tafel)) {
+            if (raum.phase !== "aufloesung") {
+                continue;
+            }
 
-        for (const eintrag of IMPOSTER_RUNDE.ergebnis(stand)) {
-            ergebnis[eintrag.id] = { punkte: eintrag.punkte, imposter: eintrag.imposter };
+            for (const eintrag of IMPOSTER_RUNDE.ergebnis(raum)) {
+                const bisher = ergebnis[eintrag.id] || { punkte: 0, imposter: false };
+
+                ergebnis[eintrag.id] = {
+                    punkte: bisher.punkte + eintrag.punkte,
+                    imposter: bisher.imposter || eintrag.imposter
+                };
+            }
         }
 
         return ergebnis;
     },
 
-    gesamt(quizzDaten, schachTafel, imposterRunde) {
+    gesamt(quizzDaten, schachTafel, imposterTafel) {
         const quizz = MODELL.ergebnis(quizzDaten);
         const schach = RANGLISTE.schachPunkte(schachTafel);
-        const imposter = RANGLISTE.imposterPunkte(imposterRunde);
+        const imposter = RANGLISTE.imposterPunkte(imposterTafel);
 
         const liste = quizz.map((eintrag) => {
             const dazu = schach[eintrag.id] || { punkte: 0, siege: 0, remis: 0, partien: 0 };
@@ -194,10 +200,11 @@ const RANGLISTE = {
             + "wie viele Züge gemacht hat, spielt keine Rolle. Das ist gewollt, "
             + "denn im Team gibt es keine Reihenfolge.\n\n"
             + "IMPOSTER\n"
-            + "Gewertet wird die zuletzt aufgelöste Runde. Wie die Punkte dort "
-            + "entstehen, steht im Spiel hinter dem i-Knopf. Mit der nächsten "
-            + "Runde zählen die neuen Punkte statt der alten — anders als beim "
-            + "Schach, wo jedes Ergebnis dauerhaft festgeschrieben wird.\n\n"
+            + "Gewertet wird die aufgelöste Runde jedes Raums; die Punkte aus "
+            + "allen Räumen werden addiert. Wie sie entstehen, steht im Spiel "
+            + "hinter dem i-Knopf. Startet ein Raum neu, zählen dort die neuen "
+            + "Punkte statt der alten — anders als beim Schach, wo jedes "
+            + "Ergebnis dauerhaft festgeschrieben wird.\n\n"
             + "Bei Gleichstand entscheidet der Name, nicht der Zufall.";
     },
 
@@ -230,11 +237,11 @@ const RANGLISTE = {
         const schachTafel = (TEAM_SCHACH.abgleich && TEAM_SCHACH.abgleich.daten)
             ? TEAM_SCHACH.abgleich.daten
             : SCHACH_TAFEL.leereTafel();
-        const imposterRunde = (IMPOSTER.abgleich && IMPOSTER.abgleich.daten)
+        const imposterTafel = (IMPOSTER.abgleich && IMPOSTER.abgleich.daten)
             ? IMPOSTER.abgleich.daten
-            : IMPOSTER_RUNDE.leereRunde();
+            : IMPOSTER_TAFEL.leereTafel();
 
-        const liste = RANGLISTE.gesamt(quizzDaten, schachTafel, imposterRunde);
+        const liste = RANGLISTE.gesamt(quizzDaten, schachTafel, imposterTafel);
 
         const bereich = RANGLISTE._element("section", "karte karte-ergebnis");
 

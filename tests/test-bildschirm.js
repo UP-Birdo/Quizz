@@ -204,12 +204,16 @@ umgebung.DIALOG = { hinweis: async () => true, frage: async () => true };
  * Test sie greifen kann.
  */
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
-    "SCHACH_TAFEL", "TEAM_SCHACH", "IMPOSTER_WOERTER", "IMPOSTER_RUNDE", "IMPOSTER",
-    "RANGLISTE"];
+    "SCHACH_TAFEL", "TEAM_SCHACH", "IMPOSTER_WOERTER", "IMPOSTER_RUNDE",
+    "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE"];
 
+/* Die Reihenfolge ist dieselbe wie in index.html — die drei team-schach-Teile
+   ergänzen das Objekt und müssen nach ihm kommen. */
 const dateien = ["konfig.js", "modell.js", "schach-varianten.js", "schach.js",
-    "schach-runde.js", "schach-tafel.js", "team-schach.js", "imposter-woerter.js",
-    "imposter-runde.js", "imposter.js", "rangliste.js"];
+    "schach-runde.js", "schach-tafel.js", "team-schach.js",
+    "team-schach-uebersicht.js", "team-schach-brett.js", "team-schach-auswertung.js",
+    "imposter-woerter.js", "imposter-runde.js", "imposter-tafel.js", "imposter.js",
+    "rangliste.js"];
 
 const quelltext = dateien
     .map((name) => dateisystem.readFileSync(pfad.join(jsOrdner, name), "utf8"))
@@ -225,6 +229,7 @@ const SCHACH_RUNDE = umgebung.SCHACH_RUNDE;
 const SCHACH_TAFEL = umgebung.SCHACH_TAFEL;
 const TEAM_SCHACH = umgebung.TEAM_SCHACH;
 const IMPOSTER_RUNDE = umgebung.IMPOSTER_RUNDE;
+const IMPOSTER_TAFEL = umgebung.IMPOSTER_TAFEL;
 const IMPOSTER = umgebung.IMPOSTER;
 const RANGLISTE = umgebung.RANGLISTE;
 
@@ -805,66 +810,124 @@ pruefe("Die Rangliste zeichnet, bevor Daten da sind", () => {
 /* Der Tab braucht seinen eigenen Abgleich-Stellvertreter. */
 IMPOSTER.aufbauen(neuesElement("div"));
 IMPOSTER.verbinden({
-    daten: IMPOSTER_RUNDE.leereRunde(1000),
+    daten: IMPOSTER_TAFEL.leereTafel(1000),
     speicher: { art: "lokal" },
     aendern(neueDaten) { this.daten = neueDaten; }
 });
 
-/* Anna und Bert sitzen in derselben Runde; Anna ist dieses Gerät. */
-function imposterMitZweien() {
-    let runde = IMPOSTER_RUNDE.beitreten(IMPOSTER_RUNDE.leereRunde(1000), "id-anna", 1000);
-    runde = IMPOSTER_RUNDE.beitreten(runde, "id-bert", 1000);
-    return runde;
+/*
+ * Eine Tafel mit EINEM Raum, in dem Anna und Bert sitzen; Anna ist dieses
+ * Gerät. Der Raum wird gleich geöffnet — sonst zeigt der Tab die Übersicht.
+ */
+function imposterMitRaum(umbauen) {
+    const angelegt = IMPOSTER_TAFEL.raumAnlegen(
+        IMPOSTER_TAFEL.leereTafel(1000), "Testraum",
+        { gruppe: "alltag", impostermenge: 1 }, 1000);
+
+    let raum = IMPOSTER_RUNDE.beitreten(angelegt.raum, "id-anna", 1000);
+    raum = IMPOSTER_RUNDE.beitreten(raum, "id-bert", 1000);
+
+    if (umbauen) {
+        raum = umbauen(raum);
+    }
+
+    IMPOSTER.offeneId = raum.id;
+    return IMPOSTER_TAFEL.raumEinsetzen(angelegt.tafel, raum, 1000);
 }
 
+/* Sucht ein gezeichnetes Element über seine Klasse — Indizes würden bei jeder
+   zusätzlichen Zeile im Bildschirm brechen. */
+function imposterSuchen(klasse) {
+    return IMPOSTER.wurzelEl.kinder.find(
+        (kind) => String(kind.className).split(" ").indexOf(klasse) !== -1);
+}
+
+pruefe("Imposter: die Uebersicht zeigt jeden Raum", () => {
+    const tafel = imposterMitRaum();
+    IMPOSTER.offeneId = "";
+    IMPOSTER.abgleich.daten = tafel;
+    IMPOSTER.zeichnen(tafel);
+
+    const karte = IMPOSTER.wurzelEl.kinder.find(
+        (kind) => kind.kinder.some((enkel) => enkel.kinder.some(
+            (urenkel) => urenkel.textContent === "Testraum")));
+
+    if (!karte) {
+        throw new Error("der Raum steht nicht in der Uebersicht");
+    }
+});
+
+pruefe("Imposter: die Ansicht zum Anlegen zeigt jede Wortgruppe", () => {
+    IMPOSTER.abgleich.daten = IMPOSTER_TAFEL.leereTafel(1000);
+    IMPOSTER.raumAnlegen();
+
+    const feld = imposterSuchen("spielart-feld");
+    if (!feld) {
+        throw new Error("keine Kacheln");
+    }
+    if (feld.kinder.length !== umgebung.IMPOSTER_WOERTER.gruppen.length) {
+        throw new Error("erwartet eine Kachel je Gruppe, sind: " + feld.kinder.length);
+    }
+
+    IMPOSTER.auswahlSchliessen();
+});
+
 pruefe("Imposter: der Wartebildschirm zeichnet", () => {
-    IMPOSTER.abgleich.daten = imposterMitZweien();
+    IMPOSTER.abgleich.daten = imposterMitRaum();
     IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
 
     if (IMPOSTER.wurzelEl.kinder.length === 0) {
         throw new Error("nichts gezeichnet");
     }
+    if (!imposterSuchen("partie-kopf")) {
+        throw new Error("kein Raum-Kopf");
+    }
 });
 
 pruefe("Imposter: die laufende Runde zeigt das Wort — oder die Rolle", () => {
-    let runde = imposterMitZweien();
-    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-anna", true, 1000);
-    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-bert", true, 1000);
-    runde = IMPOSTER_RUNDE.starten(runde, "testsalz", 2000);
+    const tafel = imposterMitRaum((raum) => {
+        let neu = IMPOSTER_RUNDE.bereitSetzen(raum, "id-anna", true, 1000);
+        neu = IMPOSTER_RUNDE.bereitSetzen(neu, "id-bert", true, 1000);
+        return IMPOSTER_RUNDE.starten(neu, "testsalz", 2000);
+    });
 
-    IMPOSTER.abgleich.daten = runde;
-    IMPOSTER.zeichnen(runde);
+    IMPOSTER.abgleich.daten = tafel;
+    IMPOSTER.zeichnen(tafel);
 
-    const kasten = IMPOSTER.wurzelEl.kinder[0];
-    if (String(kasten.className).indexOf("imposter-wort") === -1) {
+    const raum = IMPOSTER_TAFEL.raum(tafel, IMPOSTER.offeneId);
+    const kasten = imposterSuchen("imposter-wort");
+
+    if (!kasten) {
         throw new Error("kein Wortkasten");
     }
 
     const gezeigt = kasten.kinder[1].textContent;
-    const istImposter = IMPOSTER_RUNDE.istImposter(runde, "id-anna");
 
-    if (istImposter) {
+    if (IMPOSTER_RUNDE.istImposter(raum, "id-anna")) {
         if (gezeigt !== "Imposter") {
             throw new Error("der Imposter sieht das Wort: " + gezeigt);
         }
-    } else if (gezeigt !== IMPOSTER_RUNDE.wortVon(runde)) {
+    } else if (gezeigt !== IMPOSTER_RUNDE.wortVon(raum)) {
         throw new Error("das Wort fehlt");
     }
 });
 
 pruefe("Imposter: die Aufloesung zeichnet mit Punkten", () => {
-    let runde = imposterMitZweien();
-    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-anna", true, 1000);
-    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-bert", true, 1000);
-    runde = IMPOSTER_RUNDE.starten(runde, "testsalz", 2000);
-    runde = IMPOSTER_RUNDE.fertigSetzen(runde, "id-anna", true, 3000);
-    runde = IMPOSTER_RUNDE.fertigSetzen(runde, "id-bert", true, 3100);
+    const tafel = imposterMitRaum((raum) => {
+        let neu = IMPOSTER_RUNDE.bereitSetzen(raum, "id-anna", true, 1000);
+        neu = IMPOSTER_RUNDE.bereitSetzen(neu, "id-bert", true, 1000);
+        neu = IMPOSTER_RUNDE.starten(neu, "testsalz", 2000);
+        neu = IMPOSTER_RUNDE.fertigSetzen(neu, "id-anna", true, 3000);
+        return IMPOSTER_RUNDE.fertigSetzen(neu, "id-bert", true, 3100);
+    });
 
-    IMPOSTER.abgleich.daten = runde;
-    IMPOSTER.zeichnen(runde);
+    IMPOSTER.abgleich.daten = tafel;
+    IMPOSTER.zeichnen(tafel);
 
-    const kasten = IMPOSTER.wurzelEl.kinder[0];
-    if (kasten.kinder[1].textContent !== IMPOSTER_RUNDE.wortVon(runde)) {
+    const raum = IMPOSTER_TAFEL.raum(tafel, IMPOSTER.offeneId);
+    const kasten = imposterSuchen("imposter-wort");
+
+    if (!kasten || kasten.kinder[1].textContent !== IMPOSTER_RUNDE.wortVon(raum)) {
         throw new Error("das Wort wird nicht aufgeloest");
     }
 
@@ -874,6 +937,18 @@ pruefe("Imposter: die Aufloesung zeichnet mit Punkten", () => {
 
     if (!karte) {
         throw new Error("keine Aufloesung");
+    }
+});
+
+pruefe("Imposter: ein geloeschter Raum fuehrt zurueck in die Uebersicht", () => {
+    IMPOSTER.abgleich.daten = imposterMitRaum();
+    IMPOSTER.abgleich.daten = IMPOSTER_TAFEL.raumEntfernen(
+        IMPOSTER.abgleich.daten, IMPOSTER.offeneId, 2000);
+
+    IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+
+    if (IMPOSTER.offeneId !== "") {
+        throw new Error("der Tab haengt an einem Raum, den es nicht mehr gibt");
     }
 });
 
