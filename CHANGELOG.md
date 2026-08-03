@@ -3,6 +3,39 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v3.0 — 2026-08-03
+
+Ein drittes Spiel: **Imposter**.
+
+- **So läuft es:** Alle treten der Runde bei, stellen Thema und Anzahl der
+  Imposter ein und drücken „bereit". Dann bekommt jeder groß dasselbe Wort
+  gezeigt — bis auf die Imposter, bei denen dort **Imposter** steht. Die Uhr
+  läuft, am Tisch stellt man sich Fragen, und nebenbei tippt jeder die anderen
+  als *Verdächtig* oder *Unverdächtig* ein. Der Imposter rät derweil das Wort.
+  Sind alle fertig, kommt die Auflösung.
+- **Acht Wortgruppen** mit über 200 Wörtern: fünf Themen (Alltag, Essen, Natur,
+  Technik, Freizeit) und drei Wortarten (nur Nomen, nur Verben, nur Adjektive).
+  Alle handverlesen — es sind nur Wörter dabei, die man beschreiben kann, ohne
+  sie zu nennen.
+- **Die Anzahl der Imposter ist ein Höchstwert, kein Versprechen:** Es können
+  weniger werden, in seltenen Fällen gar keiner. **Einer weiß das Wort immer** —
+  sonst könnte niemand die Fragen beantworten.
+- **Beim geratenen Wort wird ein Fehler verziehen:** Groß- und Kleinschreibung
+  ist egal, und ein Buchstabe zu viel, zu wenig, falsch oder mit dem Nachbarn
+  vertauscht zählt noch als richtig.
+- **Punkte:** 8 für jeden richtig eingeschätzten Mitspieler, 20 für einen
+  Imposter, den die Mehrheit nicht enttarnt hat, 15 fürs Erraten des Wortes,
+  2 fürs Mitspielen — und 10 Zuschlag für alle, wenn die Runde unter fünf
+  Minuten gedauert hat. Sie zählen in der **Rangliste** mit.
+- **Wort und Rollen stehen nirgends in der Datenbank.** Gespeichert wird nur
+  ein Salz; alles Weitere rechnet jedes Gerät daraus selbst aus. Was die
+  Datenbank verrät, ist damit eine Zeichenkette und sonst nichts. Die Grenze
+  dieser Lösung steht ehrlich in `docs/DECISIONS.md`.
+
+> **Vor dem ersten Spielen:** Der neue Pfad `imposter` braucht eine eigene
+> Firebase-Regel — siehe `docs/DEPLOYMENT.md`, Abschnitt 2. Ohne sie kann das
+> Spiel nichts speichern.
+
 ## v2.9 — 2026-08-03
 
 - **Die Spielart „Fähigkeiten sammeln" steht nicht mehr zur Auswahl.** Seit v2.5

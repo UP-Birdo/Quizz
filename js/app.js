@@ -86,17 +86,52 @@ const APP = {
 
         TEAM_SCHACH.verbinden(schachAbgleich);
 
+        /* ---- Imposter ---- */
+        const imposterSpeicher = speicherErzeugen(
+            KONFIG,
+            KONFIG.speicher.imposterPfad,
+            KONFIG.speicher.lokalerSchluesselImposter,
+            (roh) => IMPOSTER_RUNDE.normalisieren(roh)
+        );
+
+        /* MIT `zusammenfuehren`: Hier hat jeder seinen eigenen Eintrag (Tipps,
+           bereit, fertig) — wie im Würfel-Quizz. Ohne das löschte ein Gerät mit
+           veraltetem Stand die Tipps der anderen weg. */
+        const imposterAbgleich = new Abgleich(imposterSpeicher.speicher, KONFIG.speicher, {
+            beiDaten: (runde) => {
+                IMPOSTER.zeichnen(runde);
+                RANGLISTE.zeichnen();
+            },
+            beiStatus: () => { /* Der Kopf zeigt den Stand des Würfel-Quizz. */ },
+            leereDaten: () => IMPOSTER_RUNDE.leereRunde(),
+            inhaltGleich: (a, b) => IMPOSTER_RUNDE.inhaltGleich(a, b),
+            zusammenfuehren: (fremd, eigen, id) => IMPOSTER_RUNDE.zusammenfuehren(fremd, eigen, id)
+        });
+
+        IMPOSTER.verbinden(imposterAbgleich);
+
         /* ---- Tabs ---- */
         TABS.registrieren(WUERFEL_QUIZZ);
         TABS.registrieren(TEAM_SCHACH);
+        TABS.registrieren(IMPOSTER);
         TABS.registrieren(RANGLISTE);
         TABS.starten(
             document.getElementById("tab-leiste"),
             document.getElementById("tab-inhalt")
         );
 
-        quizzAbgleich.starten().then(() => WUERFEL_QUIZZ.anmelden());
+        quizzAbgleich.starten().then(() => {
+            WUERFEL_QUIZZ.anmelden();
+
+            /* Die eigene Kennung braucht der Imposter-Abgleich zum
+               Zusammenführen — sie steht erst nach der Anmeldung fest. */
+            const person = ICH.person();
+            if (person) {
+                imposterAbgleich.eigeneIdSetzen(person.id);
+            }
+        });
         schachAbgleich.starten();
+        imposterAbgleich.starten();
     },
 
     /* status ist einer von: laedt, bereit, schreibt, fehler */

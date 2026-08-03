@@ -708,6 +708,51 @@ Grundlage der Namen ist der Würfel-Quizz — dort steht, wer mitspielt. Wer dor
 entfernt wurde, verschwindet auch aus der Rangliste; sonst stünden Kennungen
 ohne Namen darin.
 
+## Imposter
+
+Das dritte Spiel, seit v3.0. Eigener Pfad in der Datenbank
+(`KONFIG.speicher.imposterPfad`, **eigene Firebase-Regel nötig**), eigener
+Abgleich, eigene Dateien:
+
+| Datei | Weiß nichts über |
+|---|---|
+| `imposter-woerter.js` — der Wortkatalog | alles andere (reine Datentabelle) |
+| `imposter-runde.js` — Regeln und Auswertung | Speicher, Bildschirm |
+| `imposter.js` — Bildschirm | die Wortauswahl (fragt immer die Runde) |
+
+### Warum Wort und Rollen nicht gespeichert werden
+
+**Im Stand steht nur ein Salz** — eine Zufallszeichenkette, die beim Start
+erzeugt wird. Daraus rechnet jedes Gerät selbst aus, welches Wort gilt
+(`wortVon`) und wer Imposter ist (`imposterListe`). Beides geht damit nie über
+die Leitung, und wer die Datenbank öffnet, sieht eine Zeichenkette.
+
+Dieselbe Idee wie beim Würfel-Siegel und beim Schach-Zufall — und dieselbe
+Grenze: Der Quelltext liegt offen, wer die Entwicklerkonsole öffnet, kann alles
+nachrechnen. Was das leistet und was nicht, steht in `DECISIONS.md`.
+
+**Die Streufunktion braucht ihren Nachmischer.** Ohne den letzten Schritt in
+`_zufallsWert` bleiben Werte verwandt, deren Eingaben sich erst spät
+unterscheiden — beim Bauen führte das dazu, dass in fast jeder fünften Runde
+gar kein Imposter herauskam statt in jeder fünfzigsten.
+
+### Die drei Zusagen an die Rollenverteilung
+
+1. **Einer weiß das Wort immer.** `imposterListe` nimmt höchstens
+   `spieler.length - 1` — sonst könnte niemand die Fragen beantworten.
+2. **Es können weniger sein als eingestellt.** Jeder Vorgesehene fällt mit
+   `AUSFALL_CHANCE` wieder heraus; deshalb ist die eingestellte Zahl ein
+   Höchstwert und kein Versprechen.
+3. **Ganz selten ist niemand Imposter.** Das folgt aus 2 und ist gewollt: Es
+   hält die Runde ehrlich, weil auch „niemand war es" möglich bleibt.
+
+### Ein Fehler wird verziehen
+
+`wortPasst` misst die Editier-Entfernung **mit Vertauschung**
+(Damerau-Levenshtein) und erlaubt eine Abweichung. Der Dreher gehört
+ausdrücklich dazu: „Regenschrim" ist der häufigste Tippfehler überhaupt, und
+die einfache Editier-Entfernung zählt ihn als zwei Fehler.
+
 ## Tab-Register
 
 Ein Tab ist ein Objekt mit `id`, `titel` und `aufbauen(behaelter)`. `app.js`

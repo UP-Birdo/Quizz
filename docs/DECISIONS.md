@@ -899,6 +899,67 @@ Nebenwirkung, die ausdrücklich gewünscht war: Liegen gelassene Würfel halten
 nichts mehr auf. Vorher lief der Takt weiter, während das Brett voll war;
 jetzt kommt einfach nichts, bis wieder Platz ist.
 
+## Imposter — die Entscheidungen (v3.0)
+
+### Was die Geheimhaltung leistet und was nicht
+
+Das Wort steht nirgends im gespeicherten Stand, die Rollen auch nicht.
+Gespeichert wird ein Salz; alles Weitere rechnet jedes Gerät daraus aus.
+
+**Das leistet es:** Wer die Datenbank öffnet — und sie ist öffentlich lesbar —,
+sieht eine Zeichenkette und sonst nichts. Kein versehentliches Mitlesen, kein
+neugieriger Blick, der die Runde verdirbt.
+
+**Das leistet es nicht:** Schutz gegen jemanden, der es darauf anlegt. Der
+Quelltext liegt offen auf GitHub; wer die Entwicklerkonsole öffnet, kann Wort
+und Rollen in zwei Zeilen nachrechnen.
+
+Warum es trotzdem so gebaut ist: Echte Geheimhaltung bräuchte einen Server, der
+die Rollen für sich behält und jedem nur seine schickt — also genau das, was
+dieses Projekt bewusst nicht hat. Für ein Spiel unter Freunden am selben Tisch
+ist das die richtige Stelle zum Aufhören. **Dieselbe Abwägung wie bei der
+Spieler-PIN**, und aus demselben Grund hier ehrlich aufgeschrieben statt
+verschwiegen.
+
+### Warum die Wortliste handgemacht ist
+
+Gewünscht war, eine große Wortsammlung herunterzuladen. Das geht nicht: Eine
+fremde Liste auf einer öffentlichen Seite ist eine Rechtefrage, die niemand
+geprüft hat — und die meisten Sammlungen sind für dieses Spiel unbrauchbar. Ein
+Wort muss sich **beschreiben lassen, ohne genannt zu werden**; „Konjunktiv" oder
+„Umstand" scheitern daran, ein „Regenschirm" nicht.
+
+Deshalb liegen gut zweihundert handverlesene Wörter in `imposter-woerter.js`,
+nach Themen und Wortarten sortiert. Wer ergänzen will, schreibt sie dort hinein
+— mehr ist nicht zu tun.
+
+### Warum die Zahl der Imposter nur ein Höchstwert ist
+
+Drei Zusagen, die sich gegenseitig bedingen: Einer weiß das Wort **immer**
+(sonst könnte niemand die Fragen beantworten), es können **weniger** sein als
+eingestellt, und **ganz selten ist niemand** Imposter.
+
+Der dritte Punkt ist der wichtigste für das Spiel: Solange „niemand war es"
+möglich bleibt, kann sich niemand darauf verlassen, dass die Suche überhaupt ein
+Ziel hat. Das hält die Fragerei ehrlich.
+
+### Ein Fehler beim geratenen Wort wird verziehen
+
+Gewünscht war, dass „ein Buchstabe falsch" noch zählt. Gebaut ist die
+Editier-Entfernung **mit Vertauschung** — der Dreher („Regenschrim") ist der
+häufigste Tippfehler überhaupt, und die einfache Rechnung zählt ihn als zwei
+Fehler. Ein Test hält beides fest.
+
+### Warum die Imposter-Punkte nicht festgeschrieben werden
+
+Beim Schach bekommt jedes Ergebnis einen dauerhaften Chronik-Eintrag; hier
+nicht. Der Grund ist der Aufbau: Es läuft immer nur EINE Imposter-Runde, und mit
+der nächsten sind die alten Punkte weg.
+
+Das ist eine bewusste Vereinfachung für den ersten Bau, keine
+Grundsatzentscheidung. Soll es anders werden, ist der Weg schon gebahnt — die
+Chronik des Schachs ist das Vorbild.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

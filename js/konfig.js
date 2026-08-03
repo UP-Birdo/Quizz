@@ -14,7 +14,7 @@
 const KONFIG = {
 
     /* Version der App. Wird im Kopf angezeigt und muss zu CHANGELOG.md passen. */
-    APP_VERSION: "2.9",
+    APP_VERSION: "3.0",
 
     speicher: {
 
@@ -36,6 +36,7 @@ const KONFIG = {
            eigenen Eintrag — siehe docs\DEPLOYMENT.md, Abschnitt 2. */
         pfad: "wuerfel-quizz",
         schachPfad: "team-schach",
+        imposterPfad: "imposter",
 
         /* Wie oft (in Millisekunden) nach fremden Änderungen gefragt wird.
            Gefragt wird nur, solange die Seite im Vordergrund ist — im
@@ -50,7 +51,8 @@ const KONFIG = {
 
         /* Schlüssel im Browser-Speicher für den lokalen Modus, je Tab einer. */
         lokalerSchluessel: "quizz.wuerfel-quizz",
-        lokalerSchluesselSchach: "quizz.team-schach"
+        lokalerSchluesselSchach: "quizz.team-schach",
+        lokalerSchluesselImposter: "quizz.imposter"
     },
 
     verwaltung: {

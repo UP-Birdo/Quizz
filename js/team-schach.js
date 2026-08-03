@@ -313,7 +313,10 @@ const TEAM_SCHACH = {
         const quizzDaten = (WUERFEL_QUIZZ.abgleich && WUERFEL_QUIZZ.abgleich.daten)
             ? WUERFEL_QUIZZ.abgleich.daten
             : null;
-        const liste = RANGLISTE.gesamt(quizzDaten, TEAM_SCHACH.abgleich.daten);
+        const imposterRunde = (IMPOSTER.abgleich && IMPOSTER.abgleich.daten)
+            ? IMPOSTER.abgleich.daten
+            : null;
+        const liste = RANGLISTE.gesamt(quizzDaten, TEAM_SCHACH.abgleich.daten, imposterRunde);
 
         if (liste.length === 0) {
             flaeche.appendChild(TEAM_SCHACH._element("p", "erklaerung",

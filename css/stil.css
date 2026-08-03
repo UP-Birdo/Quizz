@@ -1563,6 +1563,134 @@ body {
 }
 
 /* ------------------------------------------------------------------ *
+ * Imposter
+ * ------------------------------------------------------------------ */
+
+/*
+ * Das Wort steht groß und allein — es ist das Einzige, was in dieser Runde
+ * zählt. Für die Imposter steht dort ihre Rolle, in Rot: Sie sollen im ersten
+ * Moment merken, dass sie etwas anderes sehen als die anderen.
+ */
+.imposter-wort {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 28px 20px;
+    margin-bottom: var(--abstand);
+    text-align: center;
+    background: var(--karte);
+    border: 2px solid var(--haupt);
+    border-radius: var(--radius);
+}
+
+.imposter-wort-rolle {
+    border-color: var(--gefahr);
+    background: var(--fehler-flaeche);
+}
+
+.imposter-wort-marke {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--schrift-leise);
+}
+
+.imposter-wort-text {
+    font-size: clamp(1.8rem, 9vw, 3rem);
+    font-weight: 700;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+}
+
+.imposter-wort-rolle .imposter-wort-text {
+    color: var(--gefahr);
+}
+
+.imposter-wort-hinweis {
+    font-size: 0.9rem;
+    color: var(--schrift-leise);
+    max-width: 32em;
+}
+
+.imposter-uhr {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.imposter-wahl {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.imposter-wahl-titel {
+    font-size: 0.9rem;
+    color: var(--schrift-leise);
+}
+
+.imposter-knopfreihe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.imposter-zeile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rahmen);
+}
+
+.imposter-zeile:last-child {
+    border-bottom: none;
+}
+
+.imposter-zeile-ich {
+    background: var(--karte-leise);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.imposter-name {
+    flex: 1 1 120px;
+    min-width: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.imposter-ich {
+    color: var(--haupt);
+}
+
+.imposter-treffer {
+    font-size: 0.85rem;
+    color: var(--schrift-leise);
+}
+
+.imposter-punkte {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--haupt);
+    margin-left: auto;
+}
+
+/* Verdächtig rot, unverdächtig grün — aber nur, wenn gewählt. */
+.knopf-haupt.imposter-stufe-imposter {
+    background: var(--gefahr);
+    color: var(--karte);
+}
+
+.knopf-haupt.imposter-stufe-save {
+    background: var(--gut);
+    color: var(--karte);
+}
+
+/* ------------------------------------------------------------------ *
  * Dialog
  * ------------------------------------------------------------------ */
 

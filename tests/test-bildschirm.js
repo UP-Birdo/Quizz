@@ -197,10 +197,12 @@ umgebung.DIALOG = { hinweis: async () => true, frage: async () => true };
  * Test sie greifen kann.
  */
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
-    "SCHACH_TAFEL", "TEAM_SCHACH", "RANGLISTE"];
+    "SCHACH_TAFEL", "TEAM_SCHACH", "IMPOSTER_WOERTER", "IMPOSTER_RUNDE", "IMPOSTER",
+    "RANGLISTE"];
 
 const dateien = ["konfig.js", "modell.js", "schach-varianten.js", "schach.js",
-    "schach-runde.js", "schach-tafel.js", "team-schach.js", "rangliste.js"];
+    "schach-runde.js", "schach-tafel.js", "team-schach.js", "imposter-woerter.js",
+    "imposter-runde.js", "imposter.js", "rangliste.js"];
 
 const quelltext = dateien
     .map((name) => dateisystem.readFileSync(pfad.join(jsOrdner, name), "utf8"))
@@ -215,6 +217,8 @@ const SCHACH_VARIANTEN = umgebung.SCHACH_VARIANTEN;
 const SCHACH_RUNDE = umgebung.SCHACH_RUNDE;
 const SCHACH_TAFEL = umgebung.SCHACH_TAFEL;
 const TEAM_SCHACH = umgebung.TEAM_SCHACH;
+const IMPOSTER_RUNDE = umgebung.IMPOSTER_RUNDE;
+const IMPOSTER = umgebung.IMPOSTER;
 const RANGLISTE = umgebung.RANGLISTE;
 
 /* ------------------------------------------------------------------ *
@@ -767,6 +771,99 @@ pruefe("Die Rangliste zeichnet, bevor Daten da sind", () => {
         RANGLISTE.zeichnen();
     } finally {
         TEAM_SCHACH.abgleich = gemerkt;
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Imposter
+ * ------------------------------------------------------------------ */
+
+/* Der Tab braucht seinen eigenen Abgleich-Stellvertreter. */
+IMPOSTER.aufbauen(neuesElement("div"));
+IMPOSTER.verbinden({
+    daten: IMPOSTER_RUNDE.leereRunde(1000),
+    speicher: { art: "lokal" },
+    aendern(neueDaten) { this.daten = neueDaten; }
+});
+
+/* Anna und Bert sitzen in derselben Runde; Anna ist dieses Gerät. */
+function imposterMitZweien() {
+    let runde = IMPOSTER_RUNDE.beitreten(IMPOSTER_RUNDE.leereRunde(1000), "id-anna", 1000);
+    runde = IMPOSTER_RUNDE.beitreten(runde, "id-bert", 1000);
+    return runde;
+}
+
+pruefe("Imposter: der Wartebildschirm zeichnet", () => {
+    IMPOSTER.abgleich.daten = imposterMitZweien();
+    IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+
+    if (IMPOSTER.wurzelEl.kinder.length === 0) {
+        throw new Error("nichts gezeichnet");
+    }
+});
+
+pruefe("Imposter: die laufende Runde zeigt das Wort — oder die Rolle", () => {
+    let runde = imposterMitZweien();
+    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-anna", true, 1000);
+    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-bert", true, 1000);
+    runde = IMPOSTER_RUNDE.starten(runde, "testsalz", 2000);
+
+    IMPOSTER.abgleich.daten = runde;
+    IMPOSTER.zeichnen(runde);
+
+    const kasten = IMPOSTER.wurzelEl.kinder[0];
+    if (String(kasten.className).indexOf("imposter-wort") === -1) {
+        throw new Error("kein Wortkasten");
+    }
+
+    const gezeigt = kasten.kinder[1].textContent;
+    const istImposter = IMPOSTER_RUNDE.istImposter(runde, "id-anna");
+
+    if (istImposter) {
+        if (gezeigt !== "Imposter") {
+            throw new Error("der Imposter sieht das Wort: " + gezeigt);
+        }
+    } else if (gezeigt !== IMPOSTER_RUNDE.wortVon(runde)) {
+        throw new Error("das Wort fehlt");
+    }
+});
+
+pruefe("Imposter: die Aufloesung zeichnet mit Punkten", () => {
+    let runde = imposterMitZweien();
+    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-anna", true, 1000);
+    runde = IMPOSTER_RUNDE.bereitSetzen(runde, "id-bert", true, 1000);
+    runde = IMPOSTER_RUNDE.starten(runde, "testsalz", 2000);
+    runde = IMPOSTER_RUNDE.fertigSetzen(runde, "id-anna", true, 3000);
+    runde = IMPOSTER_RUNDE.fertigSetzen(runde, "id-bert", true, 3100);
+
+    IMPOSTER.abgleich.daten = runde;
+    IMPOSTER.zeichnen(runde);
+
+    const kasten = IMPOSTER.wurzelEl.kinder[0];
+    if (kasten.kinder[1].textContent !== IMPOSTER_RUNDE.wortVon(runde)) {
+        throw new Error("das Wort wird nicht aufgeloest");
+    }
+
+    /* Die Punkte stehen in der Auflösungskarte. */
+    const karte = IMPOSTER.wurzelEl.kinder.find(
+        (kind) => kind.kinder.some((enkel) => enkel.textContent === "Auflösung"));
+
+    if (!karte) {
+        throw new Error("keine Aufloesung");
+    }
+});
+
+pruefe("Imposter: ohne Anmeldung wird nur ein Hinweis gezeigt", () => {
+    const gemerkt = umgebung.ICH.person;
+    umgebung.ICH.person = () => null;
+
+    try {
+        IMPOSTER.zeichnen(IMPOSTER.abgleich.daten);
+        if (IMPOSTER.wurzelEl.kinder.length !== 1) {
+            throw new Error("erwartet nur den Hinweis");
+        }
+    } finally {
+        umgebung.ICH.person = gemerkt;
     }
 });
 

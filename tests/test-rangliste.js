@@ -15,6 +15,8 @@ globalThis.SCHACH_VARIANTEN = require(pfad.join(__dirname, "..", "js", "schach-v
 globalThis.SCHACH = require(pfad.join(__dirname, "..", "js", "schach.js"));
 globalThis.SCHACH_RUNDE = require(pfad.join(__dirname, "..", "js", "schach-runde.js"));
 globalThis.SCHACH_TAFEL = require(pfad.join(__dirname, "..", "js", "schach-tafel.js"));
+globalThis.IMPOSTER_WOERTER = require(pfad.join(__dirname, "..", "js", "imposter-woerter.js"));
+globalThis.IMPOSTER_RUNDE = require(pfad.join(__dirname, "..", "js", "imposter-runde.js"));
 const RANGLISTE = require(pfad.join(__dirname, "..", "js", "rangliste.js"));
 
 const MODELL = globalThis.MODELL;

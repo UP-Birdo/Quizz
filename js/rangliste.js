@@ -87,19 +87,45 @@ const RANGLISTE = {
      * dort entfernt wurde, taucht auch hier nicht mehr auf — sonst stünden
      * Kennungen ohne Namen in der Liste.
      */
-    gesamt(quizzDaten, schachTafel) {
+    /*
+     * Punkte aus dem Imposter, je Spieler-Kennung.
+     *
+     * Gewertet wird nur eine aufgelöste Runde — vorher stünden Rollen und Wort
+     * noch nicht fest. Anders als beim Schach gibt es hier keine Chronik: Es
+     * läuft immer nur EINE Runde, und mit der nächsten sind die alten Punkte
+     * weg. Wer das ändern will, braucht dieselbe Lösung wie beim Schach.
+     */
+    imposterPunkte(runde) {
+        const ergebnis = {};
+        const stand = IMPOSTER_RUNDE.normalisieren(runde);
+
+        if (stand.phase !== "aufloesung") {
+            return ergebnis;
+        }
+
+        for (const eintrag of IMPOSTER_RUNDE.ergebnis(stand)) {
+            ergebnis[eintrag.id] = { punkte: eintrag.punkte, imposter: eintrag.imposter };
+        }
+
+        return ergebnis;
+    },
+
+    gesamt(quizzDaten, schachTafel, imposterRunde) {
         const quizz = MODELL.ergebnis(quizzDaten);
         const schach = RANGLISTE.schachPunkte(schachTafel);
+        const imposter = RANGLISTE.imposterPunkte(imposterRunde);
 
         const liste = quizz.map((eintrag) => {
             const dazu = schach[eintrag.id] || { punkte: 0, siege: 0, remis: 0, partien: 0 };
+            const drittes = imposter[eintrag.id] || { punkte: 0 };
 
             return {
                 id: eintrag.id,
                 name: eintrag.name,
                 quizz: eintrag.punkte,
                 schach: dazu.punkte,
-                gesamt: eintrag.punkte + dazu.punkte,
+                imposter: drittes.punkte,
+                gesamt: eintrag.punkte + dazu.punkte + drittes.punkte,
                 siege: dazu.siege,
                 remis: dazu.remis,
                 partien: dazu.partien
@@ -118,7 +144,7 @@ const RANGLISTE = {
 
     /* Die Regeln im Wortlaut, aus denselben Konstanten wie die Rechnung. */
     erklaerung() {
-        return "Die Rangliste zählt beide Spiele zusammen.\n\n"
+        return "Die Rangliste zählt alle Spiele zusammen.\n\n"
             + "WÜRFEL QUIZZ\n"
             + "Es zählen die Punkte aus dem Punktestand des Spiels. Wie sie "
             + "entstehen, steht dort hinter dem i-Knopf.\n\n"
@@ -133,6 +159,11 @@ const RANGLISTE = {
             + "Punkte. Alle aus dem Siegerteam bekommen dieselben Punkte; wer "
             + "wie viele Züge gemacht hat, spielt keine Rolle. Das ist gewollt, "
             + "denn im Team gibt es keine Reihenfolge.\n\n"
+            + "IMPOSTER\n"
+            + "Gewertet wird die zuletzt aufgelöste Runde. Wie die Punkte dort "
+            + "entstehen, steht im Spiel hinter dem i-Knopf. Mit der nächsten "
+            + "Runde zählen die neuen Punkte statt der alten — anders als beim "
+            + "Schach, wo jedes Ergebnis dauerhaft festgeschrieben wird.\n\n"
             + "Bei Gleichstand entscheidet der Name, nicht der Zufall.";
     },
 
@@ -165,8 +196,11 @@ const RANGLISTE = {
         const schachTafel = (TEAM_SCHACH.abgleich && TEAM_SCHACH.abgleich.daten)
             ? TEAM_SCHACH.abgleich.daten
             : SCHACH_TAFEL.leereTafel();
+        const imposterRunde = (IMPOSTER.abgleich && IMPOSTER.abgleich.daten)
+            ? IMPOSTER.abgleich.daten
+            : IMPOSTER_RUNDE.leereRunde();
 
-        const liste = RANGLISTE.gesamt(quizzDaten, schachTafel);
+        const liste = RANGLISTE.gesamt(quizzDaten, schachTafel, imposterRunde);
 
         const bereich = RANGLISTE._element("section", "karte karte-ergebnis");
 

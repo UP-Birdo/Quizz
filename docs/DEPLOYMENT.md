@@ -151,12 +151,20 @@ speichert nur auf dem jeweiligen Gerät.
                "team-schach": {
                    ".read": true,
                    ".write": true
+               },
+               "imposter": {
+                   ".read": true,
+                   ".write": true
                }
            }
        }
 
-   Damit sind ausschließlich diese beiden Pfade offen, der Rest der Datenbank
+   Damit sind ausschließlich diese drei Pfade offen, der Rest der Datenbank
    bleibt gesperrt.
+
+   > **Für v3.0 ist hier etwas zu tun:** Der Pfad `imposter` ist neu. Fehlt er,
+   > lädt das Spiel nicht und speichert nichts — die anderen beiden Spiele
+   > laufen davon unberührt weiter.
 
    **Jeder Tab mit eigenem Stand braucht seinen eigenen Eintrag.** Kommt später
    ein Spiel dazu, gehört sein Pfad (aus `js/konfig.js`) hier ergänzt — sonst

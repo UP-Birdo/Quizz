@@ -76,6 +76,8 @@ globalThis.SCHACH_VARIANTEN = require(pfad.join(jsOrdner, "schach-varianten.js")
 globalThis.SCHACH = require(pfad.join(jsOrdner, "schach.js"));
 globalThis.SCHACH_RUNDE = require(pfad.join(jsOrdner, "schach-runde.js"));
 globalThis.SCHACH_TAFEL = require(pfad.join(jsOrdner, "schach-tafel.js"));
+globalThis.IMPOSTER_WOERTER = require(pfad.join(jsOrdner, "imposter-woerter.js"));
+globalThis.IMPOSTER_RUNDE = require(pfad.join(jsOrdner, "imposter-runde.js"));
 
 const bausteine = {
     MODELL: globalThis.MODELL,
@@ -83,6 +85,8 @@ const bausteine = {
     SCHACH_VARIANTEN: globalThis.SCHACH_VARIANTEN,
     SCHACH_RUNDE: globalThis.SCHACH_RUNDE,
     SCHACH_TAFEL: globalThis.SCHACH_TAFEL,
+    IMPOSTER_WOERTER: globalThis.IMPOSTER_WOERTER,
+    IMPOSTER_RUNDE: globalThis.IMPOSTER_RUNDE,
     RANGLISTE: require(pfad.join(jsOrdner, "rangliste.js")),
     VERSIEGELUNG: require(pfad.join(jsOrdner, "versiegelung.js"))
 };
