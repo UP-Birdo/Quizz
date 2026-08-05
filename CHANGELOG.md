@@ -3,6 +3,13 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.40.0 — 2026-08-05
+
+- **Umstellung auf Semantic Versioning** (0.MINOR.PATCH): aus v4.0 wurde
+  v0.40.0. Die 0 vorne heißt „noch in Entwicklung" — eine 1.0.0 gibt es erst,
+  wenn die Fertig-Kriterien in der `ROADMAP.md` erfüllt sind. Alte Nummern
+  bleiben lesbar: v3.7 entspricht 0.37. Am Spiel selbst ändert sich nichts.
+
 ## v4.0 — 2026-08-03
 
 Der dritte Fehler aus derselben Meldung — und der, den man auf dem Bildschirmfoto

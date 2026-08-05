@@ -13,8 +13,11 @@
 
 const KONFIG = {
 
-    /* Version der App. Wird im Kopf angezeigt und muss zu CHANGELOG.md passen. */
-    APP_VERSION: "4.0",
+    /* Version der App (SemVer: 0.MINOR.PATCH — die 0 vorne heisst "noch in
+       Entwicklung", 1.0.0 erst bei erfuellten Fertig-Kriterien der ROADMAP).
+       Wird im Kopf angezeigt und muss zu CHANGELOG.md passen.
+       Umstellung 08/2026: aus v4.0 wurde v0.40.0 (alte v3.7 = 0.37). */
+    APP_VERSION: "0.40.0",
 
     speicher: {
 
