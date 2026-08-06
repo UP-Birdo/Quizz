@@ -55,7 +55,7 @@ const SCHACH_VARIANTEN = {
      */
     STUFEN: [
         { id: "gruen", titel: "Gewöhnlich", chance: 52, farbe: "#2e9e52",
-            wiederholung: 0.15 },
+            wiederholung: 0.15, abklingen: { halbzuege: 8, gewicht: 0.2 } },
         { id: "blau", titel: "Ungewöhnlich", chance: 33, farbe: "#2f7fd0",
             wiederholung: 0.3 },
         { id: "lila", titel: "Episch", chance: 12, farbe: "#8b46c8",
@@ -63,6 +63,46 @@ const SCHACH_VARIANTEN = {
         { id: "gelb", titel: "Legendär", chance: 3, farbe: "#e0a800",
             wiederholung: 0.75 }
     ],
+
+    /*
+     * ABKLINGZEIT — die ZWEITE Rechnung, und sie betrifft die STUFE (v0.41).
+     *
+     * Nicht zu verwechseln mit `wiederholung` oben: Die dämpft, WELCHE
+     * Fähigkeit man aus einer Stufe zieht, und zwar gegen den eigenen Vorrat.
+     * Das ändert nichts daran, wie oft eine Stufe überhaupt an der Reihe ist —
+     * und genau das war die Meldung aus der Praxis: „es kommen fast nur grüne".
+     * Mit 52 Prozent war das kein Fehler, sondern die eingestellte Zahl.
+     *
+     * Deshalb hat eine Stufe seit v0.41 wahlweise ein `abklingen`:
+     *
+     *     halbzuege   So lange braucht sie, um wieder voll zu zählen.
+     *     gewicht     So wenig zählt sie unmittelbar danach.
+     *
+     * Dazwischen steigt das Gewicht gleichmässig an. Nur Grün hat eine
+     * Abklingzeit — die anderen Stufen behalten ihre feste Chance, damit Blau
+     * und Lila nicht ihrerseits seltener werden. Was Grün verliert, fällt nicht
+     * weg, sondern verteilt sich auf die übrigen Stufen: Es erscheint weiter
+     * gleich oft ein Würfel, nur eben nicht schon wieder ein grüner.
+     */
+    stufenGewichte(abstaende) {
+        const gewichte = {};
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            const abstand = (abstaende && Number.isInteger(abstaende[stufe.id]))
+                ? abstaende[stufe.id] : -1;
+
+            if (!stufe.abklingen || abstand < 0 || abstand >= stufe.abklingen.halbzuege) {
+                gewichte[stufe.id] = 1;
+                continue;
+            }
+
+            const anteil = abstand / stufe.abklingen.halbzuege;
+            gewichte[stufe.id] = stufe.abklingen.gewicht
+                + (1 - stufe.abklingen.gewicht) * anteil;
+        }
+
+        return gewichte;
+    },
 
     /*
      * Unglückswürfel: Wie oft ein erscheinender Würfel ein schlechter ist.
@@ -97,15 +137,25 @@ const SCHACH_VARIANTEN = {
                 + "anderes. Nur die eigene Ansicht ist betroffen — der Gegner "
                 + "merkt nichts."
         },
+        /*
+         * MEUTEREI UND ERDRUTSCH HABEN v0.41 IHRE STUFEN GETAUSCHT.
+         *
+         * Vorher war die Meuterei episch (lila) und der Erdrutsch legendär
+         * (gelb) — dabei ist die Meuterei die schwerere Strafe: Der Gegner
+         * bekommt eine Figur GESCHENKT, der Materialunterschied ist doppelt so
+         * gross wie der Verlust. Ein Erdrutsch kostet nur Stellung, keine
+         * Figur. Die Stufe sagt beim Unglückswürfel, wie schlimm es wird; die
+         * schlimmste gehört auf die seltenste Stufe.
+         */
         meuterei: {
             titel: "Meuterei",
-            stufe: "lila",
+            stufe: "gelb",
             beschreibung: "Eine eigene Figur läuft zum Gegner über und kämpft ab "
                 + "sofort für die andere Seite. Könige meutern nicht."
         },
         erdrutsch: {
             titel: "Erdrutsch",
-            stufe: "gelb",
+            stufe: "lila",
             beschreibung: "Alle eigenen Figuren rutschen ein Feld zurück in Richtung "
                 + "der eigenen Grundreihe, soweit dort Platz ist. Der ganze Angriff "
                 + "fällt in sich zusammen."
@@ -682,17 +732,36 @@ const SCHACH_VARIANTEN = {
      * damit genügt EIN Zufallswert für beide Ziehungen, und die Rechnung
      * bleibt nachrechenbar.
      */
-    stufeZiehen(wert) {
-        let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
+    stufeZiehen(wert, gewichte) {
+        /*
+         * `gewichte` ist wahlfrei (siehe `stufenGewichte`). Ohne Angabe zählt
+         * jede Stufe mit ihrer festen Chance — genau wie vor v0.41, damit ein
+         * Aufruf von aussen unverändert dasselbe liefert.
+         */
+        const chancen = SCHACH_VARIANTEN.STUFEN.map((stufe) => {
+            const gewicht = (gewichte && typeof gewichte[stufe.id] === "number")
+                ? Math.max(gewichte[stufe.id], 0) : 1;
+            return stufe.chance * gewicht;
+        });
 
-        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
-            if (rest < stufe.chance) {
-                return { stufe: stufe, anteil: rest / stufe.chance };
-            }
-            rest -= stufe.chance;
+        const summe = chancen.reduce((teil, einzeln) => teil + einzeln, 0);
+        if (summe <= 0) {
+            return { stufe: SCHACH_VARIANTEN.STUFEN[0], anteil: 0 };
         }
 
-        /* Kann nur passieren, wenn die Chancen nicht 100 ergeben. */
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * summe;
+
+        for (let stelle = 0; stelle < SCHACH_VARIANTEN.STUFEN.length; stelle++) {
+            if (rest < chancen[stelle]) {
+                return {
+                    stufe: SCHACH_VARIANTEN.STUFEN[stelle],
+                    anteil: rest / chancen[stelle]
+                };
+            }
+            rest -= chancen[stelle];
+        }
+
+        /* Kann nur passieren, wenn die Summe durch Rundung knapp verfehlt wird. */
         return { stufe: SCHACH_VARIANTEN.STUFEN[0], anteil: 0 };
     },
 
@@ -768,6 +837,29 @@ const SCHACH_VARIANTEN = {
      * Chance kann deshalb nicht von der gezogenen abweichen. Dieselbe Regel wie
      * bei den Punkten im Würfel-Quizz.
      */
+    /*
+     * Der Satz zur Abklingzeit einer Stufe — leer, wenn sie keine hat.
+     *
+     * Er steht hier und nicht im Bildschirm-Code, weil er dieselben Zahlen
+     * nennt, mit denen `stufenGewichte` rechnet. Haus-Regel: Eine Regel steht
+     * genau einmal, und der Erklärtext gehört dazu.
+     */
+    abklingenErklaerung(stufeId) {
+        const stufe = SCHACH_VARIANTEN.STUFEN.find((eintrag) => eintrag.id === stufeId);
+        if (!stufe || !stufe.abklingen) {
+            return "";
+        }
+
+        const anteil = Math.round(stufe.abklingen.gewicht * 100);
+
+        return "Diese Stufe hat eine Abklingzeit: Direkt nach einem Würfel "
+            + "dieser Stufe zählt sie nur noch mit " + anteil + " Prozent ihres "
+            + "Gewichts und braucht " + stufe.abklingen.halbzuege + " Halbzüge, "
+            + "bis sie wieder voll zählt. So kommen nicht mehrere gleiche "
+            + "hintereinander; die anderen Stufen behalten ihre Chance und sind "
+            + "in dieser Zeit häufiger an der Reihe.\n\n";
+    },
+
     /* Die Zahlen zu einer Stufe — hinter dem i an ihrer Überschrift. */
     stufenErklaerung(stufeId) {
         const stufe = SCHACH_VARIANTEN.STUFEN.find((eintrag) => eintrag.id === stufeId);
@@ -780,6 +872,7 @@ const SCHACH_VARIANTEN = {
 
         return "Von allen Würfeln, die erscheinen, tragen " + stufe.chance
             + " Prozent eine Fähigkeit dieser Stufe.\n\n"
+            + SCHACH_VARIANTEN.abklingenErklaerung(stufe.id)
             + "Innerhalb der Stufe sind alle gleich wahrscheinlich — bei "
             + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
             + "Nach jedem Halbzug kann ein neuer Würfel erscheinen — mit "
@@ -808,7 +901,8 @@ const SCHACH_VARIANTEN = {
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
             const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
-            text += "\n" + stufe.titel.toUpperCase() + " — " + stufe.chance + " Prozent\n";
+            text += "\n" + stufe.titel.toUpperCase() + " — " + stufe.chance + " Prozent"
+                + (stufe.abklingen ? ", mit Abklingzeit" : "") + "\n";
 
             for (const art of arten) {
                 const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
@@ -820,7 +914,10 @@ const SCHACH_VARIANTEN = {
 
         text += "\nInnerhalb einer Stufe sind alle gleich wahrscheinlich. "
             + "Gewürfelt wird dabei nicht: Feld und Fähigkeit werden aus dem "
-            + "Spielstand gerechnet, damit alle Mitspieler dasselbe Brett sehen.";
+            + "Spielstand gerechnet, damit alle Mitspieler dasselbe Brett sehen.\n\n"
+            + "Eine Stufe mit Abklingzeit kommt direkt nach einem Würfel dieser "
+            + "Stufe eine Weile seltener; die übrigen Stufen behalten ihre "
+            + "Chance und sind so lange häufiger an der Reihe.";
 
         return text;
     }

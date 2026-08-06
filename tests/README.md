@@ -11,6 +11,7 @@ das es so nicht mehr gibt.
 | `test-schach.js` | Schachregeln, auch auf den anderen Brettgrößen |
 | `test-schach-runde.js` | eine Partie: Teams, Spielarten, Fähigkeiten |
 | `test-schach-tafel.js` | Sammlung der Partien und der **Umstieg** von früher |
+| `test-schach-vorschau.js` | Bildanleitung: jede Fähigkeit hat ein Beispiel, und es geht auf |
 | `test-rangliste.js` | Gesamtwertung über beide Spiele |
 | `test-bildschirm.js` | Bildschirm-Code gegen ein nachgebautes DOM |
 | `test-syntax.js` | Übersetzbarkeit, Einbindung, Aufrufe, Version |
@@ -64,6 +65,23 @@ Teams und Ablauf einer Partie.
 | Zugrecht | nur das Team am Zug; **innerhalb des Teams jeder** — nach dem Zug eines Teammitglieds ist das ganze Team nicht mehr dran |
 | Ziehen | Zugzähler und Verlauf, abgewiesene Züge, begrenzter Verlauf |
 | Ende | Narrenmatt beendet die Partie mit Sieger, Aufgeben, neue Partie behält die Teams |
+
+## Was wird geprüft (`test-schach-vorschau.js`)
+
+Die Bildanleitung zu den Fähigkeiten (seit v0.41). Sie ist der einzige Test,
+der etwas über die ANZEIGE aussagt, ohne den Bildschirm zu brauchen: Die Bilder
+entstehen aus den echten Regeln, also lässt sich prüfen, ob sie etwas zeigen.
+
+| Bereich | Inhalt |
+|---|---|
+| Vollständigkeit | zu JEDER Fähigkeit und jedem Unglückswürfel gibt es zwei Bilder mit Text |
+| Aussagekraft | Vorher und Nachher unterscheiden sich sichtbar (Brett, Wirkung im Stand oder markierte Felder) |
+| Ablauf | jeder Schritt hat Brett, Marken und Satz; Fähigkeiten mit Zielfeld haben drei Schritte, die übrigen zwei; die Auswahl im mittleren Schritt kommt aus `zielFelder` |
+| Einzelfälle | Sprung markiert Springerziele, aus dem Bauern wird ein Springer, die Mauer sperrt drei Felder, das Brett wächst, nach dem Doppelzug ist dieselbe Seite dran |
+| Beispielbretter | genau 6 mal 6 Felder, beide Könige stehen darauf |
+
+**Wer eine Fähigkeit ändert und ihr Beispiel vergisst, sieht es hier** — das
+Zielfeld ist dann kein gültiges mehr, und das Bild kommt gar nicht zustande.
 
 ## Was wird geprüft (`test-syntax.js`)
 

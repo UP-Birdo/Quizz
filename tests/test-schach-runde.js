@@ -534,6 +534,94 @@ pruefe("Ein eingesammelter Wuerfel bleibt weg, auch nach dem Neuladen", () => {
     gleich(wieder.faehigkeiten.weiss.join(","), "doppelzug", "Faehigkeit bleibt");
 });
 
+/* ------------------------------------------------------------------ *
+ * Die Abklingzeit der Stufen (seit v0.41)
+ *
+ * Gemeldet war: „es kommen fast nur gruene". Das war kein Fehler, sondern die
+ * eingestellte Chance von 52 Prozent — die Daempfung von v3.6 wirkt nur
+ * INNERHALB einer Stufe. Seit v0.41 hat Gruen zusaetzlich eine Abklingzeit;
+ * die anderen Stufen behalten ihre feste Chance.
+ * ------------------------------------------------------------------ */
+
+pruefe("Ohne Abstand zaehlt jede Stufe voll", () => {
+    const gewichte = SCHACH_VARIANTEN.stufenGewichte({});
+
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        gleich(gewichte[stufe.id], 1, "Stufe " + stufe.id + " zaehlt voll");
+    }
+});
+
+pruefe("Gruen klingt ab und erholt sich gleichmaessig", () => {
+    const stufe = SCHACH_VARIANTEN.STUFEN.find((eintrag) => eintrag.id === "gruen");
+    wahr(!!stufe.abklingen, "Gruen hat eine Abklingzeit");
+
+    const frisch = SCHACH_VARIANTEN.stufenGewichte({ gruen: 0 });
+    gleich(frisch.gruen, stufe.abklingen.gewicht, "direkt danach am niedrigsten");
+    gleich(frisch.blau, 1, "Blau bleibt unberuehrt");
+
+    const halb = SCHACH_VARIANTEN.stufenGewichte(
+        { gruen: stufe.abklingen.halbzuege / 2 });
+    wahr(halb.gruen > frisch.gruen && halb.gruen < 1, "dazwischen steigt es");
+
+    const spaeter = SCHACH_VARIANTEN.stufenGewichte(
+        { gruen: stufe.abklingen.halbzuege });
+    gleich(spaeter.gruen, 1, "nach der Abklingzeit wieder voll");
+});
+
+pruefe("Ohne Gewichte zieht stufeZiehen wie vor v0.41", () => {
+    gleich(SCHACH_VARIANTEN.stufeZiehen(0).stufe.id, "gruen", "0 ist gruen");
+    gleich(SCHACH_VARIANTEN.stufeZiehen(0.9).stufe.id, "lila", "0,9 ist lila");
+    gleich(SCHACH_VARIANTEN.stufeZiehen(0.99).stufe.id, "gelb", "0,99 ist gelb");
+});
+
+pruefe("Ein Gewicht von 0 nimmt eine Stufe ganz aus dem Rennen", () => {
+    const gewichte = { gruen: 0, blau: 1, lila: 1, gelb: 1 };
+
+    for (let schritt = 0; schritt <= 20; schritt++) {
+        const gezogen = SCHACH_VARIANTEN.stufeZiehen(schritt / 20, gewichte);
+        wahr(gezogen.stufe.id !== "gruen", "bei " + schritt + " kein Gruen");
+        wahr(gezogen.anteil >= 0 && gezogen.anteil < 1, "Anteil bleibt im Rahmen");
+    }
+});
+
+pruefe("Wann eine Stufe zuletzt kam, ueberlebt das Speichern", () => {
+    const runde = faehigkeitenPartie();
+    runde.stufeZuletzt.gruen = 4;
+
+    const wieder = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+    gleich(wieder.stufeZuletzt.gruen, 4, "Takt gemerkt");
+
+    /* Eine Partie von vorher kennt das Feld nicht — dann ist es fuer jede
+       Stufe „lange her", und es wird gezogen wie bisher. */
+    const alt = JSON.parse(JSON.stringify(runde));
+    delete alt.stufeZuletzt;
+    const ohne = SCHACH_RUNDE.normalisieren(alt);
+    gleich(Object.keys(ohne.stufeZuletzt).length, 0, "kein Eintrag, kein Fehler");
+});
+
+pruefe("Ein erschienener Wuerfel merkt sich seine Stufe", () => {
+    const runde = faehigkeitenPartie();
+    runde.bonus = [];
+
+    /* Die Ziehung haengt am gerechneten Zufall: WANN ein Wuerfel kommt, ist
+       nicht Sache dieses Tests — also wird so lange nachgezogen, bis einer
+       da ist. */
+    for (let schritt = 0; schritt < 60 && runde.bonus.length === 0; schritt++) {
+        runde.zugZaehler = schritt;
+        runde.stand.takt = schritt;
+        SCHACH_RUNDE._bonusNachziehen(runde);
+    }
+
+    wahr(runde.bonus.length > 0, "in 60 Halbzuegen kam wenigstens ein Wuerfel");
+
+    for (const eintrag of runde.bonus) {
+        if (!eintrag.pech) {
+            wahr(Number.isInteger(runde.stufeZuletzt[eintrag.stufe]),
+                "die Stufe " + eintrag.stufe + " ist mit ihrem Takt vermerkt");
+        }
+    }
+});
+
 pruefe("Eine Partie aus der Zeit der festen Felder behaelt sie", () => {
     /* Fassung 1: vier feste Felder, davon eines schon eingesammelt. */
     const alt = {
@@ -646,6 +734,74 @@ pruefe("Ausweichen geht auch, waehrend der Gegner am Zug ist", () => {
     gleich(neu.stand.amZug, "schwarz", "Schwarz bleibt am Zug");
     gleich(neu.stand.zusatzFarbe, "weiss", "das Muster gehoert Weiss");
     gleich(neu.faehigkeiten.weiss.indexOf("ausweichen"), -1, "verbraucht");
+});
+
+pruefe("Ausweichen ueberlebt den Gegnerzug UND das Speichern", () => {
+    /*
+     * DER GEMELDETE FEHLER (v0.41): „Ausweichen geht verschwindet."
+     *
+     * Eingesetzt war es richtig - nur warf `SCHACH.standNormalisieren` das
+     * Muster beim naechsten Lesen wieder weg, weil es den Namen nicht kannte.
+     * Die Faehigkeit war damit weg und wirkte nie. Genau diesen Weg geht der
+     * Test: einsetzen, speichern, laden, ziehen lassen, wieder laden.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand.amZug = "schwarz";
+    runde.faehigkeiten.weiss.push("ausweichen");
+
+    const eingesetzt = SCHACH_RUNDE.faehigkeitEinsetzen(
+        runde, "id-anna", "ausweichen", -1, "Anna", 3000);
+
+    /* Der Weg durch die Datenbank: alles einmal durch Text und zurueck. */
+    const geladen = SCHACH_RUNDE.normalisieren(
+        JSON.parse(JSON.stringify(eingesetzt)));
+    gleich(geladen.stand.zusatzMuster, "ausweichen", "Muster ueberlebt das Speichern");
+
+    /* Jetzt zieht Schwarz - das darf das Muster von Weiss nicht loeschen. */
+    const gezogen = SCHACH_RUNDE.ziehen(geladen, "id-bert",
+        SCHACH.feldNummer("e7"), SCHACH.feldNummer("e6"), "D", "Bert", 4000);
+    wahr(gezogen !== null, "Schwarz zieht");
+
+    const danach = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(gezogen)));
+    gleich(danach.stand.zusatzMuster, "ausweichen", "Muster steht noch");
+    gleich(danach.stand.zusatzFarbe, "weiss", "und gehoert weiter Weiss");
+});
+
+pruefe("Das Pluszeichen sagt die Wahrheit ueber den naechsten Zug", () => {
+    /*
+     * v0.41: `behaeltZug` beantwortet die Frage, die das Pluszeichen stellt.
+     * Drei Faelle, und alle drei standen bis v0.40 falsch am Bildschirm.
+     */
+    const runde = faehigkeitenPartie();
+
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "sprung"), true,
+        "Sprung beendet den Zug nicht");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "friedhof"), false,
+        "der Friedhof kostet den Zug");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "schwarz", "sprung"), false,
+        "Schwarz ist gar nicht am Zug");
+
+    /* Wer den Doppelzug offen hat, behaelt den Zug sogar bei einer
+       Faehigkeit, die ihn sonst beendet. */
+    const mitDoppelzug = SCHACH_RUNDE.kopieren(runde);
+    mitDoppelzug.stand.extraZug = "weiss";
+    gleich(SCHACH_RUNDE.behaeltZug(mitDoppelzug, "weiss", "friedhof"), true,
+        "der Doppelzug geht vor");
+});
+
+pruefe("Die schlimmsten Unglueckswuerfel sind die seltensten", () => {
+    /*
+     * v0.41: Meuterei (der Gegner bekommt eine Figur geschenkt) und Erdrutsch
+     * (nur Stellung) haben die Stufen getauscht.
+     */
+    gleich(SCHACH_VARIANTEN.pechStufeVon("meuterei").id, "gelb",
+        "Meuterei ist legendaer");
+    gleich(SCHACH_VARIANTEN.pechStufeVon("erdrutsch").id, "lila",
+        "der Erdrutsch ist episch");
+
+    const gelb = SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === "gelb");
+    const lila = SCHACH_VARIANTEN.STUFEN.find((stufe) => stufe.id === "lila");
+    wahr(gelb.chance < lila.chance, "und legendaer ist seltener als episch");
 });
 
 pruefe("Andere Faehigkeiten gehen NICHT waehrend des Gegnerzugs", () => {

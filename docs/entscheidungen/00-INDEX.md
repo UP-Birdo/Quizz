@@ -15,6 +15,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die Fähigkeiten-Karte fehlte bei zugeschalteten Würfeln (v3.3, gefunden v3.4)
     - Die Zielpunkte blieben nach dem Zug stehen (v4.0)
     - Die Seite fror ein, bis der Gegner zog (v3.9)
+    - Die Fähigkeit war verbraucht, ihre Wirkung nie da (v0.41)
     - Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 ## entschieden.md - Entschieden - und warum
@@ -102,6 +103,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum selbst angelegte Themen auf der Tafel liegen (v3.7)
 - Warum der Bibliotheks-Knopf verschwindet statt zu fragen (v3.7)
 - Erst anzeigen, dann senden (v3.8)
+- Warum Grün eine Abklingzeit bekommen hat (v0.41)
+- Warum Rot und Blau und nicht Grün und Gelb (v0.41)
+- Warum die Bildanleitung gerechnet und nicht gezeichnet wird (v0.41)
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

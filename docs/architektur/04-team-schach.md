@@ -158,6 +158,13 @@ Dazu zwei Schalter, die für jede Art gelten:
 | `beendetZug: true` | Nach dem Einsetzen ist der Gegner dran. | kein `+` |
 | `imGegenzug: true` | Geht auch, während der Gegner am Zug ist (seit v3.6). | Blitz |
 
+**Das Pluszeichen ist seit v0.41 eine Frage an den Spielstand, keine
+Eigenschaft der Fähigkeit:** `SCHACH_RUNDE.behaeltZug(runde, farbe, art)` sagt,
+ob DIESE Seite JETZT danach noch ziehen kann. Es hängt an zwei Dingen, die
+`beendetZug` allein nicht kennt — ob man überhaupt am Zug ist (im Gegenzug
+nicht) und ob ein offener Doppelzug den Zug rettet. Der Bildschirm fragt nur
+noch; die Rechnung steht neben der, die beim Einsetzen wirklich läuft.
+
 Ohne `beendetZug` bleibt man am Zug und muss noch ziehen — so war es bis v3.3
 bei allen Fähigkeiten. Für die, die Material ZURÜCKBRINGEN (Wiederbelebung,
 Friedhof, Händler), wäre das zu stark: Man bekäme Figuren geschenkt und dürfte
@@ -179,7 +186,14 @@ sichtbar:
 
 | Feld | Wirkung |
 |---|---|
-| `zusatzFarbe` / `zusatzMuster` | Zusätzliches Zugmuster für einen Zug. Löst `sprungAktiv` ab, das als Altbestand mitgeführt wird. `_feldBedroht` rechnet Sprung und Ausweichen mit — sonst könnte der König in ein bedrohtes Feld ziehen. |
+| `zusatzFarbe` / `zusatzMuster` | Zusätzliches Zugmuster für einen Zug. Löst `sprungAktiv` ab, das als Altbestand mitgeführt wird. `_feldBedroht` rechnet den **Sprung** mit — sonst könnte der König in ein bedrohtes Feld ziehen. Ausweichen dagegen nicht: Es zieht seit v3.5 nur auf freie Felder und kann deshalb nichts bedrohen (bis v0.40 stand hier eine Prüfung auf den alten Namen `koenig` — sie hätte ein falsches Schachmatt erzeugen können). |
+
+**Die Liste erlaubter Muster in `SCHACH.standNormalisieren` muss jeden Namen
+enthalten, den `_musterzuege` kennt.** Fehlt einer, wird er beim Speichern
+stillschweigend weggeworfen: Die Fähigkeit ist verbraucht, die Wirkung nie da.
+Genau das ist „ausweichen" von v3.6 bis v0.40 passiert — die Ursache steht in
+`docs\entscheidungen\erkenntnisse.md`, und ein Test geht diesen Weg jetzt für
+jedes Muster.
 | `extraZug` | `_ausfuehren` lässt `amZug` stehen, statt zu wechseln. |
 | `schildFeld` / `schildFarbe` | `zuege()` filtert alle gegnerischen Züge auf dieses Feld weg. Verfällt nach dem nächsten gegnerischen Zug oder wenn die geschützte Figur selbst zieht. |
 | `fesselFeld` / `fesselFarbe` | `zuege()` liefert für dieses Feld nichts. Verfällt nach dem nächsten Zug der gefesselten Seite. |
@@ -190,6 +204,53 @@ Friedhof lässt keinen König aufstehen. Andernfalls wäre „Schachmatt" nicht 
 eindeutig — dieselbe Überlegung, die beim Doppelbrett zum schlagbaren König
 geführt hat. Diese Ausnahmen sind keine Bequemlichkeit, sondern die Bedingung
 dafür, dass die Spielart noch Schach ist.
+
+### Die Bildanleitung (seit v0.41)
+
+`schach-vorschau.js` liefert zu **jeder** Fähigkeit und jedem Unglückswürfel
+zwei Bilder: vorher und nachher, auf einem 6-mal-6-Beispielbrett.
+
+**Das Nachher-Bild wird gerechnet, nicht gezeichnet.** Die Datei beschreibt nur
+die Ausgangsstellung und den einen Handgriff (welches Feld angetippt wird,
+welcher Zug folgt); was daraus wird, rechnet `SCHACH_RUNDE.faehigkeitEinsetzen`
+beziehungsweise `SCHACH_RUNDE.ziehen` — dieselben Funktionen wie im Spiel. Beim
+Unglückswürfel wird er im Beispiel wirklich eingesammelt. Damit kann die
+Anleitung nicht von der Regel abweichen; es ist dieselbe Überlegung wie bei den
+Vorschaubildern der Spielarten.
+
+| Art der Fähigkeit | Was das Nachher-Bild markiert |
+|---|---|
+| `zugmuster` | die Felder, die NEU erreichbar sind (das Brett ändert sich ja nicht) |
+| `ablauf` (Doppelzug) | nach dem Beispielzug: wohin dieselbe Figur gleich noch einmal darf |
+| alle übrigen | die Felder aus dem Verlaufseintrag — genau die, die auch am echten Brett aufleuchten |
+
+**Gezeigt wird ein ABLAUF** (`SCHACH_VORSCHAU.schritte`, seit v0.42): zwei oder
+drei Schritte, die der Bildschirm nacheinander abspielt und dann von vorn
+beginnt. Der mittlere Schritt gibt es nur bei Fähigkeiten mit Zielfeld — er
+zeigt den Handgriff, den ein Vorher-Bild nicht zeigen kann: welches Feld
+angetippt wird und welche anderen auch gingen. Die Auswahl wird dabei nicht
+aufgezählt, sondern gefragt (`SCHACH_RUNDE.zielFelder`).
+
+Ein Test (`tests\test-schach-vorschau.js`) prüft für JEDE Fähigkeit, dass es
+ein Beispiel gibt und dass sich Vorher und Nachher sichtbar unterscheiden. Wer
+eine Fähigkeit hinzufügt oder ändert und das Beispiel vergisst, merkt es dort.
+
+Gezeichnet wird in `team-schach-auswertung.js` (`_anleitungBauen`,
+`_beispielBrettBauen`) — im Einsetzen-Dialog und in der Bibliothek hinter dem i.
+**Dort ist der Eintrag selbst der Knopf:** Jede Fähigkeit ist ein `details`.
+Zugeklappt steht nur ihre Überschrift da (seit v0.43); Beschreibung und
+Anleitung entstehen erst beim Aufklappen — 23 Einträge auf einmal wären über
+zweitausend Elemente und ebenso viele Takte.
+
+Zwei Dinge hängen daran und dürfen nicht wegfallen:
+
+- **Die Takte werden vor jedem Neuzeichnen beendet** (`_anleitungTakteBeenden`),
+  und ein Takt beendet sich selbst, sobald sein Bild nicht mehr im Bildschirm
+  steht (`isConnected === false`, für den geschlossenen Dialog).
+- **Die Bibliothek wird nur einmal gebaut** (`TEAM_SCHACH.infoGezeichnet`). Sie
+  hängt an keinem Spielstand; würde die regelmässige Abfrage sie alle drei
+  Sekunden neu zeichnen, klappte jeder Eintrag wieder zu und jede Anleitung
+  finge von vorn an.
 
 ### Der Takt — die Uhr für ablaufende Wirkungen (seit v3.5)
 
@@ -222,6 +283,12 @@ Die Regel steckt an drei Stellen, und alle drei sind nötig:
    Mauer, und die Rochade zog hindurch — beide Lücken sind beim Bauen
    aufgefallen und durch Tests festgenagelt.
 
+Am Bildschirm ist die Mauer **ein** Riegel über drei Felder, kein Stapel
+Steine: Der helle Rand liegt nur aussen (oben und unten überall, links und
+rechts nur an den Enden `mauer-anfang`/`mauer-ende`), und jedes Stück reicht ein
+Pixel in seinen Nachbarn hinein. Bis v0.40 zog der Rand um jedes Feld herum —
+gemeldet als „die Mauer ist nicht in sich geschlossen".
+
 ### Geliehene Figuren (Friedhof, seit v3.5)
 
 `stand.geliehen` ist eine Liste `[{ feld, bis }]`. Die Figuren stehen in der
@@ -243,6 +310,11 @@ und zwar gegen die Seite, die ihn eingesammelt hat.
 Die vier Wirkungen liegen wie die Fähigkeiten in `schach.js` und liefern
 dieselbe Form (`{ stand, felder, wege, text }`). Auch hier gilt: **Könige bleiben
 verschont** — sie stolpern nicht, meutern nicht und rutschen nicht.
+
+**Beim Unglückswürfel sagt die Stufe, wie schlimm es wird** — die schlimmste
+Wirkung liegt deshalb auf der seltensten Stufe. Seit v0.41 ist die Meuterei
+legendär und der Erdrutsch episch: Eine übergelaufene Figur verschiebt das
+Material doppelt, ein Erdrutsch kostet nur Stellung.
 
 **Die Ausdehnung ist der einzige Eingriff, der die Brettgröße ändert.** Damit
 das geht, sind `breite`/`hoehe` seit v2.7 eigenständige Angaben im Stand: Die
@@ -276,17 +348,26 @@ Ergebnis vorhersagbar ist. **`Math.random()` hat im Modell nichts zu suchen.**
 
 ### Zwei Zeitpunkte: Stufe beim Erscheinen, Fähigkeit beim Einsammeln
 
-Seit v3.6 fällt die Entscheidung in zwei Schritten:
+Seit v3.6 fällt die Entscheidung in zwei Schritten — und an jedem Schritt hängt
+seine **eigene** Rechnung. Sie dürfen nicht verwechselt werden:
 
 1. **Beim Erscheinen** wird nur die **Stufe** gezogen (`stufeZiehen`). Mehr darf
-   die Oberfläche ohnehin nie verraten.
+   die Oberfläche ohnehin nie verraten. Seit v0.41 zählt dabei die
+   **Abklingzeit** mit (`SCHACH_VARIANTEN.stufenGewichte`): Eine Stufe mit
+   `abklingen` zählt direkt nach einem Würfel dieser Stufe nur noch mit
+   `gewicht` und steigt über `halbzuege` gleichmässig wieder auf 1. Nur Grün hat
+   eine — die anderen Stufen behalten ihre feste Chance und sind in dieser Zeit
+   häufiger dran. Gemessen wird im **Takt**; gemerkt wird er je Stufe in
+   `partie.stufeZuletzt`.
 2. **Beim Einsammeln** wird die Fähigkeit gezogen (`faehigkeitAusStufe`), und
    zwar **gegen den Vorrat dessen, der sie einsammelt**: Jedes Exemplar, das er
    schon hat, drückt ihr Gewicht auf `stufe.wiederholung` (0,15 bei Gewöhnlich
    bis 0,75 bei Legendär).
 
 Warum nicht beides beim Erscheinen: Da weiss noch niemand, wer den Würfel
-bekommt. Die Begründung samt Staffelung steht in `DECISIONS.md`.
+bekommt. Die Begründung samt Staffelung steht in `entscheidungen\entschieden.md`
+(„Warum sich der Würfel-Inhalt erst beim Einsammeln entscheidet", „Warum Grün
+eine Abklingzeit bekommen hat").
 
 ### Gespeichert wird, was liegt
 
@@ -349,6 +430,12 @@ Fehler.
 | `SCHACH.wegFelder` | Welche Felder ZEICHNET man? | das ganze L |
 | `SCHACH.betreteneFelder` | Welche betritt die Figur WIRKLICH? | nur das Ziel |
 
+**Die Umwandlung hängt am ZUG, nicht an der Gangart** (seit v0.41):
+`SCHACH._mitUmwandlung` macht aus einem Zug vier, sobald ein Bauer damit die
+letzte Reihe erreicht — egal, ob er dorthin gelaufen ist oder über ein
+Zusatzmuster gesprungen. Vorher steckte die Regel allein in `_bauernzuege`, und
+ein gesprungener Bauer blieb ein Bauer (gemeldet als Wunsch #4).
+
 An der zweiten hängt eine Regel: Seit v3.6 wird ein Würfel auch dann
 eingesammelt, wenn man nur über sein Feld hinwegzieht. Wer springt (Springer,
 Fähigkeit „Sprung", Teleport), sammelt unterwegs deshalb nichts ein. Beide
@@ -374,6 +461,18 @@ Seither gilt für alles, was auf dem Brett liegt, dieselbe Regel wie schon für
 die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder, der
 Rochade-Turm und der Pfeil sind so gebaut. Wer eine neue Markierung ergänzt,
 hält sich daran — eine einzelne Farbe reicht auf diesem Brett nie.
+
+### Rot heisst gegen dich, Blau für dich (seit v0.41)
+
+`TEAM_SCHACH._wirkungAnimieren` lässt die betroffenen Felder des letzten
+Verlaufseintrags aufleuchten — rot bei `wirkung === "pech"`, sonst blau
+(`.feld-wirkung-pech` / `.feld-wirkung`). Die **Figur** auf dem Feld glüht mit
+(`.figur`, per `drop-shadow`): Bei Erdrutsch oder Erdbeben leuchten mehrere
+Felder gleichzeitig, und die Frage ist, welche Figur es erwischt hat.
+
+Es pulst zweimal; die Dauer steht an **zwei** Stellen, die zusammenpassen
+müssen: `--wirkung-dauer` in der Stildatei und `TEAM_SCHACH.WIRKUNG_MS` im
+Bildschirm-Code, der die Klasse danach wieder entfernt.
 
 ### Versteckte Spielarten
 

@@ -22,10 +22,18 @@ const DIALOG = {
      * Rückfrage mit zwei Knöpfen. Liefert true bei Bestätigung.
      * Der Schalter `gefaehrlich` färbt den Bestätigen-Knopf rot (Löschen).
      */
-    frage(titel, text, bestaetigenText, gefaehrlich) {
+    /*
+     * `zusatz` ist wahlfrei: ein fertiges Element, das unter dem Text steht —
+     * gedacht für Bilder, die eine Frage beantworten, bevor man sie stellt
+     * (die Bildanleitung zu einer Fähigkeit, seit v0.41). Es bleibt bei EINER
+     * Dialog-Funktion; wer nichts übergibt, bekommt genau den Dialog von
+     * vorher.
+     */
+    frage(titel, text, bestaetigenText, gefaehrlich, zusatz) {
         return DIALOG._zeigen({
             titel: titel,
             text: text,
+            zusatz: zusatz || null,
             knoepfe: [
                 { beschriftung: "Abbrechen", wert: false, stil: "knopf-still" },
                 {
@@ -126,6 +134,11 @@ const DIALOG = {
             const absatz = document.createElement("p");
             absatz.textContent = vorgabe.text;
             kasten.appendChild(absatz);
+
+            /* Optionaler Zusatz: ein fertiges Element unter dem Text. */
+            if (vorgabe.zusatz) {
+                kasten.appendChild(vorgabe.zusatz);
+            }
 
             /* Optionale Auswahlliste (jeder Eintrag ein eigener Knopf). */
             if (vorgabe.liste) {

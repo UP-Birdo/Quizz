@@ -3,6 +3,91 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.43.0 — 2026-08-06
+
+- **Die Fähigkeiten-Übersicht ist jetzt eine Liste von Überschriften.**
+  Zugeklappt steht je Fähigkeit nur noch ihr Name da; wer darauf tippt, bekommt
+  Beschreibung UND abgespielte Anleitung. Vorher stand die Beschreibung
+  daneben — bei 23 Einträgen scrollte man auf dem Handy, bevor man wusste,
+  welche Fähigkeiten es überhaupt gibt.
+
+## v0.42.0 — 2026-08-06
+
+Die Bildanleitung aus v0.41 wird zum Ablauf — und die Bibliothek zum Blättern.
+
+- **Der Eintrag selbst klappt auf.** In der Fähigkeiten-Übersicht (hinter dem i)
+  tippt man auf die Fähigkeit und sieht ihre Anleitung. Vorher stand darunter
+  noch eine zweite Zeile zum Aufklappen; das war zweimal zielen für eine Sache.
+  Gebaut wird die Anleitung erst beim Aufklappen — alle 23 Einträge auf einmal
+  wären über zweitausend Elemente.
+- **Die Vorschau läuft ab, statt nebeneinanderzustehen.** Ein Brett zeigt
+  nacheinander: Ausgangsstellung, der Handgriff, die Wirkung — und dann wieder
+  von vorn, mit einem Punkt je Schritt. Eine Bewegung sieht man; zwei Bilder
+  nebeneinander muss man vergleichen. Wer im Betriebssystem weniger Bewegung
+  eingestellt hat, bekommt weiterhin alle Schritte nebeneinander.
+- **Der Handgriff ist ein eigener Schritt.** Bei jeder Fähigkeit mit Zielfeld
+  zeigt das mittlere Bild, welches Feld angetippt wird — und hell umrandet die
+  anderen, die auch gingen. Welche das sind, wird nicht aufgezählt, sondern
+  gefragt (`SCHACH_RUNDE.zielFelder`).
+- **Die Bibliothek wird nicht mehr alle drei Sekunden neu gezeichnet.** Sie
+  hängt an keinem Spielstand. Ohne diese Änderung klappte jeder aufgeklappte
+  Eintrag bei der nächsten Abfrage wieder zu.
+
+## v0.41.0 — 2026-08-06
+
+Acht Punkte aus dem Eingangskorb, alle am Team Schach — darunter der erste
+bestätigte Wunsch aus dem Melde-Knopf der App.
+
+- **Eine Bildanleitung zu jeder Fähigkeit.** Wer eine Fähigkeit einsetzt, sieht
+  vorher zwei kleine Bretter: wie es aussieht, bevor sie wirkt, und wie danach.
+  Dieselben Bilder stehen in der Fähigkeiten-Bibliothek hinter dem i — dort zu
+  jedem Eintrag, auch zu jedem Unglückswürfel, zum Aufklappen. **Die
+  Nachher-Bilder sind nicht gezeichnet, sondern gerechnet:** Sie entstehen,
+  indem die Fähigkeit im Beispiel wirklich eingesetzt wird, mit denselben
+  Regeln wie im Spiel. Eine Anleitung, die von der Regel abweicht, kann es
+  damit nicht geben.
+- **Sprung wandelt Bauern um** (Wunsch #4 aus GitHub). Wer mit einer Fähigkeit
+  (Sprung, Ausweichen, Teleport) als Bauer auf die letzte Reihe kam, blieb ein
+  Bauer und stand dort fest. Die Umwandlung hing an der Gangart statt am Zug.
+- **Das Pluszeichen sagt jetzt die Wahrheit.** Es verspricht „danach bleibt dir
+  dein Zug" — und stand auch dann da, wenn der Gegner am Zug war und es gar
+  keinen eigenen Zug zu behalten gab. Umgekehrt fehlte es, wenn ein offener
+  Doppelzug den Zug trotz einer teuren Fähigkeit rettet. Beides fragt der
+  Bildschirm jetzt beim Modell nach.
+- **Die schlimmsten Unglückswürfel sind die seltensten.** Meuterei (der Gegner
+  bekommt eine Figur geschenkt) und Erdrutsch (kostet nur Stellung) haben die
+  Stufen getauscht: Meuterei ist legendär, der Erdrutsch episch.
+- **In der Bibliothek fehlte ein Unglückswürfel.** Je Stufe wurde nur der erste
+  gezeigt — „Volles Glas" tauchte deshalb nirgends auf.
+
+- **Ausweichen wirkt endlich.** Es liess sich einsetzen, war danach aus dem
+  Vorrat verschwunden — und passierte nichts. Ursache: Beim Speichern und
+  Laden eines Standes wurde das Zugmuster „ausweichen" weggeworfen, weil es in
+  der Prüfliste fehlte; es stand dort noch unter seinem alten Namen. Damit war
+  auch der Einsatz während des gegnerischen Zuges wirkungslos, obwohl er
+  erlaubt war. Ein Test prüft jetzt JEDES Zugmuster auf diesem Weg.
+- **Kein falsches Schach mehr durch Ausweichen.** Seit v3.5 zieht Ausweichen
+  nur noch auf freie Felder — schlagen kann es nicht. Die Bedrohungsprüfung
+  zählte es trotzdem mit; daraus hätte ein Schachmatt entstehen können, das
+  keines ist.
+- **Die Mauer ist ein Riegel, kein Stapel Steine.** Der helle Rand lief um
+  jedes ihrer drei Felder herum, also auch zwischen ihnen. Jetzt liegt er nur
+  aussen, und die Stücke stossen ohne Haarriss aneinander.
+- **Nicht mehr fast nur grüne Würfel.** Die Dämpfung von v3.6 wirkte nur
+  INNERHALB einer Stufe (welche Fähigkeit) — wie oft eine Stufe überhaupt
+  kommt, blieb bei 52 Prozent für Grün. Grün hat jetzt zusätzlich eine
+  Abklingzeit: Direkt nach einem grünen Würfel zählt Grün nur noch mit
+  20 Prozent seines Gewichts und braucht acht Halbzüge, bis es wieder voll
+  zählt. Die anderen Stufen behalten ihre feste Chance und sind in dieser Zeit
+  häufiger dran; es erscheinen weiter gleich viele Würfel. Zwei getrennte
+  Rechnungen, wie gewünscht — die eine für die Stufe, die andere für die
+  Fähigkeit darin.
+- **Rot heisst gegen dich, Blau für dich.** Was ein Unglückswürfel angerichtet
+  hat, leuchtet jetzt rot; ein Fähigkeits-Einsatz blau. Die betroffene FIGUR
+  glüht dabei mit, nicht nur ihr Feld — bei einem Erdrutsch mit sechs
+  verschobenen Figuren war das bisher die offene Frage. Statt eines einzelnen
+  Aufblitzens pulst es zweimal, damit man es auch am Handy bemerkt.
+
 ## v0.40.0 — 2026-08-05
 
 - **Umstellung auf Semantic Versioning** (0.MINOR.PATCH): aus v4.0 wurde

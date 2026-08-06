@@ -109,6 +109,15 @@ const SCHACH_RUNDE = {
             bonus: [],
             bonusFassung: SCHACH_RUNDE.BONUS_FASSUNG,
 
+            /*
+             * Bei welchem TAKT zuletzt ein Würfel einer Stufe erschienen ist:
+             * { gruen: 12, … }. Daraus rechnet `_bonusNachziehen` die
+             * Abklingzeit (seit v0.41, siehe SCHACH_VARIANTEN.stufenGewichte).
+             * Eine Partie ohne dieses Feld verhält sich wie vorher — dann ist
+             * für jede Stufe „lange her".
+             */
+            stufeZuletzt: {},
+
             /* Geschlagene Figuren je Farbe, für die Wiedergeburt. */
             verloren: { weiss: [], schwarz: [] },
 
@@ -278,6 +287,17 @@ const SCHACH_RUNDE = {
                         .filter((id) => typeof id === "string" && id !== "")
                         .filter((id, stelle, alle) => alle.indexOf(id) === stelle)
                 };
+            }
+        }
+
+        /* Wann welche Stufe zuletzt erschienen ist (seit v0.41). Unbekannte
+           Stufen und Unsinn fallen weg — der Rest ist ein Takt-Wert. */
+        if (roh.stufeZuletzt && typeof roh.stufeZuletzt === "object") {
+            for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+                const wert = roh.stufeZuletzt[stufe.id];
+                if (Number.isInteger(wert) && wert >= 0) {
+                    runde.stufeZuletzt[stufe.id] = wert;
+                }
             }
         }
 
@@ -462,6 +482,27 @@ const SCHACH_RUNDE = {
         return !!SCHACH_RUNDE.varianteVon(stand).faehigkeiten;
     },
 
+    /*
+     * Wie schwer jede Stufe im Moment wiegt — die Abklingzeit in Zahlen.
+     *
+     * Gemessen wird im TAKT: Er zählt jeden Halbzug und wird nie
+     * zurückgesetzt (`halbzuege` springt bei jedem Bauernzug auf 0, siehe
+     * `docs\entscheidungen\entschieden.md`, „Warum `halbzuege` keine Uhr ist").
+     * Die Regel selbst steht in SCHACH_VARIANTEN — hier wird nur gemessen.
+     */
+    _stufenGewichte(runde) {
+        const abstaende = {};
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            const zuletzt = runde.stufeZuletzt[stufe.id];
+            if (Number.isInteger(zuletzt)) {
+                abstaende[stufe.id] = Math.max(runde.stand.takt - zuletzt, 0);
+            }
+        }
+
+        return SCHACH_VARIANTEN.stufenGewichte(abstaende);
+    },
+
     _bonusNachziehen(runde) {
         if (!SCHACH_RUNDE.faehigkeitenAn(runde)) {
             return;
@@ -531,9 +572,17 @@ const SCHACH_RUNDE = {
                     continue;
                 }
             } else {
+                /*
+                 * DIE STUFE MIT ABKLINGZEIT (seit v0.41). Die Gewichte werden
+                 * für JEDEN Würfel neu geholt: Erscheinen zwei auf einmal,
+                 * drückt der erste schon die Stufe des zweiten.
+                 */
                 eintrag.art = "";
                 eintrag.stufe = SCHACH_VARIANTEN.stufeZiehen(
-                    SCHACH_RUNDE._zufallsWert(marke + "|art")).stufe.id;
+                    SCHACH_RUNDE._zufallsWert(marke + "|art"),
+                    SCHACH_RUNDE._stufenGewichte(runde)).stufe.id;
+
+                runde.stufeZuletzt[eintrag.stufe] = runde.stand.takt;
             }
 
             freie.splice(stelle, 1);
@@ -1373,6 +1422,39 @@ const SCHACH_RUNDE = {
             && !!SCHACH_RUNDE.teamVon(stand, spielerId);
     },
 
+    /*
+     * Bleibt dieser Seite nach dem Einsetzen ihr normaler Zug? (seit v0.41)
+     *
+     * Das ist die Frage, die das Pluszeichen am Vorrat beantwortet. Bis v0.40
+     * zeigte der Bildschirm es einfach immer, wenn `beendetZug` fehlte — und
+     * lag damit in zwei Fällen falsch:
+     *
+     *   - Wer im GEGNERZUG eine Blitz-Fähigkeit einsetzt (Ausweichen), ist
+     *     danach nicht am Zug. Er war es vorher schon nicht. Ein Pluszeichen
+     *     versprach dort einen Zug, den es nicht gibt.
+     *   - Umgekehrt: Wer den Doppelzug offen hat, BEHÄLT den Zug sogar bei
+     *     einer Fähigkeit mit `beendetZug` — `faehigkeitEinsetzen` verbraucht
+     *     dann den Doppelzug statt den Zug abzugeben.
+     *
+     * Die Antwort steht deshalb hier im Modell, mit derselben Rechnung wie
+     * beim Einsetzen selbst. Der Bildschirm fragt nur noch.
+     */
+    behaeltZug(runde, farbe, art) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+
+        if (!beschreibung || !stand.laeuft || stand.ergebnis) {
+            return false;
+        }
+        if (stand.stand.amZug !== farbe) {
+            return false;
+        }
+        if (!beschreibung.beendetZug) {
+            return true;
+        }
+        return stand.stand.extraZug === farbe;
+    },
+
     /* Darf dieser Spieler gerade ziehen? */
     darfZiehen(runde, spielerId) {
         const stand = SCHACH_RUNDE.normalisieren(runde);
@@ -1739,6 +1821,9 @@ const SCHACH_RUNDE = {
         neu.bonusGesammelt = [];
         neu.bonus = [];
         neu.bonusFassung = SCHACH_RUNDE.BONUS_FASSUNG;
+        /* Auch die Abklingzeiten fangen von vorn an — der Takt tut es ja
+           ebenfalls (neuer Stand). */
+        neu.stufeZuletzt = {};
         neu.verloren = { weiss: [], schwarz: [] };
         neu.verlauf = [];
 

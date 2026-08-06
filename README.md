@@ -194,34 +194,49 @@ Die Spielart wird beim Anlegen gewählt und bleibt für diese Partie fest.
 | **Kleines Brett** | 6 mal 6 | Ohne Läufer und ohne Rochade — kurze Partien. |
 | **Großes Brett** | 10 mal 8 | Je zwei Läuferpaare, mehr Platz. |
 | **Doppelbrett** | 16 mal 8 | Zwei Bretter nebeneinander, zwei Armeen je Seite. Die Figuren ziehen über beide Hälften. **Kein Schach und kein Matt:** Wer zuerst beide Könige verliert, verliert. |
-| **Fähigkeiten sammeln** | 8 mal 8 | Immer wieder erscheinen Würfel mit Fähigkeiten — von einfach bis legendär. Wer mit einer Figur darauf zieht, sammelt sie für sein Team ein. |
 
 ### Die Fähigkeiten
 
-In der Spielart **Fähigkeiten sammeln** erscheinen alle sechs Halbzüge **Würfel**
-auf freien Feldern — höchstens drei gleichzeitig. Die Farbe des Würfels zeigt,
-wie selten die Fähigkeit darin ist. Wer mit einer Figur darauf zieht, sammelt sie
-für sein Team ein; eingesetzt wird sie später über den Knopf unter dem Brett,
-solange das eigene Team am Zug ist.
+Würfel lassen sich zu **jeder** Spielart zuschalten (Haken beim Anlegen). Nach
+jedem Halbzug erscheint mit 18 Prozent einer auf einem freien Feld — meist
+einer, selten zwei, sehr selten drei. Eine Höchstzahl gibt es nicht; die einzige
+Grenze ist das Brett. Die Farbe des Würfels zeigt, wie selten sein Inhalt ist.
+Wer mit einer Figur darauf zieht — auch im Vorbeiziehen —, sammelt ihn für sein
+Team ein; eingesetzt wird die Fähigkeit später über den Knopf unter dem Brett.
 
 | Stufe | Chance | Fähigkeiten |
 |---|---|---|
-| **Einfach** (grau) | 40 % | **Sprung** — eine Figur zieht zusätzlich wie ein Springer. **Ausweichen** — eine Figur zieht zusätzlich ein Feld in jede Richtung. |
-| **Gewöhnlich** (grün) | 28 % | **Teleport** — eine Figur springt auf ein freies Feld im Umkreis von zwei, über alles hinweg. **Bauernschub** — alle eigenen Bauern rücken ein Feld vor. |
-| **Ungewöhnlich** (blau) | 18 % | **Doppelzug** — sofort noch einmal am Zug. **Verstärkung** — ein eigener Bauer wird zum Springer. |
-| **Episch** (lila) | 10 % | **Schutzschild** — eine eigene Figur lässt sich nicht schlagen. **Fessel** — eine gegnerische Figur darf einen Zug lang nicht ziehen. |
-| **Legendär** (gelb) | 4 % | **Erdbeben** — alle Figuren rund um ein Feld werden nach außen geschoben. **Wiedergeburt** — die zuletzt verlorene Figur kehrt auf die Grundreihe zurück. |
+| **Gewöhnlich** (grün) | 52 %, mit Abklingzeit | **Sprung**, **Ausweichen**, **Teleport** — mehr Beweglichkeit für eine Figur deiner Wahl. |
+| **Ungewöhnlich** (blau) | 33 % | **Bauernschub**, **Schutzschild**, **Erdbeben**, **Nudelholz**, **Mauer**. |
+| **Episch** (lila) | 12 % | **Frost**, **Verstärkung**, **Fessel**, **Händler**. |
+| **Legendär** (gelb) | 3 % | **Doppelzug**, **Wiedergeburt**, **Spiegel**, **Wiederbelebung**, **Friedhof**. |
 
-Innerhalb einer Stufe sind alle gleich wahrscheinlich; die einzelne Chance ist
-also die halbe Stufenchance. Dieselbe Übersicht steht in der App hinter dem **i**
-bei den Fähigkeiten.
+**Abklingzeit** heißt: Direkt nach einem grünen Würfel kommt Grün eine Weile
+seltener (acht Halbzüge lang, gleitend). Sonst wäre über die Hälfte aller Würfel
+grün — die anderen Stufen behalten ihre Chance und sind so lange häufiger dran.
+
+Innerhalb einer Stufe sind alle gleich wahrscheinlich, mit einer Ausnahme: Was
+man schon im Vorrat hat, kommt seltener nach. Die vollständige Übersicht mit
+allen Zahlen steht in der App hinter dem **i** bei den Fähigkeiten.
+
+Jeder achte Würfel ist ein **Unglückswürfel** (umgedrehtes Fragezeichen): Er
+kommt nicht in den Vorrat, sondern wirkt sofort gegen den, der ihn eingesammelt
+hat.
+
+**Bevor du eine Fähigkeit einsetzt, siehst du, wie sie wirkt:** ein kleines
+Brett spielt den Ablauf ab — Ausgangsstellung, welches Feld du antippst, was
+danach passiert. Dasselbe steht hinter dem **i**: Dort stehen alle Fähigkeiten und
+Unglückswürfel als Liste von Überschriften — tippe eine an, und sie klappt mit
+Beschreibung und Anleitung auf.
 
 Manche Fähigkeiten brauchen ein Feld (etwa Schutzschild oder Erdbeben). Nach dem
 Einsetzen sind die möglichen Felder hervorgehoben — einfach eines antippen.
 
 Eine eingesetzte Fähigkeit ist verbraucht. Solange sie wirkt, steht sie oben in
-der Leiste, und alle betroffenen Felder leuchten kurz auf — **bei allen
-Mitspielern**, nicht nur bei dem, der sie eingesetzt hat.
+der Leiste, und alle betroffenen Felder leuchten auf — **bei allen
+Mitspielern**, nicht nur bei dem, der sie eingesetzt hat. **Blau heißt: für
+dich. Rot heißt: gegen dich** (Unglückswürfel); die betroffene Figur glüht
+dabei mit.
 
 **Auf König und Matt wird geachtet:** Das Schild wirkt nicht auf den König, der
 König wird nicht gefesselt, und das Erdbeben lässt Könige stehen. Sonst wäre

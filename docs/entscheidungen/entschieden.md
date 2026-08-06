@@ -1289,6 +1289,107 @@ nicht. Wer darauf weiterspielt, baut eine Stellung auf, die niemand sonst sieht
 — und der nächste erfolgreiche Zug würde sie ohnehin wegwischen. Ein Rücksprung
 mit Erklärung ist die kleinere Überraschung.
 
+## Warum Grün eine Abklingzeit bekommen hat (v0.41)
+
+Gemeldet war: „Die Item-Spawnrate ist komisch, es kommen fast nur grüne."
+
+**Das war kein Fehler, sondern ein Missverständnis über die Dämpfung von
+v3.6.** Die wirkt INNERHALB einer Stufe: Sie entscheidet, WELCHE Fähigkeit man
+aus einer Stufe zieht, gemessen am eigenen Vorrat. Wie oft eine Stufe überhaupt
+an der Reihe ist, hat sie nie berührt — und Grün stand bei 52 Prozent. Wer also
+schon drei verschiedene grüne Fähigkeiten hatte, bekam weiter grüne Würfel, nur
+eben abwechselnde.
+
+Seit v0.41 gibt es deshalb **zwei getrennte Rechnungen**, und das ist genau der
+Wunsch:
+
+| Rechnung | Frage | Wo |
+|---|---|---|
+| `abklingen` (neu) | Welche STUFE erscheint? | beim Erscheinen des Würfels |
+| `wiederholung` (v3.6) | Welche FÄHIGKEIT aus der Stufe? | beim Einsammeln |
+
+**Nur Grün hat eine Abklingzeit** (`{ halbzuege: 8, gewicht: 0.2 }`): Direkt
+nach einem grünen Würfel zählt Grün nur noch mit einem Fünftel und steigt über
+acht Halbzüge gleichmässig wieder auf sein volles Gewicht. Blau, Lila und Gelb
+behalten ihre feste Chance — sonst würde man das Problem nur verschieben.
+
+**Was Grün verliert, fällt nicht weg, sondern geht an die anderen Stufen.** Die
+Alternative wäre gewesen, in diesem Fall gar keinen Würfel erscheinen zu lassen;
+dann bliebe die Chance der anderen Stufen absolut unverändert. Dagegen sprach,
+dass damit rund ein Viertel aller Würfel verschwunden wäre — die Dichte auf dem
+Brett ist eine eigene Einstellung (`BONUS_CHANCE`) und soll sich nicht als
+Nebenwirkung einer Farbfrage ändern. Der Wunsch war „nicht immer Grün", nicht
+„weniger Würfel".
+
+Gemessen wird im **Takt**, nicht in `halbzuege` — aus demselben Grund wie bei
+den Mauern (siehe „Warum `halbzuege` keine Uhr ist"). Gemerkt wird er je Stufe
+in `partie.stufeZuletzt`; eine Partie ohne dieses Feld zieht wie vorher.
+
+## Warum Rot und Blau und nicht Grün und Gelb (v0.41)
+
+Bis v0.40 leuchtete ein Feld grün auf, wenn eine Fähigkeit gewirkt hatte, und
+gelb, wenn ein Unglückswürfel zugeschlagen hatte. Beide Farben liegen in
+derselben Richtung: Sie sagen „hier ist etwas passiert", aber nicht, ob es für
+oder gegen einen war. Rot und Blau sind im Haus-Stil ohnehin die beiden
+Richtungen (Gefahr und Hauptsache) — und auf einem blau-weissen Brett hebt sich
+Rot am deutlichsten ab.
+
+Dazu glüht die betroffene **Figur** mit, nicht nur ihr Feld. Der Anlass steht
+im Wunsch selbst: Bei Erdrutsch oder Erdbeben verschieben sich ein halbes
+Dutzend Figuren, und die Frage ist immer „welche hat es erwischt". Ein Feldrand
+allein beantwortet sie nicht, wenn sechs Felder gleichzeitig leuchten.
+
+**Und es pulst zweimal statt einmal aufzublitzen.** 900 Millisekunden sind auf
+dem Handy vorbei, bevor man hinsieht — zumal die Wirkung auf den anderen
+Geräten erst mit der nächsten Abfrage ankommt.
+
+## Warum die Bildanleitung gerechnet und nicht gezeichnet wird (v0.41)
+
+Gewünscht waren zwei Vorschaubilder je Fähigkeit — beim Einsetzen und in der
+Bibliothek. Der naheliegende Weg wäre gewesen, sie zu malen: zwei Bilder je
+Fähigkeit, 18 Fähigkeiten plus fünf Unglückswürfel, also 46 Bilder.
+
+**Genau das wäre die zweite Wahrheit.** Ändert jemand eine Fähigkeit, zeigt das
+Bild weiter das alte Verhalten — und niemand merkt es, weil ein Bild nicht
+mitkompiliert wird. Dieselbe Überlegung hat schon bei den Spielarten dazu
+geführt, das Vorschaubrett aus der echten Aufstellung zu zeichnen.
+
+Deshalb beschreibt `schach-vorschau.js` nur die AUSGANGSSTELLUNG und den EINEN
+Handgriff (welches Feld angetippt wird, welcher Zug folgt). Das Nachher-Bild
+entsteht, indem die Fähigkeit im Beispiel wirklich eingesetzt wird — durch
+`SCHACH_RUNDE.faehigkeitEinsetzen`, dieselbe Funktion wie im Spiel. Ein
+Unglückswürfel wird im Beispiel sogar wirklich eingesammelt.
+
+Der Preis ist ein Test, der bei jeder Änderung mitreden will: Er prüft für jede
+Fähigkeit, dass das Beispiel noch aufgeht (Zielfeld gültig, Zug erlaubt,
+Wirkung sichtbar). Das ist beabsichtigt — er ist die Stelle, an der ein
+vergessenes Beispiel auffällt, bevor es jemand am Handy sieht.
+
+**Warum in der Bibliothek eingeklappt:** 23 Einträge mal drei Bretter wären
+eine sehr lange Seite. Wer wissen will, wie eine Fähigkeit wirkt, klappt sie
+auf; wer die Liste überfliegt, wird nicht aufgehalten. Seit v0.42 ist der
+Eintrag selbst der Knopf — eine zweite Zeile „Wie das aussieht" darunter hiess
+auf dem Handy zweimal zielen für eine Sache.
+
+**Seit v0.43 steht zugeklappt nur die Überschrift.** Auch die Beschreibungen
+sind zusammen lang genug, dass man scrollen musste, bevor man wusste, welche
+Fähigkeiten es überhaupt gibt — und genau das ist die erste Frage, die die
+Bibliothek beantworten soll. Die Beschreibung gehört zur Antwort auf die
+zweite Frage („was macht diese hier?") und steht deshalb zusammen mit der
+Anleitung im aufgeklappten Teil.
+
+**Warum die Bilder abgespielt werden (v0.42):** Zwei Bretter nebeneinander muss
+man vergleichen — man sucht selbst, was sich geändert hat. Eine Bewegung sieht
+man. Auf dem Handy kommt dazu, dass ein grosses Bild lesbarer ist als zwei
+kleine nebeneinander. Der Wunsch lautete „ein GIF oder mehrere Beispielbilder";
+gebaut ist es als Folge gerechneter Bretter, die der Bildschirm durchläuft —
+eine echte Bilddatei wäre wieder die zweite Wahrheit, und ausserdem müsste
+jemand sie bei jeder Regeländerung neu aufnehmen.
+
+Wer im Betriebssystem weniger Bewegung eingestellt hat
+(`prefers-reduced-motion`), bekommt alle Schritte nebeneinander. Das ist keine
+Notlösung, sondern dieselbe Information ohne Bewegung.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

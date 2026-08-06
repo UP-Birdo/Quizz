@@ -153,8 +153,11 @@ const TEAM_SCHACH = {
     /* Dauer der Zugbewegung in Millisekunden; muss zur Stildatei passen. */
     ANIMATION_MS: 260,
 
-    /* Dauer des Aufleuchtens bei einer Fähigkeit; ebenfalls in der Stildatei. */
-    WIRKUNG_MS: 900,
+    /* Dauer des Aufleuchtens bei einer Fähigkeit; ebenfalls in der Stildatei
+       (`--wirkung-dauer`). Seit v0.41 pulst es zweimal und dauert deshalb
+       länger — ein einzelnes Aufblitzen von 900 ms sah man auf dem Handy nur,
+       wenn man ohnehin hinschaute. */
+    WIRKUNG_MS: 1600,
 
     /*
      * Wie gross eine Figur im Verhältnis zu ihrem Feld ist. Dieselbe Zahl
@@ -163,6 +166,29 @@ const TEAM_SCHACH = {
      * TEAM_SCHACH._figurGroesseSetzen.
      */
     FIGUR_ANTEIL: 0.68,
+
+    /*
+     * Wie lange ein Schritt der Bildanleitung stehen bleibt (seit v0.41).
+     * Lang genug, um hinzusehen; kurz genug, dass man den nächsten abwartet.
+     */
+    ANLEITUNG_MS: 1600,
+
+    /*
+     * Die laufenden Takte der Bildanleitungen. Sie werden vor jedem
+     * Neuzeichnen beendet — sonst schriebe ein Takt in Elemente weiter, die
+     * niemand mehr sieht, und bei jeder Abfrage käme einer dazu.
+     */
+    anleitungTakte: [],
+
+    /*
+     * Steht die Fähigkeiten-Bibliothek schon im Bildschirm?
+     *
+     * Sie hängt an KEINEM Spielstand — es gibt also nichts, was die regelmässige
+     * Abfrage dort auffrischen müsste. Würde sie trotzdem alle drei Sekunden neu
+     * gezeichnet, klappte jeder aufgeklappte Eintrag wieder zu und jede
+     * Anleitung finge von vorn an. Deshalb wird sie genau einmal gebaut.
+     */
+    infoGezeichnet: false,
 
     /* Das Brett und ein Feld daraus, gemerkt beim Zeichnen — nur zum Messen. */
     brettEl: null,
@@ -204,6 +230,13 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /* Die Bibliothek steht schon — sie hängt an keinem Spielstand (siehe
+           `infoGezeichnet`). */
+        if (TEAM_SCHACH.infoOffen && TEAM_SCHACH.infoGezeichnet) {
+            return;
+        }
+
+        TEAM_SCHACH._anleitungTakteBeenden();
         wurzel.innerHTML = "";
 
         const person = TEAM_SCHACH._ich();
@@ -216,6 +249,7 @@ const TEAM_SCHACH = {
 
         if (TEAM_SCHACH.infoOffen) {
             TEAM_SCHACH._infoZeichnen(wurzel);
+            TEAM_SCHACH.infoGezeichnet = true;
             return;
         }
 
@@ -1073,15 +1107,26 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /* Dieselbe Frage wie beim Pluszeichen am Vorrat, dieselbe Antwort —
+           sie kommt aus dem Modell (SCHACH_RUNDE.behaeltZug). */
+        const meineFarbe = SCHACH_RUNDE.teamVon(partie, person.id);
+        const behaeltZug = SCHACH_RUNDE.behaeltZug(partie, meineFarbe, art);
+
         const ja = await DIALOG.frage(
             SCHACH_VARIANTEN.faehigkeitTitel(art) + " einsetzen?",
             SCHACH_VARIANTEN.faehigkeitBeschreibung(art)
                 + "\n\nSie ist danach verbraucht."
-                + (beschreibung.beendetZug
-                    ? " Und sie kostet den ganzen Zug: Danach ist der Gegner dran."
-                    : " Dein normaler Zug bleibt dir."),
+                + (behaeltZug
+                    ? " Dein normaler Zug bleibt dir."
+                    : (beschreibung.beendetZug
+                        ? " Und sie kostet den ganzen Zug: Danach ist der Gegner dran."
+                        : " Einen Zug bekommst du dadurch nicht — du bist gerade "
+                            + "nicht dran.")),
             "Einsetzen",
-            false
+            false,
+            /* Zwei Bilder statt eines langen Satzes: was die Fähigkeit tut,
+               sieht man schneller, als man es liest. */
+            TEAM_SCHACH._anleitungBauen(art)
         );
         if (!ja) {
             return;

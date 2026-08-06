@@ -422,11 +422,20 @@ const SCHACH = {
             stand.extraZug = roh.extraZug;
         }
 
-        /* Zusätzliches Zugmuster (Sprung, Ausweichen, Teleport). */
+        /*
+         * Zusätzliches Zugmuster (Sprung, Ausweichen, Teleport).
+         *
+         * DIE LISTE MUSS JEDEN NAMEN AUS `_musterzuege` ENTHALTEN. Fehlte
+         * einer, würde er hier stillschweigend weggeworfen: Die Fähigkeit wäre
+         * aus dem Vorrat verbraucht, das Muster aber schon beim nächsten
+         * Zeichnen wieder weg. Genau das ist „ausweichen" von v3.6 bis v0.40
+         * passiert (siehe `docs\entscheidungen\erkenntnisse.md`). „koenig" ist
+         * der alte Name desselben Musters und bleibt gültig.
+         */
         const farben = [SCHACH.WEISS, SCHACH.SCHWARZ];
 
         if (farben.indexOf(roh.zusatzFarbe) !== -1 && typeof roh.zusatzMuster === "string"
-            && ["springer", "koenig", "umkreis2"].indexOf(roh.zusatzMuster) !== -1) {
+            && ["springer", "ausweichen", "koenig", "umkreis2"].indexOf(roh.zusatzMuster) !== -1) {
             stand.zusatzFarbe = roh.zusatzFarbe;
             stand.zusatzMuster = roh.zusatzMuster;
         } else if (farben.indexOf(roh.sprungAktiv) !== -1) {
@@ -819,13 +828,21 @@ const SCHACH = {
             default: return [];
         }
 
-        /* Fähigkeiten mit zusätzlichem Zugmuster (Sprung, Ausweichen,
-           Teleport): Solange sie wirken, darf jede eigene Figur zusätzlich so
-           ziehen. Doppelte Ziele werden nicht zweimal angeboten. */
+        /*
+         * Fähigkeiten mit zusätzlichem Zugmuster (Sprung, Ausweichen,
+         * Teleport): Solange sie wirken, darf jede eigene Figur zusätzlich so
+         * ziehen. Doppelte Ziele werden nicht zweimal angeboten.
+         *
+         * Auch hier gilt die Umwandlung: Ein Bauer, der so auf die letzte
+         * Reihe kommt, wird zur Dame (oder was man wählt) — siehe
+         * `_mitUmwandlung`.
+         */
         if (stand.zusatzFarbe === farbe && stand.zusatzMuster) {
             for (const zug of SCHACH._musterzuege(stand, von, farbe, stand.zusatzMuster)) {
                 if (!liste.some((vorhanden) => vorhanden.nach === zug.nach)) {
-                    liste.push(zug);
+                    for (const einzeln of SCHACH._mitUmwandlung(stand, zug, farbe)) {
+                        liste.push(einzeln);
+                    }
                 }
             }
         }
@@ -1200,6 +1217,37 @@ const SCHACH = {
         return liste;
     },
 
+    /*
+     * Die letzte Reihe für diese Farbe — dort wandelt ein Bauer um.
+     */
+    letzteReiheVon(stand, farbe) {
+        return (farbe === SCHACH.WEISS) ? 0 : SCHACH.hoeheVon(stand) - 1;
+    },
+
+    /*
+     * Aus EINEM Zug werden vier, wenn ein Bauer damit die letzte Reihe
+     * erreicht — je einer für Dame, Turm, Läufer und Springer. Sonst bleibt es
+     * der eine Zug.
+     *
+     * WARUM DAS EINE EIGENE FUNKTION IST (seit v0.41): Die Umwandlung hing bis
+     * dahin allein an `_bauernzuege`. Ein Bauer, der über ein Zusatzmuster
+     * (Sprung, Ausweichen, Teleport) auf die letzte Reihe kam, blieb deshalb
+     * ein Bauer und stand dort für immer fest — gemeldet als „Sprung muss zur
+     * Dame werden". Die Regel gehört an den ZUG, nicht an die Gangart.
+     */
+    _mitUmwandlung(stand, zug, farbe) {
+        if (SCHACH.artVon(SCHACH.figurAuf(stand, zug.von)) !== "B") {
+            return [zug];
+        }
+        if (SCHACH.reiheVon(zug.nach, SCHACH.breiteVon(stand))
+            !== SCHACH.letzteReiheVon(stand, farbe)) {
+            return [zug];
+        }
+
+        return ["D", "T", "L", "S"].map(
+            (art) => Object.assign({}, zug, { umwandlung: art }));
+    },
+
     _bauernzuege(stand, von, farbe) {
         const liste = [];
         const breite = SCHACH.breiteVon(stand);
@@ -1208,16 +1256,10 @@ const SCHACH = {
         const reihe = SCHACH.reiheVon(von, breite);
         const spalte = SCHACH.spalteVon(von, breite);
         const startreihe = (farbe === SCHACH.WEISS) ? hoehe - 2 : 1;
-        const letzteReihe = (farbe === SCHACH.WEISS) ? 0 : hoehe - 1;
 
         const anhaengen = (zug) => {
-            if (SCHACH.reiheVon(zug.nach, breite) === letzteReihe) {
-                /* Umwandlung: vier Möglichkeiten, jede ein eigener Zug. */
-                for (const art of ["D", "T", "L", "S"]) {
-                    liste.push(Object.assign({}, zug, { umwandlung: art }));
-                }
-            } else {
-                liste.push(zug);
+            for (const einzeln of SCHACH._mitUmwandlung(stand, zug, farbe)) {
+                liste.push(einzeln);
             }
         };
 
@@ -1318,10 +1360,17 @@ const SCHACH = {
             }
         }
 
-        /* König (Nachbarfelder) — und jede andere Figur, solange die Fähigkeit
-           Ausweichen der angreifenden Seite aktiv ist. */
-        const nachbarFuerAlle = (stand.zusatzFarbe === farbe && stand.zusatzMuster === "koenig");
-
+        /*
+         * König (Nachbarfelder).
+         *
+         * AUSWEICHEN ZÄHLT HIER NICHT MIT, und das ist Absicht: Seit v3.5 zieht
+         * es nur noch auf FREIE Felder (`_nachbarzuege`). Wer nicht schlagen
+         * kann, bedroht auch nichts — eine Figur mit Ausweichen daneben ist
+         * kein Schach. Bis v0.40 stand hier eine Prüfung auf den alten
+         * Musternamen „koenig"; sie stammte aus der Zeit, als Ausweichen noch
+         * schlagen durfte, und hätte ein falsches Schachmatt erzeugen können.
+         * Der Sprung bleibt dagegen drin: Er schlägt sehr wohl.
+         */
         for (let dr = -1; dr <= 1; dr++) {
             for (let ds = -1; ds <= 1; ds++) {
                 if (dr === 0 && ds === 0) {
@@ -1331,8 +1380,7 @@ const SCHACH = {
                 const s = spalte + ds;
                 if (SCHACH._imBrett(stand, r, s)) {
                     const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
-                    if (SCHACH.farbeVon(dort) === farbe
-                        && (SCHACH.artVon(dort) === "K" || nachbarFuerAlle)) {
+                    if (SCHACH.farbeVon(dort) === farbe && SCHACH.artVon(dort) === "K") {
                         return true;
                     }
                 }

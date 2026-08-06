@@ -263,6 +263,17 @@ const umgebung = {
             return 0;
         },
         clearTimeout() { /* nichts zu tun */ },
+
+        /*
+         * Der Takt der Bildanleitung (seit v0.41). Er feuert hier NIE: Geprüft
+         * wird, dass die Anleitung entsteht und der Takt sauber angemeldet und
+         * wieder beendet wird — nicht, wie sie aussieht, wenn sie läuft.
+         */
+        setInterval() { return 0; },
+        clearInterval() { /* nichts zu tun */ },
+
+        /* Ohne Angabe gilt: normale Bewegung erlaubt. */
+        matchMedia() { return { matches: false }; },
         localStorage: { getItem() { return null; }, setItem() { /* leer */ } }
     }
 };
@@ -304,13 +315,14 @@ umgebung.DIALOG = {
  * Test sie greifen kann.
  */
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
-    "SCHACH_TAFEL", "TEAM_SCHACH", "IMPOSTER_WOERTER", "IMPOSTER_RUNDE",
-    "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam"];
+    "SCHACH_TAFEL", "SCHACH_VORSCHAU", "TEAM_SCHACH", "IMPOSTER_WOERTER",
+    "IMPOSTER_RUNDE", "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam"];
 
 /* Die Reihenfolge ist dieselbe wie in index.html — die drei team-schach-Teile
    ergänzen das Objekt und müssen nach ihm kommen. */
 const dateien = ["konfig.js", "modell.js", "speicher.js", "schach-varianten.js",
-    "schach.js", "schach-runde.js", "schach-tafel.js", "team-schach.js",
+    "schach.js", "schach-runde.js", "schach-tafel.js", "schach-vorschau.js",
+    "team-schach.js",
     "team-schach-uebersicht.js", "team-schach-brett.js", "team-schach-auswertung.js",
     "imposter-woerter.js", "imposter-runde.js", "imposter-tafel.js", "imposter.js",
     "rangliste.js"];
@@ -794,13 +806,18 @@ pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () =
             + " Stufen, waren " + karten.length);
     }
 
-    /* Je Stufe: Kopfzeile, die Fähigkeiten und der Unglückswürfel. */
+    /*
+     * Je Stufe: Kopfzeile, die Fähigkeiten und ALLE Unglückswürfel dieser
+     * Stufe. „Alle" seit v0.41 — in der gewoehnlichen Stufe liegen zwei, und
+     * der zweite fehlte bis dahin in der Bibliothek.
+     */
     for (let stelle = 0; stelle < karten.length; stelle++) {
         const stufe = SCHACH_VARIANTEN.STUFEN[stelle];
         const eintraege = karten[stelle].kinder.filter(
             (kind) => String(kind.className || "").indexOf("stufen-eintrag") !== -1);
 
-        const erwartet = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length + 1;
+        const erwartet = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length
+            + SCHACH_VARIANTEN.pechDerStufe(stufe.id).length;
         if (eintraege.length !== erwartet) {
             throw new Error(stufe.id + ": " + eintraege.length + " Eintraege statt " + erwartet);
         }
@@ -815,6 +832,88 @@ pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () =
     TEAM_SCHACH.infoSchliessen();
     if (TEAM_SCHACH.infoOffen) {
         throw new Error("Uebersicht nicht geschlossen");
+    }
+});
+
+/* Der erste Eintrag der ersten Stufenkarte in der offenen Bibliothek. */
+function ersterBibliothekEintrag() {
+    const karte = TEAM_SCHACH.wurzelEl.kinder.find(
+        (kind) => String(kind.className || "").indexOf("stufen-karte") !== -1);
+
+    if (!karte) {
+        throw new Error("keine Stufenkarte gezeichnet");
+    }
+
+    const eintrag = karte.kinder.find(
+        (kind) => String(kind.className || "").indexOf("stufen-eintrag") !== -1);
+
+    if (!eintrag) {
+        throw new Error("kein Eintrag in der Stufenkarte");
+    }
+    return eintrag;
+}
+
+pruefe("Ein Eintrag der Bibliothek klappt seine Anleitung auf", () => {
+    /*
+     * v0.41: Der Eintrag SELBST ist der Knopf — wer auf die Fähigkeit tippt,
+     * sieht ihre Bildanleitung. Gebaut wird sie erst dabei; alle 23 auf einmal
+     * wären über zweitausend Elemente.
+     */
+    TEAM_SCHACH.faehigkeitenOeffnen();
+    const eintrag = ersterBibliothekEintrag();
+
+    const kopf = eintrag.kinder.find((kind) => kind.className === "stufen-kopf");
+    if (!kopf || kopf.tagName !== "summary") {
+        throw new Error("der Eintrag hat keine aufklappbare Kopfzeile");
+    }
+
+    /* Zugeklappt NUR die Überschrift — die Beschreibung steht erst drinnen. */
+    if (kopf.kinder.length !== 1
+        || String(kopf.kinder[0].className || "").indexOf("stufen-name") === -1) {
+        throw new Error("zugeklappt steht mehr als die Ueberschrift da");
+    }
+    if (eintrag.querySelector(".anleitung") || eintrag.querySelector(".stufen-text")) {
+        throw new Error("der Inhalt steht schon da, bevor jemand aufklappt");
+    }
+
+    eintrag.open = true;
+    eintrag.ausloesen("toggle");
+
+    if (!eintrag.querySelector(".stufen-text")) {
+        throw new Error("nach dem Aufklappen fehlt die Beschreibung");
+    }
+    if (!eintrag.querySelector(".anleitung")) {
+        throw new Error("nach dem Aufklappen fehlt die Anleitung");
+    }
+    if (TEAM_SCHACH.anleitungTakte.length === 0) {
+        throw new Error("kein Takt angemeldet — die Anleitung liefe nicht");
+    }
+});
+
+pruefe("Die Bibliothek wird nicht bei jeder Abfrage neu gezeichnet", () => {
+    /*
+     * Sie hängt an keinem Spielstand. Würde die regelmässige Abfrage sie neu
+     * bauen, klappte jeder Eintrag alle drei Sekunden wieder zu und jede
+     * Anleitung finge von vorn an.
+     */
+    const eintrag = ersterBibliothekEintrag();
+    if (!eintrag.querySelector(".anleitung")) {
+        throw new Error("Voraussetzung fehlt: der Eintrag ist nicht aufgeklappt");
+    }
+
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    if (ersterBibliothekEintrag() !== eintrag) {
+        throw new Error("die Bibliothek wurde neu gebaut");
+    }
+    if (!eintrag.querySelector(".anleitung")) {
+        throw new Error("die aufgeklappte Anleitung ist verschwunden");
+    }
+
+    /* Beim Schliessen wird sie sehr wohl neu gebaut. */
+    TEAM_SCHACH.infoSchliessen();
+    if (TEAM_SCHACH.anleitungTakte.length !== 0) {
+        throw new Error("die Takte laufen weiter, obwohl neu gezeichnet wurde");
     }
 });
 
@@ -1114,9 +1213,22 @@ pruefe("Ein Weg ohne Laenge ist genau ein Feld", () => {
  * Die Zeichen am Faehigkeiten-Vorrat (seit v3.6)
  * ------------------------------------------------------------------ */
 
-/* Die Klassen aller Kinder einer Marke, als eine Zeichenkette. */
-function zeichenAn(art) {
-    const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard);
+/*
+ * Die Klassen aller Kinder einer Marke, als eine Zeichenkette.
+ *
+ * Seit v0.41 haengt das Pluszeichen am Spielstand (`SCHACH_RUNDE.behaeltZug`),
+ * nicht mehr allein an der Faehigkeit — deshalb wird hier ausdruecklich
+ * gesagt, wer am Zug ist, statt sich auf die Partie zu verlassen (frühere
+ * Tests ziehen darin).
+ */
+function zeichenAn(art, amZug) {
+    const partie = SCHACH_RUNDE.kopieren(
+        SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard));
+
+    partie.laeuft = true;
+    partie.ergebnis = "";
+    partie.stand.amZug = amZug || "weiss";
+
     const marke = TEAM_SCHACH._faehigkeitMarkeBauen(
         partie, { id: "id-anna", name: "Anna" }, "weiss", art, false);
 
@@ -1155,6 +1267,22 @@ pruefe("Sprung traegt das Pluszeichen, aber keinen Blitz", () => {
     }
     if (zeichen.indexOf("faehigkeit-blitz") !== -1) {
         throw new Error("Blitz, obwohl Sprung nur am eigenen Zug geht");
+    }
+});
+
+pruefe("Im Gegnerzug gibt es kein Pluszeichen, den Blitz aber schon", () => {
+    /*
+     * v0.41: Das Pluszeichen verspricht einen Zug. Waehrend Schwarz am Zug
+     * ist, hat Weiss keinen — auch nicht nach Ausweichen. Der Blitz bleibt:
+     * EINSETZEN darf man es ja gerade.
+     */
+    const zeichen = zeichenAn("ausweichen", "schwarz");
+
+    if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
+        throw new Error("Pluszeichen, obwohl Weiss gar nicht am Zug ist");
+    }
+    if (zeichen.indexOf("faehigkeit-blitz") === -1) {
+        throw new Error("kein Blitz — im Gegenzug einsetzen geht weiterhin");
     }
 });
 

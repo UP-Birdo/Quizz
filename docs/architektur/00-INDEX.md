@@ -42,6 +42,7 @@ passenden Abschnitt hier.
     - Warum die Rochade sich erklären kann
     - Spielarten
     - Fähigkeiten
+    - Die Bildanleitung (seit v0.41)
     - Der Takt — die Uhr für ablaufende Wirkungen (seit v3.5)
     - Mauern (seit v3.5)
     - Geliehene Figuren (Friedhof, seit v3.5)
@@ -55,6 +56,7 @@ passenden Abschnitt hier.
     - Zwei Fragen an einen Weg
     - Die Größe der Figuren wird gemessen
     - Zwei Farben für jede Markierung
+    - Rot heisst gegen dich, Blau für dich (seit v0.41)
     - Versteckte Spielarten
     - Einstellungen je Partie
     - Abstimmung im Team

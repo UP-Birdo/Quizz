@@ -942,6 +942,97 @@ pruefe("Geliehene Figuren ueberleben das Speichern", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Zusatzmuster (Sprung, Ausweichen, Teleport)
+ * ------------------------------------------------------------------ */
+
+pruefe("Jedes Zusatzmuster ueberlebt das Speichern", () => {
+    /*
+     * DER FEHLER VON v3.6 BIS v0.40: `standNormalisieren` kannte "ausweichen"
+     * nicht und warf es weg. Die Faehigkeit war aus dem Vorrat verbraucht, das
+     * Muster beim naechsten Zeichnen aber schon wieder verschwunden. Deshalb
+     * wird hier JEDES Muster geprueft, das `_musterzuege` kennt - und nicht
+     * nur das eine, das gerade gemeldet wurde.
+     */
+    for (const muster of ["springer", "ausweichen", "koenig", "umkreis2"]) {
+        const stand = standAus({ "e1": "K", "e8": "k", "d4": "T" }, "weiss",
+            { zusatzFarbe: "weiss", zusatzMuster: muster });
+        const zurueck = SCHACH.standNormalisieren(JSON.parse(JSON.stringify(stand)));
+
+        wahr(zurueck.zusatzMuster !== "", "Muster " + muster + " bleibt erhalten");
+        wahr(SCHACH._musterzuege(zurueck, SCHACH.feldNummer("d4"), "weiss",
+            zurueck.zusatzMuster).length > 0, "Muster " + muster + " liefert Zuege");
+    }
+});
+
+pruefe("Ausweichen laesst den Turm ein Feld weit auf ein freies Feld", () => {
+    const stand = standAus({ "e1": "K", "e8": "k", "d4": "T" }, "weiss",
+        { zusatzFarbe: "weiss", zusatzMuster: "ausweichen" });
+
+    wahr(ziele(stand, "d4").indexOf("c3") !== -1, "das Nachbarfeld ist dabei");
+});
+
+pruefe("Ausweichen bedroht nichts - es kann nicht schlagen", () => {
+    /*
+     * Ausweichen zieht seit v3.5 nur auf FREIE Felder. Eine gegnerische Figur
+     * daneben ist deshalb KEIN Schach. Bis v0.40 zaehlte `_feldBedroht` das
+     * alte Muster "koenig" trotzdem mit - daraus haette ein falsches
+     * Schachmatt werden koennen.
+     */
+    for (const muster of ["ausweichen", "koenig"]) {
+        const stand = standAus({ "e1": "K", "e8": "k", "d2": "t" }, "weiss",
+            { zusatzFarbe: "schwarz", zusatzMuster: muster });
+
+        gleich(SCHACH.imSchach(stand, "weiss"), false,
+            "Muster " + muster + ": kein Schach durch das Nachbarfeld");
+    }
+});
+
+pruefe("Ein Bauer wandelt auch per Zusatzmuster um", () => {
+    /*
+     * GEMELDET ALS „Sprung muss zur Dame werden" (Wunsch #4): Wer mit der
+     * Faehigkeit Sprung als Bauer auf die letzte Reihe kommt, blieb ein Bauer
+     * und stand dort fuer immer fest. Die Umwandlung hing an `_bauernzuege`
+     * statt am Zug.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "b6": "B" }, "weiss",
+        { zusatzFarbe: "weiss", zusatzMuster: "springer" });
+
+    /* b6 nach a8: ein Springerzug auf die letzte Reihe. */
+    const zuege = SCHACH.zuege(stand, SCHACH.feldNummer("b6"))
+        .filter((zug) => zug.nach === SCHACH.feldNummer("a8"));
+
+    gleich(zuege.length, 4, "vier Umwandlungen zur Auswahl");
+
+    const dame = SCHACH.ziehen(stand,
+        SCHACH.feldNummer("b6"), SCHACH.feldNummer("a8"), "D");
+    gleich(SCHACH.figurAuf(dame.stand, SCHACH.feldNummer("a8")), "D",
+        "aus dem Bauern wird eine Dame");
+
+    const springer = SCHACH.ziehen(stand,
+        SCHACH.feldNummer("b6"), SCHACH.feldNummer("a8"), "S");
+    gleich(SCHACH.figurAuf(springer.stand, SCHACH.feldNummer("a8")), "S",
+        "wer will, bekommt einen Springer");
+});
+
+pruefe("Nur ein Bauer wandelt um, keine andere Figur", () => {
+    const stand = standAus({ "e1": "K", "e8": "k", "b6": "T" }, "weiss",
+        { zusatzFarbe: "weiss", zusatzMuster: "springer" });
+
+    const zuege = SCHACH.zuege(stand, SCHACH.feldNummer("b6"))
+        .filter((zug) => zug.nach === SCHACH.feldNummer("a8"));
+
+    gleich(zuege.length, 1, "der Turm springt einmal, ohne Auswahl");
+    gleich(zuege[0].umwandlung, "", "und wandelt sich nicht");
+});
+
+pruefe("Der Sprung bedroht sehr wohl - er schlaegt", () => {
+    const stand = standAus({ "e1": "K", "e8": "k", "d3": "t" }, "weiss",
+        { zusatzFarbe: "schwarz", zusatzMuster: "springer" });
+
+    gleich(SCHACH.imSchach(stand, "weiss"), true, "Sprung des Turms trifft e1");
+});
+
+/* ------------------------------------------------------------------ *
  * Ergebnis
  * ------------------------------------------------------------------ */
 

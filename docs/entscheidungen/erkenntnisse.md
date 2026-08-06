@@ -168,6 +168,40 @@ selbst zu Ende, kommt er sofort — das ist der Moment, für den er gebaut wurde
 zwei. Hätte man nur das Zeitlimit gebaut, wäre der Punktestand-Hänger geblieben
 — und umgekehrt.
 
+### Die Fähigkeit war verbraucht, ihre Wirkung nie da (v0.41)
+
+**Was zu sehen war:** „Ausweichen geht verschwindet und man kann es noch nicht
+im Gegnerzug einsetzen." Beides stimmte, und beides war derselbe Fehler.
+
+`SCHACH_RUNDE.faehigkeitEinsetzen` arbeitete richtig: Es setzte
+`zusatzMuster = "ausweichen"`, nahm die Fähigkeit aus dem Vorrat und gab die
+neue Runde zurück. **Weggeworfen wurde die Wirkung erst beim nächsten Lesen.**
+`SCHACH.standNormalisieren` prüft das Muster gegen eine Liste erlaubter Namen,
+und in der stand `"koenig"` — der Name aus der Zeit vor v3.6 — aber nicht
+`"ausweichen"`, der Name, den `SCHACH_VARIANTEN` seitdem vergibt. Da jeder
+Zugriff über `normalisieren` läuft (auch `kopieren`), war das Muster schon vor
+dem ersten Zeichnen wieder weg.
+
+**Warum die Tests das nicht gefunden haben:** Sie prüften das Ergebnis von
+`faehigkeitEinsetzen` unmittelbar — und da stimmte es. Der Fehler lag auf dem
+Weg *danach*: speichern, laden, weiterspielen. Seit v0.41 geht der Test genau
+diesen Weg (`JSON.parse(JSON.stringify(...))` und zurück durch
+`normalisieren`), und zwar für JEDES Muster, das `_musterzuege` kennt.
+
+**Die Lehre — zweimal dieselbe:**
+
+1. **Eine Prüfliste erlaubter Werte ist eine zweite Wahrheit.** Wer einen Wert
+   an einer Stelle vergibt und an einer anderen gegen eine Aufzählung prüft,
+   muss beide zusammen ändern. Beim additiven Datenvertrag fällt das nicht auf:
+   Ein unbekannter Wert wird stillschweigend verworfen, statt zu krachen. Das
+   ist gewollt (alte Stände sollen nicht kaputtgehen) — und genau deshalb muss
+   ein Test den Weg durch den Speicher gehen.
+2. **Was nicht schlagen kann, bedroht nichts.** Beim Nachlesen fiel auf, dass
+   `_feldBedroht` das Ausweich-Muster als Bedrohung mitzählte. Seit v3.5 zieht
+   Ausweichen nur auf FREIE Felder; die Prüfung stammte aus der Zeit davor und
+   hätte ein Schachmatt erzeugen können, das keines ist. Wer einer Fähigkeit
+   etwas wegnimmt, sucht danach jede Stelle, die es noch voraussetzt.
+
 ### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam
