@@ -267,7 +267,12 @@ Bauvorgänge je Stunde.
    **Fine-grained token** anlegen:
    - **Repository access** → *Only select repositories* → `Quizz`
    - **Permissions** → *Repository permissions* → **Contents: Read and write**
-   - Mehr Rechte werden nicht gebraucht. Laufzeit nach Geschmack.
+   - Laufzeit nach Geschmack.
+   - **Wahlfrei: Issues: Read and write.** Nur zum SCHLIESSEN erledigter
+     Wünsche gebraucht (`tools\Wuensche-Abholen.ps1 -Schliessen <Nr>`). Der
+     hinterlegte Schlüssel hat das Recht derzeit NICHT — das Abholen der
+     Wünsche funktioniert trotzdem (es braucht gar keinen Token), erledigte
+     Einträge werden bis auf Weiteres von Hand auf github.com geschlossen.
 2. Token kopieren und im Projektordner ausführen:
 
        powershell -ExecutionPolicy Bypass -File "tools\Deploy-Quizz.ps1" -SetToken
