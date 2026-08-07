@@ -1762,7 +1762,7 @@ pruefe("Spiegel: eine Figur wird auf ein freies Nachbarfeld verdoppelt", () => {
         "ohne freies Nachbarfeld geht es nicht");
 });
 
-pruefe("Nudelholz: zwei Spalten rollen in die getippte Richtung", () => {
+pruefe("Nudelholz: zwei Spalten rollen von der eigenen Seite weg", () => {
     let runde = faehigkeitenPartie();
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
@@ -1778,22 +1778,38 @@ pruefe("Nudelholz: zwei Spalten rollen in die getippte Richtung", () => {
         rochade: ""
     });
 
-    /* Oben angetippt: nach oben. */
-    const hoch = einsetzen(runde, "nudelholz", SCHACH.feldNummer("a8"));
+    /*
+     * SEIT v0.46 IMMER NACH VORN: Weiss tippt seine eigene Grundreihe an
+     * (Reihe 1, auf dem Bildschirm unten), und die Figuren rollen von ihm weg
+     * — aus seiner Sicht nach oben. Vorher bestimmte der Rand die Richtung,
+     * und fuer Schwarz stand alles auf dem Kopf.
+     */
+    const hoch = einsetzen(runde, "nudelholz", SCHACH.feldNummer("a1"));
     wahr(hoch !== null, "eingesetzt");
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("a6")), "b", "a5 nach a6");
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("b6")), "b", "b5 nach b6");
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("a5")), ".", "a5 ist leer");
     gleich(hoch.verlauf[hoch.verlauf.length - 1].wege.length, 2, "zwei Wege im Verlauf");
 
-    /* Unten angetippt: nach unten. */
-    const runter = einsetzen(runde, "nudelholz", SCHACH.feldNummer("a1"));
-    wahr(runter !== null, "eingesetzt");
-    gleich(SCHACH.figurAuf(runter.stand, SCHACH.feldNummer("a4")), "b", "a5 nach a4");
+    /* Die gegnerische Grundreihe ist nicht die eigene. */
+    gleich(einsetzen(runde, "nudelholz", SCHACH.feldNummer("a8")), null,
+        "nur die eigene Grundreihe");
 
-    /* Mitten auf dem Brett gibt es keine Richtung. */
+    /* Mitten auf dem Brett schon gar nicht. */
     gleich(einsetzen(runde, "nudelholz", SCHACH.feldNummer("d4")), null,
-        "nur am Rand");
+        "nur am eigenen Rand");
+
+    /* Schwarz tippt seine eigene Grundreihe an — und schiebt in die andere
+       Richtung, aus SEINER Sicht ebenfalls nach oben. */
+    let fuerSchwarz = SCHACH_RUNDE.kopieren(runde);
+    fuerSchwarz.stand.amZug = "schwarz";
+    fuerSchwarz.faehigkeiten.schwarz.push("nudelholz");
+
+    const runter = SCHACH_RUNDE.faehigkeitEinsetzen(fuerSchwarz, "id-bert",
+        "nudelholz", SCHACH.feldNummer("a8"), "Bert", 3000);
+
+    wahr(runter !== null, "Schwarz kann es einsetzen");
+    gleich(SCHACH.figurAuf(runter.stand, SCHACH.feldNummer("a4")), "b", "a5 nach a4");
 
     /* Koenige bleiben stehen. */
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("e8")), "k", "der Koenig blieb");
@@ -2013,14 +2029,14 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         wiedergeburt: "b1",
         /* Das Grab liegt dort, wo die Figur fiel — hier von Hand gesetzt. */
         wiederbelebung: "e4",
-        /* a4 bis c4 ist in der Grundstellung frei. */
-        mauer: "a4",
+        /* Angetippt wird die MITTE: a4 bis c4 ist in der Grundstellung frei. */
+        mauer: "b4",
         /* Das 2x2-Feld a5/b5/a4/b4 ist frei; Gefallene setzt der Test. */
         friedhof: "a5",
         /* Ein Bauer hat als Einziger ein freies Nachbarfeld. */
         spiegel: "a2",
-        /* Am oberen Rand angetippt heisst: nach oben rollen. */
-        nudelholz: "a8"
+        /* Angetippt wird die EIGENE Grundreihe; gerollt wird von dort weg. */
+        nudelholz: "a1"
     };
 
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {

@@ -176,9 +176,10 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: 32,
-            vorher: "Angetippt wird der Buchstabe am Rand — er sagt, wohin gerollt "
-                + "wird.",
-            nachher: "Alle Figuren in den beiden Spalten rücken ein Feld weiter."
+            vorher: "Angetippt wird ein Feld deiner eigenen Grundreihe — unten am "
+                + "Brett.",
+            nachher: "Alle Figuren in diesen beiden Spalten rücken ein Feld nach "
+                + "vorn, von dir weg."
         },
         mauer: {
             brett: [
@@ -191,9 +192,10 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: 13,
-            vorher: "Angetippt wird das LINKE Ende der Mauer.",
-            nachher: "Drei Felder sind gesperrt — für beide Seiten. Nur Springer "
-                + "setzen darüber hinweg, und nach ein paar Zügen zerfällt sie."
+            vorher: "Die Mauer legt sich um das Feld, das du antippst.",
+            nachher: "Das angetippte Feld und je eines links und rechts sind gesperrt "
+                + "— für beide Seiten. Nur Springer setzen darüber hinweg, und nach "
+                + "ein paar Zügen zerfällt die Mauer."
         },
 
         /* ---- Episch: kostet den Gegner etwas ---- */
@@ -631,7 +633,65 @@ const SCHACH_VORSCHAU = {
             text: bilder.nachher.text
         }));
 
+        /*
+         * EIN LETZTES BILD: DIE FIGUR ZIEHT WIRKLICH (seit v0.46).
+         *
+         * Bei den Zugmustern (Sprung, Ausweichen, Teleport) endete die
+         * Anleitung bisher bei den Punkten — „hier kämst du hin". Wie das
+         * aussieht, blieb offen. Jetzt wird einer dieser Züge im Beispiel auch
+         * ausgeführt, mit Pfeil. Gerechnet wird er wie jeder andere Zug; misst
+         * einer, geht das Bild verloren, aber nicht die Anleitung.
+         */
+        const sprung = SCHACH_VORSCHAU._sprungSchritt(art, bilder.nachher, beispiel, name);
+        if (sprung) {
+            liste.push(sprung);
+        }
+
         return liste;
+    },
+
+    /*
+     * Führt im Beispiel einen der neu möglichen Züge aus — den, der am
+     * deutlichsten zeigt, was das Muster kann: das am weitesten entfernte
+     * Zielfeld. Nur für Fähigkeiten mit Zugmuster; sonst null.
+     */
+    _sprungSchritt(art, nachher, beispiel, name) {
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        const figur = beispiel.figur;
+
+        if (!beschreibung || beschreibung.art !== "zugmuster") {
+            return null;
+        }
+        if (!Number.isInteger(figur) || figur < 0
+            || !nachher.ziele || nachher.ziele.length === 0) {
+            return null;
+        }
+
+        const stand = nachher.runde.stand;
+        const breite = SCHACH.breiteVon(stand);
+        const abstand = (feld) => {
+            const dr = SCHACH.reiheVon(feld, breite) - SCHACH.reiheVon(figur, breite);
+            const ds = SCHACH.spalteVon(feld, breite) - SCHACH.spalteVon(figur, breite);
+            return (dr * dr) + (ds * ds);
+        };
+
+        const ziel = nachher.ziele.slice().sort(
+            (einer, anderer) => abstand(anderer) - abstand(einer))[0];
+
+        const gezogen = SCHACH_RUNDE.ziehen(nachher.runde, SCHACH_VORSCHAU.SPIELER,
+            figur, ziel, "D", "", 0);
+
+        if (!gezogen) {
+            return null;
+        }
+
+        return SCHACH_VORSCHAU._schritt({
+            runde: gezogen,
+            marken: [ziel],
+            wege: [{ von: figur, nach: ziel }],
+            text: "So sieht der Zug aus: Die Figur geht von "
+                + name(figur) + " nach " + name(ziel) + "."
+        });
     },
 
     /* Füllt einen Schritt auf, damit der Bildschirm nie auf Fehlendes trifft. */

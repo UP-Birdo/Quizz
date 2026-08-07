@@ -1050,19 +1050,29 @@ const SCHACH_RUNDE = {
 
         if (art === "nudelholz") {
             /*
-             * Das Zielfeld liegt am Rand: Ein Feld der OBERSTEN Reihe rollt
-             * nach oben, eines der UNTERSTEN nach unten. So beantwortet ein
-             * einziger Tipp beide Fragen — welche Spalten und wohin.
+             * ES ROLLT IMMER VON DIR WEG (seit v0.46).
+             *
+             * Angetippt wird ein Feld der EIGENEN Grundreihe — auf dem
+             * Bildschirm also die unterste Reihe, denn das Brett wird für
+             * Schwarz gedreht. Von dort schieben sich die Figuren nach vorn,
+             * aus der Sicht des Spielers nach oben.
+             *
+             * Bis v0.45 bestimmte der Rand die Richtung: oben angetippt hiess
+             * nach oben, unten angetippt nach unten. Für Schwarz stand damit
+             * beides auf dem Kopf — man tippte unten und die Figuren kamen auf
+             * einen zu.
              */
             const breite = SCHACH.breiteVon(runde.stand);
             const reihe = SCHACH.reiheVon(feld, breite);
-            const letzte = SCHACH.hoeheVon(runde.stand) - 1;
+            const eigeneReihe = (farbe === SCHACH.WEISS)
+                ? SCHACH.hoeheVon(runde.stand) - 1
+                : 0;
 
-            if (reihe !== 0 && reihe !== letzte) {
+            if (reihe !== eigeneReihe) {
                 return null;
             }
             return SCHACH.nudelholz(runde.stand, SCHACH.spalteVon(feld, breite),
-                (reihe === 0) ? -1 : 1);
+                (farbe === SCHACH.WEISS) ? -1 : 1);
         }
 
         /*

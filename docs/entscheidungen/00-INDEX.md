@@ -17,6 +17,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die Seite fror ein, bis der Gegner zog (v3.9)
     - Die Fähigkeit war verbraucht, ihre Wirkung nie da (v0.41)
     - Die neue Partie war da — man stand nur davor (v0.44)
+    - Die Bildanleitung hat zwei Regeln entlarvt (v0.46)
     - Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 ## entschieden.md - Entschieden - und warum

@@ -3,6 +3,27 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.46.0 — 2026-08-07
+
+Zwei Regeln zeigten in der Anleitung etwas anderes, als sie tun — beide sind
+jetzt so, wie man sie erwartet.
+
+- **Die Mauer legt sich UM das angetippte Feld** (eines links, eines rechts).
+  Vorher war das angetippte Feld ihr linkes Ende, und die Sperre erschien
+  daneben — man tippte auf ein Feld und bekam die Mauer woanders.
+- **Das Nudelholz schiebt immer von dir weg**, aus deiner Sicht also nach oben.
+  Angetippt wird ein Feld deiner eigenen Grundreihe, unten am Brett. Vorher
+  bestimmte der Rand die Richtung: oben antippen hiess nach oben, unten
+  antippen nach unten — für Schwarz stand damit beides auf dem Kopf, denn das
+  Brett wird für ihn gedreht.
+- **Sprung, Ausweichen und Teleport zeigen den Zug jetzt auch.** Nach den
+  Punkten kommt ein drittes Bild, auf dem die Figur wirklich springt, mit
+  Pfeil. Vorher endete die Anleitung bei „hier kämst du hin".
+- **Jede Animation ist gegen die Regel geprüft.** Neue Tests rechnen für JEDE
+  Fähigkeit und jeden Unglückswürfel nach, dass der Fingerabdruck auf einem
+  Feld liegt, das die Regel wirklich annimmt, und dass genau die möglichen
+  Felder markiert sind — keines zu viel und keines zu wenig.
+
 ## v0.45.0 — 2026-08-07
 
 - **Der Fingerabdruck in der Bildanleitung sieht aus wie einer.** Statt dreier

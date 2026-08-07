@@ -78,6 +78,7 @@ entstehen aus den echten Regeln, also lässt sich prüfen, ob sie etwas zeigen.
 | Aussagekraft | Vorher und Nachher unterscheiden sich sichtbar (Brett, Wirkung im Stand oder markierte Felder) |
 | Ablauf | jeder Schritt hat Brett, Marken und Satz; Fähigkeiten mit Zielfeld haben drei Schritte, wo gezogen wird vier, die übrigen zwei; die Auswahl im mittleren Schritt kommt aus `zielFelder` |
 | Handgriff | jeder Schritt, in dem getippt wird, trägt einen Fingerabdruck — und nur der; Ausgangsstellung und Wirkung nie |
+| **Probe aufs Exempel** | für JEDE Fähigkeit: Der Fingerabdruck liegt auf einem Feld, das die Regel wirklich annimmt (`zielFelder`), und markiert ist genau das Mögliche — keines zu viel, keines zu wenig |
 | Pfeile | wo sich etwas bewegt, hat der Schritt Wege mit zwei verschiedenen Enden |
 | Einzelfälle | Sprung markiert Springerziele, aus dem Bauern wird ein Springer, die Mauer sperrt drei Felder, das Brett wächst, nach dem Doppelzug ist dieselbe Seite dran |
 | Beispielbretter | genau 6 mal 6 Felder, beide Könige stehen darauf |

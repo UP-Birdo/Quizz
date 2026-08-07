@@ -315,6 +315,12 @@ Die Regel steckt an drei Stellen, und alle drei sind nötig:
    Mauer, und die Rochade zog hindurch — beide Lücken sind beim Bauen
    aufgefallen und durch Tests festgenagelt.
 
+**Das angetippte Feld ist die MITTE** (seit v0.46): Die Mauer legt sich um es
+herum, je ein Feld links und rechts. Bis v0.45 war es das linke Ende — man
+tippte ein Feld an und bekam die Sperre daneben. Am Rand geht es deshalb nicht
+mehr: Ohne Platz für beide Nachbarn liefert `mauerLegen` null, und `zielFelder`
+bietet das Feld gar nicht erst an.
+
 Am Bildschirm ist die Mauer **ein** Riegel über drei Felder, kein Stapel
 Steine: Der helle Rand liegt nur aussen (oben und unten überall, links und
 rechts nur an den Enden `mauer-anfang`/`mauer-ende`), und jedes Stück reicht ein
@@ -415,6 +421,19 @@ für sie wird die Liste einmalig aus `variante.bonusFelder` minus
 
 `verloren` sammelt geschlagene Figuren je Farbe — die Wiedergeburt holt daraus
 die zuletzt verlorene zurück.
+
+### Was „vorn" heisst — das Nudelholz (seit v0.46)
+
+Das Brett wird für Schwarz **gedreht** gezeichnet. Eine Fähigkeit, deren
+Richtung sich nach oben oder unten am Brett richtet, bedeutet damit für beide
+Seiten etwas anderes — und genau das war beim Nudelholz der Fehler: Bis v0.45
+bestimmte der angetippte Rand die Richtung, für Schwarz stand alles auf dem
+Kopf.
+
+Seither gilt: **Angetippt wird die EIGENE Grundreihe** (auf dem Bildschirm
+immer unten), und geschoben wird von dort weg — für Weiss also aufwärts, für
+Schwarz abwärts, für beide „nach vorn". Wer eine Fähigkeit mit Richtung baut,
+rechnet sie aus der FARBE, nie aus der Reihe am Brett.
 
 ### Welche Felder ein Ziel sein können
 

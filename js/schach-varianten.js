@@ -366,9 +366,9 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "ziel",
             zielArt: "spalte",
-            beschreibung: "Rollt über zwei Spalten: Alle Figuren darin rücken ein Feld "
-                + "vor oder zurück. Angetippt wird der Buchstabe am oberen oder unteren "
-                + "Rand — er bestimmt die Richtung. Wo kein Platz ist, bleibt die Figur "
+            beschreibung: "Rollt über zwei Spalten und schiebt alle Figuren darin ein "
+                + "Feld nach vorn — von dir weg. Angetippt wird ein Feld deiner eigenen "
+                + "Grundreihe, also unten am Brett. Wo kein Platz ist, bleibt die Figur "
                 + "stehen; Könige bleiben immer stehen."
         },
 
@@ -459,9 +459,10 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "ziel",
             zielArt: "mauerplatz",
-            beschreibung: "Legt eine Mauer über drei freie Felder derselben Reihe — "
-                + "das angetippte Feld ist ihr linkes Ende. Niemand zieht hindurch, "
-                + "aber Springer setzen darüber hinweg. Nach einigen Zügen zerfällt sie."
+            beschreibung: "Legt eine Mauer über drei freie Felder derselben Reihe — auf "
+                + "das angetippte Feld und je eines links und rechts davon. Niemand zieht "
+                + "hindurch, aber Springer setzen darüber hinweg. Nach einigen Zügen "
+                + "zerfällt sie."
         },
 
         /*

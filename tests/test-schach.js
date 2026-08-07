@@ -797,32 +797,36 @@ pruefe("Die Mauer zerfaellt nach ihrer Zeit", () => {
 });
 
 pruefe("Eine Mauer braucht drei freie Felder in einer Reihe", () => {
+    /* Das angetippte Feld ist die MITTE (seit v0.46) — die Mauer liegt also
+       um es herum, je ein Feld links und rechts. */
     const stand = standAus({ "e1": "K", "e8": "k", "c4": "B" });
 
-    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("a4")), null,
-        "c4 ist besetzt");
-    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("d4")) !== null,
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("b4")), null,
+        "c4 ist besetzt und laege rechts daneben");
+    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("e4")) !== null,
         "d4 bis f4 ist frei");
-    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("g4")), null,
-        "am rechten Rand ist kein Platz mehr");
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("a4")), null,
+        "am linken Rand fehlt das Feld davor");
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("h4")), null,
+        "am rechten Rand fehlt das Feld dahinter");
 });
 
 pruefe("Eine Mauer legt sich nicht auf eine andere", () => {
     const stand = mitMauer(standAus({ "e1": "K", "e8": "k" }), ["c4", "d4", "e4"]);
 
-    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("a4")), null,
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("b4")), null,
         "c4 gehoert schon zu einer Mauer");
-    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("f4")) !== null,
-        "daneben geht es");
+    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("g4")) !== null,
+        "weiter rechts geht es");
 });
 
 pruefe("Die gelegte Mauer deckt genau drei Felder", () => {
     const stand = standAus({ "e1": "K", "e8": "k" });
-    const wirkung = SCHACH.mauerLegen(stand, SCHACH.feldNummer("c5"));
+    const wirkung = SCHACH.mauerLegen(stand, SCHACH.feldNummer("d5"));
 
     gleich(wirkung.felder.length, 3, "drei Felder");
     gleich(wirkung.felder.map((feld) => SCHACH.feldName(feld)).join(","),
-        "c5,d5,e5", "von links nach rechts");
+        "c5,d5,e5", "von links nach rechts, das angetippte in der Mitte");
 });
 
 pruefe("Mauern ueberleben das Speichern", () => {

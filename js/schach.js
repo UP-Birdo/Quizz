@@ -538,13 +538,24 @@ const SCHACH = {
         if (feld < 0 || feld >= SCHACH.felderVon(stand)) {
             return null;
         }
-        if (spalte + SCHACH.MAUER_LAENGE > breite) {
+
+        /*
+         * DAS ANGETIPPTE FELD IST DIE MITTE (seit v0.46).
+         *
+         * Bis v0.45 war es das LINKE ENDE, und die Mauer wuchs von dort nach
+         * rechts. Am Bildschirm sah das aus wie ein Fehler: Man tippt ein Feld
+         * an, und die Sperre erscheint daneben. Wer eine Mauer legt, meint das
+         * Feld, das er anfasst — links und rechts davon ist Zugabe.
+         */
+        const links = spalte - Math.floor((SCHACH.MAUER_LAENGE - 1) / 2);
+
+        if (links < 0 || links + SCHACH.MAUER_LAENGE > breite) {
             return null;
         }
 
         const felder = [];
         for (let schritt = 0; schritt < SCHACH.MAUER_LAENGE; schritt++) {
-            const ziel = SCHACH._feld(stand, reihe, spalte + schritt);
+            const ziel = SCHACH._feld(stand, reihe, links + schritt);
 
             /* Frei heisst: keine Figur UND keine andere Mauer. */
             if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.mauerAuf(stand, ziel)) {

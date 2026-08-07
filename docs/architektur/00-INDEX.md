@@ -52,6 +52,7 @@ passenden Abschnitt hier.
     - Der gerechnete Zufall
     - Zwei Zeitpunkte: Stufe beim Erscheinen, Fähigkeit beim Einsammeln
     - Gespeichert wird, was liegt
+    - Was „vorn" heisst — das Nudelholz (seit v0.46)
     - Welche Felder ein Ziel sein können
     - Die Zugbewegung
     - Zwei Fragen an einen Weg

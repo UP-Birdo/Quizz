@@ -139,8 +139,16 @@ pruefe("Faehigkeiten mit Zielfeld zeigen den Handgriff als eigenen Schritt", () 
 });
 
 pruefe("Ohne Zielfeld und ohne Zug gibt es zwei Schritte", () => {
-    for (const art of ["sprung", "ausweichen", "teleport", "bauernschub", "haendler"]) {
+    for (const art of ["bauernschub", "haendler"]) {
         gleich(SCHACH_VORSCHAU.schritte(art).length, 2, art + ": zwei Schritte");
+    }
+});
+
+pruefe("Die Zugmuster haben ein drittes Bild: den Zug selbst", () => {
+    /* v0.46: Was die neuen Punkte bedeuten, sieht man erst, wenn die Figur
+       einmal wirklich dorthin zieht. */
+    for (const art of ["sprung", "ausweichen", "teleport"]) {
+        gleich(SCHACH_VORSCHAU.schritte(art).length, 3, art + ": drei Schritte");
     }
 });
 
@@ -200,6 +208,156 @@ pruefe("Wo sich etwas bewegt, gibt es Pfeile", () => {
                     && weg.von !== weg.nach, art + ": der Weg hat zwei Enden");
             }
         }
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Die Probe aufs Exempel: Zeigt die Anleitung, was die Regel erlaubt?
+ *
+ * Das ist der wichtigste Test dieser Datei. Ein Bild, das an einer Stelle
+ * einen Fingerabdruck zeigt, an der man in Wirklichkeit nicht tippen kann,
+ * ist schlimmer als gar keines — es leitet in die Irre.
+ * ------------------------------------------------------------------ */
+
+for (const art of alleArten) {
+    pruefe("Wo der Finger liegt, geht es auch wirklich: " + art, () => {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const istFaehigkeit = !!SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+
+        for (const schritt of schritte) {
+            if (schritt.tipp < 0) {
+                continue;
+            }
+
+            /*
+             * Zwei Arten von Tippern gibt es: auf ein Zielfeld einer
+             * Faehigkeit (dann muss `zielFelder` es kennen) und auf ein Feld
+             * eines Zuges (dann muss es die Figur oder eines ihrer Ziele
+             * sein). Beides wird hier gegen die ECHTE Regel geprueft.
+             */
+            const zielFelder = istFaehigkeit
+                ? SCHACH_RUNDE.zielFelder(schritt.runde, SCHACH_VORSCHAU.SPIELER, art)
+                : [];
+
+            const istZugfeld = SCHACH.farbeVon(
+                SCHACH.figurAuf(schritt.runde.stand, schritt.tipp)) === SCHACH_VORSCHAU.FARBE;
+
+            wahr(zielFelder.indexOf(schritt.tipp) !== -1
+                || istZugfeld
+                || schritt.ziele.indexOf(schritt.tipp) !== -1,
+                art + ": auf Feld " + schritt.tipp + " laesst sich wirklich tippen");
+        }
+    });
+}
+
+for (const art of alleArten) {
+    pruefe("Markiert ist genau das Moegliche: " + art, () => {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const istFaehigkeit = !!SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+
+        for (const schritt of schritte) {
+            /* Die helle Auswahl: jedes Feld muss ein gueltiges Ziel sein. */
+            if (schritt.wahl.length > 0 && istFaehigkeit) {
+                const moeglich = SCHACH_RUNDE.zielFelder(
+                    schritt.runde, SCHACH_VORSCHAU.SPIELER, art);
+
+                for (const feld of schritt.wahl) {
+                    wahr(moeglich.indexOf(feld) !== -1,
+                        art + ": Feld " + feld + " ist als Auswahl markiert und geht auch");
+                }
+
+                /* Und andersherum: KEIN gueltiges Feld fehlt. Sonst waere
+                   etwas moeglich, das die Anleitung verschweigt. */
+                gleich(schritt.wahl.length + 1, moeglich.length,
+                    art + ": alle moeglichen Felder sind markiert");
+            }
+
+            /* Die Zugpunkte: genau die Zuege der markierten Figur. */
+            for (const feld of schritt.ziele) {
+                const dort = SCHACH.figurAuf(schritt.runde.stand, feld);
+                wahr(SCHACH.farbeVon(dort) !== SCHACH_VORSCHAU.FARBE,
+                    art + ": auf einen Zugpunkt zieht man nicht die eigene Figur");
+            }
+        }
+    });
+}
+
+pruefe("Die Zugpunkte sind genau die Zuege der Figur", () => {
+    /*
+     * Stichprobe an den drei Zugmustern: Was als Punkt dasteht, muss
+     * `SCHACH.zuege` genauso liefern — sonst zeigt die Anleitung Felder, auf
+     * die man nicht darf, oder verschweigt welche.
+     */
+    for (const art of ["sprung", "ausweichen", "teleport"]) {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+
+        /* Der vorletzte Schritt zeigt die neuen Ziele. */
+        const mitPunkten = schritte[schritte.length - 2];
+        const echte = SCHACH.zuege(mitPunkten.runde.stand, beispiel.figur)
+            .map((zug) => zug.nach);
+
+        for (const feld of mitPunkten.ziele) {
+            wahr(echte.indexOf(feld) !== -1,
+                art + ": Punkt auf " + feld + " ist ein echter Zug");
+        }
+    }
+});
+
+pruefe("Bei den Zugmustern zieht die Figur am Ende wirklich", () => {
+    for (const art of ["sprung", "ausweichen", "teleport"]) {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+        const letzter = schritte[schritte.length - 1];
+
+        gleich(letzter.wege.length, 1, art + ": ein Pfeil zeigt den Zug");
+        gleich(letzter.wege[0].von, beispiel.figur, art + ": er beginnt bei der Figur");
+        gleich(SCHACH.figurAuf(letzter.runde.stand, beispiel.figur), ".",
+            art + ": die Figur steht nicht mehr auf ihrem alten Feld");
+        gleich(SCHACH.figurAuf(letzter.runde.stand, letzter.wege[0].nach), "T",
+            art + ": sie steht jetzt am Ende des Pfeils");
+    }
+});
+
+pruefe("Die Mauer liegt um das angetippte Feld herum", () => {
+    /*
+     * v0.46: Das angetippte Feld ist die MITTE. Vorher war es das linke Ende —
+     * am Bildschirm sah es aus, als erscheine die Sperre daneben.
+     */
+    const schritte = SCHACH_VORSCHAU.schritte("mauer");
+    const beispiel = SCHACH_VORSCHAU.beispielVon("mauer");
+    const mauern = SCHACH.mauern(schritte[schritte.length - 1].runde.stand);
+
+    gleich(mauern.length, 1, "eine Mauer");
+    wahr(mauern[0].felder.indexOf(beispiel.ziel) !== -1,
+        "das angetippte Feld gehoert zur Mauer");
+    gleich(mauern[0].felder[1], beispiel.ziel, "und liegt in ihrer Mitte");
+});
+
+pruefe("Das Nudelholz schiebt von der eigenen Grundreihe nach vorn", () => {
+    /*
+     * v0.46: Aus Sicht des Spielers immer nach oben — man tippt unten an, die
+     * Figuren rollen weg. Fuer Schwarz ist „unten" die andere Brettseite, weil
+     * das Brett gedreht wird.
+     */
+    const schritte = SCHACH_VORSCHAU.schritte("nudelholz");
+    const vorher = schritte[0].runde;
+    const breite = SCHACH.breiteVon(vorher.stand);
+    const hoehe = SCHACH.hoeheVon(vorher.stand);
+    const moeglich = SCHACH_RUNDE.zielFelder(vorher, SCHACH_VORSCHAU.SPIELER, "nudelholz");
+
+    wahr(moeglich.length > 0, "es gibt Felder zum Antippen");
+
+    for (const feld of moeglich) {
+        gleich(SCHACH.reiheVon(feld, breite), hoehe - 1,
+            "Feld " + feld + " liegt auf der eigenen Grundreihe");
+    }
+
+    /* Und die Figuren wandern zur Gegenseite, also nach oben. */
+    const letzter = schritte[schritte.length - 1];
+    for (const weg of letzter.wege) {
+        wahr(SCHACH.reiheVon(weg.nach, breite) < SCHACH.reiheVon(weg.von, breite),
+            "die Figur rueckt nach vorn");
     }
 });
 

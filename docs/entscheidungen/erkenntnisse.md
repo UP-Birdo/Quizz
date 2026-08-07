@@ -224,6 +224,28 @@ Dasselbe Muster, eine Zeile weniger.
 Ablauf stecken, der scheinbar nichts tut. Hier war jeder Schritt richtig — nur
 die Anzeige zeigte etwas anderes.
 
+### Die Bildanleitung hat zwei Regeln entlarvt (v0.46)
+
+Die Anleitung zeigt seit v0.41, wo man hintippt und was daraus wird — gerechnet
+mit den echten Regeln. Beim Durchsehen fielen dabei zwei Fähigkeiten auf, deren
+Bedienung **nicht** zu dem passte, was man erwartet:
+
+- **Die Mauer** erschien neben dem Feld, das man antippte (das Feld war ihr
+  linkes Ende). Auf einem Bild nebeneinander sieht man das sofort; im Spiel
+  hält man es für einen Fehlgriff.
+- **Das Nudelholz** richtete sich nach dem Rand des BRETTS statt nach der
+  Seite des SPIELERS. Für Weiss stimmte es, für Schwarz stand es auf dem Kopf
+  — das Brett wird für ihn gedreht.
+
+**Die Lehre:** Eine Anleitung, die aus den echten Regeln entsteht, ist auch ein
+Prüfstand für die Regeln. Was sich in drei Bildern nicht erklären lässt, ist
+meistens nicht schwer zu erklären, sondern falsch herum gebaut.
+
+**Zweite Lehre — Richtungen gehören zur Farbe, nicht zum Brett:** Alles, was
+„oben" oder „unten" heisst, muss aus der Farbe gerechnet werden, solange das
+Brett für eine Seite gedreht wird. Die Bauern machen es seit jeher richtig
+(`richtung` aus der Farbe); das Nudelholz war die Ausnahme.
+
 ### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam
