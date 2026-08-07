@@ -1020,12 +1020,15 @@ body {
 }
 
 /*
- * Zugeklappt steht hier NUR die Überschrift (seit v0.42). Die ganze Zeile ist
- * die Fläche zum Tippen — auf dem Handy trifft man einen Namen sonst knapp
- * daneben.
+ * Zugeklappt stehen hier nur die Überschrift und die Zeichen der Fähigkeit
+ * (Pluszeichen, Blitz — seit v0.47). Die ganze Zeile ist die Fläche zum
+ * Tippen; auf dem Handy trifft man einen Namen sonst knapp daneben.
  */
 .stufen-kopf {
-    display: block;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
     cursor: pointer;
     padding: 2px 0;
 }
@@ -1063,6 +1066,15 @@ body {
 
 .stufen-inhalt .stufen-text {
     margin: 0;
+}
+
+/* Was die Fähigkeit KOSTET — steht bei jedem Eintrag, damit man die Zeichen
+   am Vorrat wiedererkennt. */
+.stufen-kosten {
+    margin: 6px 0 0 0;
+    font-size: 0.82rem;
+    color: var(--schrift-leise);
+    font-style: italic;
 }
 
 /* Der Unglückswürfel hebt sich ab — er ist keine Belohnung. */

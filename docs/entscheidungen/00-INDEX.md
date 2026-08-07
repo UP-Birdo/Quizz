@@ -108,6 +108,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum Grün eine Abklingzeit bekommen hat (v0.41)
 - Warum Rot und Blau und nicht Grün und Gelb (v0.41)
 - Warum die Bildanleitung gerechnet und nicht gezeichnet wird (v0.41)
+- Wie eine Fähigkeit eingepreist wird (v0.47)
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

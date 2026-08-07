@@ -3,6 +3,34 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.47.0 — 2026-08-07
+
+**Was eine Fähigkeit kostet, folgt jetzt einer Regel** — und die steht überall
+dabei.
+
+- **Die Zeichen stehen auch in der Bibliothek.** Hinter dem i trägt jede
+  Fähigkeit dieselben Zeichen wie im Vorrat (Pluszeichen, Blitz), und beim
+  Aufklappen steht in Worten daneben, was sie bedeuten: „Pluszeichen (+): Nach
+  dem Einsetzen darfst du noch ganz normal ziehen" beziehungsweise „Kein
+  Pluszeichen: Das Einsetzen kostet deinen Zug".
+- **Die Regel dahinter: Wer Material oder einen Angriff geschenkt bekommt, gibt
+  den Zug ab.** Danach ist neu eingeordnet worden — ohne eine einzige Fähigkeit
+  auf eine andere Stufe zu schieben:
+  - **Sprung** und **Teleport** kosten jetzt den Zug. Mit dem Sprung darf man
+    schlagen, mit dem Teleport über alles hinwegsetzen; beide sind gewöhnlich,
+    kommen also ständig. Ein geschenkter Zug obendrauf war zu viel.
+  - **Verstärkung**, **Spiegel** und **Wiedergeburt** kosten ihn ebenfalls. Sie
+    bringen Material — genau wie Wiederbelebung, Friedhof und Händler, die den
+    Zug schon immer gekostet haben. Dass die drei ihn behielten, war eine Lücke.
+  - **Ausweichen** behält sein Pluszeichen: Es schlägt nicht, zieht nur auf
+    freie Felder und ist die Notbremse. Ebenso alles, was nur die Stellung
+    verändert (Bauernschub, Erdbeben, Nudelholz, Mauer, Schutzschild, Fessel,
+    Frost) und der Doppelzug, dessen Pluszeichen seine Wirkung ist.
+- **Ein Zusatzmuster überlebt jetzt den Gegenzug.** Das musste sein: Wer den Zug
+  abgibt, springt erst danach. Bis v0.46 löschte das Abgeben des Zuges das
+  eigene Muster — Sprung und Teleport wären verbraucht, aber wirkungslos
+  gewesen. (Derselbe Fehlertyp wie in v0.41; ein Test hält ihn jetzt fest.)
+
 ## v0.46.0 — 2026-08-07
 
 Zwei Regeln zeigten in der Anleitung etwas anderes, als sie tun — beide sind

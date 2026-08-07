@@ -291,6 +291,32 @@ const SCHACH_VARIANTEN = {
      * `beendetZug` ein Pluszeichen (danach bleibt der normale Zug) und eine
      * mit `imGegenzug` einen Blitz. Was eine Fähigkeit kostet, muss man sehen
      * können, bevor man sie einsetzt — nicht danach.
+     *
+     * ----------------------------------------------------------------------
+     * WER MATERIAL ODER EINEN ANGRIFF BEKOMMT, GIBT DEN ZUG AB (seit v0.47).
+     *
+     * Das ist die Regel, nach der `beendetZug` gesetzt wird — nicht die Stufe.
+     * Die Stufe sagt nur, wie SELTEN eine Fähigkeit ist; wie teuer sie ist,
+     * sagt dieser Schalter. Drei Gruppen:
+     *
+     *   1. Material dazu (Wiedergeburt, Wiederbelebung, Spiegel, Verstärkung,
+     *      Friedhof, Händler) → `beendetZug`. Sonst bekäme man Figuren
+     *      geschenkt und dürfte im selben Atemzug damit angreifen.
+     *   2. Eine zusätzliche Gangart, mit der man SCHLAGEN oder springen kann
+     *      (Sprung, Teleport) → `beendetZug`. Sie sind gewöhnlich, kommen also
+     *      ständig; ein geschenkter Springerzug obendrauf ist zu viel.
+     *   3. Nur die Stellung verändert (Bauernschub, Erdbeben, Nudelholz,
+     *      Mauer, Schutzschild, Fessel, Frost) oder gar keine Figur berührt
+     *      (Ausweichen: zieht nur auf FREIE Felder und schlägt nie) → das
+     *      Pluszeichen bleibt.
+     *
+     * Der Doppelzug ist die eine Ausnahme: Sein Pluszeichen IST seine Wirkung,
+     * nicht sein Preis.
+     *
+     * Wird eine Fähigkeit zu stark, wird ihr das Pluszeichen genommen — nicht
+     * ihre Stufe geändert. Eine verschobene Stufe ändert nur, wie oft sie
+     * kommt; der Schalter ändert, was sie kostet.
+     * ----------------------------------------------------------------------
      */
     FAEHIGKEITEN: {
 
@@ -302,10 +328,10 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "zugmuster",
             muster: "springer",
-            beschreibung: "Du ziehst danach ganz normal — eine Figur deiner Wahl "
-                + "darf dabei aber auch wie ein Springer gehen. Es ist KEIN "
-                + "zusätzlicher Zug, sondern eine zusätzliche Gangart für diesen "
-                + "einen."
+            beendetZug: true,
+            beschreibung: "Bei deinem nächsten Zug darf eine Figur deiner Wahl auch "
+                + "wie ein Springer gehen — und dabei schlagen. Das Einsetzen kostet "
+                + "dich diesen Zug: Danach ist erst der Gegner dran."
         },
         ausweichen: {
             titel: "Ausweichen",
@@ -324,9 +350,11 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "zugmuster",
             muster: "umkreis2",
-            beschreibung: "Du ziehst danach ganz normal — eine Figur deiner Wahl "
-                + "darf dabei aber auch auf ein freies Feld im Umkreis von zwei "
-                + "Feldern springen, über alles hinweg."
+            beendetZug: true,
+            beschreibung: "Bei deinem nächsten Zug darf eine Figur deiner Wahl auch "
+                + "auf ein FREIES Feld im Umkreis von zwei springen, über alles "
+                + "hinweg — geschlagen wird dabei nicht. Das Einsetzen kostet dich "
+                + "diesen Zug: Danach ist erst der Gegner dran."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ----
@@ -388,8 +416,9 @@ const SCHACH_VARIANTEN = {
             stufe: "lila",
             art: "ziel",
             zielArt: "eigenerBauer",
+            beendetZug: true,
             beschreibung: "Ein eigener Bauer wird sofort zum Springer — ein "
-                + "Materialgewinn aus dem Nichts."
+                + "Materialgewinn aus dem Nichts. Danach ist der Gegner am Zug."
         },
         fessel: {
             titel: "Fessel",
@@ -416,16 +445,19 @@ const SCHACH_VARIANTEN = {
             stufe: "gelb",
             art: "ziel",
             zielArt: "eigeneGrundreihe",
+            beendetZug: true,
             beschreibung: "Die zuletzt verlorene eigene Figur kehrt auf ein freies "
-                + "Feld der eigenen Grundreihe zurück."
+                + "Feld der eigenen Grundreihe zurück. Danach ist der Gegner am Zug."
         },
         spiegel: {
             titel: "Spiegel",
             stufe: "gelb",
             art: "ziel",
             zielArt: "eigeneFigurKopierbar",
+            beendetZug: true,
             beschreibung: "Verdoppelt eine eigene Figur: Die Kopie erscheint auf einem "
-                + "freien Feld daneben. Könige lassen sich nicht spiegeln."
+                + "freien Feld daneben. Könige lassen sich nicht spiegeln. Danach ist "
+                + "der Gegner am Zug."
         },
 
         /*

@@ -1410,6 +1410,37 @@ untereinander sind zwei Dinge, die sich bewegen — man sieht keine davon zu
 Ende. Dazu kommt ein handfester Grund: Jede Anleitung hat ihren eigenen Takt,
 und ein zugeklappter Eintrag, der weiterläuft, arbeitet für niemanden.
 
+## Wie eine Fähigkeit eingepreist wird (v0.47)
+
+Bis v0.46 stand `beendetZug` da, wo es beim Bauen gerade nötig schien. Beim
+Durchsehen aller siebzehn Fähigkeiten fiel auf, dass drei von ihnen
+(Verstärkung, Spiegel, Wiedergeburt) Material einbringen und den Zug trotzdem
+behielten — während Wiederbelebung, Friedhof und Händler für dasselbe seit v3.3
+den Zug kosten. Das war keine Entscheidung, das war eine Lücke.
+
+**Die Regel lautet seither: Wer Material oder einen Angriff geschenkt bekommt,
+gibt den Zug ab.** Nur wer die Stellung verändert, behält ihn.
+
+Zwei Dinge waren dabei zu entscheiden:
+
+- **Sprung und Teleport kosten jetzt auch den Zug.** Sie sind gewöhnlich, also
+  die häufigsten Würfel überhaupt. Mit dem Sprung darf man SCHLAGEN, mit dem
+  Teleport über alles hinwegsetzen — beides zusätzlich zum normalen Zug war zu
+  viel für etwas, das jede Partie mehrfach kommt. Ausweichen bleibt gratis: Es
+  zieht nur auf FREIE Felder, schlägt nie und ist als Notbremse gedacht.
+- **Die Stufe bleibt, wo sie ist.** Sie beantwortet eine andere Frage — wie oft
+  kommt eine Fähigkeit —, und wer sie verschiebt, ändert das Spielgefühl an
+  einer Stelle, an der niemand ein Problem gemeldet hat. Der Preis gehört an
+  den Schalter, nicht an die Häufigkeit.
+
+**Warum die Zeichen jetzt auch in der Bibliothek stehen:** Am Vorrat sagt das
+Pluszeichen, was JETZT gilt (`behaeltZug`, seit v0.41). Wer es dort zum ersten
+Mal sieht, weiss aber nicht, was es heisst. In der Bibliothek steht deshalb
+dasselbe Zeichen samt Erklärung an jedem Eintrag — nicht nur einmal in einer
+Legende ganz oben, denn wer dort nachschlägt, sucht genau diese eine Fähigkeit.
+Der Unterschied bleibt erhalten: Die Bibliothek zeigt die EIGENSCHAFT, der
+Vorrat die LAGE.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

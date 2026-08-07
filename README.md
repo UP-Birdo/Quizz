@@ -209,7 +209,7 @@ Team ein; eingesetzt wird die Fähigkeit später über den Knopf unter dem Brett
 
 | Stufe | Chance | Fähigkeiten |
 |---|---|---|
-| **Gewöhnlich** (grün) | 52 %, mit Abklingzeit | **Sprung**, **Ausweichen**, **Teleport** — mehr Beweglichkeit für eine Figur deiner Wahl. |
+| **Gewöhnlich** (grün) | 52 %, mit Abklingzeit | **Sprung**, **Teleport** (kosten den Zug), **Ausweichen** — mehr Beweglichkeit für eine Figur deiner Wahl. |
 | **Ungewöhnlich** (blau) | 33 % | **Bauernschub**, **Schutzschild**, **Erdbeben**, **Nudelholz**, **Mauer**. |
 | **Episch** (lila) | 12 % | **Frost**, **Verstärkung**, **Fessel**, **Händler**. |
 | **Legendär** (gelb) | 3 % | **Doppelzug**, **Wiedergeburt**, **Spiegel**, **Wiederbelebung**, **Friedhof**. |
@@ -225,6 +225,25 @@ allen Zahlen steht in der App hinter dem **i** bei den Fähigkeiten.
 Jeder achte Würfel ist ein **Unglückswürfel** (umgedrehtes Fragezeichen): Er
 kommt nicht in den Vorrat, sondern wirkt sofort gegen den, der ihn eingesammelt
 hat.
+
+### Was eine Fähigkeit kostet
+
+Zwei Zeichen stehen an jeder Fähigkeit — im Vorrat unter dem Brett und in der
+Übersicht hinter dem **i**:
+
+| Zeichen | Bedeutung |
+|---|---|
+| **+** | Nach dem Einsetzen darfst du noch ganz normal ziehen. |
+| *(kein +)* | Das Einsetzen kostet deinen Zug — danach ist der Gegner dran. |
+| **Blitz** | Du darfst sie auch einsetzen, während der Gegner am Zug ist. |
+
+Dahinter steckt eine einfache Regel: **Wer Material oder einen Angriff
+geschenkt bekommt, gibt den Zug ab.** Wiedergeburt, Wiederbelebung, Spiegel,
+Verstärkung, Friedhof und Händler bringen Figuren; Sprung und Teleport bringen
+eine zusätzliche Gangart zum Schlagen oder Springen — sie alle kosten den Zug.
+Alles, was nur die Stellung verändert (Bauernschub, Erdbeben, Nudelholz, Mauer,
+Schutzschild, Fessel, Frost), behält das Pluszeichen. Ausweichen ebenfalls: Es
+schlägt nie und ist die Notbremse.
 
 **Bevor du eine Fähigkeit einsetzt, siehst du, wie sie wirkt:** ein kleines
 Brett spielt den Ablauf ab — Ausgangsstellung, wo du hintippst (ein

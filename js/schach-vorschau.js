@@ -729,12 +729,25 @@ const SCHACH_VORSCHAU = {
          * Ein zusätzliches Zugmuster ändert das Brett nicht — es ändert, wohin
          * man darf. Die neuen Ziele bekommen deshalb den ZUGPUNKT, dieselbe
          * Marke wie im Spiel: Das Bild sagt „hier kommst du jetzt hin".
+         *
+         * Kostet die Fähigkeit den Zug (Sprung, Teleport seit v0.47), muss im
+         * Beispiel erst der Gegner ziehen — sonst zeigte das Bild Punkte für
+         * eine Seite, die gar nicht am Zug ist. Gezogen wird ein echter Zug,
+         * kein gestellter.
          */
         if (beschreibung.art === "zugmuster") {
+            const dran = (neu.stand.amZug === SCHACH_VORSCHAU.FARBE)
+                ? neu
+                : SCHACH_VORSCHAU._gegnerZiehtEinmal(neu);
+
+            if (!dran) {
+                return null;
+            }
+
             return {
-                runde: neu,
+                runde: dran,
                 marken: Number.isInteger(beispiel.figur) ? [beispiel.figur] : [],
-                ziele: SCHACH_VORSCHAU._neueZiele(vorher, neu, beispiel.figur),
+                ziele: SCHACH_VORSCHAU._neueZiele(vorher, dran, beispiel.figur),
                 wege: [],
                 text: beispiel.nachher
             };
@@ -828,6 +841,33 @@ const SCHACH_VORSCHAU = {
             .filter((weg) => weg && Number.isInteger(weg.von) && Number.isInteger(weg.nach)
                 && weg.von >= 0 && weg.nach >= 0 && weg.von !== weg.nach)
             .map((weg) => ({ von: weg.von, nach: weg.nach }));
+    },
+
+    /*
+     * Lässt den Gegner EINEN Zug machen — den ersten regelgerechten, den es
+     * gibt. Gebraucht wird das nur im Beispiel: Eine Fähigkeit, die den Zug
+     * abgibt, wirkt ja erst, wenn man wieder dran ist.
+     */
+    _gegnerZiehtEinmal(runde) {
+        const stand = runde.stand;
+        const gegner = stand.amZug;
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            if (SCHACH.farbeVon(SCHACH.figurAuf(stand, feld)) !== gegner) {
+                continue;
+            }
+
+            for (const zug of SCHACH.zuege(stand, feld)) {
+                const gezogen = SCHACH_RUNDE.ziehen(runde, "id-gegner",
+                    feld, zug.nach, "D", "", 0);
+
+                if (gezogen) {
+                    return gezogen;
+                }
+            }
+        }
+
+        return null;
     },
 
     /* Welche Ziele sind durch das Zusatzmuster hinzugekommen? */

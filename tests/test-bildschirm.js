@@ -897,10 +897,21 @@ pruefe("Ein Eintrag der Bibliothek klappt seine Anleitung auf", () => {
         throw new Error("der Eintrag hat keine aufklappbare Kopfzeile");
     }
 
-    /* Zugeklappt NUR die Überschrift — die Beschreibung steht erst drinnen. */
-    if (kopf.kinder.length !== 1
-        || String(kopf.kinder[0].className || "").indexOf("stufen-name") === -1) {
-        throw new Error("zugeklappt steht mehr als die Ueberschrift da");
+    /*
+     * Zugeklappt steht die Ueberschrift da — und seit v0.47 die Zeichen der
+     * Faehigkeit (Pluszeichen, Blitz). Die BESCHREIBUNG erst beim Aufklappen.
+     */
+    if (String(kopf.kinder[0].className || "").indexOf("stufen-name") === -1) {
+        throw new Error("die Ueberschrift steht nicht zuerst");
+    }
+    for (const kind of kopf.kinder.slice(1)) {
+        const klasse = String(kind.className
+            || (kind.attribute && kind.attribute["class"]) || "");
+
+        if (klasse.indexOf("faehigkeit-zeichen") === -1
+            && klasse.indexOf("faehigkeit-blitz") === -1) {
+            throw new Error("zugeklappt steht mehr als Ueberschrift und Zeichen da");
+        }
     }
     if (eintrag.querySelector(".anleitung") || eintrag.querySelector(".stufen-text")) {
         throw new Error("der Inhalt steht schon da, bevor jemand aufklappt");
@@ -911,6 +922,10 @@ pruefe("Ein Eintrag der Bibliothek klappt seine Anleitung auf", () => {
 
     if (!eintrag.querySelector(".stufen-text")) {
         throw new Error("nach dem Aufklappen fehlt die Beschreibung");
+    }
+    /* Und die Erklaerung, was die Zeichen kosten (seit v0.47). */
+    if (!eintrag.querySelector(".stufen-kosten")) {
+        throw new Error("nach dem Aufklappen fehlt die Erklaerung zum Pluszeichen");
     }
     if (!eintrag.querySelector(".anleitung")) {
         throw new Error("nach dem Aufklappen fehlt die Anleitung");
@@ -1331,14 +1346,23 @@ pruefe("Der Friedhof traegt keines von beiden", () => {
     }
 });
 
-pruefe("Sprung traegt das Pluszeichen, aber keinen Blitz", () => {
-    const zeichen = zeichenAn("sprung");
+pruefe("Der Bauernschub traegt das Pluszeichen, aber keinen Blitz", () => {
+    const zeichen = zeichenAn("bauernschub");
 
     if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
-        throw new Error("kein Pluszeichen — nach dem Sprung zieht man noch normal");
+        throw new Error("kein Pluszeichen — danach zieht man noch normal");
     }
     if (zeichen.indexOf("faehigkeit-blitz") !== -1) {
-        throw new Error("Blitz, obwohl Sprung nur am eigenen Zug geht");
+        throw new Error("Blitz, obwohl er nur am eigenen Zug geht");
+    }
+});
+
+pruefe("Der Sprung traegt seit v0.47 kein Pluszeichen mehr", () => {
+    /* Er kostet den Zug: Erst zieht der Gegner, dann darf man springen. */
+    const zeichen = zeichenAn("sprung");
+
+    if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
+        throw new Error("Pluszeichen, obwohl der Sprung den Zug kostet");
     }
 });
 

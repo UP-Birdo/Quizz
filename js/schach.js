@@ -2037,6 +2037,19 @@ const SCHACH = {
     zugAbgeben(stand) {
         const nachher = SCHACH.gegner(stand.amZug);
 
+        /*
+         * DAS ZUSATZMUSTER BLEIBT (seit v0.47).
+         *
+         * Es gilt „für deinen nächsten ZUG" — und den hat man noch vor sich,
+         * wenn man den Zug abgibt, statt zu ziehen. Bis v0.46 wurde es hier
+         * gelöscht; seit Sprung und Teleport den Zug kosten, wäre die
+         * Fähigkeit damit wirkungslos gewesen: verbraucht, aber nie zu
+         * gebrauchen. Denselben Fehler gab es schon einmal (v0.41, siehe
+         * `docs\entscheidungen\erkenntnisse.md`).
+         *
+         * Verbraucht wird das Muster weiterhin durch den eigenen Zug —
+         * `_ausfuehren` löscht es, sobald die Farbe zieht, der es gehört.
+         */
         const weiter = Object.assign({}, stand, {
             amZug: nachher,
             enPassant: "",
@@ -2044,9 +2057,7 @@ const SCHACH = {
             takt: stand.takt + 1,
             zugNummer: stand.zugNummer
                 + ((stand.amZug === SCHACH.SCHWARZ) ? 1 : 0),
-            zusatzFarbe: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzFarbe,
-            zusatzMuster: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzMuster,
-            sprungAktiv: "",
+            sprungAktiv: (stand.zusatzMuster === "springer") ? stand.zusatzFarbe : "",
             mauern: SCHACH.mauern(stand),
             geliehen: SCHACH.geliehene(stand)
         });

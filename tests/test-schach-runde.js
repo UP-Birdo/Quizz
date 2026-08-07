@@ -652,11 +652,26 @@ function einsetzen(runde, art, zielFeld, spieler) {
     return SCHACH_RUNDE.faehigkeitEinsetzen(vorbereitet, wer, art, zielFeld, wer, 3000);
 }
 
+/* Laesst Schwarz einen belanglosen Zug machen — noetig, seit Sprung und
+   Teleport den Zug kosten (v0.47): Wirken koennen sie erst danach. */
+function gegnerZiehtEinmal(runde, zeitpunkt) {
+    const neu = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("e7"), SCHACH.feldNummer("e6"), "D", "Bert",
+        zeitpunkt || 3050);
+
+    wahr(neu !== null, "Schwarz zieht");
+    return neu;
+}
+
 pruefe("Sprung: eine beliebige Figur zieht wie ein Springer", () => {
-    const runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
+    let runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
     wahr(runde !== null, "eingesetzt");
 
     gleich(runde.stand.zusatzMuster, "springer", "Muster gesetzt");
+    gleich(runde.stand.amZug, "schwarz", "der Sprung kostet den Zug");
+
+    runde = gegnerZiehtEinmal(runde);
+
     const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
     gleich(ziele, "b3", "der Turm springt");
@@ -774,11 +789,13 @@ pruefe("Das Pluszeichen sagt die Wahrheit ueber den naechsten Zug", () => {
      */
     const runde = faehigkeitenPartie();
 
-    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "sprung"), true,
-        "Sprung beendet den Zug nicht");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "bauernschub"), true,
+        "der Bauernschub beendet den Zug nicht");
     gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "friedhof"), false,
         "der Friedhof kostet den Zug");
-    gleich(SCHACH_RUNDE.behaeltZug(runde, "schwarz", "sprung"), false,
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "sprung"), false,
+        "der Sprung seit v0.47 auch");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "schwarz", "bauernschub"), false,
         "Schwarz ist gar nicht am Zug");
 
     /* Wer den Doppelzug offen hat, behaelt den Zug sogar bei einer
@@ -856,9 +873,9 @@ pruefe("Im Schach ist keine Faehigkeit erlaubt, die den Zug beendet", () => {
 });
 
 pruefe("Im Schach bleibt erlaubt, was den Zug NICHT beendet", () => {
-    /* Sprung kostet keinen Zug — man muss danach ohnehin aus dem Schach
-       ziehen, und dabei kann er helfen. */
-    const neu = einsetzen(partieImSchach(), "sprung", -1);
+    /* Das Ausweichen kostet keinen Zug — man muss danach ohnehin aus dem
+       Schach ziehen, und genau dabei kann es helfen. */
+    const neu = einsetzen(partieImSchach(), "ausweichen", -1);
 
     wahr(neu !== null, "eingesetzt");
     gleich(neu.stand.amZug, "weiss", "Weiss bleibt am Zug");
@@ -1009,8 +1026,11 @@ pruefe("Bei Legendaer ist die Daempfung viel schwaecher", () => {
 });
 
 pruefe("Teleport: eine Figur springt auf ein freies Feld im Umkreis", () => {
-    const runde = einsetzen(faehigkeitenPartie(), "teleport", -1);
+    let runde = einsetzen(faehigkeitenPartie(), "teleport", -1);
     wahr(runde !== null, "eingesetzt");
+
+    /* Auch der Teleport kostet seit v0.47 den Zug. */
+    runde = gegnerZiehtEinmal(runde);
 
     const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
@@ -1248,9 +1268,37 @@ pruefe("Wiederbelebung kostet den ganzen Zug", () => {
     const nachher = einsetzen(runde, "wiederbelebung", grab);
     gleich(nachher.stand.amZug, "schwarz", "der Gegner ist dran");
 
-    /* Zum Vergleich: eine gewoehnliche Faehigkeit laesst einen am Zug. */
+    /* Zum Vergleich: Was nur die Stellung aendert, laesst einen am Zug. */
     let andere = faehigkeitenPartie();
-    gleich(einsetzen(andere, "sprung", -1).stand.amZug, "weiss", "Sprung nicht");
+    gleich(einsetzen(andere, "bauernschub", -1).stand.amZug, "weiss",
+        "der Bauernschub nicht");
+});
+
+pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
+    /*
+     * DIE REGEL VON v0.47 (siehe Kopf von SCHACH_VARIANTEN.FAEHIGKEITEN):
+     * `beendetZug` haengt nicht an der Stufe, sondern daran, WAS die
+     * Faehigkeit einbringt. Dieser Test haelt die Einteilung fest — kommt eine
+     * neue Faehigkeit dazu, muss jemand sie hier einordnen.
+     */
+    const kostetDenZug = ["sprung", "teleport", "verstaerkung", "spiegel",
+        "wiedergeburt", "wiederbelebung", "friedhof", "haendler"];
+    const behaeltDenZug = ["ausweichen", "bauernschub", "schutzschild", "erdbeben",
+        "nudelholz", "mauer", "fessel", "frost", "doppelzug"];
+
+    for (const art of kostetDenZug) {
+        gleich(SCHACH_VARIANTEN.FAEHIGKEITEN[art].beendetZug, true,
+            art + " kostet den Zug");
+    }
+    for (const art of behaeltDenZug) {
+        wahr(!SCHACH_VARIANTEN.FAEHIGKEITEN[art].beendetZug,
+            art + " behaelt den Zug");
+    }
+
+    /* Und keine ist vergessen worden. */
+    gleich(kostetDenZug.length + behaeltDenZug.length,
+        Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN).length,
+        "jede Faehigkeit ist eingeordnet");
 });
 
 pruefe("Der Doppelzug geht der Wiederbelebung vor", () => {
@@ -1417,11 +1465,26 @@ pruefe("Der Doppelzug laesst dieselbe Seite noch einmal ziehen", () => {
     gleich(runde.stand.amZug, "schwarz", "danach wieder normal");
 });
 
-pruefe("Ein Zusatzmuster gilt nur fuer einen Zug", () => {
+pruefe("Ein Zusatzmuster gilt bis zum eigenen Zug", () => {
+    /*
+     * SEIT v0.47 KOSTET DER SPRUNG DEN ZUG: Erst zieht der Gegner, dann darf
+     * man springen. Das Muster muss den Gegenzug also UEBERLEBEN — sonst waere
+     * die Faehigkeit verbraucht und wirkungslos. Verbraucht wird sie durch den
+     * eigenen Zug, und nur dadurch.
+     */
     let runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
+    gleich(runde.stand.amZug, "schwarz", "der Zug ist abgegeben");
+    gleich(runde.stand.zusatzMuster, "springer", "das Muster steht bereit");
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("e7"), SCHACH.feldNummer("e6"), "D", "Bert", 3050);
+    gleich(runde.stand.zusatzMuster, "springer", "der Gegenzug loescht es nicht");
+
     runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
         SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 3100);
 
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("b3")), "T",
+        "der Turm ist wirklich gesprungen");
     gleich(runde.stand.zusatzMuster, "", "verbraucht");
     gleich(runde.stand.zusatzFarbe, "", "und keine Farbe mehr");
 });

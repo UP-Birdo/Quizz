@@ -428,12 +428,30 @@ Object.assign(TEAM_SCHACH, {
      * und je ein Takt, der sie abspielt.
      */
     _bibliothekEintragBauen(art, titel, beschreibung, istPech) {
+        const beschreibungsSatz = SCHACH_VARIANTEN.FAEHIGKEITEN[art] || {};
+
         const eintrag = document.createElement("details");
         eintrag.className = "stufen-eintrag" + (istPech ? " stufen-pech" : "");
 
         const kopf = document.createElement("summary");
         kopf.className = "stufen-kopf";
         kopf.appendChild(TEAM_SCHACH._element("span", "stufen-name", titel));
+
+        /*
+         * DIESELBEN ZEICHEN WIE AM VORRAT (seit v0.47), damit man sie hier
+         * kennenlernt und dort wiedererkennt. Am Vorrat hängt das Pluszeichen
+         * am Spielstand (`behaeltZug`) — hier steht die EIGENSCHAFT der
+         * Fähigkeit, denn eine Bibliothek kennt keinen Spielstand.
+         */
+        if (!istPech && !beschreibungsSatz.beendetZug) {
+            const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
+            plus.title = "Danach bleibt dir dein normaler Zug.";
+            kopf.appendChild(plus);
+        }
+        if (beschreibungsSatz.imGegenzug) {
+            kopf.appendChild(TEAM_SCHACH._blitzBauen());
+        }
+
         eintrag.appendChild(kopf);
 
         eintrag.addEventListener("toggle", () => {
@@ -457,6 +475,23 @@ Object.assign(TEAM_SCHACH, {
 
             const inhalt = TEAM_SCHACH._element("div", "stufen-inhalt");
             inhalt.appendChild(TEAM_SCHACH._element("p", "stufen-text", beschreibung));
+
+            /* Was die Zeichen bedeuten — bei JEDEM Eintrag, nicht nur einmal
+               ganz oben. Wer hier nachschlägt, sucht diese eine Fähigkeit. */
+            if (!istPech) {
+                inhalt.appendChild(TEAM_SCHACH._element("p", "stufen-kosten",
+                    beschreibungsSatz.beendetZug
+                        ? "Kein Pluszeichen: Das Einsetzen kostet deinen Zug — danach "
+                            + "ist der Gegner dran."
+                        : "Pluszeichen (+): Nach dem Einsetzen darfst du noch ganz "
+                            + "normal ziehen."));
+
+                if (beschreibungsSatz.imGegenzug) {
+                    inhalt.appendChild(TEAM_SCHACH._element("p", "stufen-kosten",
+                        "Blitz: Du darfst sie auch einsetzen, während der Gegner am "
+                            + "Zug ist. Wer zuerst drückt, war zuerst."));
+                }
+            }
 
             const anleitung = TEAM_SCHACH._anleitungBauen(art);
             if (anleitung) {

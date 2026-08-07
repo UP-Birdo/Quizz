@@ -180,9 +180,30 @@ nicht) und ob ein offener Doppelzug den Zug rettet. Der Bildschirm fragt nur
 noch; die Rechnung steht neben der, die beim Einsetzen wirklich läuft.
 
 Ohne `beendetZug` bleibt man am Zug und muss noch ziehen — so war es bis v3.3
-bei allen Fähigkeiten. Für die, die Material ZURÜCKBRINGEN (Wiederbelebung,
-Friedhof, Händler), wäre das zu stark: Man bekäme Figuren geschenkt und dürfte
-im selben Atemzug damit angreifen.
+bei allen Fähigkeiten.
+
+**Seit v0.47 gibt es eine Regel dafür, und sie hängt nicht an der Stufe:**
+
+> Wer Material oder einen Angriff geschenkt bekommt, gibt den Zug ab.
+> Wer nur die Stellung verändert, behält ihn.
+
+| Gruppe | Fähigkeiten | `beendetZug` |
+|---|---|---|
+| Material dazu | Wiedergeburt, Wiederbelebung, Spiegel, Verstärkung, Friedhof, Händler | ja |
+| Zusätzliche Gangart zum Schlagen oder Springen | Sprung, Teleport | ja |
+| Nur die Stellung | Bauernschub, Erdbeben, Nudelholz, Mauer, Schutzschild, Fessel, Frost | nein |
+| Schlägt gar nicht | Ausweichen | nein |
+| Ausnahme: das Plus IST die Wirkung | Doppelzug | nein |
+
+Die Stufe sagt, wie SELTEN eine Fähigkeit ist; `beendetZug` sagt, was sie
+KOSTET. Wird eine zu stark, nimmt man ihr das Pluszeichen — man verschiebt sie
+nicht auf eine andere Stufe. Ein Test (`test-schach-runde.js`) hält die
+Einteilung fest, damit eine neue Fähigkeit nicht ohne Einordnung durchrutscht.
+
+**Ein Zusatzmuster überlebt das Abgeben des Zuges** (seit v0.47, nötig durch
+Sprung und Teleport): Es gilt bis zum eigenen ZUG, nicht bis zum Ende des
+Zugrechts. Verbraucht wird es in `_ausfuehren`, sobald die Farbe zieht, der es
+gehört.
 
 `imGegenzug` hat bisher genau eine Fähigkeit (Ausweichen). Was dabei zu beachten
 war — das Rennen um den Zugzähler und die entfallende Abstimmung — steht in
