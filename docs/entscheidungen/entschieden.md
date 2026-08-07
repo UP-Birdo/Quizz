@@ -519,6 +519,13 @@ schwieg. Zwei Änderungen folgen daraus:
 1. **Ein zweiter Weg zur Rochade.** Am echten Brett fasst man beide Figuren an;
    deshalb tippen viele den Turm an. Das geht jetzt — der König zwei Felder zur
    Seite bleibt zusätzlich möglich.
+   **→ In v0.44 auf Nutzer-Entscheidung wieder ausgebaut** („nur die König-
+   Variante"). Es blieb der eine Weg, den auch jeder andere Zug geht: König
+   antippen, Zugpunkt antippen. Ein zweiter Weg mit eigener Kontur war eine
+   Sonderregel für genau einen Zug — und die Kontur sah aus wie eine Warnung.
+   Die Regel selbst ist davon unberührt: Der Rochadezug steht seit jeher als
+   normaler Königszug in `SCHACH.zuege`, und auf sechs Feldern Breite landet
+   der König ohnehin auf dem Turmfeld.
 2. **Eine Begründung, wenn es nicht geht.** `SCHACH.rochadeLage` nennt den
    Grund, der Bildschirm zeigt ihn. Die Begründung steht im Regelwerk, nicht im
    Bildschirm-Code — sonst gäbe es die Bedingungen zweimal, und ein Test prüft
@@ -1389,6 +1396,19 @@ jemand sie bei jeder Regeländerung neu aufnehmen.
 Wer im Betriebssystem weniger Bewegung eingestellt hat
 (`prefers-reduced-motion`), bekommt alle Schritte nebeneinander. Das ist keine
 Notlösung, sondern dieselbe Information ohne Bewegung.
+
+**Warum die Pfeile zurückkommen dürfen (v0.44):** In v3.6 ist der Zugpfeil aus
+dem Spiel geflogen, und die Begründung gilt weiter — er sollte JEDE Gangart
+darstellen, und dafür ist eine gerade Linie das falsche Werkzeug (Bauernschlag,
+Springer, Bewegung um ein Feld). In der Anleitung ist die Aufgabe eine andere:
+Dort steht fest, welche Figur wohin geht, es ist genau ein Beispiel, und die
+Linie muss nichts verallgemeinern. Deshalb sind Pfeile hier richtig und dort
+falsch — dieselbe Form, zwei verschiedene Fragen.
+
+**Warum nur ein Eintrag gleichzeitig offen ist:** Zwei laufende Anleitungen
+untereinander sind zwei Dinge, die sich bewegen — man sieht keine davon zu
+Ende. Dazu kommt ein handfester Grund: Jede Anleitung hat ihren eigenen Takt,
+und ein zugeklappter Eintrag, der weiterläuft, arbeitet für niemanden.
 
 ## Warum es von Anfang an Tabs gibt
 

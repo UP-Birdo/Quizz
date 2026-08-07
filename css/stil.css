@@ -1292,14 +1292,11 @@ body {
 }
 
 /*
- * Der eigene Turm, wenn der König gewählt ist: Rochade auf Antippen. Dieselbe
- * Kontur wie ein Zielfeld, aber ohne Punkt in der Mitte — dort steht der Turm.
+ * `feld-rochade` gibt es seit v0.44 nicht mehr: Der Turm trägt bei der Rochade
+ * dieselbe Marke wie jedes andere Ziel (`feld-ziel`). Der Punkt in der Mitte
+ * verschwindet dort ohnehin hinter der Figur — übrig bleibt die Kontur, also
+ * genau das, was diese Regel vorher eigens gezeichnet hat.
  */
-.feld-rochade {
-    box-shadow:
-        inset 0 0 0 2px var(--ziel-rand),
-        inset 0 0 0 4px var(--ziel-kern);
-}
 
 .erklaerung-rochade {
     font-weight: 600;
@@ -1890,6 +1887,8 @@ body {
     border: 1px solid var(--rahmen);
     border-radius: 4px;
     overflow: hidden;
+    /* Bezugspunkt für die Pfeile, die über dem ganzen Brett liegen. */
+    position: relative;
     /* Die Figuren sollen im Kleinen noch erkennbar bleiben. */
     font-size: calc(min(260px, 70vw) / var(--vorschau-spalten, 8) * 0.8);
     line-height: 1;
@@ -1971,29 +1970,108 @@ body {
     max-width: 260px;
 }
 
-/* Ein Punkt je Schritt: wie viele es sind und wo man gerade ist. */
-.anleitung-punkte {
+/*
+ * Die Schrittliste unter dem Bild (seit v0.44).
+ *
+ * ALLE Sätze stehen gleichzeitig da, der laufende ist hervorgehoben. Vorher
+ * wechselte EIN Satz mit dem Bild — und weil die Sätze verschieden lang sind,
+ * hüpfte alles darunter im Sekundentakt.
+ */
+.anleitung-schritte {
+    list-style: none;
+    margin: 8px 0 0 0;
+    padding: 0;
+    width: 100%;
     display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 6px;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.anleitung-punkt {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--rahmen);
+.anleitung-schritt {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--schrift-leise);
+    opacity: 0.7;
 }
 
-.anleitung-punkt-jetzt {
-    background: var(--haupt);
+.anleitung-schritt-jetzt {
+    opacity: 1;
+    color: var(--schrift);
 }
 
-/* Der Text wechselt mit dem Bild; ohne feste Mindesthöhe hüpfte alles
-   darunter bei jedem Schritt. */
-.anleitung-film .anleitung-text {
-    min-height: 3.4em;
+.anleitung-nummer {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--schrift-leise);
+}
+
+.anleitung-schritt-jetzt .anleitung-nummer {
+    color: var(--haupt);
+}
+
+/*
+ * Der Fingerabdruck: HIER wird getippt. Er liegt über allem anderen im Feld —
+ * über der Figur, über dem Würfel —, denn er ist die Aussage des Bildes.
+ */
+.anleitung-finger {
+    position: absolute;
+    width: 78%;
+    height: 78%;
+    z-index: 4;
+    pointer-events: none;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
+}
+
+.anleitung-finger-bogen {
+    fill: none;
+    stroke: var(--ziel-rand);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+}
+
+.anleitung-finger-kern {
+    fill: var(--ziel-rand);
+}
+
+/*
+ * Die Bewegungspfeile. Zweifarbig wie jede Markierung auf dem Brett: der
+ * helle Rand liegt unten und ist dicker, der dunkle Kern darüber — sonst
+ * verschwände der Pfeil auf einer der beiden Feldfarben.
+ */
+.anleitung-pfeile {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.anleitung-pfeil-rand {
+    stroke: var(--ziel-rand);
+    stroke-width: 0.16;
+    stroke-linecap: round;
+}
+
+.anleitung-spitze-rand {
+    fill: var(--ziel-rand);
+    stroke: var(--ziel-rand);
+    stroke-width: 0.12;
+    stroke-linejoin: round;
+}
+
+.anleitung-pfeil-kern {
+    stroke: var(--ziel-kern);
+    stroke-width: 0.08;
+    stroke-linecap: round;
+}
+
+.anleitung-spitze-kern {
+    fill: var(--ziel-kern);
 }
 
 /* ------------------------------------------------------------------ *

@@ -16,6 +16,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die Zielpunkte blieben nach dem Zug stehen (v4.0)
     - Die Seite fror ein, bis der Gegner zog (v3.9)
     - Die Fähigkeit war verbraucht, ihre Wirkung nie da (v0.41)
+    - Die neue Partie war da — man stand nur davor (v0.44)
     - Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 ## entschieden.md - Entschieden - und warum

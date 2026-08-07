@@ -538,22 +538,26 @@ const SCHACH_VORSCHAU = {
 
     /*
      * DER ABLAUF ALS FOLGE VON BILDERN (seit v0.41) — das, was der Bildschirm
-     * abspielt.
+     * abspielt. Jeder Schritt beantwortet eine Frage:
      *
-     * Aus den zwei Bildern werden zwei oder drei Schritte:
+     *   1. Ausgangsstellung   — worum geht es?
+     *   2. Fingerabdruck      — WO tippst du hin? (seit v0.44)
+     *   3. (bei einem Zug)    — und wohin dann?
+     *   4. Wirkung            — was ist daraus geworden?
      *
-     *   1. die Ausgangsstellung,
-     *   2. bei Fähigkeiten mit Zielfeld: der Handgriff — welche Felder zur
-     *      Auswahl stehen und welches angetippt wird,
-     *   3. die Wirkung.
+     * Ein Schritt trägt:
      *
-     * Der mittlere Schritt ist der, den ein einzelnes Vorher-Bild nicht zeigen
-     * kann: dass man selbst ein Feld aussucht, und welche in Frage kommen. Die
-     * Auswahl wird nicht aufgezählt, sondern gefragt
-     * (`SCHACH_RUNDE.zielFelder`) — sonst stünde sie zweimal im Programm.
+     *     runde   der Spielstand, der gezeichnet wird
+     *     marken  die Felder, um die es geht (kräftige Kontur)
+     *     wahl    die übrigen möglichen Felder (helle Kontur)
+     *     ziele   Felder mit dem ZUGPUNKT — dieselbe Marke wie im Spiel
+     *     tipp    das Feld mit dem Fingerabdruck (-1 = keines)
+     *     wege    [{ von, nach }] für die Bewegungspfeile
+     *     text    ein Satz dazu
      *
-     * Jeder Schritt: { runde, marken, wahl, text }. `marken` ist, worauf es
-     * ankommt, `wahl` sind die übrigen möglichen Felder.
+     * Die Auswahlfelder werden nicht aufgezählt, sondern gefragt
+     * (`SCHACH_RUNDE.zielFelder` / `SCHACH.zuege`) — sonst stünde die Regel
+     * zweimal im Programm.
      */
     schritte(art) {
         const bilder = SCHACH_VORSCHAU.bilder(art);
@@ -563,40 +567,84 @@ const SCHACH_VORSCHAU = {
 
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);
         const vorher = bilder.vorher.runde;
+        const breite = SCHACH.breiteVon(vorher.stand);
+        const hoehe = SCHACH.hoeheVon(vorher.stand);
+        const name = (feld) => SCHACH.feldName(feld, breite, hoehe);
+
         const hatFigur = Number.isInteger(beispiel.figur) && beispiel.figur >= 0;
         const hatZiel = Number.isInteger(beispiel.ziel) && beispiel.ziel >= 0;
 
-        const liste = [{
+        const liste = [SCHACH_VORSCHAU._schritt({
             runde: vorher,
             marken: hatFigur ? [beispiel.figur] : [],
-            wahl: [],
             text: beispiel.vorher
-        }];
+        })];
 
         if (hatZiel) {
             const moeglich = SCHACH_RUNDE.zielFelder(vorher, SCHACH_VORSCHAU.SPIELER, art);
-            const name = SCHACH.feldName(beispiel.ziel,
-                SCHACH.breiteVon(vorher.stand), SCHACH.hoeheVon(vorher.stand));
 
-            liste.push({
+            liste.push(SCHACH_VORSCHAU._schritt({
                 runde: vorher,
                 marken: [beispiel.ziel],
                 wahl: moeglich.filter((feld) => feld !== beispiel.ziel),
+                tipp: beispiel.ziel,
                 text: (moeglich.length > 1)
-                    ? ("Du suchst dir ein Feld aus — hier " + name + ". Hell "
-                        + "umrandet sind die anderen, die auch gehen.")
-                    : ("Du tippst " + name + " an.")
-            });
+                    ? ("Du tippst " + name(beispiel.ziel) + " an. Hell umrandet "
+                        + "sind die anderen Felder, die auch gehen.")
+                    : ("Du tippst " + name(beispiel.ziel) + " an.")
+            }));
+
+        } else if (beispiel.zug) {
+            /*
+             * Hier wird gezogen — und ein Zug sind ZWEI Tipper: erst die
+             * Figur, dann ihr Ziel. Die Punkte dazwischen sind dieselben, die
+             * das echte Brett zeigt.
+             */
+            const ziele = SCHACH.zuege(vorher.stand, beispiel.zug[0])
+                .map((zug) => zug.nach)
+                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle);
+
+            liste.push(SCHACH_VORSCHAU._schritt({
+                runde: vorher,
+                marken: [beispiel.zug[0]],
+                ziele: ziele,
+                tipp: beispiel.zug[0],
+                text: "Du tippst die Figur auf " + name(beispiel.zug[0])
+                    + " an — die Punkte zeigen, wohin sie darf."
+            }));
+
+            liste.push(SCHACH_VORSCHAU._schritt({
+                runde: vorher,
+                marken: [beispiel.zug[1]],
+                ziele: ziele,
+                tipp: beispiel.zug[1],
+                wege: [{ von: beispiel.zug[0], nach: beispiel.zug[1] }],
+                text: "Dann tippst du " + name(beispiel.zug[1]) + " an."
+            }));
         }
 
-        liste.push({
+        liste.push(SCHACH_VORSCHAU._schritt({
             runde: bilder.nachher.runde,
             marken: bilder.nachher.marken,
-            wahl: [],
+            ziele: bilder.nachher.ziele,
+            wege: bilder.nachher.wege,
             text: bilder.nachher.text
-        });
+        }));
 
         return liste;
+    },
+
+    /* Füllt einen Schritt auf, damit der Bildschirm nie auf Fehlendes trifft. */
+    _schritt(roh) {
+        return {
+            runde: roh.runde,
+            marken: roh.marken || [],
+            wahl: roh.wahl || [],
+            ziele: roh.ziele || [],
+            tipp: Number.isInteger(roh.tipp) ? roh.tipp : -1,
+            wege: roh.wege || [],
+            text: roh.text || ""
+        };
     },
 
     /* Der übliche Weg: Fähigkeit einsetzen, wie im Spiel. */
@@ -619,12 +667,15 @@ const SCHACH_VORSCHAU = {
 
         /*
          * Ein zusätzliches Zugmuster ändert das Brett nicht — es ändert, wohin
-         * man darf. Deshalb sind hier die NEUEN Ziele die Aussage des Bildes.
+         * man darf. Die neuen Ziele bekommen deshalb den ZUGPUNKT, dieselbe
+         * Marke wie im Spiel: Das Bild sagt „hier kommst du jetzt hin".
          */
         if (beschreibung.art === "zugmuster") {
             return {
                 runde: neu,
-                marken: SCHACH_VORSCHAU._neueZiele(vorher, neu, beispiel.figur),
+                marken: Number.isInteger(beispiel.figur) ? [beispiel.figur] : [],
+                ziele: SCHACH_VORSCHAU._neueZiele(vorher, neu, beispiel.figur),
+                wege: [],
                 text: beispiel.nachher
             };
         }
@@ -638,13 +689,15 @@ const SCHACH_VORSCHAU = {
             }
             neu = gezogen;
 
-            /* Nach dem Doppelzug ist dieselbe Seite wieder dran: Das Bild zeigt,
-               wohin die Figur JETZT noch einmal darf. */
+            /* Nach dem Doppelzug ist dieselbe Seite wieder dran: Das Bild zeigt
+               den gezogenen Weg UND wohin die Figur jetzt noch einmal darf. */
             return {
                 runde: neu,
-                marken: SCHACH.zuege(neu.stand, beispiel.zug[1])
+                marken: [beispiel.zug[1]],
+                ziele: SCHACH.zuege(neu.stand, beispiel.zug[1])
                     .map((zug) => zug.nach)
                     .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle),
+                wege: [{ von: beispiel.zug[0], nach: beispiel.zug[1] }],
                 text: beispiel.nachher
             };
         }
@@ -652,6 +705,8 @@ const SCHACH_VORSCHAU = {
         return {
             runde: neu,
             marken: SCHACH_VORSCHAU._betroffeneFelder(neu),
+            ziele: [],
+            wege: SCHACH_VORSCHAU._betroffeneWege(neu),
             text: beispiel.nachher
         };
     },
@@ -681,6 +736,8 @@ const SCHACH_VORSCHAU = {
         return {
             runde: gezogen,
             marken: SCHACH_VORSCHAU._betroffeneFelder(gezogen),
+            ziele: [],
+            wege: SCHACH_VORSCHAU._betroffeneWege(gezogen),
             text: beispiel.nachher
         };
     },
@@ -692,6 +749,25 @@ const SCHACH_VORSCHAU = {
             return [];
         }
         return letzter.felder.slice();
+    },
+
+    /*
+     * Die Wege aus dem letzten Verlaufseintrag — daraus werden die Pfeile.
+     *
+     * Es sind dieselben Angaben, aus denen das echte Brett die Spur des
+     * letzten Zuges färbt: Wer eine Wirkung baut, die Figuren verschiebt,
+     * liefert sie ohnehin mit, und die Anleitung zeichnet sie nur.
+     */
+    _betroffeneWege(runde) {
+        const letzter = runde.verlauf[runde.verlauf.length - 1];
+        if (!letzter || !Array.isArray(letzter.wege)) {
+            return [];
+        }
+
+        return letzter.wege
+            .filter((weg) => weg && Number.isInteger(weg.von) && Number.isInteger(weg.nach)
+                && weg.von >= 0 && weg.nach >= 0 && weg.von !== weg.nach)
+            .map((weg) => ({ von: weg.von, nach: weg.nach }));
     },
 
     /* Welche Ziele sind durch das Zusatzmuster hinzugekommen? */

@@ -96,13 +96,16 @@ const TEAM_SCHACH = {
     moeglicheZiele: [],
 
     /*
-     * Rochade über den Turm: Turmfeld -> Zielfeld des Königs.
+     * DEN ZWEITEN WEG ZUR ROCHADE GIBT ES NICHT MEHR (ausgebaut in v0.44).
      *
-     * Am echten Brett fasst man beide Figuren an, deshalb tippen viele den Turm
-     * an, wenn sie rochieren wollen. Der König zwei Felder zur Seite bleibt
-     * möglich; das hier ist der zweite Weg zum selben Zug.
+     * Von v1.8 bis v0.43 war zusätzlich das TURMFELD anklickbar
+     * (`rochadeZiele`) — mit dem Gedanken, dass man am echten Brett beide
+     * Figuren anfasst. In der App war es ein zweiter Weg zu derselben Sache,
+     * mit einer eigenen Kontur, die aussah wie eine Warnung. Geblieben ist der
+     * eine Weg, den auch jeder andere Zug geht: **König antippen, Zugpunkt
+     * antippen.** Der Rochadezug steht ohnehin als normaler Königszug in
+     * `SCHACH.zuege`.
      */
-    rochadeZiele: {},
 
     /*
      * Fähigkeit, die gerade auf ein Zielfeld wartet ("" = keine), und die
@@ -189,6 +192,13 @@ const TEAM_SCHACH = {
      * Anleitung finge von vorn an. Deshalb wird sie genau einmal gebaut.
      */
     infoGezeichnet: false,
+
+    /*
+     * Welcher Eintrag der Bibliothek gerade aufgeklappt ist. Es ist immer
+     * höchstens einer (seit v0.44) — wer den nächsten öffnet, schliesst den
+     * vorigen und beendet damit auch dessen Anleitung.
+     */
+    infoOffenerEintrag: null,
 
     /* Das Brett und ein Feld daraus, gemerkt beim Zeichnen — nur zum Messen. */
     brettEl: null,
@@ -595,6 +605,17 @@ const TEAM_SCHACH = {
 
     partieOeffnen(id) {
         TEAM_SCHACH.offeneId = id;
+
+        /*
+         * Die Spielart-Auswahl wird mit geschlossen (seit v0.44).
+         *
+         * SO SAH DER FEHLER AUS: Wer eine Partie anlegte, gab den Namen ein,
+         * bestätigte — und stand wieder vor den Spielart-Kacheln. Die Partie
+         * war längst angelegt und geöffnet, aber `zeichnen` fragt die Auswahl
+         * VOR der offenen Partie ab, und die stand noch auf offen. Man musste
+         * erst „Zurück" drücken und die eigene Partie in der Übersicht suchen.
+         */
+        TEAM_SCHACH.auswahlOffen = false;
         TEAM_SCHACH._auswahlAufheben();
 
         /* Beim Öffnen wird nicht animiert: Der letzte Zug liegt womöglich
@@ -646,14 +667,6 @@ const TEAM_SCHACH = {
             return;
         }
 
-        /* Tipp auf den eigenen Turm, während der König gewählt ist: rochieren. */
-        if (TEAM_SCHACH.gewaehltesFeld !== -1
-            && TEAM_SCHACH.rochadeZiele[feld] !== undefined) {
-            TEAM_SCHACH.zugAusfuehren(partie, TEAM_SCHACH.gewaehltesFeld,
-                TEAM_SCHACH.rochadeZiele[feld]);
-            return;
-        }
-
         const figur = SCHACH.figurAuf(partie.stand, feld);
 
         /* Eigene Figur antippen: auswählen (oder Auswahl aufheben). */
@@ -671,7 +684,15 @@ const TEAM_SCHACH = {
     },
 
 
-    /* Merkt sich die angetippte Figur samt ihren Zielen. */
+    /*
+     * Merkt sich die angetippte Figur samt ihren Zielen.
+     *
+     * DIE ROCHADE BRAUCHT HIER NICHTS EIGENES MEHR (seit v0.44): Der
+     * Rochadezug steht als ganz normaler Königszug in `SCHACH.zuege` und
+     * bekommt damit denselben Zugpunkt wie jedes andere Ziel. Bis v0.43 war
+     * zusätzlich das Turmfeld anklickbar (`rochadeZiele`) — zwei Wege zu
+     * derselben Sache, und der zweite sah anders aus als alles Übrige.
+     */
     _auswaehlen(partie, feld) {
         const zuege = SCHACH.zuege(partie.stand, feld);
 
@@ -680,25 +701,11 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.moeglicheZiele = zuege
             .map((zug) => zug.nach)
             .filter((ziel, stelle, alle) => alle.indexOf(ziel) === stelle);
-
-        /* Zu jedem möglichen Rochadezug auch das Turmfeld anklickbar machen. */
-        TEAM_SCHACH.rochadeZiele = {};
-
-        if (SCHACH.artVon(SCHACH.figurAuf(partie.stand, feld)) === "K") {
-            const lage = SCHACH.rochadeLage(partie.stand, partie.stand.amZug);
-
-            for (const eintrag of lage) {
-                if (eintrag.moeglich) {
-                    TEAM_SCHACH.rochadeZiele[eintrag.turmFeld] = eintrag.zielFeld;
-                }
-            }
-        }
     },
 
     _auswahlAufheben() {
         TEAM_SCHACH.gewaehltesFeld = -1;
         TEAM_SCHACH.moeglicheZiele = [];
-        TEAM_SCHACH.rochadeZiele = {};
         TEAM_SCHACH.zielFaehigkeit = "";
         TEAM_SCHACH.zielFelder = [];
         TEAM_SCHACH.auswahlZaehler = -1;
@@ -1145,7 +1152,6 @@ const TEAM_SCHACH = {
 
             TEAM_SCHACH.gewaehltesFeld = -1;
             TEAM_SCHACH.moeglicheZiele = [];
-            TEAM_SCHACH.rochadeZiele = {};
             TEAM_SCHACH.zielFaehigkeit = art;
             TEAM_SCHACH.zielFelder = felder;
 

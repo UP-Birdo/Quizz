@@ -202,6 +202,28 @@ diesen Weg (`JSON.parse(JSON.stringify(...))` und zurück durch
    hätte ein Schachmatt erzeugen können, das keines ist. Wer einer Fähigkeit
    etwas wegnimmt, sucht danach jede Stelle, die es noch voraussetzt.
 
+### Die neue Partie war da — man stand nur davor (v0.44)
+
+**Was zu sehen war:** „Wenn man eine Runde erstellt, nach dem Haken setzen und
+dem Antippen der Spielart, kommt die Frage nach dem Namen — und danach soll man
+automatisch im Raum landen." Man landete nicht dort: Nach dem Bestätigen standen
+wieder die Spielart-Kacheln da.
+
+**Die Ursache war eine Ansicht zu viel.** `spielartGewaehlt` legt die Partie an
+und ruft `partieOeffnen` — das setzt `offeneId` und zeichnet neu. `zeichnen`
+fragt die Ansichten aber der Reihe nach ab, und die **Spielart-Auswahl steht
+davor**: Sie stand noch auf offen, also gewann sie. Die Partie war korrekt
+angelegt, gespeichert und geöffnet; sie war nur verdeckt.
+
+**Die Lehre:** Wer eine Ansicht öffnet, schliesst die anderen — an EINER Stelle.
+`partieOeffnen` räumt jetzt auch `auswahlOffen` weg, genau wie `IMPOSTER.raumOeffnen`
+es seit jeher tut. Beim Vergleich der beiden Spiele fällt so etwas sofort auf:
+Dasselbe Muster, eine Zeile weniger.
+
+**Zweite Lehre:** Ein Fehler, der „nichts passiert" heisst, muss nicht im
+Ablauf stecken, der scheinbar nichts tut. Hier war jeder Schritt richtig — nur
+die Anzeige zeigte etwas anderes.
+
 ### Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
 
 Beim ersten scharfen Lauf von `Deploy-Quizz.ps1` kam

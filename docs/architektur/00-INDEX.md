@@ -39,6 +39,7 @@ passenden Abschnitt hier.
     - Mehrere Partien nebeneinander (seit v1.4)
     - Die Hausregel: keine Reihenfolge im Team
     - Brett und Felder
+    - Ein eigenes Zielfeld ist kein Schlagfeld (seit v0.44)
     - Warum die Rochade sich erklären kann
     - Spielarten
     - Fähigkeiten

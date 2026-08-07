@@ -191,15 +191,22 @@ Object.assign(TEAM_SCHACH, {
             if (feld === TEAM_SCHACH.gewaehltesFeld) {
                 zelle.classList.add("feld-gewaehlt");
             }
+            /*
+             * Mögliche Ziele. Der rote Schlagring gilt nur für GEGNERISCHE
+             * Figuren (seit v0.44).
+             *
+             * Vorher hing er an „da steht irgendetwas" — und bei der Rochade
+             * steht dort die eigene Figur: Auf einem sechs Felder breiten
+             * Brett landet der König genau auf dem Turm. Das Feld sah damit
+             * aus, als schlüge man den eigenen Turm.
+             */
             if (TEAM_SCHACH.moeglicheZiele.indexOf(feld) !== -1) {
-                zelle.classList.add(figur === "." ? "feld-ziel" : "feld-schlag");
+                const gegnerisch = (figur !== "." && SCHACH.farbeVon(figur) !== stand.amZug);
+                zelle.classList.add(gegnerisch ? "feld-schlag" : "feld-ziel");
             }
-            /* Der eigene Turm als zweiter Weg zur Rochade — kein Schlagfeld,
-               deshalb eine eigene Marke. */
-            if (TEAM_SCHACH.rochadeZiele[feld] !== undefined) {
-                zelle.classList.add("feld-rochade");
-                zelle.title = "Rochade: hier tippen";
-            }
+            /* Den zweiten Weg zur Rochade über das Turmfeld gibt es seit v0.44
+               nicht mehr — der Rochadezug ist ein normaler Königszug und steht
+               als Zugpunkt schon oben in `moeglicheZiele`. */
 
 
             /* Königsfeld hervorheben, wenn es im Schach steht. */

@@ -3,6 +3,41 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.44.0 — 2026-08-07
+
+Sieben Punkte aus dem Eingangskorb: fünf an der Bildanleitung, zwei am Spiel.
+
+**Die Bildanleitung**
+
+- **Ein Fingerabdruck zeigt, wo man hintippt.** Zwischen Ausgangsstellung und
+  Wirkung steht jetzt der Handgriff als eigenes Bild — bei einem Zug sogar
+  zweimal, denn ein Zug sind zwei Tipper: erst die Figur, dann ihr Ziel.
+- **Pfeile zeigen, wie sich die Figuren bewegen.** Sie entstehen aus denselben
+  Wegen, aus denen das echte Brett die Spur des letzten Zuges färbt. (Das ist
+  nicht der alte Zugpfeil von v1.9: Der sollte jede Gangart darstellen und
+  konnte es nicht. Im Beispiel steht fest, wer wohin geht.)
+- **Wohin man ziehen darf, steht als Zugpunkt da** — dieselbe Marke wie im
+  Spiel, statt einer eigenen Kontur nur für die Anleitung.
+- **Der Text hüpft nicht mehr.** Alle Sätze stehen gleichzeitig untereinander,
+  je einer mit „Bild 1", „Bild 2" …; der laufende ist hervorgehoben. Vorher
+  wechselte ein einzelner Satz mit dem Bild, und weil die Sätze verschieden
+  lang sind, sprang alles darunter im Sekundentakt.
+- **Es ist immer nur eine Fähigkeit aufgeklappt.** Wer die nächste ansieht,
+  schliesst die vorige — und deren Anleitung hört auf zu laufen.
+
+**Das Spiel**
+
+- **Nach dem Anlegen landet man in der Partie.** Wer eine neue Partie anlegte,
+  den Namen eingab und bestätigte, stand wieder vor den Spielart-Kacheln: Die
+  Partie war längst angelegt und geöffnet, aber die Auswahl blieb offen und lag
+  davor. Man musste erst zurück und die eigene Partie in der Übersicht suchen.
+- **Die Rochade geht wie jeder andere Zug: König antippen, Zugpunkt antippen.**
+  Der zweite Weg über das Turmfeld ist ausgebaut — er war eine Sonderregel für
+  genau einen Zug, mit einer eigenen Kontur, die aussah wie eine Warnung. Dazu
+  gilt der rote Schlagring jetzt nur noch für GEGNERISCHE Figuren: Bei der
+  Rochade steht auf dem Zielfeld die eigene, auf sechs Feldern Breite landet
+  der König sogar genau auf dem Turm — das sah aus, als schlüge man ihn.
+
 ## v0.43.0 — 2026-08-06
 
 - **Die Fähigkeiten-Übersicht ist jetzt eine Liste von Überschriften.**

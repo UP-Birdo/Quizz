@@ -311,6 +311,7 @@ Object.assign(TEAM_SCHACH, {
      */
     faehigkeitenOeffnen() {
         TEAM_SCHACH.infoOffen = true;
+        TEAM_SCHACH.infoOffenerEintrag = null;
         /* Einmal neu bauen — danach lässt die regelmässige Abfrage sie in
            Ruhe (siehe `infoGezeichnet`). */
         TEAM_SCHACH.infoGezeichnet = false;
@@ -320,6 +321,7 @@ Object.assign(TEAM_SCHACH, {
     infoSchliessen() {
         TEAM_SCHACH.infoOffen = false;
         TEAM_SCHACH.infoGezeichnet = false;
+        TEAM_SCHACH.infoOffenerEintrag = null;
         TEAM_SCHACH.infoStufe = "";
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
@@ -435,7 +437,21 @@ Object.assign(TEAM_SCHACH, {
         eintrag.appendChild(kopf);
 
         eintrag.addEventListener("toggle", () => {
-            if (!eintrag.open || eintrag.querySelector(".stufen-inhalt")) {
+            if (!eintrag.open) {
+                return;
+            }
+
+            /*
+             * NUR EINER ZUR ZEIT (seit v0.44). Wer eine zweite Fähigkeit
+             * ansieht, hat die erste hinter sich gelassen: Sie klappt zu, und
+             * ihr Inhalt wird weggeräumt — damit ihr Takt aufhört, statt
+             * unsichtbar weiterzulaufen. Nebenbei bleibt die Liste kurz genug,
+             * dass man den nächsten Eintrag ohne Scrollen findet.
+             */
+            TEAM_SCHACH._bibliothekSchliessen(eintrag);
+            TEAM_SCHACH.infoOffenerEintrag = eintrag;
+
+            if (eintrag.querySelector(".stufen-inhalt")) {
                 return;
             }
 
@@ -451,6 +467,26 @@ Object.assign(TEAM_SCHACH, {
         });
 
         return eintrag;
+    },
+
+    /* Klappt den zuletzt geöffneten Eintrag zu — ausser er ist der neue. */
+    _bibliothekSchliessen(ausser) {
+        const offen = TEAM_SCHACH.infoOffenerEintrag;
+
+        if (!offen || offen === ausser) {
+            return;
+        }
+
+        offen.open = false;
+
+        /* Den Inhalt wegnehmen: Der Takt der Anleitung merkt daran, dass sein
+           Bild nicht mehr im Bildschirm steht, und hört auf. */
+        const inhalt = offen.querySelector(".stufen-inhalt");
+        if (inhalt && offen.removeChild) {
+            offen.removeChild(inhalt);
+        }
+
+        TEAM_SCHACH.infoOffenerEintrag = null;
     },
 
     /* ---------------------------------------------------------------- *
@@ -489,23 +525,29 @@ Object.assign(TEAM_SCHACH, {
         const bild = TEAM_SCHACH._element("div", "anleitung-bild");
 
         let stelle = 0;
-        let brett = TEAM_SCHACH._beispielBrettBauen(
-            schritte[0].runde, schritte[0].marken, schritte[0].wahl);
-        const text = TEAM_SCHACH._element("p", "anleitung-text", schritte[0].text);
-
-        /* Ein Punkt je Schritt: Man sieht, wie viele es sind und wo man ist. */
-        const punkte = TEAM_SCHACH._element("div", "anleitung-punkte");
-        const punktEls = schritte.map((unbenutzt, nummer) => {
-            const punkt = TEAM_SCHACH._element("span",
-                "anleitung-punkt" + (nummer === 0 ? " anleitung-punkt-jetzt" : ""));
-            punkte.appendChild(punkt);
-            return punkt;
-        });
-
+        let brett = TEAM_SCHACH._beispielBrettBauen(schritte[0]);
         bild.appendChild(brett);
-        bild.appendChild(punkte);
-        bild.appendChild(text);
         halter.appendChild(bild);
+
+        /*
+         * DIE TEXTE STEHEN ALLE GLEICHZEITIG DA (seit v0.44), einer je Bild,
+         * und der laufende ist hervorgehoben. Vorher wechselte EIN Satz mit
+         * dem Bild — und weil die Sätze verschieden lang sind, hüpfte alles
+         * darunter im Sekundentakt.
+         */
+        const liste = TEAM_SCHACH._element("ol", "anleitung-schritte");
+        const zeilen = schritte.map((schritt, nummer) => {
+            const zeile = TEAM_SCHACH._element("li",
+                "anleitung-schritt" + (nummer === 0 ? " anleitung-schritt-jetzt" : ""));
+
+            zeile.appendChild(TEAM_SCHACH._element("span", "anleitung-nummer",
+                "Bild " + (nummer + 1)));
+            zeile.appendChild(TEAM_SCHACH._element("span", "anleitung-satz", schritt.text));
+
+            liste.appendChild(zeile);
+            return zeile;
+        });
+        halter.appendChild(liste);
 
         const weiter = () => {
             /*
@@ -519,17 +561,14 @@ Object.assign(TEAM_SCHACH, {
             }
 
             stelle = (stelle + 1) % schritte.length;
-            const schritt = schritte[stelle];
-            const neues = TEAM_SCHACH._beispielBrettBauen(
-                schritt.runde, schritt.marken, schritt.wahl);
 
+            const neues = TEAM_SCHACH._beispielBrettBauen(schritte[stelle]);
             bild.replaceChild(neues, brett);
             brett = neues;
-            text.textContent = schritt.text;
 
-            for (let nummer = 0; nummer < punktEls.length; nummer++) {
-                punktEls[nummer].className = "anleitung-punkt"
-                    + (nummer === stelle ? " anleitung-punkt-jetzt" : "");
+            for (let nummer = 0; nummer < zeilen.length; nummer++) {
+                zeilen[nummer].className = "anleitung-schritt"
+                    + (nummer === stelle ? " anleitung-schritt-jetzt" : "");
             }
         };
 
@@ -544,14 +583,13 @@ Object.assign(TEAM_SCHACH, {
         const halter = TEAM_SCHACH._element("div", "anleitung");
 
         for (let nummer = 0; nummer < schritte.length; nummer++) {
-            const schritt = schritte[nummer];
             const kasten = TEAM_SCHACH._element("div", "anleitung-bild");
 
             kasten.appendChild(TEAM_SCHACH._element("span", "anleitung-marke",
-                "Schritt " + (nummer + 1)));
-            kasten.appendChild(TEAM_SCHACH._beispielBrettBauen(
-                schritt.runde, schritt.marken, schritt.wahl));
-            kasten.appendChild(TEAM_SCHACH._element("p", "anleitung-text", schritt.text));
+                "Bild " + (nummer + 1)));
+            kasten.appendChild(TEAM_SCHACH._beispielBrettBauen(schritte[nummer]));
+            kasten.appendChild(TEAM_SCHACH._element("p", "anleitung-text",
+                schritte[nummer].text));
 
             halter.appendChild(kasten);
         }
@@ -579,7 +617,10 @@ Object.assign(TEAM_SCHACH, {
      * und ohne Bedienung. Dazu die markierten Felder: worauf es in diesem Bild
      * ankommt.
      */
-    _beispielBrettBauen(runde, marken, wahl) {
+    _beispielBrettBauen(schritt) {
+        const runde = schritt.runde;
+        const marken = schritt.marken;
+        const wahl = schritt.wahl;
         const stand = runde.stand;
         const breite = SCHACH.breiteVon(stand);
         const felder = SCHACH.felderVon(stand);
@@ -648,14 +689,147 @@ Object.assign(TEAM_SCHACH, {
             if (wahl && wahl.indexOf(feld) !== -1) {
                 zelle.classList.add("feld-wahl");
             }
+
+            /* Wohin man ziehen könnte: der Zugpunkt aus dem echten Spiel. */
+            if (schritt.ziele.indexOf(feld) !== -1) {
+                zelle.classList.add(figur === "." ? "feld-ziel" : "feld-schlag");
+            }
+
             if (marken.indexOf(feld) !== -1) {
                 zelle.classList.add("vorschau-marke");
+            }
+
+            /* Der Fingerabdruck: HIER wird getippt. */
+            if (schritt.tipp === feld) {
+                zelle.appendChild(TEAM_SCHACH._fingerBauen());
             }
 
             brett.appendChild(zelle);
         }
 
+        /* Die Pfeile liegen über dem ganzen Brett, nicht in einem Feld. */
+        const pfeile = TEAM_SCHACH._pfeileBauen(stand, schritt.wege);
+        if (pfeile) {
+            brett.appendChild(pfeile);
+        }
+
         return brett;
+    },
+
+    /*
+     * Der Fingerabdruck — er sagt: Hier tippst du hin.
+     *
+     * Gezeichnet als SVG, nicht als Zeichen aus der Schrift: Das Haus verbietet
+     * Emojis, und ein Bild wäre eine Datei mehr, die niemand pflegt. Drei
+     * Bögen und ein Punkt genügen, damit man einen Fingerabdruck erkennt.
+     */
+    _fingerBauen() {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "anleitung-finger");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("aria-hidden", "true");
+
+        for (const bogen of ["M 12 17 A 5 5 0 0 1 12 7", "M 12 19 A 7 7 0 0 1 12 5",
+            "M 12 21 A 9 9 0 0 1 12 3"]) {
+            const pfad = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pfad.setAttribute("d", bogen);
+            pfad.setAttribute("class", "anleitung-finger-bogen");
+            svg.appendChild(pfad);
+        }
+
+        const kern = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        kern.setAttribute("cx", "12");
+        kern.setAttribute("cy", "12");
+        kern.setAttribute("r", "2");
+        kern.setAttribute("class", "anleitung-finger-kern");
+        svg.appendChild(kern);
+
+        return svg;
+    },
+
+    /*
+     * Die Bewegungspfeile über dem Beispielbrett (seit v0.44).
+     *
+     * NICHT ZU VERWECHSELN MIT DEM ALTEN ZUGPFEIL, der in v3.6 aus dem Spiel
+     * geflogen ist: Der sollte JEDE Gangart darstellen und konnte es nicht
+     * (siehe `docs\entscheidungen\entschieden.md`). Hier ist die Aufgabe eine
+     * andere und viel kleinere — im Beispiel steht fest, welche Figur wohin
+     * geht, und genau das zeigt eine gerade Linie richtig.
+     *
+     * Ein Pfeil je Weg, zweifarbig wie jede Markierung auf dem Brett: heller
+     * Rand aussen, dunkler Kern darüber.
+     */
+    _pfeileBauen(stand, wege) {
+        if (!wege || wege.length === 0) {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "anleitung-pfeile");
+        svg.setAttribute("viewBox", "0 0 " + breite + " " + hoehe);
+        svg.setAttribute("preserveAspectRatio", "none");
+        svg.setAttribute("aria-hidden", "true");
+
+        for (const weg of wege) {
+            for (const teil of TEAM_SCHACH._pfeilTeile(weg, breite)) {
+                svg.appendChild(teil);
+            }
+        }
+
+        return svg;
+    },
+
+    /* Ein Pfeil: zwei Linien und zwei Spitzen (aussen hell, innen dunkel). */
+    _pfeilTeile(weg, breite) {
+        const mitte = (feld) => ({
+            x: (feld % breite) + 0.5,
+            y: Math.floor(feld / breite) + 0.5
+        });
+
+        const von = mitte(weg.von);
+        const nach = mitte(weg.nach);
+        const dx = nach.x - von.x;
+        const dy = nach.y - von.y;
+        const laenge = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        /* Der Pfeil hört kurz vor der Feldmitte auf — sonst steckt seine
+           Spitze in der Figur, die dort steht. */
+        const ex = dx / laenge;
+        const ey = dy / laenge;
+        const spitzeX = nach.x - ex * 0.26;
+        const spitzeY = nach.y - ey * 0.26;
+        const endeX = spitzeX - ex * 0.2;
+        const endeY = spitzeY - ey * 0.2;
+
+        const teile = [];
+
+        for (const lage of ["rand", "kern"]) {
+            const linie = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            linie.setAttribute("x1", String(von.x + ex * 0.26));
+            linie.setAttribute("y1", String(von.y + ey * 0.26));
+            linie.setAttribute("x2", String(endeX));
+            linie.setAttribute("y2", String(endeY));
+            linie.setAttribute("class", "anleitung-pfeil-" + lage);
+            teile.push(linie);
+
+            /* Die Spitze: ein Dreieck quer zur Richtung. */
+            const quer = 0.16;
+            const punkte = [
+                spitzeX + " " + spitzeY,
+                (endeX - ey * quer) + " " + (endeY + ex * quer),
+                (endeX + ey * quer) + " " + (endeY - ex * quer)
+            ].join(", ");
+
+            const dreieck = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            dreieck.setAttribute("points", punkte);
+            dreieck.setAttribute("class", "anleitung-spitze-" + lage);
+            teile.push(dreieck);
+        }
+
+        return teile;
     },
 
     /* ---------------------------------------------------------------- *

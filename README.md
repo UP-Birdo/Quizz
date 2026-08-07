@@ -184,6 +184,9 @@ Es sind alle Regeln umgesetzt: Rochade, en passant, Bauernumwandlung (mit
 Auswahl der Figur), Schach, Schachmatt, Patt. Der Stand liegt in der Datenbank
 — ihr könnt die Partie jederzeit liegen lassen und später weiterspielen.
 
+**Rochade:** wie jeder andere Zug — König antippen, dann den Punkt antippen, auf
+dem er landen soll. Ist sie gerade nicht erlaubt, steht unter dem Brett, warum.
+
 ### Die Spielarten
 
 Die Spielart wird beim Anlegen gewählt und bleibt für diese Partie fest.
@@ -191,7 +194,7 @@ Die Spielart wird beim Anlegen gewählt und bleibt für diese Partie fest.
 | Spielart | Brett | Besonderheit |
 |---|---|---|
 | **Klassisch** | 8 mal 8 | Das gewohnte Schach mit allen Regeln. |
-| **Kleines Brett** | 6 mal 6 | Ohne Läufer und ohne Rochade — kurze Partien. |
+| **Kleines Brett** | 6 mal 6 | Ohne Läufer — kurze Partien. Der König landet bei der Rochade auf dem Turmfeld. |
 | **Großes Brett** | 10 mal 8 | Je zwei Läuferpaare, mehr Platz. |
 | **Doppelbrett** | 16 mal 8 | Zwei Bretter nebeneinander, zwei Armeen je Seite. Die Figuren ziehen über beide Hälften. **Kein Schach und kein Matt:** Wer zuerst beide Könige verliert, verliert. |
 
@@ -224,8 +227,9 @@ kommt nicht in den Vorrat, sondern wirkt sofort gegen den, der ihn eingesammelt
 hat.
 
 **Bevor du eine Fähigkeit einsetzt, siehst du, wie sie wirkt:** ein kleines
-Brett spielt den Ablauf ab — Ausgangsstellung, welches Feld du antippst, was
-danach passiert. Dasselbe steht hinter dem **i**: Dort stehen alle Fähigkeiten und
+Brett spielt den Ablauf ab — Ausgangsstellung, wo du hintippst (ein
+Fingerabdruck zeigt es), und was danach passiert. Pfeile zeigen, welche Figur
+sich wohin bewegt; die Sätze zu allen Bildern stehen darunter. Dasselbe steht hinter dem **i**: Dort stehen alle Fähigkeiten und
 Unglückswürfel als Liste von Überschriften — tippe eine an, und sie klappt mit
 Beschreibung und Anleitung auf.
 

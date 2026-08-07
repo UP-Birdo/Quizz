@@ -98,6 +98,20 @@ sind Fesselungen automatisch abgedeckt, ohne Sonderfall.
 angreift) statt alle gegnerischen Züge zu erzeugen — sonst entstünde über die
 Rochade-Prüfung eine Endlosschleife.
 
+### Ein eigenes Zielfeld ist kein Schlagfeld (seit v0.44)
+
+Der rote Schlagring gilt nur für Zielfelder mit einer **gegnerischen** Figur.
+Vorher hing er an „da steht irgendetwas" — und bei der Rochade steht dort die
+eigene: Auf einem sechs Felder breiten Brett landet der König genau auf dem
+Turm. Das Feld sah aus, als schlüge man ihn.
+
+**Den zweiten Weg über das Turmfeld gibt es nicht mehr** (v1.8 bis v0.43,
+ausgebaut auf Nutzer-Entscheidung). Die Bedienung ist damit überall dieselbe:
+**König antippen, Zugpunkt antippen.** Der Rochadezug steht als ganz normaler
+Königszug in `SCHACH.zuege`; auf einem sechs Felder breiten Brett liegt sein
+Zugpunkt genau auf dem Turm. Der Bildschirm hat dafür keinen Sonderfall mehr —
+`rochadeZiele` ist weg.
+
 ### Warum die Rochade sich erklären kann
 
 `SCHACH.rochadeLage(stand, farbe)` liefert für beide Seiten, ob rochiert werden
@@ -224,12 +238,27 @@ Vorschaubildern der Spielarten.
 | `ablauf` (Doppelzug) | nach dem Beispielzug: wohin dieselbe Figur gleich noch einmal darf |
 | alle übrigen | die Felder aus dem Verlaufseintrag — genau die, die auch am echten Brett aufleuchten |
 
-**Gezeigt wird ein ABLAUF** (`SCHACH_VORSCHAU.schritte`, seit v0.42): zwei oder
-drei Schritte, die der Bildschirm nacheinander abspielt und dann von vorn
-beginnt. Der mittlere Schritt gibt es nur bei Fähigkeiten mit Zielfeld — er
-zeigt den Handgriff, den ein Vorher-Bild nicht zeigen kann: welches Feld
-angetippt wird und welche anderen auch gingen. Die Auswahl wird dabei nicht
-aufgezählt, sondern gefragt (`SCHACH_RUNDE.zielFelder`).
+**Gezeigt wird ein ABLAUF** (`SCHACH_VORSCHAU.schritte`, seit v0.42): zwei bis
+vier Schritte, die der Bildschirm nacheinander abspielt und dann von vorn
+beginnt. Jeder Schritt beantwortet eine Frage:
+
+| Schritt | Frage | Wann |
+|---|---|---|
+| Ausgangsstellung | Worum geht es? | immer |
+| Handgriff | WO tippst du hin? (Fingerabdruck) | Fähigkeit mit Zielfeld |
+| Figur, dann Ziel | Welche Figur, und wohin? (zwei Fingerabdrücke) | wo gezogen wird (Doppelzug, Unglückswürfel) |
+| Wirkung | Was ist daraus geworden? | immer |
+
+Ein Schritt trägt `marken` (worum es geht), `wahl` (die übrigen möglichen
+Felder), `ziele` (Zugpunkte wie im Spiel), `tipp` (Fingerabdruck) und `wege`
+(Bewegungspfeile). Nichts davon wird aufgezählt: Die Auswahlfelder kommen aus
+`SCHACH_RUNDE.zielFelder`, die Zugpunkte aus `SCHACH.zuege`, die Wege aus dem
+Verlaufseintrag — dieselben Angaben, aus denen das echte Brett seine Spur färbt.
+
+**Die Pfeile sind nicht der alte Zugpfeil** (v1.9 bis v3.5, siehe
+`entscheidungen\entschieden.md`, „Warum der Zugpfeil verschwunden ist"): Der
+sollte JEDE Gangart darstellen und konnte es nicht. Im Beispiel steht dagegen
+fest, welche Figur wohin geht — und das zeigt eine gerade Linie richtig.
 
 Ein Test (`tests\test-schach-vorschau.js`) prüft für JEDE Fähigkeit, dass es
 ein Beispiel gibt und dass sich Vorher und Nachher sichtbar unterscheiden. Wer
@@ -242,11 +271,14 @@ Zugeklappt steht nur ihre Überschrift da (seit v0.43); Beschreibung und
 Anleitung entstehen erst beim Aufklappen — 23 Einträge auf einmal wären über
 zweitausend Elemente und ebenso viele Takte.
 
-Zwei Dinge hängen daran und dürfen nicht wegfallen:
+Drei Dinge hängen daran und dürfen nicht wegfallen:
 
 - **Die Takte werden vor jedem Neuzeichnen beendet** (`_anleitungTakteBeenden`),
   und ein Takt beendet sich selbst, sobald sein Bild nicht mehr im Bildschirm
   steht (`isConnected === false`, für den geschlossenen Dialog).
+- **Es ist höchstens ein Eintrag aufgeklappt** (`infoOffenerEintrag`, seit
+  v0.44). Wer den nächsten öffnet, schliesst den vorigen — und dessen Inhalt
+  wird weggenommen, damit sein Takt aufhört, statt unsichtbar weiterzulaufen.
 - **Die Bibliothek wird nur einmal gebaut** (`TEAM_SCHACH.infoGezeichnet`). Sie
   hängt an keinem Spielstand; würde die regelmässige Abfrage sie alle drei
   Sekunden neu zeichnen, klappte jeder Eintrag wieder zu und jede Anleitung
@@ -458,8 +490,8 @@ passiert: Der Punkt auf einem möglichen Zielfeld war blau und lag damit
 unsichtbar auf den blauen Feldern.
 
 Seither gilt für alles, was auf dem Brett liegt, dieselbe Regel wie schon für
-die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder, der
-Rochade-Turm und der Pfeil sind so gebaut. Wer eine neue Markierung ergänzt,
+die Figuren: **heller Rand, dunkler Kern.** Zielfelder, Schlagfelder und die
+Pfeile der Bildanleitung sind so gebaut. Wer eine neue Markierung ergänzt,
 hält sich daran — eine einzelne Farbe reicht auf diesem Brett nie.
 
 ### Rot heisst gegen dich, Blau für dich (seit v0.41)

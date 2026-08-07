@@ -138,9 +138,68 @@ pruefe("Faehigkeiten mit Zielfeld zeigen den Handgriff als eigenen Schritt", () 
     }
 });
 
-pruefe("Ohne Zielfeld gibt es zwei Schritte", () => {
-    for (const art of ["sprung", "doppelzug", "bauernschub", "haendler", "meuterei"]) {
+pruefe("Ohne Zielfeld und ohne Zug gibt es zwei Schritte", () => {
+    for (const art of ["sprung", "ausweichen", "teleport", "bauernschub", "haendler"]) {
         gleich(SCHACH_VORSCHAU.schritte(art).length, 2, art + ": zwei Schritte");
+    }
+});
+
+pruefe("Wo gezogen wird, sind es vier Schritte", () => {
+    /*
+     * Ein Zug sind ZWEI Tipper — erst die Figur, dann ihr Ziel. Beide bekommen
+     * ihr eigenes Bild mit Fingerabdruck, sonst fehlt der halbe Handgriff.
+     */
+    for (const art of ["doppelzug", "meuterei", "stolperstein", "erdrutsch"]) {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+
+        gleich(schritte.length, 4, art + ": vier Schritte");
+        gleich(schritte[1].tipp, beispiel.zug[0], art + ": erst die Figur antippen");
+        gleich(schritte[2].tipp, beispiel.zug[1], art + ": dann ihr Ziel");
+        wahr(schritte[1].ziele.length > 0, art + ": die Zugpunkte sind dabei");
+    }
+});
+
+pruefe("Jeder Handgriff traegt einen Fingerabdruck", () => {
+    /*
+     * Der Fingerabdruck beantwortet die Frage, die Bilder sonst offen lassen:
+     * WO muss ich hindrücken? Er gehört auf jeden Schritt, in dem getippt wird
+     * — und auf keinen anderen.
+     */
+    for (const art of alleArten) {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+        const mitFinger = schritte.filter((schritt) => schritt.tipp >= 0);
+
+        if (Number.isInteger(beispiel.ziel) && beispiel.ziel >= 0) {
+            gleich(mitFinger.length, 1, art + ": ein Tipper (das Zielfeld)");
+            gleich(mitFinger[0].tipp, beispiel.ziel, art + ": auf dem Zielfeld");
+        } else if (beispiel.zug) {
+            gleich(mitFinger.length, 2, art + ": zwei Tipper (Figur und Ziel)");
+        } else {
+            gleich(mitFinger.length, 0, art + ": hier wird das Brett nicht getippt");
+        }
+
+        /* Der erste und der letzte Schritt zeigen nie einen Finger — dort ist
+           nichts zu drücken, sondern etwas zu sehen. */
+        gleich(schritte[0].tipp, -1, art + ": kein Finger auf der Ausgangsstellung");
+        gleich(schritte[schritte.length - 1].tipp, -1, art + ": keiner auf der Wirkung");
+    }
+});
+
+pruefe("Wo sich etwas bewegt, gibt es Pfeile", () => {
+    for (const art of ["doppelzug", "stolperstein", "erdrutsch", "bauernschub"]) {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const mitPfeil = schritte.filter((schritt) => schritt.wege.length > 0);
+
+        wahr(mitPfeil.length > 0, art + ": mindestens ein Bild mit Pfeil");
+
+        for (const schritt of mitPfeil) {
+            for (const weg of schritt.wege) {
+                wahr(Number.isInteger(weg.von) && Number.isInteger(weg.nach)
+                    && weg.von !== weg.nach, art + ": der Weg hat zwei Enden");
+            }
+        }
     }
 });
 
@@ -169,11 +228,11 @@ pruefe("Sprung: das Nachher-Bild markiert Springerziele", () => {
     const bilder = SCHACH_VORSCHAU.bilder("sprung");
 
     gleich(bilder.nachher.runde.stand.zusatzMuster, "springer", "Muster gesetzt");
-    wahr(bilder.nachher.marken.length >= 4, "mehrere neue Ziele");
+    wahr(bilder.nachher.ziele.length >= 4, "mehrere neue Ziele");
 
     /* Ein Springerzug vom Turmfeld aus: zwei Felder in die eine, eines in die
        andere Richtung — auf diesem Brett also nichts, was ein Turm koennte. */
-    for (const feld of bilder.nachher.marken) {
+    for (const feld of bilder.nachher.ziele) {
         const spalte = feld % SCHACH_VORSCHAU.BREITE;
         const reihe = Math.floor(feld / SCHACH_VORSCHAU.BREITE);
         const abstandSpalte = Math.abs(spalte - 20 % SCHACH_VORSCHAU.BREITE);

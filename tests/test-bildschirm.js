@@ -114,6 +114,19 @@ function neuesElement(tag) {
             return kind;
         },
 
+        /* Beide seit v0.44: Die Bildanleitung tauscht ihr Brett beim Weiter-
+           schalten aus, und ein zugeklappter Bibliothekseintrag raeumt seinen
+           Inhalt weg (damit sein Takt aufhoert). */
+        removeChild(kind) {
+            this.kinder = this.kinder.filter((eintrag) => eintrag !== kind);
+            return kind;
+        },
+
+        replaceChild(neu, alt) {
+            this.kinder = this.kinder.map((eintrag) => (eintrag === alt) ? neu : eintrag);
+            return alt;
+        },
+
         classList: {
             liste: [],
             add(...namen) { this.liste.push(...namen); },
@@ -472,7 +485,7 @@ pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
     }
 });
 
-pruefe("Der Koenig macht den eigenen Turm zum Rochade-Ziel", () => {
+pruefe("Die Rochade steht als Zugpunkt beim Koenig", () => {
     /* Eine eigene Partie mit freier Grundreihe. */
     const angelegt = SCHACH_TAFEL.partieAnlegen(
         TEAM_SCHACH.abgleich.daten, "standard", "Rochade", 4000);
@@ -505,15 +518,32 @@ pruefe("Der Koenig macht den eigenen Turm zum Rochade-Ziel", () => {
 
     TEAM_SCHACH.feldAngetippt(offene, person, SCHACH.feldNummer("e1"));
 
-    const turmKurz = SCHACH.feldNummer("h1");
-    if (TEAM_SCHACH.rochadeZiele[turmKurz] !== SCHACH.feldNummer("g1")) {
-        throw new Error("der Turm h1 fuehrt nicht auf g1");
+    /*
+     * SEIT v0.44 GIBT ES NUR NOCH EINEN WEG: Koenig antippen, Zugpunkt
+     * antippen. Das Turmfeld ist kein eigener Knopf mehr (`rochadeZiele` ist
+     * ausgebaut) — der Rochadezug steht als ganz normaler Koenigszug in den
+     * moeglichen Zielen.
+     */
+    if (TEAM_SCHACH.moeglicheZiele.indexOf(SCHACH.feldNummer("g1")) === -1) {
+        throw new Error("die kurze Rochade fehlt unter den Zielen");
+    }
+    if (TEAM_SCHACH.moeglicheZiele.indexOf(SCHACH.feldNummer("c1")) === -1) {
+        throw new Error("die lange Rochade fehlt unter den Zielen");
+    }
+    if (TEAM_SCHACH.moeglicheZiele.indexOf(SCHACH.feldNummer("h1")) !== -1
+        || TEAM_SCHACH.moeglicheZiele.indexOf(SCHACH.feldNummer("a1")) !== -1) {
+        throw new Error("das Turmfeld ist noch ein Ziel");
     }
 
-    const turmLang = SCHACH.feldNummer("a1");
-    if (TEAM_SCHACH.rochadeZiele[turmLang] !== SCHACH.feldNummer("c1")) {
-        throw new Error("der Turm a1 fuehrt nicht auf c1");
+    /* Und der Zugpunkt fuehrt die Rochade wirklich aus. */
+    const gezogen = SCHACH_RUNDE.ziehen(offene, "id-anna",
+        SCHACH.feldNummer("e1"), SCHACH.feldNummer("g1"), "D", "Anna", 4100);
+
+    if (!gezogen || SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("f1")) !== "T") {
+        throw new Error("der Turm steht nach der Rochade nicht auf f1");
     }
+
+    TEAM_SCHACH._auswahlAufheben();
 });
 
 /* Die Klassen eines Feldes im gerade gezeichneten Brett. */
@@ -915,6 +945,48 @@ pruefe("Die Bibliothek wird nicht bei jeder Abfrage neu gezeichnet", () => {
     if (TEAM_SCHACH.anleitungTakte.length !== 0) {
         throw new Error("die Takte laufen weiter, obwohl neu gezeichnet wurde");
     }
+});
+
+pruefe("Es ist immer nur ein Eintrag aufgeklappt", () => {
+    /*
+     * v0.44: Wer die naechste Faehigkeit ansieht, hat die vorige hinter sich
+     * gelassen. Ihr Inhalt wird weggeraeumt — daran merkt der Takt ihrer
+     * Anleitung, dass er aufhoeren kann.
+     */
+    TEAM_SCHACH.faehigkeitenOeffnen();
+
+    const karte = TEAM_SCHACH.wurzelEl.kinder.find(
+        (kind) => String(kind.className || "").indexOf("stufen-karte") !== -1);
+    const eintraege = karte.kinder.filter(
+        (kind) => String(kind.className || "").indexOf("stufen-eintrag") !== -1);
+
+    if (eintraege.length < 2) {
+        throw new Error("zum Pruefen braucht es zwei Eintraege");
+    }
+
+    const erster = eintraege[0];
+    const zweiter = eintraege[1];
+
+    erster.open = true;
+    erster.ausloesen("toggle");
+    if (!erster.querySelector(".anleitung")) {
+        throw new Error("der erste zeigt keine Anleitung");
+    }
+
+    zweiter.open = true;
+    zweiter.ausloesen("toggle");
+
+    if (erster.open) {
+        throw new Error("der erste Eintrag ist noch offen");
+    }
+    if (erster.querySelector(".anleitung")) {
+        throw new Error("die Anleitung des ersten steht noch da");
+    }
+    if (!zweiter.querySelector(".anleitung")) {
+        throw new Error("der zweite zeigt keine Anleitung");
+    }
+
+    TEAM_SCHACH.infoSchliessen();
 });
 
 pruefe("Ein Unglueckswuerfel traegt ein umgedrehtes Fragezeichen", () => {
@@ -1420,6 +1492,77 @@ pruefe("Wer nicht am Zug ist, sieht keine Zielpunkte", () => {
     if (TEAM_SCHACH.moeglicheZiele.length !== 0) {
         throw new Error("Ziele bleiben stehen, obwohl das Team nicht am Zug ist");
     }
+});
+
+pruefe("Eine geoeffnete Partie schliesst die Spielart-Auswahl", () => {
+    /*
+     * DER GEMELDETE FEHLER (v0.44): Wer eine Partie anlegte, gab den Namen ein,
+     * bestaetigte — und stand wieder vor den Spielart-Kacheln. Die Partie war
+     * laengst angelegt und geoeffnet, aber `zeichnen` fragt die Auswahl VOR der
+     * offenen Partie ab, und die stand noch auf offen.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Frisch angelegt", 9400);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 9400);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 9400);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 9400);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 9400);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 9400);
+
+    /* So steht es unmittelbar nach dem Anlegen: die Auswahl ist noch offen. */
+    TEAM_SCHACH.auswahlOffen = true;
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    if (TEAM_SCHACH.auswahlOffen) {
+        throw new Error("die Spielart-Auswahl ist noch offen");
+    }
+    if (!brettSuchen()) {
+        throw new Error("statt des Bretts steht etwas anderes im Tab");
+    }
+});
+
+pruefe("Ein eigenes Zielfeld ist kein Schlagfeld", () => {
+    /*
+     * v0.44: Der rote Schlagring galt fuer jedes besetzte Zielfeld. Bei der
+     * Rochade steht dort die EIGENE Figur — auf sechs Feldern Breite landet der
+     * Koenig genau auf dem Turm. Das sah aus, als schluege man ihn.
+     */
+    TEAM_SCHACH.partieOeffnen(kennungen.gross);
+    const partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.gross);
+    const breite = SCHACH.breiteVon(partie.stand);
+    const hoehe = SCHACH.hoeheVon(partie.stand);
+
+    const eigenerTurm = SCHACH.feldNummer("a1", breite, hoehe);
+    const fremderTurm = SCHACH.feldNummer("a8", breite, hoehe);
+
+    TEAM_SCHACH.gewaehltesFeld = SCHACH.feldNummer("a2", breite, hoehe);
+    TEAM_SCHACH.moeglicheZiele = [eigenerTurm, fremderTurm];
+    TEAM_SCHACH.auswahlZaehler = partie.zugZaehler;
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    const klassenVon = (feld) => {
+        const zelle = brettSuchen().kinder.find(
+            (kind) => kind.dataset && kind.dataset.feld === String(feld));
+        if (!zelle) {
+            throw new Error("Feld " + feld + " nicht gezeichnet");
+        }
+        return String(zelle.className || "").split(" ").concat(zelle.classList.liste);
+    };
+
+    if (klassenVon(eigenerTurm).indexOf("feld-schlag") !== -1) {
+        throw new Error("die eigene Figur ist als Schlagfeld markiert");
+    }
+    if (klassenVon(eigenerTurm).indexOf("feld-ziel") === -1) {
+        throw new Error("die eigene Figur traegt keine Zielmarke");
+    }
+    if (klassenVon(fremderTurm).indexOf("feld-schlag") === -1) {
+        throw new Error("die gegnerische Figur traegt keinen Schlagring");
+    }
+
+    TEAM_SCHACH._auswahlAufheben();
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
 });
 
 pruefe("Ein Abschluss verdraengt keine laufende Partie", () => {
