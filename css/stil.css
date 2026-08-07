@@ -2026,15 +2026,13 @@ body {
     filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
 }
 
+/* Die Strichstärke gehört zur Form: Wird sie dicker, wachsen die Linien
+   zusammen und aus dem Abdruck wird ein Fleck. */
 .anleitung-finger-bogen {
     fill: none;
     stroke: var(--ziel-rand);
-    stroke-width: 2.2;
+    stroke-width: 1.3;
     stroke-linecap: round;
-}
-
-.anleitung-finger-kern {
-    fill: var(--ziel-rand);
 }
 
 /*

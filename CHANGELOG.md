@@ -3,6 +3,15 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.45.0 — 2026-08-07
+
+- **Der Fingerabdruck in der Bildanleitung sieht aus wie einer.** Statt dreier
+  Bögen um einen Punkt jetzt fünf ineinanderliegende Papillarlinien mit Kern
+  und zwei abgebrochenen Linien an den Seiten — nach der Vorlage des Nutzers.
+  Weiterhin gezeichnet und nicht als Bilddatei eingefügt: So folgt das Zeichen
+  den Farben der App und bleibt in jeder Größe scharf (dieselbe Entscheidung
+  wie beim Würfel).
+
 ## v0.44.0 — 2026-08-07
 
 Sieben Punkte aus dem Eingangskorb: fünf an der Bildanleitung, zwei am Spiel.

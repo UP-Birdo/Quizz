@@ -719,30 +719,49 @@ Object.assign(TEAM_SCHACH, {
     /*
      * Der Fingerabdruck — er sagt: Hier tippst du hin.
      *
-     * Gezeichnet als SVG, nicht als Zeichen aus der Schrift: Das Haus verbietet
-     * Emojis, und ein Bild wäre eine Datei mehr, die niemand pflegt. Drei
-     * Bögen und ein Punkt genügen, damit man einen Fingerabdruck erkennt.
+     * GEZEICHNET, NICHT EINGEFÜGT. Dieselbe Entscheidung wie beim Würfel
+     * (siehe `docs\entscheidungen\entschieden.md`, „Warum der Würfel gezeichnet
+     * und nicht eingefügt ist"): Eine Bilddatei wäre ein weiterer Bestandteil,
+     * der beim Ausliefern mitmuss, in jeder Grösse neu gebraucht wird und die
+     * Farbe nicht mitdreht. Als Pfade folgt das Zeichen den Farbvariablen und
+     * bleibt auf jedem Bildschirm scharf.
+     *
+     * Die Form ist die des vom Nutzer gewünschten Zeichens (v0.45): sechs
+     * ineinanderliegende Papillarlinien um einen Kern, unten offen, dazu zwei
+     * abgebrochene Linien an den Seiten — daran erkennt man einen
+     * Fingerabdruck auch bei zwanzig Pixeln Kantenlänge.
      */
+    /*
+     * Alle Linien laufen um denselben Mittelpunkt (12 | 14). Der Radius nimmt
+     * nach innen ab, und die Enden rutschen nach unten — dadurch werden die
+     * inneren Linien schmaler und länger, wie beim echten Abdruck. Wer eine
+     * Linie ändert, rechnet ihre Enden aus Mittelpunkt und Radius aus, sonst
+     * verrutscht der Bogen.
+     */
+    FINGER_LINIEN: [
+        /* Aussen: weite Bögen, oben geschlossen, unten offen. */
+        "M 2.55 12.5 A 9.5 9.5 0 0 1 21.45 12.5",
+        "M 4.86 15 A 7.3 7.3 0 1 1 19.14 15",
+        "M 7.88 17.5 A 5.1 5.1 0 1 1 16.12 17.5",
+        /* Der Kern: eine enge Schleife, die unten weit herunterläuft. */
+        "M 10.45 18.5 A 2.9 2.9 0 1 1 13.55 18.5",
+        /* Zwei abgebrochene Linien, wie sie auf jedem Abdruck vorkommen. */
+        "M 21 16.4 A 9.5 9.5 0 0 1 19.4 19.4",
+        "M 3 16.4 A 9.5 9.5 0 0 0 4.6 19.4"
+    ],
+
     _fingerBauen() {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "anleitung-finger");
         svg.setAttribute("viewBox", "0 0 24 24");
         svg.setAttribute("aria-hidden", "true");
 
-        for (const bogen of ["M 12 17 A 5 5 0 0 1 12 7", "M 12 19 A 7 7 0 0 1 12 5",
-            "M 12 21 A 9 9 0 0 1 12 3"]) {
+        for (const linie of TEAM_SCHACH.FINGER_LINIEN) {
             const pfad = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            pfad.setAttribute("d", bogen);
+            pfad.setAttribute("d", linie);
             pfad.setAttribute("class", "anleitung-finger-bogen");
             svg.appendChild(pfad);
         }
-
-        const kern = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        kern.setAttribute("cx", "12");
-        kern.setAttribute("cy", "12");
-        kern.setAttribute("r", "2");
-        kern.setAttribute("class", "anleitung-finger-kern");
-        svg.appendChild(kern);
 
         return svg;
     },
