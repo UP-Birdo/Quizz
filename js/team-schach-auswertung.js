@@ -51,20 +51,35 @@ Object.assign(TEAM_SCHACH, {
             flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-grund", lage.text));
         }
 
-        /* Was diese Partie an Punkten gebracht hat — dieselben Zahlen wie in
-           der Rangliste, aus derselben Datei. */
-        const punkte = RANGLISTE.PUNKTE_TEILNAHME
-            + (gewonnen ? RANGLISTE.PUNKTE_SIEG : (remis ? RANGLISTE.PUNKTE_REMIS : 0));
+        /*
+         * WAS DIESE PARTIE GEBRACHT HAT — GROSS OBEN, DANN AUFGESCHLÜSSELT
+         * (seit v0.53).
+         *
+         * Bis v0.52 stand hier eine Summe und daneben in Klammern, woraus sie
+         * besteht. Die Beute fehlte darin ganz: Gerechnet hatte sie die
+         * Rangliste längst, gezeigt wurde sie nie. Jetzt kommt die Zahl aus
+         * `RANGLISTE.schachPunkteJePartie` — derselben Rechnung, die auch die
+         * Rangliste füllt —, und darunter steht Zeile für Zeile, wofür es sie
+         * gab. Links die Sache, rechts die Punkte.
+         */
+        /*
+         * `schachPunkteJePartie` rechnet auf einem CHRONIK-Eintrag, nicht auf
+         * der laufenden Partie: Dort steht die Beute als Zahl, weil das Brett
+         * nach dem Löschen nicht mehr da wäre. Gebaut wird er mit derselben
+         * Funktion, die auch die Chronik füllt — sonst stünde die Umrechnung
+         * zweimal im Programm und liefe auseinander.
+         */
+        const teil = RANGLISTE.schachPunkteJePartie(
+            SCHACH_TAFEL._chronikEintrag(partie), meinTeam);
 
         const kasten = TEAM_SCHACH._element("div", "abschluss-punkte");
-        kasten.appendChild(TEAM_SCHACH._element("span", "abschluss-zahl", "+" + punkte));
+        kasten.appendChild(TEAM_SCHACH._element("span", "abschluss-zahl",
+            "+" + teil.punkte));
         kasten.appendChild(TEAM_SCHACH._element("span", "abschluss-punkte-text",
-            "Punkte für die Rangliste"
-            + (gewonnen ? " (" + RANGLISTE.PUNKTE_SIEG + " für den Sieg, " : " (")
-            + RANGLISTE.PUNKTE_TEILNAHME + " fürs Mitspielen"
-            + (remis ? ", " + RANGLISTE.PUNKTE_REMIS + " fürs Unentschieden" : "")
-            + ")"));
+            "Punkte für die Rangliste"));
         flaeche.appendChild(kasten);
+
+        flaeche.appendChild(TEAM_SCHACH._aufschluesselungBauen(partie, meinTeam, teil));
 
         const leiste = TEAM_SCHACH._element("div", "abschluss-leiste");
         leiste.appendChild(TEAM_SCHACH._knopf("Punktestand ansehen", "knopf-haupt",
@@ -75,6 +90,69 @@ Object.assign(TEAM_SCHACH, {
         flaeche.appendChild(leiste);
 
         wurzel.appendChild(flaeche);
+    },
+
+    /*
+     * Die Aufschlüsselung unter der grossen Zahl: links wofür, rechts wie viel.
+     *
+     * Die geschlagenen Figuren stehen einzeln da (Dame 9, Turm 5 …) — genau
+     * darum ging es im Wunsch: Man soll sehen, was die Beute wert war, nicht
+     * nur ihre Summe. Gezählt wird nach Art, sonst stünde bei acht Bauern
+     * achtmal dieselbe Zeile.
+     */
+    _aufschluesselungBauen(partie, farbe, teil) {
+        const liste = TEAM_SCHACH._element("div", "abschluss-aufschluesselung");
+        const zeile = (was, wert) => {
+            const eintrag = TEAM_SCHACH._element("div", "abschluss-posten");
+            eintrag.appendChild(TEAM_SCHACH._element("span", "abschluss-posten-was", was));
+            eintrag.appendChild(TEAM_SCHACH._element("span", "abschluss-posten-wert",
+                (wert >= 0 ? "+" : "") + wert));
+            liste.appendChild(eintrag);
+        };
+
+        zeile("Mitgespielt", RANGLISTE.PUNKTE_TEILNAHME);
+
+        if (teil.ausgang === "sieg") {
+            zeile("Partie gewonnen", RANGLISTE.PUNKTE_SIEG);
+        } else if (teil.ausgang === "remis") {
+            zeile("Unentschieden", RANGLISTE.PUNKTE_REMIS);
+        }
+
+        /*
+         * Die geschlagenen Figuren, nach Art gezählt. Der Figurenwert kommt aus
+         * dem Modell (`SCHACH_RUNDE.FIGUR_WERT`) — er ist derselbe, aus dem die
+         * Rangliste ihre Beutepunkte rechnet.
+         */
+        const bilanz = SCHACH_RUNDE.bilanz(partie, farbe);
+        const gezaehlt = {};
+
+        for (const art of bilanz.geschlagen) {
+            gezaehlt[art] = (gezaehlt[art] || 0) + 1;
+        }
+
+        for (const art of Object.keys(gezaehlt).sort()) {
+            const anzahl = gezaehlt[art];
+            const wert = (SCHACH_RUNDE.FIGUR_WERT[art] || 0) * anzahl;
+
+            liste.appendChild(TEAM_SCHACH._element("div", "abschluss-posten-still"));
+            const eintrag = TEAM_SCHACH._element("div", "abschluss-posten");
+            eintrag.appendChild(TEAM_SCHACH._element("span", "abschluss-posten-was",
+                SCHACH.artName(art) + (anzahl > 1 ? " (" + anzahl + "×)" : "")));
+            eintrag.appendChild(TEAM_SCHACH._element("span", "abschluss-posten-wert",
+                String(wert) + " Figurenwert"));
+            liste.appendChild(eintrag);
+        }
+
+        /*
+         * Die Beute zählt gedeckelt in die Rangliste — sonst ersetzte sie einen
+         * Sieg, statt ihn zu ergänzen. Deshalb steht sie als EIGENE Zeile da,
+         * mit dem Wert, der wirklich gutgeschrieben wurde.
+         */
+        if (teil.beute > 0) {
+            zeile("Beute (" + bilanz.punkte + " Figurenwert Vorsprung)", teil.beute);
+        }
+
+        return liste;
     },
 
     _punktestandZeichnen(wurzel, partie, person) {
@@ -97,6 +175,25 @@ Object.assign(TEAM_SCHACH, {
         } else {
             const tabelle = TEAM_SCHACH._element("div", "abschluss-tabelle");
 
+            /*
+             * WER AUS DIESER PARTIE WIE VIEL MITGENOMMEN HAT (seit v0.53).
+             *
+             * Über beiden Seiten steht ein grüner Pfeil mit dem Zuwachs — sonst
+             * sieht man nur den Gesamtstand und muss raten, was gerade
+             * dazugekommen ist. Gerechnet wird je FARBE, nicht je Person: Ein
+             * Team teilt sich das Ergebnis, und jeder darin bekommt dieselben
+             * Punkte.
+             */
+            const zuwachs = {};
+            const chronik = SCHACH_TAFEL._chronikEintrag(partie);
+
+            for (const farbe of ["weiss", "schwarz"]) {
+                const teil = RANGLISTE.schachPunkteJePartie(chronik, farbe);
+                for (const id of partie.teams[farbe]) {
+                    zuwachs[id] = teil.punkte;
+                }
+            }
+
             for (let platz = 0; platz < liste.length; platz++) {
                 const eintrag = liste[platz];
                 const zeile = TEAM_SCHACH._element("div",
@@ -105,6 +202,16 @@ Object.assign(TEAM_SCHACH, {
                 zeile.appendChild(TEAM_SCHACH._element("span", "abschluss-platz",
                     (platz + 1) + "."));
                 zeile.appendChild(TEAM_SCHACH._element("span", "abschluss-name", eintrag.name));
+
+                if (zuwachs[eintrag.id] > 0) {
+                    const marke = TEAM_SCHACH._element("span", "abschluss-zuwachs");
+                    marke.appendChild(TEAM_SCHACH._pfeilHochBauen());
+                    marke.appendChild(TEAM_SCHACH._element("span", "abschluss-zuwachs-zahl",
+                        "+" + zuwachs[eintrag.id]));
+                    marke.title = "Aus dieser Partie";
+                    zeile.appendChild(marke);
+                }
+
                 zeile.appendChild(TEAM_SCHACH._element("span", "abschluss-gesamt",
                     String(eintrag.gesamt)));
 
@@ -320,6 +427,26 @@ Object.assign(TEAM_SCHACH, {
         }
         return "Pluszeichen (+): Nach dem Einsetzen darfst du noch ganz "
             + "normal ziehen.";
+    },
+
+    /*
+     * Der grüne Pfeil nach oben (seit v0.53) — er sagt: Das ist dazugekommen.
+     *
+     * Gezeichnet und nicht als Schriftzeichen eingefügt, aus demselben Grund
+     * wie beim Blitz und beim Würfel: Das Haus verbietet Emojis, und ein Pfeil
+     * aus der Schrift wird auf den meisten Geräten genau als solcher gezeichnet.
+     */
+    _pfeilHochBauen() {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "zuwachs-pfeil");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("aria-hidden", "true");
+
+        const strich = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        strich.setAttribute("points", "12,3 21,14 15,14 15,21 9,21 9,14 3,14");
+        svg.appendChild(strich);
+
+        return svg;
     },
 
     /* Der i-Knopf öffnet die Übersicht aller Fähigkeiten. */

@@ -270,39 +270,51 @@ const SCHACH_VARIANTEN = {
 
     REGEN: {
         /*
-         * Wie oft nach einem Halbzug überhaupt etwas erscheint, wenn das Brett
-         * VÖLLIG leer wäre (Prozent). Bei halb belegtem Brett also die Hälfte
-         * davon. Zum Vergleich: ohne Regen sind es feste 18 Prozent.
+         * DER REGEN WÄCHST EXPONENTIELL (seit v0.53).
+         *
+         * Bis v0.52 stieg er gerade mit dem Anteil freier Felder — zu Beginn
+         * also spürbar, gegen Ende kaum stärker. Gewünscht war das Gegenteil:
+         * lange wenig, und je leerer das Brett, desto heftiger, bis es im
+         * Grenzfall auf JEDEM freien Feld einen Würfel gibt.
+         *
+         * Beide Zahlen sind Exponenten auf den Füllstand. Höher heisst: später,
+         * dafür steiler.
          */
-        chance: 80,
+        kurve: 3,
+        chanceKurve: 2,
 
         /*
-         * Ein Würfel je so vielen freien Feldern. Auf dem klassischen Brett
-         * sind zu Beginn 32 frei — das ergibt zwei. Gegen Ende, bei 55 freien
-         * Feldern, sind es vier.
+         * WOGEGEN DER FÜLLSTAND GEMESSEN WIRD.
+         *
+         * Nicht gegen alle Felder, sondern gegen die, die überhaupt frei werden
+         * KÖNNEN — zwei Könige bleiben immer stehen. Nur so erreicht der Anteil
+         * wirklich 1, und nur dann greift die Zusage: „Wenn nur noch die beiden
+         * Könige da sind, bekommt jedes freie Feld einen Würfel."
          */
-        jeFelder: 12,
-
-        /* Mehr als das werden es nie, egal wie leer es ist. Ein Brett, das
-           schneller Würfel auswirft, als man sie einsammeln kann, ist kein
-           Spiel mehr. */
-        hoechstens: 5
+        bleibenStehen: 2
     },
 
-    /* Wie viele Würfel der Regen bei so vielen freien Feldern auswirft. */
-    regenAnzahl(freieFelder) {
-        const regel = SCHACH_VARIANTEN.REGEN;
-        const gewuenscht = Math.floor(freieFelder / regel.jeFelder);
+    /*
+     * Wie voll das Brett ist, als Zahl von 0 (voll) bis 1 (nur noch die beiden
+     * Könige). Grundlage für Chance UND Anzahl des Regens.
+     */
+    regenAnteil(freieFelder, alleFelder) {
+        const moeglich = Math.max(1, alleFelder - SCHACH_VARIANTEN.REGEN.bleibenStehen);
+        return Math.min(1, Math.max(0, freieFelder / moeglich));
+    },
 
-        return Math.max(1, Math.min(regel.hoechstens, gewuenscht));
+    /* Wie viele Würfel der Regen auswirft. Bei ganz leerem Brett: alle. */
+    regenAnzahl(freieFelder, alleFelder) {
+        const anteil = SCHACH_VARIANTEN.regenAnteil(freieFelder, alleFelder);
+        const gewuenscht = freieFelder * Math.pow(anteil, SCHACH_VARIANTEN.REGEN.kurve);
+
+        return Math.max(1, Math.min(freieFelder, Math.ceil(gewuenscht)));
     },
 
     /* Mit welcher Chance (Prozent) der Regen bei diesem Füllstand einsetzt. */
     regenChance(freieFelder, alleFelder) {
-        if (!alleFelder) {
-            return 0;
-        }
-        return SCHACH_VARIANTEN.REGEN.chance * (freieFelder / alleFelder);
+        const anteil = SCHACH_VARIANTEN.regenAnteil(freieFelder, alleFelder);
+        return 100 * Math.pow(anteil, SCHACH_VARIANTEN.REGEN.chanceKurve);
     },
 
     /* Wie viele Würfel erscheinen bei diesem Zufallswert? */

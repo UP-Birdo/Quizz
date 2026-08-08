@@ -2527,6 +2527,59 @@ const SCHACH = {
         };
     },
 
+    /*
+     * WIE LANGE GILT AUF DIESEM FELD NOCH ETWAS? (seit v0.53)
+     *
+     * Liefert die Zahl der Halbzüge, die eine zeitlich begrenzte Wirkung hier
+     * noch hat — 0, wenn nichts abläuft. Der Bildschirm zeichnet daraus die
+     * kleine Zahl an der Ecke des Feldes.
+     *
+     * Warum im REGELWERK und nicht im Bildschirm: Die Fristen stehen hier
+     * (`bis` gegen `takt`, Schild und Fessel gegen den nächsten Zug). Wer sie
+     * im Bildschirm nachrechnet, hat sie zweimal — und beim nächsten Umbau
+     * stimmt eine von beiden nicht mehr.
+     *
+     * Liegt mehreres auf einem Feld, zählt das, was ZUERST abläuft: Danach
+     * ändert sich dort etwas, und genau darauf will man sich einstellen.
+     */
+    restzeitAuf(stand, feld) {
+        const reste = [];
+
+        for (const leihe of SCHACH.geliehene(stand)) {
+            if (leihe.feld === feld) {
+                reste.push(leihe.bis - stand.takt);
+            }
+        }
+
+        for (const mauer of SCHACH.mauern(stand)) {
+            if (mauer.felder.indexOf(feld) !== -1) {
+                reste.push(mauer.bis - stand.takt);
+            }
+        }
+
+        /*
+         * Schild, Fessel und Frost hängen an keiner Uhr, sondern am nächsten
+         * Zug der betroffenen Seite. Das ist genau ein Halbzug — ist die Seite
+         * gerade am Zug, läuft er JETZT ab, sonst nach dem Zug des Gegners.
+         */
+        if (stand.schildFeld === feld && stand.schildFarbe) {
+            reste.push((stand.amZug === stand.schildFarbe) ? 2 : 1);
+        }
+        if (stand.fesselFeld === feld && stand.fesselFarbe) {
+            reste.push((stand.amZug === stand.fesselFarbe) ? 1 : 2);
+        }
+        if (stand.frostFeld === feld && stand.frostFarbe) {
+            reste.push((stand.amZug === stand.frostFarbe) ? 1 : 2);
+        }
+
+        const gueltig = reste.filter((rest) => rest > 0);
+        if (gueltig.length === 0) {
+            return 0;
+        }
+
+        return Math.min.apply(null, gueltig);
+    },
+
     /* ---------------------------------------------------------------- *
      * Spielende
      * ---------------------------------------------------------------- */

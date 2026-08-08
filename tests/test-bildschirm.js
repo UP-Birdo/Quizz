@@ -708,6 +708,44 @@ pruefe("Anlegen und Loeschen melden sich beim Abgleich an (v0.52)", () => {
     }
 });
 
+pruefe("Der Abschluss schluesselt die Punkte auf (v0.53)", () => {
+    /*
+     * „Beim Endscreen soll aufgelistet werden, mit Ueberschrift links und
+     * rechts, wie viele Punkte man dadurch bekommen hat — und ganz oben gross
+     * die Punktzahl."
+     *
+     * Geprueft wird, dass die grosse Zahl aus DERSELBEN Rechnung kommt wie die
+     * Rangliste (frueher stand dort eine eigene Summe ohne die Beute) und dass
+     * die Aufschluesselung Zeilen hat.
+     */
+    let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.klein);
+    partie = SCHACH_RUNDE.kopieren(partie);
+    partie.ergebnis = "weiss";
+
+    const teil = RANGLISTE.schachPunkteJePartie(
+        SCHACH_TAFEL._chronikEintrag(partie), "weiss");
+
+    const liste = TEAM_SCHACH._aufschluesselungBauen(partie, "weiss", teil);
+    const posten = liste.kinder.filter((kind) =>
+        String(kind.className || "") === "abschluss-posten");
+
+    if (posten.length < 2) {
+        throw new Error("erwartet mindestens Mitspielen und Sieg, waren " + posten.length);
+    }
+
+    /* Jede Zeile hat links eine Sache und rechts einen Wert. */
+    for (const zeile of posten) {
+        if (zeile.kinder.length !== 2) {
+            throw new Error("eine Zeile ohne zwei Spalten");
+        }
+    }
+
+    /* Und die Summe stimmt mit der Rangliste ueberein. */
+    if (teil.punkte !== RANGLISTE.PUNKTE_TEILNAHME + RANGLISTE.PUNKTE_SIEG + teil.beute) {
+        throw new Error("die grosse Zahl passt nicht zur Rangliste");
+    }
+});
+
 pruefe("Wer verliert, bekommt den Abschluss-Bildschirm", () => {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.klein);
     partie = SCHACH_RUNDE.aufgeben(partie, "weiss", 3200);

@@ -187,6 +187,24 @@ Object.assign(TEAM_SCHACH, {
                 zelle.title = "Eingefroren: zieht nicht und ist unantastbar";
             }
 
+            /*
+             * DIE RESTZEIT ALS KLEINE ZAHL (seit v0.53).
+             *
+             * Überall, wo etwas abläuft — geliehene Figur, Mauer, Schild,
+             * Fessel, Frost —, steht rechts oben am Feld, wie viele Halbzüge es
+             * noch gilt. Vorher stand die Zahl nur im Titel-Text beim
+             * Darüberfahren; auf dem Handy gibt es kein Darüberfahren, und
+             * damit musste man mitzählen.
+             *
+             * Gefragt wird das Regelwerk (`SCHACH.restzeitAuf`) — die Fristen
+             * stehen dort, und hier wird nur gezeichnet.
+             */
+            const restzeit = SCHACH.restzeitAuf(stand, feld);
+            if (restzeit > 0) {
+                zelle.appendChild(TEAM_SCHACH._element("span", "feld-restzeit",
+                    String(restzeit)));
+            }
+
             /* Wartet die Fähigkeit auf ein Ziel? Dann sind die möglichen
                Felder markiert. */
             if (TEAM_SCHACH.zielFelder.indexOf(feld) !== -1) {

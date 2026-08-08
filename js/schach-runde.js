@@ -829,7 +829,7 @@ const SCHACH_RUNDE = {
          * seit v3.3 die einzige harte Grenze.
          */
         const gewuenscht = regen
-            ? SCHACH_VARIANTEN.regenAnzahl(freie.length)
+            ? SCHACH_VARIANTEN.regenAnzahl(freie.length, alleFelder)
             : SCHACH_VARIANTEN.anzahlZiehen(
                 SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
         const moeglich = Math.min(gewuenscht, freie.length);
@@ -1052,6 +1052,22 @@ const SCHACH_RUNDE = {
         }
 
         /*
+         * BERÜHREN HEISST EINSAMMELN (seit v0.53).
+         *
+         * Bis v0.52 zählte nur der eigene ZUG: Wer mit dem Nudelholz eine Figur
+         * über einen Würfel schob, sie mit dem Spiegel neben einen setzte oder
+         * sie per Wiedergeburt auf einem erscheinen liess, ging leer aus — der
+         * Würfel blieb unter der Figur liegen und war für immer unerreichbar,
+         * weil man ihn nur durch Betreten einsammelt.
+         *
+         * Eingesammelt wird deshalb auf JEDEM Feld, das die Fähigkeit berührt
+         * hat und auf dem jetzt eine eigene Figur steht. `betroffen` sind genau
+         * diese Felder — dieselbe Liste, die auch das Aufleuchten am Brett
+         * steuert.
+         */
+        SCHACH_RUNDE._bonusEinsammelnAufFeldern(neu, betroffen, farbe, wer);
+
+        /*
          * AUCH EIN ABGEGEBENER ZUG IST EIN HALBZUG (seit v0.52).
          *
          * Würfel erscheinen nach jedem Halbzug — aber `_bonusNachziehen` lief
@@ -1100,7 +1116,40 @@ const SCHACH_RUNDE = {
      * Nummerierung, und ein Unglückswürfel kann das Brett vergrössern.
      */
     _bonusEinsammeln(runde, altStand, von, nach, farbe, wer) {
-        const betreten = SCHACH.betreteneFelder(altStand, von, nach);
+        SCHACH_RUNDE._bonusEinsammelnAufFeldern(runde,
+            SCHACH.betreteneFelder(altStand, von, nach), farbe, wer,
+            { vonZug: true, von: von, nach: nach, altStand: altStand });
+    },
+
+    /*
+     * Sammelt die Würfel auf diesen Feldern ein. Ändert die übergebene Runde.
+     *
+     * Zwei Wege führen hierher (seit v0.53): ein ZUG (dann sind es die
+     * betretenen Felder, siehe oben) und eine FÄHIGKEIT, die Figuren bewegt
+     * oder erscheinen lässt (dann sind es ihre betroffenen Felder). Vorher
+     * konnte nur ein Zug einsammeln — ein Würfel unter einer per Nudelholz
+     * geschobenen Figur blieb für immer liegen.
+     *
+     * `herkunft` trägt, was der Verlauf braucht (`von`, `nach`, `altStand`) und
+     * unterscheidet die beiden Wege: Ein ZUG betritt sein Feld auf jeden Fall,
+     * eine FÄHIGKEIT berührt auch Felder, auf denen danach gar nichts oder eine
+     * gegnerische Figur steht (Erdbeben verschiebt beide Seiten). Dort wird
+     * nichts eingesammelt — sonst bekäme man Würfel für Felder, die man nie
+     * betreten hat.
+     */
+    _bonusEinsammelnAufFeldern(runde, felder, farbe, wer, herkunft) {
+        const woher = herkunft || {};
+        const von = Number.isInteger(woher.von) ? woher.von : -1;
+        const nach = Number.isInteger(woher.nach) ? woher.nach : -1;
+        const altStand = woher.altStand || runde.stand;
+
+        const betreten = (felder || []).filter((feld) => {
+            if (woher.vonZug) {
+                return true;
+            }
+            return SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, feld)) === farbe;
+        });
+
         const eingesammelt = [];
 
         for (const feld of betreten) {

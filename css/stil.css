@@ -1955,6 +1955,88 @@ body {
 }
 
 /*
+ * Die Aufschlüsselung im Abschluss-Bildschirm (seit v0.53): links wofür,
+ * rechts wie viel. Die grosse Summe steht darüber.
+ */
+.abschluss-aufschluesselung {
+    width: 100%;
+    max-width: 320px;
+    margin: 10px auto 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.abschluss-posten {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 0.9rem;
+}
+
+.abschluss-posten-was {
+    color: inherit;
+    opacity: 0.85;
+}
+
+.abschluss-posten-wert {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Eine leere Zeile als Trenner vor der Beute-Aufstellung. */
+.abschluss-posten-still {
+    height: 4px;
+}
+
+/*
+ * Der Zuwachs aus dieser Partie im Punktestand (seit v0.53): grüner Pfeil und
+ * die Zahl daneben, zwischen Name und Gesamtstand.
+ */
+.abschluss-zuwachs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: #2e9e52;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.zuwachs-pfeil {
+    width: 0.8em;
+    height: 0.8em;
+    fill: currentColor;
+    flex: 0 0 auto;
+}
+
+/*
+ * Die Restzeit an einem Feld (seit v0.53).
+ *
+ * Klein und in der Ecke, damit sie die Figur nicht verdeckt — sie ist eine
+ * Nebenauskunft, keine Beschriftung. Zweifarbig wie jede Markierung auf dem
+ * Brett (heller Rand, dunkler Kern): Das Brett hat helle UND dunkle Felder,
+ * eine einzelne Farbe verschwindet immer auf einer der beiden.
+ */
+.feld-restzeit {
+    position: absolute;
+    top: 1px;
+    right: 2px;
+    z-index: 5;
+    font-size: 0.5em;
+    font-weight: 700;
+    line-height: 1;
+    padding: 1px 3px;
+    border-radius: 6px;
+    color: #fff;
+    background: rgba(20, 24, 32, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    pointer-events: none;
+}
+
+/*
  * Eine Einstellungszeile mit i daneben (seit v0.52).
  *
  * Die Zeile selbst ist ein `label` und schaltet den Haken um; das i muss

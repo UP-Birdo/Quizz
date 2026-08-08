@@ -3,6 +3,39 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.53.0 — 2026-08-08
+
+Vier Punkte aus dem Eingangskorb — Restzeit, Regen, Einsammeln und die Punkte.
+
+- **Eine Restzeit an jeder Figur.** Wo etwas abläuft, steht jetzt eine kleine
+  Zahl rechts oben am Feld: geliehene Figuren (Friedhof), Mauern, Schutzschild,
+  Fessel und Frost. Sie zählt nach jedem Halbzug herunter, sodass man abschätzen
+  kann, wann welche Wirkung endet. Vorher stand die Zahl nur im Titel-Text beim
+  Darüberfahren — und auf dem Handy gibt es kein Darüberfahren.
+
+- **Der Glücksboxen-Regen steigert sich exponentiell.** Bis v0.52 wuchs er
+  gerade mit dem Anteil freier Felder. Jetzt bleibt er lange verhalten und wird
+  gegen Ende heftig; im Grenzfall — nur noch die beiden Könige auf dem Brett —
+  bekommt **jedes** freie Feld einen Würfel. Gemessen wird gegen die Felder, die
+  überhaupt frei werden können; nur so erreicht der Anteil wirklich 1.
+
+- **Berühren heißt Einsammeln.** Bewegt eine Fähigkeit eine Figur auf einen
+  Würfel — Nudelholz, Bauernschub, Erdbeben — oder lässt sie dort erscheinen
+  (Spiegel, Wiedergeburt, Friedhof), wird er jetzt eingesammelt. Vorher zählte
+  nur der eigene ZUG: Der Würfel blieb unter der Figur liegen und war für immer
+  unerreichbar, weil man ihn nur durch Betreten bekommt. Auf Feldern, auf denen
+  danach eine gegnerische Figur oder nichts steht, wird nichts eingesammelt.
+
+- **Der Abschluss-Bildschirm schlüsselt die Punkte auf.** Oben gross die Summe,
+  darunter Zeile für Zeile, wofür es sie gab — links die Sache, rechts der Wert:
+  Mitgespielt, Sieg, jede geschlagene Figurenart mit ihrem Wert (Dame 9, Turm 5
+  …) und die Beute. Die grosse Zahl kommt jetzt aus derselben Rechnung wie die
+  Rangliste; vorher stand dort eine eigene Summe, in der die **Beute fehlte**.
+
+- **Ein grüner Pfeil im Punktestand.** Über beiden Seiten steht, wie viele
+  Punkte aus dieser Partie dazugekommen sind — vorher sah man nur den
+  Gesamtstand und musste raten.
+
 ## v0.52.0 — 2026-08-08
 
 Fünf Punkte aus dem Eingangskorb, darunter ein gemeldeter Fehler.

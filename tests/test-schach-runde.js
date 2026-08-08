@@ -2272,25 +2272,39 @@ pruefe("Der Regen haengt am ANTEIL der freien Felder", () => {
      * von Beginn an und auf dem kleinen Brett (36) nie.
      */
     const voll = SCHACH_VARIANTEN.regenChance(0, 64);
-    const halb = SCHACH_VARIANTEN.regenChance(32, 64);
-    const leer = SCHACH_VARIANTEN.regenChance(64, 64);
+    const halb = SCHACH_VARIANTEN.regenChance(31, 64);
+    const leer = SCHACH_VARIANTEN.regenChance(62, 64);
 
     gleich(voll, 0, "auf vollem Brett regnet es nicht");
-    gleich(leer, SCHACH_VARIANTEN.REGEN.chance, "auf leerem Brett am staerksten");
+    gleich(leer, 100, "wenn nur die zwei Koenige stehen, regnet es sicher");
     wahr(halb > voll && halb < leer, "dazwischen steigt es an");
 
     /* Derselbe Fuellstand, anderes Brett: dieselbe Chance. */
-    gleich(SCHACH_VARIANTEN.regenChance(18, 36), halb, "der Anteil zaehlt, nicht die Zahl");
+    gleich(SCHACH_VARIANTEN.regenChance(17, 36).toFixed(4),
+        SCHACH_VARIANTEN.regenChance(34, 70).toFixed(4),
+        "der Anteil zaehlt, nicht die Zahl");
 });
 
-pruefe("Je mehr Platz, desto mehr Wuerfel", () => {
-    const regel = SCHACH_VARIANTEN.REGEN;
+pruefe("Der Regen steigert sich exponentiell (v0.53)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: „steigert sich waehrend der Runde
+     * exponentiell … so dass, wenn alle Felder frei sind bis auf die zwei
+     * Koenige, jedes freie Feld einen Wuerfel bekommt."
+     *
+     * Geprueft wird beides: der Grenzfall und die KRUEMMUNG — bei doppelt so
+     * viel Platz muss deutlich MEHR als das Doppelte kommen, sonst waere es
+     * wieder die gerade Linie von v0.52.
+     */
+    gleich(SCHACH_VARIANTEN.regenAnzahl(62, 64), 62,
+        "nur noch die Koenige: jedes freie Feld bekommt einen");
 
-    gleich(SCHACH_VARIANTEN.regenAnzahl(0), 1, "mindestens einer");
-    wahr(SCHACH_VARIANTEN.regenAnzahl(50) > SCHACH_VARIANTEN.regenAnzahl(20),
-        "mehr freie Felder, mehr Wuerfel");
-    gleich(SCHACH_VARIANTEN.regenAnzahl(1000), regel.hoechstens,
-        "aber nie mehr als die Hoechstzahl");
+    const wenig = SCHACH_VARIANTEN.regenAnzahl(16, 64);
+    const doppelt = SCHACH_VARIANTEN.regenAnzahl(32, 64);
+
+    wahr(doppelt > wenig * 2, "doppelt so viel Platz, mehr als doppelt so viele ("
+        + wenig + " gegen " + doppelt + ")");
+    wahr(SCHACH_VARIANTEN.regenAnzahl(1, 64) >= 1, "aber immer mindestens einer");
+    wahr(SCHACH_VARIANTEN.regenAnzahl(10, 64) <= 10, "und nie mehr als freie Felder");
 });
 
 pruefe("Der Regen braucht den Wuerfel-Haken", () => {
@@ -2335,6 +2349,95 @@ pruefe("Im Regen erscheinen mehr Wuerfel als ohne", () => {
 
     wahr(mit > ohne * 2, "der Regen wirft deutlich mehr aus ("
         + mit + " gegen " + ohne + ")");
+});
+
+/* ------------------------------------------------------------------ *
+ * Beruehren heisst Einsammeln, und die Restzeit (seit v0.53)
+ * ------------------------------------------------------------------ */
+
+pruefe("Eine Faehigkeit sammelt Wuerfel ein, die sie beruehrt (v0.53)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: „wenn Figuren auf Feldern spawnen oder
+     * mit Faehigkeiten dieses Feld erreichen, soll direkt das Item eingesammelt
+     * werden — sprich bei Nudelholz oder sonstigen Bewegungen."
+     *
+     * Vorher konnte nur ein ZUG einsammeln. Ein Wuerfel unter einer per
+     * Bauernschub vorgerueckten Figur blieb fuer immer liegen: Man sammelt ihn
+     * nur durch Betreten ein, und betreten wurde er nie.
+     */
+    let runde = faehigkeitenPartie();
+
+    /* Auf a3 liegt ein Wuerfel; der Bauer auf a2 rueckt mit dem Bauernschub
+       genau dorthin vor. */
+    runde.bonus = [{ feld: SCHACH.feldNummer("a3"), art: "", stufe: "gruen" }];
+
+    const vorher = runde.faehigkeiten.weiss.length;
+    runde = einsetzen(runde, "bauernschub", -1);
+
+    wahr(runde !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a3")), "B",
+        "der Bauer steht jetzt dort");
+    gleich(runde.bonus.length, 0, "der Wuerfel ist weg");
+    gleich(runde.faehigkeiten.weiss.length, vorher + 1,
+        "und die Faehigkeit ist gutgeschrieben");
+});
+
+pruefe("Ein Feld ohne eigene Figur sammelt nichts ein", () => {
+    /*
+     * Das Erdbeben verschiebt BEIDE Seiten. Auf einem Feld, auf dem danach eine
+     * gegnerische Figur steht, darf nichts eingesammelt werden — sonst bekaeme
+     * man Wuerfel fuer Felder, die man nie betreten hat.
+     */
+    let runde = faehigkeitenPartie();
+
+    /* Ein Wuerfel mitten im Nichts, den das Erdbeben zwar beruehrt, auf dem
+       aber keine weisse Figur landet. */
+    const feld = SCHACH.feldNummer("d7");
+    runde.bonus = [{ feld: feld, art: "", stufe: "gruen" }];
+
+    const vorher = runde.faehigkeiten.weiss.length;
+    const nachher = einsetzen(runde, "erdbeben", feld);
+
+    if (nachher) {
+        const eigene = SCHACH.farbeVon(SCHACH.figurAuf(nachher.stand, feld)) === "weiss";
+        if (!eigene) {
+            gleich(nachher.faehigkeiten.weiss.length, vorher,
+                "ohne eigene Figur auf dem Feld gibt es nichts");
+        }
+    }
+});
+
+pruefe("Die Restzeit sagt, wie lange etwas noch gilt (v0.53)", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Ohne Wirkung ist die Restzeit ueberall null. */
+    gleich(SCHACH.restzeitAuf(runde.stand, SCHACH.feldNummer("d4")), 0,
+        "auf einem leeren Feld laeuft nichts ab");
+
+    /* Eine Mauer laeuft nach MAUER_HALBZUEGE ab. */
+    const mitMauer = einsetzen(runde, "mauer", SCHACH.feldNummer("d4"));
+    wahr(mitMauer !== null, "Mauer eingesetzt");
+
+    const rest = SCHACH.restzeitAuf(mitMauer.stand, SCHACH.feldNummer("d4"));
+    gleich(rest, SCHACH.MAUER_HALBZUEGE, "die volle Dauer der Mauer");
+
+    /* Und sie zaehlt herunter. */
+    const gezogen = SCHACH_RUNDE.ziehen(mitMauer, "id-anna",
+        SCHACH.feldNummer("a2"), SCHACH.feldNummer("a3"), "D", "Anna", 4000);
+    wahr(gezogen !== null, "Weiss zieht");
+    gleich(SCHACH.restzeitAuf(gezogen.stand, SCHACH.feldNummer("d4")), rest - 1,
+        "nach einem Halbzug einer weniger");
+});
+
+pruefe("Auch Fessel und Frost tragen eine Restzeit", () => {
+    let runde = faehigkeitenPartie();
+
+    const ziel = SCHACH.feldNummer("e7");
+    const gefesselt = einsetzen(runde, "fessel", ziel);
+
+    wahr(gefesselt !== null, "Fessel eingesetzt");
+    wahr(SCHACH.restzeitAuf(gefesselt.stand, ziel) > 0,
+        "die gefesselte Figur zeigt eine Restzeit");
 });
 
 pruefe("Die Bilanz zaehlt Beute und Verlust nach Figurenwert", () => {
