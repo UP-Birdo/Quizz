@@ -23,12 +23,21 @@ Object.assign(TEAM_SCHACH, {
         kopf.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still knopf-klein",
             () => TEAM_SCHACH.auswahlSchliessen()));
         kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Welche Spielart?"));
-        wurzel.appendChild(kopf);
 
-        wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+        /*
+         * DER ERKLÄRSATZ STEHT HINTER DEM i (seit v0.52). Er sagt etwas, das man
+         * EINMAL wissen muss und danach nie wieder — als Absatz blähte er den
+         * Bildschirm auf und schob die Kacheln nach unten, also genau das, was
+         * man hier eigentlich antippen will. Dasselbe Muster wie beim
+         * Fähigkeiten-Fenster in v3.5.
+         */
+        kopf.appendChild(TEAM_SCHACH._infoZeichenBauen(
+            "Was gilt beim Anlegen?",
             "Spielart und Einstellungen stehen mit dem Anlegen fest und lassen "
-            + "sich später nicht mehr ändern. Das Bild zeigt die Startaufstellung."));
+            + "sich später nicht mehr ändern. Das Bild auf der Kachel zeigt die "
+            + "Startaufstellung."));
 
+        wurzel.appendChild(kopf);
         wurzel.appendChild(TEAM_SCHACH._regelSchalterBauen());
 
         const feld = TEAM_SCHACH._element("div", "spielart-feld");
@@ -61,8 +70,19 @@ Object.assign(TEAM_SCHACH, {
                 schluessel: "faehigkeiten",
                 titel: "Zufalls-Würfel",
                 hinweis: "Auf freien Feldern erscheinen Würfel mit Fähigkeiten — "
-                    + "gute wie schlechte. Alles, was dazugehört (Einsammeln, "
-                    + "Einsetzen, Unglückswürfel), gilt dann in dieser Spielart."
+                    + "gute wie schlechte.",
+
+                /* Was die Würfel WIRKLICH sind, füllt einen Absatz. Der steht
+                   hinter dem i daneben, damit die Zeile kurz bleibt. */
+                mehr: "Nach jedem Halbzug kann auf einem freien Feld ein Würfel "
+                    + "erscheinen. Wer mit einer Figur darüber oder darauf zieht, "
+                    + "sammelt ein, was darin steckt — welche Fähigkeit es ist, "
+                    + "sieht man vorher nie. Nur der Springer sammelt unterwegs "
+                    + "nichts ein: Er setzt über die Felder dazwischen hinweg.\n\n"
+                    + "Eingesammelte Fähigkeiten landen in deinem Vorrat und "
+                    + "werden von dort eingesetzt. Manche Würfel bringen nichts "
+                    + "Gutes und wirken sofort gegen dich. Was es alles gibt, "
+                    + "steht in der Partie hinter dem i bei den Fähigkeiten."
             },
             {
                 schluessel: "seltenheitZeigen",
@@ -99,9 +119,9 @@ Object.assign(TEAM_SCHACH, {
                     + "letzten muss der Gegner schachmatt setzen."
             },
             {
-                schluessel: "armeeGetrennt",
-                titel: "Beide Seiten getrennt würfeln",
-                hinweis: "Jede Mannschaft zieht für sich — dann kann eine Seite zwei "
+                schluessel: "armeeUnterschiedlich",
+                titel: "Unterschiedliche Armeen",
+                hinweis: "Jede Mannschaft würfelt für sich — dann kann eine Seite zwei "
                     + "Türme und eine Dame haben und die andere fast nur Bauern. Aus "
                     + "heißt: Es wird einmal gewürfelt, und beide bekommen dieselben "
                     + "Einheiten, spiegelbildlich aufgestellt.",
@@ -157,10 +177,48 @@ Object.assign(TEAM_SCHACH, {
             text.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis", eintrag.hinweis));
             zeile.appendChild(text);
 
-            karte.appendChild(zeile);
+            /*
+             * Das i steht NEBEN der Zeile, nicht darin: Die ganze Zeile ist ein
+             * `label` und schaltet den Haken um — ein Knopf mittendrin würde
+             * beides gleichzeitig auslösen.
+             */
+            const halter = TEAM_SCHACH._element("div", "schalter-halter");
+            halter.appendChild(zeile);
+
+            if (eintrag.mehr) {
+                halter.appendChild(TEAM_SCHACH._infoZeichenBauen(eintrag.titel, eintrag.mehr));
+            }
+
+            karte.appendChild(halter);
         }
 
         return karte;
+    },
+
+    /*
+     * Ein kleines i, das einen Text in einem Hinweis zeigt (seit v0.52).
+     *
+     * Es gibt schon `_infoKnopfBauen` — der führt aber fest in die
+     * Fähigkeiten-Bibliothek. Dieses hier trägt seinen Text bei sich und ist
+     * überall einsetzbar, wo ein Absatz den Bildschirm aufbläht.
+     */
+    _infoZeichenBauen(titel, text) {
+        const knopf = document.createElement("button");
+
+        knopf.type = "button";
+        knopf.className = "info-knopf";
+        knopf.textContent = "i";
+        knopf.setAttribute("aria-label", titel);
+        knopf.title = titel;
+        knopf.addEventListener("click", (ereignis) => {
+            /* Sonst schaltet der Klick zusätzlich den Haken der Zeile um. */
+            if (ereignis && ereignis.preventDefault) {
+                ereignis.preventDefault();
+            }
+            DIALOG.hinweis(titel, text);
+        });
+
+        return knopf;
     },
 
     _spielartKachelBauen(variante) {

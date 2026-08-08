@@ -188,7 +188,7 @@ const SCHACH_RUNDE = {
                  * aufgestellt — gewürfelt, aber gerecht. An heisst: Jede Seite
                  * zieht für sich, wie in v0.49 und v0.50.
                  */
-                armeeGetrennt: false,
+                armeeUnterschiedlich: false,
 
                 /* Muss sich das Team über einen Zug einig werden? */
                 einigkeit: false
@@ -249,7 +249,7 @@ const SCHACH_RUNDE = {
         runde.stand = SCHACH_RUNDE._armeeStand(
             runde.stand,
             (runde.id || "partie") + (saatZusatz || ""),
-            runde.regeln.armeeGetrennt === true);
+            runde.regeln.armeeUnterschiedlich === true);
 
         return runde;
     },
@@ -507,7 +507,7 @@ const SCHACH_RUNDE = {
             runde.regeln.pechZeigen = (roh.regeln.pechZeigen === true);
             runde.regeln.regen = (roh.regeln.regen === true);
             runde.regeln.zufallsArmee = (roh.regeln.zufallsArmee === true);
-            runde.regeln.armeeGetrennt = (roh.regeln.armeeGetrennt === true);
+            runde.regeln.armeeUnterschiedlich = (roh.regeln.armeeUnterschiedlich === true);
 
             runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
         }
@@ -1049,6 +1049,23 @@ const SCHACH_RUNDE = {
          */
         if (beschreibung.istDerZug && SCHACH.alleZuege(neu.stand).length === 0) {
             return null;
+        }
+
+        /*
+         * AUCH EIN ABGEGEBENER ZUG IST EIN HALBZUG (seit v0.52).
+         *
+         * Würfel erscheinen nach jedem Halbzug — aber `_bonusNachziehen` lief
+         * nur in `ziehen`. Wer seinen Zug für eine Fähigkeit hergab (Friedhof,
+         * Wiedergeburt, Händler …), bekam deshalb keinen neuen Würfel aufs
+         * Brett, und in einer Partie mit vielen Fähigkeiten wurde es dadurch
+         * spürbar still. Gemeldet als „Würfel sollen nicht nur in ganzen Zügen
+         * spawnen, sondern nach jeder Bewegung".
+         *
+         * Nur bei `beendetZug`: Wer am Zug bleibt, hat noch keinen Halbzug
+         * verbraucht — der Würfel kommt dann nach seinem Zug.
+         */
+        if (beschreibung.beendetZug) {
+            SCHACH_RUNDE._bonusNachziehen(neu);
         }
 
         neu.verlauf.push({

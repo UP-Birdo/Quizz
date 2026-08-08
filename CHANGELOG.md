@@ -3,6 +3,54 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.52.0 — 2026-08-08
+
+Fünf Punkte aus dem Eingangskorb, darunter ein gemeldeter Fehler.
+
+- **Beim Anlegen landet man wirklich in der Partie.** Gemeldet: „Ich bleibe in
+  dem Menü, wo man auf die Größe tippt, und erkenne nicht, dass eine Partie
+  schon begonnen hat." Die Ursache ist nicht der Bildschirm, sondern ein Rennen
+  mit der regelmässigen Abfrage: Sie lief weiter, während der Namensdialog offen
+  stand und gespeichert wurde — und ersetzte den Stand durch den vom SERVER, der
+  die eben angelegte Partie noch nicht kannte. Anlegen und Löschen melden sich
+  jetzt mit `eigenerVorgangBeginnt` an, wie Züge seit v3.8 und der Imposter.
+  (Derselbe Fehlertyp wie v0.44, aber eine andere Ursache — die von damals ist
+  weiterhin behoben.)
+
+- **Jeder Bauer bekommt bei seinem ersten Zug den Doppelschritt**, egal wo er
+  steht. In der Zufallsarmee kann er ganz hinten stehen und hatte dort bisher
+  nur einen einzelnen Zug. Für alle anderen Spielarten ändert sich nichts:
+  Hinter der eigenen Bauernreihe steht die Grundreihe voll, und ein Bauer kann
+  sie nie erreichen.
+
+- **Der freie Rand bleibt zwei Spalten — auf JEDER Karte.** Damit fällt die
+  Menge anders aus als in v0.51: nicht die halbe Armee, sondern zwei Grundreihen
+  mal die freien Spalten in der Mitte.
+
+  | Spielart | Zufallsarmee |
+  |---|---|
+  | Klassisch | 8 (unverändert) |
+  | Kleines Brett | 4 — genau ein 2×2-Feld in der Mitte |
+  | Großes Brett | 12 |
+  | Doppelbrett | 24 |
+
+  v0.51 hatte es andersherum gerechnet und dem kleinen Brett nur eine Spalte
+  Rand gelassen. Die 2×2-Ecke ist aber das, was die Aufstellung erkennbar macht
+  — also ist SIE fest, und die Menge folgt ihr.
+
+- **Der Unter-Haken heißt „Unterschiedliche Armeen"** statt „Beide Seiten
+  getrennt würfeln".
+
+- **Weniger Text im Anlege-Bildschirm.** Der Erklärsatz unter „Welche Spielart?"
+  steht jetzt hinter einem i daneben, und „Zufalls-Würfel" hat ein eigenes i
+  mit der ganzen Erklärung, was die Würfel überhaupt sind. Die Kacheln rutschen
+  dadurch nach oben — auf dem Handy waren sie vorher halb unter dem Rand.
+
+- **Würfel erscheinen auch nach einem Halbzug, den eine Fähigkeit verbraucht.**
+  Sie kamen schon immer nach jedem Halbzug, aber `_bonusNachziehen` lief nur
+  beim Ziehen: Wer seinen Zug für Friedhof, Wiedergeburt oder den Händler
+  hergab, bekam keinen neuen Würfel aufs Brett.
+
 ## v0.51.0 — 2026-08-08
 
 Die Zufallsarmee ist keine Spielart mehr, sondern ein **Haken** — und passt sich

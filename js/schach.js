@@ -1311,7 +1311,23 @@ const SCHACH = {
         const richtung = (farbe === SCHACH.WEISS) ? -1 : 1;
         const reihe = SCHACH.reiheVon(von, breite);
         const spalte = SCHACH.spalteVon(von, breite);
-        const startreihe = (farbe === SCHACH.WEISS) ? hoehe - 2 : 1;
+        /*
+         * VON WO DARF EIN BAUER ZWEI FELDER? (seit v0.52)
+         *
+         * Bis v0.51 war es genau EINE Reihe — `hoehe - 2` für Weiss. Das
+         * stimmte, solange Bauern nur dort starten können. Mit der Zufallsarmee
+         * stehen sie irgendwo auf den beiden Grundreihen, auch ganz hinten, und
+         * hatten dort keinen Doppelschritt: ihr erster Zug war ein einzelner.
+         *
+         * Erlaubt sind jetzt BEIDE Grundreihen. Für jede andere Spielart ändert
+         * das nichts — hinter der eigenen Bauernreihe steht die Grundreihe voll,
+         * und ein weisser Bauer kann sie nie erreichen (er zieht ja nach vorn).
+         * Die Regel bleibt für den Spieler also überall dieselbe: Beim ersten
+         * Zug zwei Felder, danach eines.
+         */
+        const grundreihen = (farbe === SCHACH.WEISS)
+            ? [hoehe - 1, hoehe - 2] : [0, 1];
+        const darfDoppelt = grundreihen.indexOf(reihe) !== -1;
 
         const anhaengen = (zug) => {
             for (const einzeln of SCHACH._mitUmwandlung(stand, zug, farbe)) {
@@ -1334,7 +1350,7 @@ const SCHACH = {
                 anhaengen(SCHACH._zug(stand, von, einsVor));
 
                 /* Zwei Felder aus der Grundstellung. */
-                if (reihe === startreihe && SCHACH._imBrett(stand, reihe + 2 * richtung, spalte)) {
+                if (darfDoppelt && SCHACH._imBrett(stand, reihe + 2 * richtung, spalte)) {
                     const zweiVor = SCHACH._feld(stand, reihe + 2 * richtung, spalte);
                     if (SCHACH.figurAuf(stand, zweiVor) === ".") {
                         liste.push(SCHACH._zug(stand, von, zweiVor));

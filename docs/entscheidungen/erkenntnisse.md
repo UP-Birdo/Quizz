@@ -262,6 +262,41 @@ aller Aufrufe:
    0,4 Prozent der Fälle vor. Geprüft wird deshalb der Schnitt (4,8 Arten je
    Seite statt 1,4 beim Fehler) und dass Ausreisser selten BLEIBEN.
 
+### Die neue Partie war da — und verschwand wieder (v0.52)
+
+**Was zu sehen war:** „Wenn ich einen Raum erstelle, springe ich nicht direkt
+rein — ich bleibe in dem Menü, wo man auf die Größe tippt, und erkenne nicht,
+dass eine Partie schon begonnen hat."
+
+Wortgleich zur Meldung von v0.44 — und trotzdem eine andere Ursache. Die von
+damals (`partieOeffnen` schloss die Spielart-Auswahl nicht) ist weiterhin
+behoben; der Test dazu läuft grün. Es gab eine zweite.
+
+**Die Ursache war ein Rennen mit der regelmässigen Abfrage.** `spielartGewaehlt`
+wartet zweimal: auf den Namensdialog und auf das Speichern. Der Abgleich fragt
+in dieser Zeit weiter alle paar Sekunden den Server. Landet seine Antwort NACH
+dem Schreiben, ersetzt sie `abgleich.daten` durch den Stand vom Server — und der
+kennt die eben angelegte Partie noch nicht. Das frisch gesetzte `offeneId` zeigt
+dann ins Leere, und der Bildschirm fällt zurück.
+
+Genau dagegen gibt es seit v3.8 `eigenerVorgangBeginnt()`, und die eiserne Regel
+sagt es auch: **Wer am Abgleich vorbei schreibt, meldet sich an.** Züge halten
+sich daran, der Imposter auch — beim Schach fehlte es an **zwei** Stellen:
+`spielartGewaehlt` und `partieLoeschen`. Beim Löschen wäre der Effekt umgekehrt
+gewesen: Die Abfrage holt die gelöschte Partie zurück.
+
+**Die Lehren:**
+
+1. **Dieselbe Beschreibung heisst nicht dieselbe Ursache.** Der naheliegende
+   Schritt wäre gewesen, den v0.44-Fix zu prüfen und ihn für heil zu erklären —
+   er IST heil. Wer dort aufhört, schliesst die Meldung als „geht doch".
+2. **Eine Regel, die für einen Schreibweg gilt, gilt für alle.** Beim Suchen
+   wurde deshalb nicht die eine Stelle geprüft, sondern jeder Aufruf von
+   `speicher.speichern` im Projekt. Zwei von vier waren nicht angemeldet.
+3. **Ein Rennen lässt sich schwer nachstellen, eine Anmeldung leicht prüfen.**
+   Der Test greift deshalb nicht das Timing an, sondern hält fest, dass beide
+   Funktionen sich an- und wieder abmelden.
+
 ### Die neue Partie war da — man stand nur davor (v0.44)
 
 **Was zu sehen war:** „Wenn man eine Runde erstellt, nach dem Haken setzen und

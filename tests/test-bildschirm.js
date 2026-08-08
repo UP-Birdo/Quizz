@@ -669,6 +669,45 @@ pruefe("Eine Partie mit Wuerfel und eingesammelter Faehigkeit zeichnet", () => {
     TEAM_SCHACH.partieOeffnen(kennungen.faehigkeiten);
 });
 
+pruefe("Anlegen und Loeschen melden sich beim Abgleich an (v0.52)", () => {
+    /*
+     * DER GEMELDETE FEHLER: „Wenn ich einen Raum erstelle, springe ich nicht
+     * direkt rein — ich bleibe in dem Menue, wo man auf die Groesse tippt."
+     *
+     * Ursache war ein Rennen mit der regelmaessigen Abfrage: Sie lief waehrend
+     * des Namensdialogs und des Speicherns weiter und ersetzte `abgleich.daten`
+     * durch den Stand vom SERVER — ohne die eben angelegte Partie. Die eiserne
+     * Regel dagegen heisst `eigenerVorgangBeginnt`; Zuege und der Imposter
+     * halten sie seit v3.8, das Anlegen und das Loeschen nicht.
+     *
+     * Geprueft wird die ANMELDUNG, nicht der Bildschirm: Ein Test kann das
+     * Rennen nicht zuverlaessig nachstellen, die Sperre dagegen schon. Gezaehlt
+     * wird mit dem Stellvertreter aus dieser Datei.
+     */
+    const quelltext = String(TEAM_SCHACH.spielartGewaehlt)
+        + String(TEAM_SCHACH.partieLoeschen);
+
+    if (quelltext.indexOf("eigenerVorgangBeginnt") === -1) {
+        throw new Error("Anlegen oder Loeschen meldet sich nicht an");
+    }
+    if (quelltext.indexOf("eigenerVorgangEndet") === -1) {
+        throw new Error("die Anmeldung wird nicht wieder zurueckgenommen");
+    }
+
+    /* Und die Sperre zaehlt wirklich hoch und wieder herunter. */
+    const abgleich = TEAM_SCHACH.abgleich;
+    const vorher = abgleich.vorgaenge;
+
+    abgleich.eigenerVorgangBeginnt();
+    if (abgleich.vorgaenge !== vorher + 1) {
+        throw new Error("Anmeldung zaehlt nicht hoch");
+    }
+    abgleich.eigenerVorgangEndet();
+    if (abgleich.vorgaenge !== vorher) {
+        throw new Error("Anmeldung wird nicht zurueckgenommen");
+    }
+});
+
 pruefe("Wer verliert, bekommt den Abschluss-Bildschirm", () => {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.klein);
     partie = SCHACH_RUNDE.aufgeben(partie, "weiss", 3200);

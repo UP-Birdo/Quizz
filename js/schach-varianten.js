@@ -866,24 +866,16 @@ const SCHACH_VARIANTEN = {
 
     ARMEE: {
         /*
-         * WIE VIELE FIGUREN? DIE HÄLFTE DER GEWOHNTEN ARMEE (seit v0.51).
+         * WIE VIELE SPALTEN LINKS UND RECHTS FREI BLEIBEN — und damit indirekt,
+         * wie viele Figuren eine Seite bekommt (siehe `armeeAnzahl`).
          *
-         * Bis v0.50 stand hier die feste Zahl 8 — richtig für das klassische
-         * Brett, aber die Zufallsarmee ist seit v0.51 ein HAKEN und gilt für
-         * jede Spielart. Auf dem Doppelbrett (32 Figuren je Seite) wären acht
-         * lächerlich, auf dem kleinen (12) wären sie fast die volle Armee.
-         *
-         * Gerechnet wird deshalb aus der Aufstellung der Spielart: die Hälfte,
-         * abgerundet. Für „Klassisch" ergibt das genau die 8 von vorher — die
-         * Zahl bleibt also, wo sie war, sie ist nur nicht mehr hingeschrieben.
-         *
-         *     Klassisch     16 → 8      Kleines Brett  12 → 6
-         *     Großes Brett  20 → 10     Doppelbrett    32 → 16
-         *
-         * Das halbe Material auf ganzem Brett macht die Partien offen und kurz;
-         * dieselbe Überlegung wie in v0.49, nur jetzt für jedes Brett.
+         * Zwei, auf jeder Karte. Auf dem klassischen Brett sind das die
+         * 2-mal-2-Ecken aus dem ursprünglichen Wunsch; auf dem kleinen bleibt
+         * dadurch genau ein 2-mal-2-Feld in der Mitte, auf dem Doppelbrett ein
+         * breiter Streifen. Die Ecke ist das, was die Aufstellung erkennbar
+         * macht — deshalb ist SIE fest und die Menge folgt.
          */
-        anteil: 0.5,
+        randBreite: 2,
 
         /*
          * Wie oft eine Seite mit ZWEI Königen startet, in Prozent.
@@ -921,37 +913,45 @@ const SCHACH_VARIANTEN = {
     },
 
     /*
-     * Wie viele Figuren eine Seite in dieser Spielart bekommt. Gezählt wird die
-     * gewohnte Armee AUS DER AUFSTELLUNG — so muss keine Spielart eine Zahl
-     * angeben, und eine neue passt von selbst.
-     *
-     * Mindestens zwei: der König und eine Figur. Ein König allein wäre keine
-     * Partie, sondern ein Wettlauf.
-     */
-    armeeAnzahl(variante) {
-        const gross = /[A-Z]/g;
-        const gefunden = String(variante.aufstellung || "").match(gross);
-        const gewohnt = gefunden ? gefunden.length : 0;
-
-        return Math.max(2, Math.floor(gewohnt * SCHACH_VARIANTEN.ARMEE.anteil));
-    },
-
-    /*
      * Wie viele Spalten die Armee einnimmt, und wie breit der freie Rand links
-     * und rechts dafür ist. Aufgestellt wird auf ZWEI Grundreihen, also braucht
-     * es die halbe Anzahl an Spalten — mittig, damit beide Ränder frei bleiben.
+     * und rechts ist.
      *
-     * Auf dem klassischen Brett ergibt das vier Spalten und je zwei freie
-     * daneben: genau die 2-mal-2-Ecken aus dem ursprünglichen Wunsch.
+     * DER RAND IST FEST (seit v0.52): immer zwei Spalten je Seite, auf JEDER
+     * Karte. Was in der Mitte übrig bleibt, füllt die Armee — auf zwei
+     * Grundreihen.
+     *
+     * v0.51 hatte es andersherum versucht: erst die halbe Armee bestimmen, dann
+     * den Rand daraus rechnen. Auf dem kleinen Brett kam damit nur eine Spalte
+     * Rand heraus, und die 2-mal-2-Ecken waren weg — genau das, was am
+     * klassischen Brett den Reiz ausmacht. Jetzt bleibt die Ecke, und die
+     * Menge folgt ihr.
      */
     armeeSpalten(variante) {
-        const anzahl = SCHACH_VARIANTEN.armeeAnzahl(variante);
-        const spalten = Math.min(variante.breite, Math.ceil(anzahl / 2));
+        const rand = SCHACH_VARIANTEN.ARMEE.randBreite;
+
+        /* Mindestens eine Spalte, sonst stünde auf einem sehr schmalen Brett
+           gar nichts — dann schrumpft eben der Rand. */
+        const spalten = Math.max(1, variante.breite - 2 * rand);
 
         return {
             spalten: spalten,
             rand: Math.floor((variante.breite - spalten) / 2)
         };
+    },
+
+    /*
+     * Wie viele Figuren eine Seite in dieser Spielart bekommt: zwei Grundreihen
+     * mal die freien Spalten in der Mitte. Ein Feld, eine Figur — die Zahl ist
+     * also nicht gewählt, sie fällt aus dem Brett:
+     *
+     *     Klassisch (8)      4 Spalten →  8      Kleines Brett (6)  2 →  4
+     *     Großes Brett (10)  6 Spalten → 12      Doppelbrett (16)  12 → 24
+     *
+     * Mindestens zwei: der König und eine Figur. Ein König allein wäre keine
+     * Partie, sondern ein Wettlauf.
+     */
+    armeeAnzahl(variante) {
+        return Math.max(2, SCHACH_VARIANTEN.armeeSpalten(variante).spalten * 2);
     },
 
     /* Zieht eine Figur der Zufallsarmee. `wert` ist eine Zahl von 0 bis 1. */

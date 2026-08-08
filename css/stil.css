@@ -1955,6 +1955,28 @@ body {
 }
 
 /*
+ * Eine Einstellungszeile mit i daneben (seit v0.52).
+ *
+ * Die Zeile selbst ist ein `label` und schaltet den Haken um; das i muss
+ * deshalb NEBEN ihr stehen, nicht darin — sonst löst ein Tipp auf das i beides
+ * gleichzeitig aus.
+ */
+.schalter-halter {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.schalter-halter > .schalter-zeile {
+    flex: 1 1 auto;
+}
+
+.schalter-halter > .info-knopf {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+/*
  * Der Griff an den Vorrat (seit v0.50).
  *
  * In einem Bild wird nicht das Brett angetippt, sondern die Fähigkeit. Sie

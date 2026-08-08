@@ -80,7 +80,7 @@ const TEAM_SCHACH = {
         pechZeigen: false,
         regen: false,
         zufallsArmee: false,
-        armeeGetrennt: false,
+        armeeUnterschiedlich: false,
         einigkeit: false
     },
 
@@ -922,7 +922,7 @@ const TEAM_SCHACH = {
             pechZeigen: false,
             regen: false,
             zufallsArmee: false,
-            armeeGetrennt: false,
+            armeeUnterschiedlich: false,
             einigkeit: false
         };
 
@@ -977,7 +977,7 @@ const TEAM_SCHACH = {
             pechZeigen: TEAM_SCHACH.neueRegeln.pechZeigen,
             regen: TEAM_SCHACH.neueRegeln.regen,
             zufallsArmee: TEAM_SCHACH.neueRegeln.zufallsArmee,
-            armeeGetrennt: TEAM_SCHACH.neueRegeln.armeeGetrennt,
+            armeeUnterschiedlich: TEAM_SCHACH.neueRegeln.armeeUnterschiedlich,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
         };
 
@@ -993,6 +993,28 @@ const TEAM_SCHACH = {
             ergebnis.tafel,
             SCHACH_RUNDE.teamBeitreten(ergebnis.partie, person.id, "weiss"));
 
+        /*
+         * ANMELDEN, BEVOR AM ABGLEICH VORBEI GESCHRIEBEN WIRD (seit v0.52).
+         *
+         * SO SAH DER FEHLER AUS: „Wenn ich einen Raum erstelle, springe ich
+         * nicht direkt rein — ich bleibe in dem Menü, wo man auf die Größe
+         * tippt, und erkenne nicht, dass eine Partie schon begonnen hat."
+         *
+         * Die Ursache ist nicht der Bildschirm, sondern das Rennen mit der
+         * regelmässigen Abfrage: Sie läuft weiter, während der Namensdialog
+         * offen steht und während gespeichert wird. Landet ihre Antwort nach
+         * dem Schreiben, ersetzt sie `abgleich.daten` durch den Stand VOM
+         * SERVER — und der kennt die eben angelegte Partie noch nicht. Das
+         * frisch gesetzte `offeneId` zeigt dann ins Leere.
+         *
+         * Genau dafür gibt es `eigenerVorgangBeginnt` (eiserne Regel: „Wer am
+         * Abgleich vorbei schreibt, meldet sich an"). Züge tun das seit v3.8,
+         * der Imposter auch — nur das Anlegen und das Löschen nicht. Das ist
+         * derselbe Fehlertyp wie v0.44, aber eine andere Ursache: Damals blieb
+         * die Auswahl offen, diesmal verschwindet die Partie unter ihr.
+         */
+        abgleich.eigenerVorgangBeginnt();
+
         try {
             await abgleich.speicher.speichern(ergebnis.tafel);
             abgleich.daten = ergebnis.tafel;
@@ -1000,6 +1022,8 @@ const TEAM_SCHACH = {
         } catch (fehler) {
             await DIALOG.hinweis("Nicht angelegt",
                 "Die Partie konnte nicht gespeichert werden: " + fehler.message);
+        } finally {
+            abgleich.eigenerVorgangEndet();
         }
     },
 
@@ -1035,6 +1059,11 @@ const TEAM_SCHACH = {
         const abgleich = TEAM_SCHACH.abgleich;
         let tafel = abgleich.daten;
 
+        /* Auch hier wird am Abgleich vorbei geschrieben — sonst holt die
+           regelmässige Abfrage die eben gelöschte Partie zurück (seit v0.52,
+           siehe `spielartGewaehlt`). */
+        abgleich.eigenerVorgangBeginnt();
+
         try {
             if (abgleich.speicher.art === "gemeinsam") {
                 tafel = SCHACH_TAFEL.normalisieren(await abgleich.speicher.laden());
@@ -1050,6 +1079,8 @@ const TEAM_SCHACH = {
         } catch (fehler) {
             await DIALOG.hinweis("Nicht gelöscht",
                 "Die Partie konnte nicht entfernt werden: " + fehler.message);
+        } finally {
+            abgleich.eigenerVorgangEndet();
         }
     },
 

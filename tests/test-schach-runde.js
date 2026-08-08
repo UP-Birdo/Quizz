@@ -1834,7 +1834,7 @@ function armeePartie(varianteId, kennung, getrennt) {
     const runde = SCHACH_RUNDE.leereRunde(1000, varianteId, kennung, "Zufall");
 
     runde.regeln.zufallsArmee = true;
-    runde.regeln.armeeGetrennt = (getrennt === true);
+    runde.regeln.armeeUnterschiedlich = (getrennt === true);
 
     return SCHACH_RUNDE.armeeAufstellen(runde);
 }
@@ -1878,6 +1878,88 @@ pruefe("Die Zufallsarmee stellt die halbe Armee mittig auf", () => {
     }
 });
 
+pruefe("Jeder Bauer bekommt beim ersten Zug den Doppelschritt (v0.52)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: In der Zufallsarmee kann ein Bauer ganz
+     * HINTEN stehen — dort hatte er bis v0.51 keinen Doppelschritt, weil die
+     * Startreihe fest auf `hoehe - 2` stand. Erlaubt sind jetzt beide
+     * Grundreihen.
+     */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-doppel", "D");
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "...B...."
+            + "B...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    /* Der Bauer auf der hintersten Reihe (a1) darf zwei Felder. */
+    const hinten = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(hinten.indexOf("a2") !== -1, "ein Feld vor");
+    wahr(hinten.indexOf("a3") !== -1, "und zwei — das ist neu");
+
+    /* Der auf der gewohnten Reihe (d2) natuerlich weiterhin auch. */
+    const gewohnt = SCHACH.zuege(runde.stand, SCHACH.feldNummer("d2"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(gewohnt.indexOf("d4") !== -1, "der gewohnte Doppelschritt bleibt");
+});
+
+pruefe("Weiter vorn gibt es keinen Doppelschritt", () => {
+    /* Die Regel darf sich nur auf den GRUNDREIHEN aendern, sonst zoege ein
+       Bauer mitten im Spiel ploetzlich wieder zwei Felder. */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-doppel2", "D");
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "...B...."
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("d4"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+
+    wahr(ziele.indexOf("d5") !== -1, "ein Feld vor");
+    wahr(ziele.indexOf("d6") === -1, "aber keine zwei");
+});
+
+pruefe("Der Rand bleibt auf jeder Karte zwei Spalten (v0.52)", () => {
+    /*
+     * „Bei der kleinsten Map sollen es weiterhin 2x2 Felder rechts und links
+     * frei bleiben, bei der grossen und Doppel-Map nach dem Muster anpassen."
+     *
+     * Damit faellt die Menge anders aus als in v0.51: nicht die halbe Armee,
+     * sondern zwei Grundreihen mal die freien Spalten in der Mitte.
+     */
+    const erwartet = { standard: 8, klein: 4, gross: 12, doppelbrett: 24 };
+
+    for (const id of Object.keys(erwartet)) {
+        const variante = SCHACH_VARIANTEN.holen(id);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+
+        gleich(platz.rand, 2, id + ": zwei freie Spalten je Seite");
+        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante), erwartet[id],
+            id + ": passende Anzahl");
+        gleich(platz.spalten * 2, erwartet[id], id + ": zwei Reihen voll");
+    }
+});
+
 pruefe("Die Menge passt sich jedem Brett an (v0.51)", () => {
     /*
      * DER PUNKT AUS DEM EINGANGSKORB: „beim Standard-Spielfeld waren es 8
@@ -1887,18 +1969,9 @@ pruefe("Die Menge passt sich jedem Brett an (v0.51)", () => {
      * Gerechnet wird die HAELFTE der gewohnten Armee. Die 8 des klassischen
      * Bretts bleiben damit, wo sie waren; alle anderen folgen von selbst.
      */
-    const erwartet = { standard: 8, klein: 6, gross: 10, doppelbrett: 16 };
+    const erwartet = { standard: 8, klein: 4, gross: 12, doppelbrett: 24 };
 
     for (const id of Object.keys(erwartet)) {
-        const variante = SCHACH_VARIANTEN.holen(id);
-        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante), erwartet[id],
-            id + ": passende Anzahl");
-
-        /* Und die Felder reichen dafuer genau aus — zwei Grundreihen. */
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
-        gleich(platz.spalten * 2, erwartet[id], id + ": zwei Reihen voll");
-        wahr(platz.rand >= 1, id + ": es bleibt Rand frei");
-
         const runde = armeePartie(id, "p-menge-" + id, true);
         for (const farbe of ["weiss", "schwarz"]) {
             const gezaehlt = figurenZaehlen(runde.stand, farbe);

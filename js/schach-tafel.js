@@ -315,7 +315,7 @@ const SCHACH_TAFEL = {
             partie.regeln.pechZeigen = (regeln.pechZeigen === true);
             partie.regeln.regen = (regeln.regen === true);
             partie.regeln.zufallsArmee = (regeln.zufallsArmee === true);
-            partie.regeln.armeeGetrennt = (regeln.armeeGetrennt === true);
+            partie.regeln.armeeUnterschiedlich = (regeln.armeeUnterschiedlich === true);
             partie.regeln.einigkeit = (regeln.einigkeit === true);
         }
 
