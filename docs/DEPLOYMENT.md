@@ -268,11 +268,19 @@ Bauvorgänge je Stunde.
    - **Repository access** → *Only select repositories* → `Quizz`
    - **Permissions** → *Repository permissions* → **Contents: Read and write**
    - Laufzeit nach Geschmack.
-   - **Wahlfrei: Issues: Read and write.** Nur zum SCHLIESSEN erledigter
-     Wünsche gebraucht (`tools\Wuensche-Abholen.ps1 -Schliessen <Nr>`). Der
-     hinterlegte Schlüssel hat das Recht derzeit NICHT — das Abholen der
-     Wünsche funktioniert trotzdem (es braucht gar keinen Token), erledigte
-     Einträge werden bis auf Weiteres von Hand auf github.com geschlossen.
+   - **Issues: Read and write.** Zum SCHLIESSEN erledigter Wünsche
+     (`tools\Wuensche-Abholen.ps1 -Schliessen <Nr>`). Seit dem Schlüssel vom
+     2026-08-08 ist das Recht gesetzt und erprobt (Wunsch #4 geschlossen).
+     Fehlt es, meldet das Skript einen 403 und sagt selbst, was zu tun ist;
+     das ABHOLEN der Wünsche funktioniert auch ganz ohne Token.
+
+     **`Wuensche-Abholen.ps1` braucht PowerShell 7** (`#requires -Version 7.0`)
+     — also `pwsh` aufrufen, nicht `powershell`. Mit dem alten 5.1 startet es
+     gar nicht erst und meldet „erforderliche Version stimmt nicht überein".
+     `Deploy-Quizz.ps1` läuft dagegen unter beiden:
+
+         pwsh -ExecutionPolicy Bypass -File "tools\Wuensche-Abholen.ps1"
+         pwsh -ExecutionPolicy Bypass -File "tools\Wuensche-Abholen.ps1" -Schliessen 4
 2. Token kopieren und im Projektordner ausführen:
 
        powershell -ExecutionPolicy Bypass -File "tools\Deploy-Quizz.ps1" -SetToken
