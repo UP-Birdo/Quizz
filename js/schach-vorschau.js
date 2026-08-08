@@ -65,56 +65,82 @@ const SCHACH_VORSCHAU = {
      *     vorher    Ein Satz unter dem linken Bild.
      *     nachher   Ein Satz unter dem rechten Bild.
      *
-     * Die Ausgangsstellungen sind bewusst leer geräumt: Ein Beispiel soll EINE
-     * Sache zeigen, nicht eine Partie.
+     * JEDE STELLUNG ERZÄHLT, WARUM MAN DIE FÄHIGKEIT NEHMEN WÜRDE (seit v0.50).
+     *
+     * Bis v0.49 standen auf fast jedem Beispielbrett nur zwei Könige und die
+     * eine Figur, um die es ging — der Gegner fehlte, und damit fehlte der
+     * Grund. Bei „Ausweichen" behauptete der Satz sogar „angegriffen und
+     * eingeklemmt", während weit und breit nichts angriff. Jetzt steht in jeder
+     * Stellung, was die Fähigkeit löst: ein Angreifer, eine Sperre, eine Lücke.
+     *
+     * DIE BEIDEN KÖNIGE BLEIBEN. Sie sind kein Beiwerk: Die Bilder werden mit
+     * den ECHTEN Regeln gerechnet, und `SCHACH.zuege` prüft für jeden Zug, ob
+     * der eigene König danach im Schach steht. Ein Brett ohne Könige wäre keine
+     * Stellung, die das Regelwerk je zu sehen bekommt. Sie stehen deshalb
+     * bewusst aus der Sache heraus — nicht im Weg, aber da.
+     *
+     * Die Ausgangsstellungen bleiben trotzdem leer geräumt: Ein Beispiel soll
+     * EINE Sache zeigen, nicht eine Partie.
      */
     BEISPIELE: {
 
         /* ---- Gewöhnlich: zusätzliche Gangarten ---- */
 
+        /*
+         * Der Turm steht so, dass ihn nur ein Springerzug an die Dame bringt.
+         * Die übrigen drei Sprungfelder sind mit EIGENEN Bauern besetzt — damit
+         * bleibt genau ein neues Zielfeld übrig, und das letzte Bild
+         * (`_sprungSchritt` zieht dorthin) zeigt wirklich den Schlag. Ohne die
+         * Bauern wären alle Sprungfelder gleich weit weg, und es hinge vom
+         * Zufall ab, welchen Zug die Anleitung vorführt.
+         */
         sprung: {
             brett: [
                 "k.....",
                 "......",
+                "d.....",
                 "......",
-                "..T...",
-                "......",
-                "K....."
+                ".T....",
+                ".....K"
             ],
-            figur: 20,
+            figur: 25,
             ziel: -1,
-            vorher: "Der Turm geht nur gerade — schräg kommt er nirgends hin.",
-            nachher: "Mit Sprung darf er zusätzlich wie ein Springer gehen."
+            vorher: "Die schwarze Dame steht schräg versetzt — gerade kommt der Turm "
+                + "dort nie hin.",
+            nachher: "Mit Sprung geht er wie ein Springer. Vier neue Punkte stehen "
+                + "auf dem Brett — und auf einem davon steht die Dame."
         },
         ausweichen: {
             brett: [
                 "k.....",
                 "......",
-                "......",
-                "..T...",
-                "......",
+                "..B...",
+                ".BTB..",
+                "..B...",
                 "K....."
             ],
             figur: 20,
             ziel: -1,
-            vorher: "Angegriffen und eingeklemmt: Der Turm kommt schräg nicht weg.",
-            nachher: "Ausweichen schenkt ihm ein Feld in jede Richtung — auf ein "
-                + "FREIES Feld, geschlagen wird dabei nicht."
+            vorher: "Der Turm ist von den eigenen Leuten zugestellt — kein einziger "
+                + "Zug bleibt ihm.",
+            nachher: "Ausweichen öffnet ihm ein Feld in jede Richtung, auch schräg. "
+                + "Nur auf FREIE Felder, geschlagen wird dabei nicht."
         },
         teleport: {
             brett: [
                 "k.....",
                 "......",
                 "......",
+                ".sss..",
                 "..T...",
-                "......",
-                "K....."
+                ".....K"
             ],
-            figur: 20,
+            figur: 26,
             ziel: -1,
-            vorher: "Wohin der Turm darf, bestimmt seine Gangart.",
-            nachher: "Mit Teleport zusätzlich auf jedes freie Feld im Umkreis von "
-                + "zwei — über alles hinweg."
+            vorher: "Drei gegnerische Springer riegeln die Reihe ab. Vorbei kommt "
+                + "hier niemand.",
+            nachher: "Der Teleport setzt über alles hinweg — auf jedes freie Feld "
+                + "im Umkreis von zwei, auch hinter der Sperre."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ---- */
@@ -124,30 +150,31 @@ const SCHACH_VORSCHAU = {
                 "k.....",
                 "......",
                 "......",
-                "......",
+                "...t..",
                 ".BB.B.",
                 "K....."
             ],
             figur: -1,
             ziel: -1,
-            vorher: "Drei eigene Bauern stehen in der Reihe.",
-            nachher: "Alle rücken auf einmal ein Feld vor, soweit Platz ist."
+            vorher: "Drei eigene Bauern, und der Gegner steht schon in Reichweite.",
+            nachher: "Alle rücken auf einmal ein Feld vor: Die ganze Reihe steht "
+                + "plötzlich weiter vorn."
         },
         schutzschild: {
             brett: [
                 "k.....",
                 "......",
                 "..t...",
-                "..T...",
+                "..D...",
                 "......",
                 "K....."
             ],
             figur: 20,
             ziel: 20,
-            vorher: "Der schwarze Turm steht direkt vor dem eigenen — er schlägt "
+            vorher: "Der schwarze Turm steht deiner Dame gegenüber — er schlägt sie "
                 + "als Nächstes.",
-            nachher: "Mit dem Schild überlebt die Figur den Schlag: Er verpufft, "
-                + "der Angreifer bleibt stehen."
+            nachher: "Mit dem Schild überlebt sie den Schlag: Er verpufft, der "
+                + "Angreifer bleibt stehen."
         },
         erdbeben: {
             brett: [
@@ -184,18 +211,17 @@ const SCHACH_VORSCHAU = {
         mauer: {
             brett: [
                 "k.....",
+                "..t...",
                 "......",
                 "......",
-                "..T...",
                 "......",
-                "K....."
+                "K.D..."
             ],
             figur: -1,
-            ziel: 13,
-            vorher: "Die Mauer legt sich um das Feld, das du antippst.",
-            nachher: "Das angetippte Feld und je eines links und rechts sind gesperrt "
-                + "— für beide Seiten. Nur Springer setzen darüber hinweg, und nach "
-                + "ein paar Zügen zerfällt die Mauer."
+            ziel: 14,
+            vorher: "Der schwarze Turm zielt die ganze Spalte hinunter auf deine Dame.",
+            nachher: "Die Mauer legt sich um das angetippte Feld und sperrt die "
+                + "Spalte — für beide Seiten. Nur Springer setzen darüber hinweg."
         },
 
         /* ---- Episch: kostet den Gegner etwas ---- */
@@ -204,21 +230,21 @@ const SCHACH_VORSCHAU = {
             brett: [
                 "k.....",
                 "......",
-                "..t...",
+                "..s...",
                 "......",
-                "......",
+                "...D..",
                 "K....."
             ],
             figur: 14,
             ziel: 14,
-            vorher: "Die gegnerische Figur, die stören würde.",
-            nachher: "Eingefroren: Sie zieht einen Zug lang nicht — und lässt sich "
-                + "in dieser Zeit auch nicht schlagen."
+            vorher: "Der Springer greift deine Dame an — im nächsten Zug ist sie weg.",
+            nachher: "Eingefroren: Er zieht einen Zug lang nicht und lässt sich in "
+                + "dieser Zeit auch nicht schlagen."
         },
         verstaerkung: {
             brett: [
                 "k.....",
-                "......",
+                ".t.t..",
                 "......",
                 "..B...",
                 "......",
@@ -226,8 +252,9 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             ziel: 20,
-            vorher: "Ein eigener Bauer.",
-            nachher: "Aus dem Bauern wird ein Springer — Material aus dem Nichts."
+            vorher: "Ein einzelner Bauer. An die beiden Türme kommt er nie heran.",
+            nachher: "Aus dem Bauern wird ein Springer — und der bedroht von hier "
+                + "aus gleich beide."
         },
         fessel: {
             brett: [
@@ -235,12 +262,12 @@ const SCHACH_VORSCHAU = {
                 "......",
                 "..t...",
                 "......",
-                "......",
+                "..L...",
                 "K....."
             ],
             figur: 14,
             ziel: 14,
-            vorher: "Der gegnerische Turm droht zu ziehen.",
+            vorher: "Der Turm nimmt deinen Läufer ins Visier.",
             nachher: "Gefesselt: Beim nächsten Zug des Gegners bleibt genau diese "
                 + "Figur stehen."
         },
@@ -251,7 +278,7 @@ const SCHACH_VORSCHAU = {
             brett: [
                 "k.....",
                 "......",
-                "......",
+                "..b...",
                 "..T...",
                 "......",
                 "K....."
@@ -259,15 +286,16 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             ziel: -1,
             zug: [20, 14],
-            vorher: "Ein Zug, dann wäre der Gegner dran.",
-            nachher: "Der Turm ist gezogen — und das eigene Team ist sofort noch "
-                + "einmal am Zug."
+            vorher: "Der Turm kann den Bauern schlagen — und stünde danach allein "
+                + "vorn.",
+            nachher: "Geschlagen, und dein Team ist sofort wieder am Zug: Er kann "
+                + "im selben Atemzug zurück."
         },
         wiedergeburt: {
             brett: [
                 "k.....",
                 "......",
-                "......",
+                "..t...",
                 "......",
                 "......",
                 "K....."
@@ -275,39 +303,42 @@ const SCHACH_VORSCHAU = {
             figur: -1,
             ziel: 33,
             verloren: ["D"],
-            vorher: "Die eigene Dame ist gefallen. Angetippt wird ein freies Feld "
-                + "der eigenen Grundreihe.",
-            nachher: "Sie kehrt zurück — hinten, weit weg vom Geschehen."
+            vorher: "Deine Dame ist gefallen, der Gegner drückt. Angetippt wird ein "
+                + "freies Feld deiner Grundreihe.",
+            nachher: "Sie kehrt zurück — hinten, weit weg vom Geschehen. Danach ist "
+                + "der Gegner am Zug."
         },
         spiegel: {
             brett: [
                 "k.....",
                 "......",
                 "......",
-                "..T...",
+                "..D...",
                 "......",
                 "K....."
             ],
             figur: 20,
             ziel: 20,
-            vorher: "Eine eigene Figur, die man gut zweimal gebrauchen könnte.",
-            nachher: "Die Kopie erscheint auf einem freien Feld daneben."
+            vorher: "Eine Dame ist gut. Zwei sind besser.",
+            nachher: "Die Kopie erscheint auf einem freien Feld daneben — aus dem "
+                + "Nichts steht dort eine zweite."
         },
         wiederbelebung: {
             brett: [
                 "k.....",
                 "......",
-                "......",
+                "..t...",
                 "......",
                 "......",
                 "K....."
             ],
-            figur: 14,
-            ziel: 14,
-            gefallen: [{ art: "T", feld: 14 }],
-            vorher: "Hier fiel der eigene Turm. Das Feld ist frei.",
-            nachher: "Er steht genau dort wieder auf — mitten im Geschehen. Danach "
-                + "ist der Gegner am Zug."
+            figur: 20,
+            ziel: 20,
+            gefallen: [{ art: "T", feld: 20 }],
+            vorher: "Hier fiel dein Turm — direkt vor dem gegnerischen. Das Feld ist "
+                + "frei.",
+            nachher: "Er steht genau dort wieder auf, mitten im Geschehen, und hält "
+                + "den Gegner sofort auf."
         },
         friedhof: {
             brett: [
@@ -326,10 +357,10 @@ const SCHACH_VORSCHAU = {
                 { art: "S", feld: 10 },
                 { art: "T", feld: 11 }
             ],
-            vorher: "Vier geschlagene GEGNER warten. Angetippt wird die linke obere "
-                + "Ecke eines freien 2-mal-2-Feldes.",
+            vorher: "Vier geschlagene GEGNER warten darauf, für dich zu kämpfen. "
+                + "Angetippt wird die linke obere Ecke eines freien 2-mal-2-Feldes.",
             nachher: "Sie stehen in DEINER Farbe wieder auf und ziehen wie eigene — "
-                + "bis sie nach ein paar Zügen zerfallen."
+                + "bis sie nach 8 Halbzügen zerfallen."
         },
         /*
          * Der Händler zieht sein Angebot aus dem Spielstand — WELCHES es ist,
@@ -361,6 +392,12 @@ const SCHACH_VORSCHAU = {
      * eigene Figur mit `zug` darauf zieht — auch das läuft durch den echten
      * Weg (`SCHACH_RUNDE.ziehen` sammelt ein und löst aus).
      */
+    /*
+     * JEDES DIESER BILDER ZEIGT EINEN SCHADEN (seit v0.50). Ein Unglückswürfel
+     * ist keine Belohnung, und das Beispiel soll das auch nicht so aussehen
+     * lassen: In der Ausgangsstellung steht immer etwas, das durch den Würfel
+     * kaputtgeht — ein Angriff, der zusammenfällt, eine Figur, die überläuft.
+     */
     PECH_BEISPIELE: {
         stolperstein: {
             brett: [
@@ -368,31 +405,33 @@ const SCHACH_VORSCHAU = {
                 "......",
                 "..T...",
                 "......",
-                "......",
+                "...b..",
                 "K....."
             ],
             figur: 20,
             wuerfel: 20,
             zug: [14, 20],
-            vorher: "Der Turm zieht auf den Würfel — und der ist ein schlechter.",
-            nachher: "Die Figur wird ein Feld zurückgeworfen, in Richtung der "
-                + "eigenen Grundreihe."
+            vorher: "Der Turm rückt vor und hat den schwarzen Bauern im Blick — "
+                + "auf dem Feld liegt aber ein Würfel.",
+            nachher: "Es war ein schlechter: Die Figur fliegt ein Feld zurück, der "
+                + "Angriff ist dahin."
         },
         vollesGlas: {
             brett: [
                 "k.....",
                 "..s.l.",
                 "..T...",
-                "......",
+                "...t..",
                 "......",
                 "K....."
             ],
             figur: 20,
             wuerfel: 20,
             zug: [14, 20],
-            vorher: "Die gegnerischen Figuren stehen da, wo sie stehen.",
-            nachher: "Eine Weile sehen sie für DICH falsch aus. Sie ziehen wie "
-                + "immer — nur der Gegner merkt nichts davon."
+            vorher: "Drei gegnerische Figuren, und du weisst genau, welche welche "
+                + "ist.",
+            nachher: "Jetzt nicht mehr: Für DICH sehen sie eine Weile falsch aus. "
+                + "Sie ziehen wie immer — der Gegner merkt nichts davon."
         },
         ausdehnung: {
             brett: [
@@ -400,15 +439,15 @@ const SCHACH_VORSCHAU = {
                 "......",
                 "..T...",
                 "......",
-                "......",
+                "....b.",
                 "K....."
             ],
             figur: 20,
             wuerfel: 20,
             zug: [14, 20],
-            vorher: "Ein Brett mit sechs mal sechs Feldern.",
-            nachher: "Es wächst an einer Seite um eine Reihe oder Spalte — alle "
-                + "Wege werden länger."
+            vorher: "Zwei Felder noch, dann hat der Turm den Bauern.",
+            nachher: "Das Brett wächst an einer zufälligen Seite: Plötzlich ist "
+                + "alles weiter weg als eben noch."
         },
         erdrutsch: {
             brett: [
@@ -422,9 +461,9 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             wuerfel: 20,
             zug: [14, 20],
-            vorher: "Der eigene Angriff steht weit vorn.",
+            vorher: "Dein Angriff steht weit vorn, alles ist vorbereitet.",
             nachher: "Alle eigenen Figuren rutschen ein Feld zurück — der Angriff "
-                + "fällt in sich zusammen."
+                + "fällt in sich zusammen, und du fängst von vorne an."
         },
         meuterei: {
             brett: [
@@ -439,8 +478,9 @@ const SCHACH_VORSCHAU = {
             wuerfel: 20,
             zug: [14, 20],
             vorher: "Noch gehören alle diese Figuren dir.",
-            nachher: "Eine läuft zum Gegner über und kämpft ab sofort gegen dich. "
-                + "Könige meutern nicht."
+            nachher: "Eine läuft zum Gegner über und kämpft ab sofort GEGEN dich — "
+                + "der Unterschied ist doppelt so gross wie ein Verlust. Könige "
+                + "meutern nicht."
         }
     },
 
@@ -582,6 +622,32 @@ const SCHACH_VORSCHAU = {
             text: beispiel.vorher
         })];
 
+        /*
+         * ZUERST DRÜCKT MAN DIE FÄHIGKEIT (seit v0.50).
+         *
+         * Bis v0.49 begann die Anleitung beim Brett — bei „Bauernschub" und
+         * „Händler" zeigte sie überhaupt keinen Handgriff, und bei Sprung,
+         * Ausweichen und Teleport sprang sie von der Ausgangsstellung direkt zu
+         * den neuen Punkten. Wer die Fähigkeit zum ersten Mal einsetzt, sucht
+         * aber genau das: WO fange ich an? Der erste Griff geht immer an den
+         * Vorrat, und der ist jetzt ein eigenes Bild.
+         *
+         * Unglückswürfel bekommen es nicht: Sie werden nie gedrückt, sondern
+         * eingesammelt — dort ist der erste Griff die eigene Figur.
+         */
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        if (beschreibung) {
+            liste.push(SCHACH_VORSCHAU._schritt({
+                runde: vorher,
+                marken: hatFigur ? [beispiel.figur] : [],
+                knopf: beschreibung.titel,
+                text: "Du tippst " + beschreibung.titel + " in deinem Vorrat an."
+                    + (hatZiel || beispiel.zug
+                        ? " Danach fragt das Brett nach dem Rest."
+                        : " Mehr ist nicht zu tun — sie wirkt sofort.")
+            }));
+        }
+
         if (hatZiel) {
             const moeglich = SCHACH_RUNDE.zielFelder(vorher, SCHACH_VORSCHAU.SPIELER, art);
 
@@ -703,6 +769,14 @@ const SCHACH_VORSCHAU = {
             ziele: roh.ziele || [],
             tipp: Number.isInteger(roh.tipp) ? roh.tipp : -1,
             wege: roh.wege || [],
+
+            /*
+             * `knopf` (seit v0.50): Nicht auf dem Brett wird getippt, sondern
+             * auf die Fähigkeit im Vorrat. Der Bildschirm zeichnet dann unter
+             * dem Brett die Marke mit dem Fingerabdruck darauf. Leer heisst:
+             * In diesem Bild wird kein Knopf gedrückt.
+             */
+            knopf: roh.knopf || "",
             text: roh.text || ""
         };
     },

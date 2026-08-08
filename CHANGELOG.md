@@ -3,6 +3,150 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.50.0 — 2026-08-08
+
+Die Bildanleitungen (D6) und zwei weitere Punkte aus dem Eingangskorb.
+
+- **Jede Anleitung zeigt jetzt zuerst, was man DRÜCKT.** Ein neues Bild 2 zeigt
+  die Fähigkeit im Vorrat, mit dem Fingerabdruck darauf. Vorher fing die
+  Anleitung beim Brett an — bei **Bauernschub** und **Händler** zeigte sie
+  überhaupt keinen Handgriff, und bei Sprung, Ausweichen und Teleport sprang
+  sie von der Ausgangsstellung direkt zu den neuen Zugpunkten. Unglückswürfel
+  bekommen das Bild nicht: Sie werden nie gedrückt, sondern eingesammelt.
+
+- **Jede Stellung erzählt jetzt, warum man die Fähigkeit nehmen würde.** Bis
+  v0.49 standen auf fast jedem Beispielbrett nur zwei Könige und die eine
+  Figur, um die es ging — der Gegner fehlte, und damit der Grund. Bei
+  **Ausweichen** behauptete der Satz sogar „angegriffen und eingeklemmt",
+  während weit und breit nichts angriff. Jetzt steht in jedem Bild, was die
+  Fähigkeit löst:
+  - *Sprung*: eine schwarze Dame auf einem Feld, das der Turm gerade nie
+    erreicht — und das letzte Bild zeigt, wie er sie schlägt.
+  - *Ausweichen*: der Turm ist von den eigenen Leuten zugestellt, kein Zug
+    bleibt ihm.
+  - *Teleport*: drei gegnerische Springer riegeln die Reihe ab.
+  - *Frost*: der Springer greift die Dame an. *Fessel*: der Turm nimmt den
+    Läufer ins Visier. *Mauer*: der Turm zielt die Spalte hinunter.
+  - *Verstärkung*: der Bauer wird zum Springer und bedroht sofort zwei Türme.
+  - Und jeder **Unglückswürfel** zeigt jetzt einen Schaden: einen Angriff, der
+    zusammenfällt, eine Beute, die plötzlich unerreichbar wird.
+
+  Die beiden Könige bleiben stehen — die Bilder werden mit den echten Regeln
+  gerechnet, und ein Brett ohne König ist keine Stellung, die das Regelwerk je
+  zu sehen bekommt. Sie stehen jetzt aber aus der Sache heraus.
+
+- **Die Ausdehnung verpufft nicht mehr.** Sie wächst weiterhin an einer von vier
+  Seiten, jede mit einem Viertel — kann die gezogene Seite nicht mehr (Brett am
+  Anschlag), kommt jetzt die nächste dran. Vorher stand im Verlauf „ohne
+  Wirkung", obwohl drei andere Seiten noch Platz hatten. Die Chance von einem
+  Viertel je Seite steht jetzt auch in der Beschreibung.
+
+- **Neuer Haken: Glücksboxen-Regen.** Je leerer das Brett, desto mehr Würfel
+  erscheinen — gegen Ende einer Partie regnet es. Chance und Anzahl hängen am
+  ANTEIL der freien Felder, nicht an ihrer Zahl: Sonst regnete es auf dem
+  Doppelbrett von Beginn an und auf dem kleinen Brett nie. Höchstens fünf auf
+  einmal.
+
+## v0.49.1 — 2026-08-08
+
+Beim Nachmessen der Königs-Chance aufgefallen: Der gerechnete Zufall streute an
+drei Stellen gar nicht. **Eine Ursache, drei Auswirkungen.**
+
+`SCHACH_RUNDE._zufallsWert` ist FNV-1a — jedes Zeichen wird verodert und dann
+mit einer Primzahl multipliziert. Ein Unterschied im **letzten** Zeichen der
+Saat erlebt danach nur noch eine einzige Multiplikation und verschiebt das
+Ergebnis um rund 0,4 Prozent. Wer über etwas zählt und die Zahl hinten anhängt,
+bekommt für alle Durchgänge praktisch denselben Wert. Die Funktion ist in
+Ordnung; die Saat war es nicht.
+
+- **Die Zufallsarmee war keine.** Die sieben Ziehungen einer Seite hiessen
+  `…|figur|1` bis `…|figur|7` und lagen alle innerhalb von zwei Prozent. Jede
+  Seite bekam deshalb siebenmal fast dieselbe Figur — `..ksss..` über
+  `..ssss..`, oder sieben Türme. Nachgemessen über 20 000 Partien: Die Dame kam
+  auf 2 Prozent statt 12, der Turm auf 28 statt 18. Jetzt streut es wie
+  eingestellt (Dame 0,58 je Seite, Turm 1,48).
+- **Unter dem vollen Glas trugen ganze Feldblöcke dasselbe Trugbild.** Die
+  Felder 0 bis 9 sahen alle wie ein Springer aus, 10 bis 15 wie ein Turm —
+  Läufer und Dame kamen als Trugbild überhaupt nie vor. Statt einer Täuschung
+  war es ein Muster. (Fehler von v0.41, jetzt erst gefunden.)
+- **Zwei Würfel im selben Zug ergaben fast immer dieselbe Fähigkeit.** Ihre
+  Werte lagen um 0,004 auseinander. Fiel weniger auf, weil man selten zwei auf
+  einmal einsammelt — dieselbe Ursache.
+
+Die Chance auf zwei Könige war davon **nicht** betroffen (eine einzelne
+Ziehung ohne Zähler) und liegt gemessen bei 12,29 Prozent je Seite. Zwei neue
+Tests halten die Streuung fest; der Merksatz steht jetzt über `_zufallsWert`.
+
+## v0.49.0 — 2026-08-08
+
+Zwei Bündel aus dem Eingangskorb: der Haken für die Unglückswürfel (D7) und
+eine neue Spielart mit zwei Leben (D8).
+
+- **Neuer Haken beim Anlegen: „Unglückswürfel anzeigen".** Angehakt trägt ein
+  schlechter Würfel sein Fragezeichen auf dem Kopf, man erkennt ihn von weitem.
+  Grau gelassen sieht er aus wie jeder andere — gleiche Farbe, Fragezeichen
+  richtig herum —, und man merkt es erst beim Einsammeln. Der Haken ist
+  standardmässig AUS, wie alle Haken.
+
+  Das hebt eine eiserne Regel auf („Dass es ein Unglückswürfel ist, wird immer
+  gezeigt"). Sie ist jetzt die Einstellung, nicht mehr das Gesetz. Nebenbei sind
+  Farbe und Warnung entkoppelt: Bis v0.48 hing beides an „Seltenheit anzeigen",
+  „Farbe ja, Warnung nein" liess sich gar nicht einstellen. Auch laufende
+  Partien zeigen das Unglück ab jetzt nicht mehr — es ist reine Anzeige und
+  rührt an keine Regel.
+
+- **Neue Spielart „Zufallsarmee".** Gewohntes 8×8-Brett, aber jede Seite bekommt
+  nur **8 Figuren**, und welche, wird gewürfelt: König plus sieben, gezogen
+  nach festen Chancen (Bauer 34 %, Springer/Läufer/Turm je 18 %, Dame 12 %,
+  höchstens eine Dame je Seite). Aufgestellt wird auf den beiden Grundreihen;
+  links und rechts bleiben je zwei Spalten frei — deshalb sind es genau acht
+  Felder für genau acht Figuren.
+
+- **Zwei Könige sind zwei Leben.** Mit 12 % Chance startet eine Seite mit zwei
+  Königen. Solange sie beide hat, ist ihr König eine Figur wie jede andere: Er
+  wird geschlagen, es gibt kein Schach für sie und kein Matt. Sobald nur noch
+  einer steht — egal welcher zuerst fiel —, gelten wieder alle Regeln, und
+  gewonnen wird durch Schachmatt.
+
+  Die Frage „zählt der König als Figur?" wird seit jetzt **je Farbe** gestellt
+  (`SCHACH.koenigSchlagbarFuer`) statt je Brett. Weiss kann zwei Könige haben
+  und Schwarz einen; dann kann Weiss nicht ins Schach kommen, Schwarz schon —
+  beides gleichzeitig. Das Doppelbrett bleibt davon unberührt.
+
+- **Testläufer finden VS Code in jedem Benutzerprofil.** Der Rechner wird als
+  Domänen- und als lokaler Benutzer benutzt; die Läufer suchten Code.exe nur
+  über `%LOCALAPPDATA%` und brachen unter der jeweils anderen Anmeldung ab.
+  Gilt für alle Projekte im Ordner, nicht nur fürs Quizz.
+
+## v0.48.0 — 2026-08-08
+
+Vier Punkte aus dem Eingangskorb, alle an den Fähigkeiten.
+
+- **Sprung und Teleport sind jetzt der Zug selbst.** Einsetzen — sofort
+  springen beziehungsweise das Zielfeld antippen — fertig, der Gegner ist dran.
+  In v0.47 gaben beide den Zug ab und wirkten erst eine Runde später; gemeint
+  war es anders. Solange die Fähigkeit läuft, zählt **nur** ihr Muster: Ein
+  normaler Zug wäre ein geschenkter. Bleibt dabei kein einziger Zug übrig (alle
+  Felder besetzt, oder der König im Schach), wird das Einsetzen abgewiesen und
+  die Fähigkeit bleibt im Vorrat — sonst stünde die Partie.
+- **Pluszeichen und Blitz stehen jetzt immer und überall.** Sie sagen, was eine
+  Fähigkeit IST, nicht was gerade geht: auch bei den Fähigkeiten des Gegners,
+  auch während der Gegner am Zug ist. Zwischen v0.41 und v0.47 hing das
+  Pluszeichen am Spielstand und flackerte deshalb — als Merkmal, an dem man eine
+  Fähigkeit wiedererkennt, war es damit unbrauchbar. Was gerade wirklich geht,
+  sagt weiterhin der Dialog beim Einsetzen, in Worten.
+- **Jede Fähigkeit lässt sich antippen.** Auch eine, die man nicht einsetzen
+  darf: Sie zeigt dann Beschreibung, Kosten und die abgespielte Anleitung.
+  Vorher war eine fremde Fähigkeit ein totes Schildchen, und wer wissen wollte,
+  was der Gegner da hat, musste die Bibliothek durchsuchen.
+- **Wiedergeburt ist episch statt legendär.** Sie setzt auf die eigene
+  Grundreihe, also weit weg vom Geschehen — neben Wiederbelebung (an den Ort des
+  Falls) und Friedhof (gleich vier Figuren) war sie die Enttäuschung unter den
+  legendären.
+- **„Ein paar Züge" steht nicht mehr da.** Wo eine Wirkung abläuft, steht jetzt
+  die Zahl: Mauer 6 Halbzüge, Friedhof 8, Volles Glas 8. Die Werte waren schon
+  so eingestellt, sie standen nur nirgends.
+
 ## v0.47.0 — 2026-08-07
 
 **Was eine Fähigkeit kostet, folgt jetzt einer Regel** — und die steht überall

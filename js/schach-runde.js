@@ -77,7 +77,7 @@ const SCHACH_RUNDE = {
         const variante = SCHACH_VARIANTEN.holen(varianteId);
         const wann = (zeitpunkt === undefined) ? 0 : zeitpunkt;
 
-        return {
+        const runde = {
             datenVersion: SCHACH_RUNDE.DATEN_VERSION,
             id: id || "",
             titel: titel || "",
@@ -148,6 +148,31 @@ const SCHACH_RUNDE = {
                 faehigkeiten: null,
                 /* Zeigt der Würfel seine Seltenheit schon auf dem Brett? */
                 seltenheitZeigen: true,
+
+                /*
+                 * Sieht man einem Würfel an, dass er ein UNGLÜCKSwürfel ist?
+                 * (seit v0.49)
+                 *
+                 * Bis v0.48 war das eine eiserne Regel: Das umgedrehte
+                 * Fragezeichen stand immer da. Seit v0.49 ist es ein Haken beim
+                 * Anlegen — und er ist standardmässig AUS, wie alle Haken. Aus
+                 * heisst: Der Unglückswürfel sieht aus wie ein guter, gleiche
+                 * Farbe, Fragezeichen richtig herum. Man merkt es erst beim
+                 * Einsammeln.
+                 *
+                 * Die Frage ist unabhängig von `seltenheitZeigen`: Die
+                 * Seltenheit ist die FARBE, das Unglück ist das ZEICHEN. Wer
+                 * beides koppelt (so war es bis v0.48), kann nicht „Farbe ja,
+                 * Warnung nein" einstellen — genau das war der Wunsch.
+                 */
+                pechZeigen: false,
+
+                /*
+                 * Glücksboxen-Regen (seit v0.50): Je leerer das Brett, desto
+                 * mehr Würfel erscheinen. Zahlen in `SCHACH_VARIANTEN.REGEN`.
+                 */
+                regen: false,
+
                 /* Muss sich das Team über einen Zug einig werden? */
                 einigkeit: false
             },
@@ -170,6 +195,137 @@ const SCHACH_RUNDE = {
 
             verlauf: []
         };
+
+        /*
+         * Die Zufallsarmee hat keine feste Aufstellung — sie wird hier
+         * gerechnet, aus der Partie-Kennung. Sie steht danach als ganz
+         * gewöhnliches Brett im Stand; wer die Partie später lädt, liest sie
+         * einfach ab und rechnet nichts nach.
+         */
+        if (variante.zufallsArmee) {
+            runde.stand = SCHACH_RUNDE._armeeStand(runde.stand, runde.id);
+        }
+
+        return runde;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Die Zufallsarmee (seit v0.49)
+     *
+     * Die Zahlen stehen in `SCHACH_VARIANTEN.ARMEE`; hier steht, wie daraus
+     * ein Brett wird. Gerechnet, nicht gewürfelt — dieselbe eiserne Regel wie
+     * bei den Würfeln: `Math.random()` hat im Modell nichts zu suchen. Aus der
+     * Partie-Kennung rechnet jedes Gerät dasselbe Brett aus, und der Test kann
+     * es nachrechnen.
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Die Felder, auf denen eine Seite aufgestellt wird: ihre beiden
+     * Grundreihen, ohne den freien Rand links und rechts. Die hintere Reihe
+     * zuerst — dort landen die zuerst gezogenen Figuren.
+     */
+    _armeeFelder(breite, hoehe, farbe) {
+        const rand = SCHACH_VARIANTEN.ARMEE.randBreite;
+        const reihen = (farbe === SCHACH.WEISS) ? [hoehe - 1, hoehe - 2] : [0, 1];
+        const felder = [];
+
+        for (const reihe of reihen) {
+            for (let spalte = rand; spalte < breite - rand; spalte++) {
+                felder.push(reihe * breite + spalte);
+            }
+        }
+
+        return felder;
+    },
+
+    /*
+     * Die Figuren einer Seite, als Liste von Arten in Grossbuchstaben.
+     *
+     * Erst der König (selten zwei), dann wird aufgefüllt, dann gemischt — das
+     * Mischen ist wichtig: Ohne es stünde der König immer auf demselben Feld,
+     * und die Bauern immer vorne.
+     */
+    /*
+     * DIE ZÄHLENDE STELLE GEHÖRT AN DEN ANFANG DER SAAT (seit v0.49.1).
+     *
+     * `_zufallsWert` ist FNV-1a: Jedes Zeichen wird verodert und dann mit einer
+     * Primzahl multipliziert. Ein Unterschied im LETZTEN Zeichen erlebt danach
+     * genau eine Multiplikation — er verschiebt das Ergebnis um rund 0,4
+     * Prozent und sonst nichts. Zwei Saaten, die sich nur in der letzten Ziffer
+     * unterscheiden, liefern damit praktisch DENSELBEN Wert.
+     *
+     * Genau das ist beim Bau von v0.49 passiert: Die sieben Ziehungen einer
+     * Seite hiessen `…|figur|1` bis `…|figur|7` und lagen alle innerhalb von
+     * zwei Prozent. Jede Seite bekam siebenmal fast dieselbe Figur — sieben
+     * Springer, sieben Türme —, und der Zufall der Spielart war keiner.
+     *
+     * Steht die Zahl vorne, laufen alle übrigen Zeichen als Mischschritte
+     * hinterher, und die Werte streuen wie erwartet. Wer hier eine weitere
+     * gezählte Ziehung ergänzt, hält sich daran.
+     */
+    _armeeSaat(stelle, was, basis) {
+        return stelle + "|" + was + "|" + basis;
+    },
+
+    _armeeFiguren(id, farbe) {
+        const regel = SCHACH_VARIANTEN.ARMEE;
+        const basis = (id || "partie") + "|armee|" + farbe;
+
+        const zweiKoenige = (SCHACH_RUNDE._zufallsWert(basis + "|koenige") * 100)
+            < regel.zweiKoenige;
+
+        const arten = zweiKoenige ? ["K", "K"] : ["K"];
+        let damen = 0;
+
+        while (arten.length < regel.anzahl) {
+            let art = SCHACH_VARIANTEN.armeeFigurZiehen(SCHACH_RUNDE._zufallsWert(
+                SCHACH_RUNDE._armeeSaat(arten.length, "figur", basis)));
+
+            /* Über die Höchstzahl hinaus gezogene Damen werden Türme. */
+            if (art === "D" && damen >= regel.hoechstensDamen) {
+                art = "T";
+            }
+            if (art === "D") {
+                damen++;
+            }
+
+            arten.push(art);
+        }
+
+        /* Mischen nach Fisher-Yates, mit gerechneten Werten. */
+        for (let stelle = arten.length - 1; stelle > 0; stelle--) {
+            const ziel = Math.floor(SCHACH_RUNDE._zufallsWert(
+                SCHACH_RUNDE._armeeSaat(stelle, "mischen", basis)) * (stelle + 1));
+            const merken = arten[stelle];
+            arten[stelle] = arten[ziel];
+            arten[ziel] = merken;
+        }
+
+        return arten;
+    },
+
+    /* Ein Brett-Stand mit gewürfelten Armeen auf beiden Seiten. */
+    _armeeStand(stand, id) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+
+        const zeichen = [];
+        for (let feld = 0; feld < breite * hoehe; feld++) {
+            zeichen.push(".");
+        }
+
+        for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
+            const felder = SCHACH_RUNDE._armeeFelder(breite, hoehe, farbe);
+            const arten = SCHACH_RUNDE._armeeFiguren(id, farbe);
+            const anzahl = Math.min(felder.length, arten.length);
+
+            for (let stelle = 0; stelle < anzahl; stelle++) {
+                zeichen[felder[stelle]] = (farbe === SCHACH.WEISS)
+                    ? arten[stelle] : arten[stelle].toLowerCase();
+            }
+        }
+
+        return Object.assign({}, stand, { brett: zeichen.join("") });
     },
 
     normalisieren(roh) {
@@ -261,6 +417,13 @@ const SCHACH_RUNDE = {
                 runde.regeln.faehigkeiten = roh.regeln.faehigkeiten;
             }
             runde.regeln.seltenheitZeigen = (roh.regeln.seltenheitZeigen !== false);
+
+            /* `=== true` und nicht `!== false`: Ohne Angabe ist der Haken AUS.
+               Auch Partien von vor v0.49 zeigen das Unglück damit nicht mehr —
+               das ist gewollt, es ist reine Anzeige und ändert keine Regel. */
+            runde.regeln.pechZeigen = (roh.regeln.pechZeigen === true);
+            runde.regeln.regen = (roh.regeln.regen === true);
+
             runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
         }
 
@@ -453,6 +616,25 @@ const SCHACH_RUNDE = {
      * aussagekräftig, weil das Ergebnis vorhersagbar ist.
      *
      * Verfahren: FNV-1a, eine gängige einfache Streufunktion.
+     *
+     * ------------------------------------------------------------------
+     * WAS SICH UNTERSCHEIDET, GEHÖRT AN DEN ANFANG DER SAAT (seit v0.49.1).
+     *
+     * FNV-1a verodert jedes Zeichen und multipliziert dann mit einer Primzahl.
+     * Ein Unterschied im LETZTEN Zeichen erlebt danach genau eine
+     * Multiplikation — er verschiebt das Ergebnis um rund 0,4 Prozent und
+     * sonst nichts. Zwei Saaten, die sich nur am Ende unterscheiden, liefern
+     * damit praktisch DENSELBEN Wert.
+     *
+     * Wer also über etwas zählt (Feldnummer, laufende Nummer), schreibt die
+     * Zahl nach VORNE: `feld + "|glas|" + id`, nicht `id + "|glas|" + feld`.
+     * Dann laufen alle übrigen Zeichen als Mischschritte hinterher.
+     *
+     * Zweimal ist genau das schiefgegangen, beide gefunden am 2026-08-08:
+     * Unter dem vollen Glas trugen die Felder 0 bis 9 dasselbe Trugbild, und
+     * die Zufallsarmee stellte siebenmal fast dieselbe Figur auf. Die Funktion
+     * hier ist in Ordnung — die Saat war es nicht.
+     * ------------------------------------------------------------------
      */
     _zufallsWert(text) {
         let wert = 2166136261;
@@ -483,6 +665,18 @@ const SCHACH_RUNDE = {
     },
 
     /*
+     * Regnet es in dieser Partie Glücksboxen? (seit v0.50)
+     *
+     * Nur mit Würfeln überhaupt — ein Regen ohne Würfel wäre keiner. Deshalb
+     * wird hier BEIDES gefragt und nicht nur der eigene Haken; im Bildschirm
+     * hängt er sichtbar unter dem Würfel-Haken.
+     */
+    regenAn(runde) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        return stand.regeln.regen === true && SCHACH_RUNDE.faehigkeitenAn(stand);
+    },
+
+    /*
      * Wie schwer jede Stufe im Moment wiegt — die Abklingzeit in Zahlen.
      *
      * Gemessen wird im TAKT: Er zählt jeden Halbzug und wird nie
@@ -507,21 +701,16 @@ const SCHACH_RUNDE = {
         if (!SCHACH_RUNDE.faehigkeitenAn(runde)) {
             return;
         }
-        /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr, und seit
-           v3.3 auch keine Höchstzahl (siehe SCHACH_VARIANTEN.BONUS_CHANCE). */
-        const wuerfelt = SCHACH_RUNDE._zufallsWert(
-            (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
-
-        if (wuerfelt >= SCHACH_VARIANTEN.BONUS_CHANCE) {
-            return;
-        }
-
-        /* Fähigkeiten erscheinen nur auf leeren Feldern, und nie dort, wo schon
-           eine liegt. */
+        /*
+         * Fähigkeiten erscheinen nur auf leeren Feldern, und nie dort, wo schon
+         * eine liegt. Gezählt wird ZUERST: Im Glücksboxen-Regen hängen Chance
+         * und Anzahl davon ab, wie leer das Brett gerade ist.
+         */
         const belegt = runde.bonus.map((eintrag) => eintrag.feld);
+        const alleFelder = SCHACH.felderVon(runde.stand);
         const freie = [];
 
-        for (let feld = 0; feld < SCHACH.felderVon(runde.stand); feld++) {
+        for (let feld = 0; feld < alleFelder; feld++) {
             if (SCHACH.figurAuf(runde.stand, feld) === "." && belegt.indexOf(feld) === -1) {
                 freie.push(feld);
             }
@@ -531,12 +720,33 @@ const SCHACH_RUNDE = {
             return;
         }
 
+        const regen = SCHACH_RUNDE.regenAn(runde);
+
+        /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr, und seit
+           v3.3 auch keine Höchstzahl (siehe SCHACH_VARIANTEN.BONUS_CHANCE). */
+        const wuerfelt = SCHACH_RUNDE._zufallsWert(
+            (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
+
+        const grenze = regen
+            ? SCHACH_VARIANTEN.regenChance(freie.length, alleFelder)
+            : SCHACH_VARIANTEN.BONUS_CHANCE;
+
+        if (wuerfelt >= grenze) {
+            return;
+        }
+
         const basis = (runde.id || "partie") + "|" + runde.zugZaehler;
 
-        /* Meist einer, manchmal zwei, sehr selten drei — und nie mehr, als
-           freie Felder da sind. Das ist seit v3.3 die einzige Grenze. */
-        const gewuenscht = SCHACH_VARIANTEN.anzahlZiehen(
-            SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
+        /*
+         * Ohne Regen: meist einer, manchmal zwei, sehr selten drei. Mit Regen
+         * entscheidet nicht der Zufall, sondern der Füllstand — das ist der
+         * ganze Sinn des Hakens. Nie mehr, als freie Felder da sind; das ist
+         * seit v3.3 die einzige harte Grenze.
+         */
+        const gewuenscht = regen
+            ? SCHACH_VARIANTEN.regenAnzahl(freie.length)
+            : SCHACH_VARIANTEN.anzahlZiehen(
+                SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
         const moeglich = Math.min(gewuenscht, freie.length);
 
         const neue = [];
@@ -649,6 +859,10 @@ const SCHACH_RUNDE = {
         if (beschreibung.art === "zugmuster") {
             neu.stand.zusatzFarbe = farbe;
             neu.stand.zusatzMuster = beschreibung.muster;
+
+            /* `istDerZug` (Sprung, Teleport): Man bleibt am Zug, darf aber nur
+               noch nach diesem Muster ziehen — die Fähigkeit ist der Zug. */
+            neu.stand.zusatzNurDieses = !!beschreibung.istDerZug;
             neu.stand.sprungAktiv = (beschreibung.muster === "springer") ? farbe : "";
 
         } else if (beschreibung.art === "ablauf") {
@@ -738,6 +952,20 @@ const SCHACH_RUNDE = {
             }
         }
 
+        /*
+         * WER NUR NOCH SPRINGEN DARF, MUSS AUCH SPRINGEN KÖNNEN (seit v0.48).
+         *
+         * `istDerZug` nimmt der Seite für diesen einen Zug ihre gewohnte
+         * Gangart. Bleibt dabei kein einziger Zug übrig — alle Sprungfelder
+         * besetzt, oder der König steht im Schach und kein Muster löst es auf —
+         * dann stünde die Partie: Der Spieler wäre am Zug, könnte aber nichts
+         * tun, und `SCHACH.alleZuege` läse das als Matt. Deshalb wird das
+         * Einsetzen abgewiesen; die Fähigkeit bleibt im Vorrat.
+         */
+        if (beschreibung.istDerZug && SCHACH.alleZuege(neu.stand).length === 0) {
+            return null;
+        }
+
         neu.verlauf.push({
             text: "Fähigkeit " + SCHACH_VARIANTEN.faehigkeitTitel(art) + " eingesetzt"
                 + zusatzText,
@@ -799,10 +1027,14 @@ const SCHACH_RUNDE = {
              * Vorrat dessen, der ihn einsammelt. Ein Würfel von vor v3.6 trägt
              * seine Art schon; dann bleibt sie stehen.
              */
+            /* Die Feldnummer steht VORNE — sonst liefern zwei Würfel, die im
+               selben Zug auf benachbarten Feldern eingesammelt werden, fast
+               denselben Wert und damit fast immer dieselbe Fähigkeit (siehe
+               `_armeeSaat`). */
             const art = bonus.art || SCHACH_VARIANTEN.faehigkeitAusStufe(
                 bonus.stufe,
-                SCHACH_RUNDE._zufallsWert((runde.id || "partie") + "|inhalt|"
-                    + runde.zugZaehler + "|" + bonus.feld),
+                SCHACH_RUNDE._zufallsWert(bonus.feld + "|inhalt|"
+                    + runde.zugZaehler + "|" + (runde.id || "partie")),
                 runde.faehigkeiten[farbe]);
 
             if (!art) {
@@ -871,10 +1103,25 @@ const SCHACH_RUNDE = {
             wirkung = SCHACH.stolperstein(runde.stand, farbe, feld);
 
         } else if (art === "ausdehnung") {
+            /*
+             * ALLE VIER SEITEN, JEDE MIT EINEM VIERTEL — und wenn die gezogene
+             * nicht mehr kann, kommt die nächste dran (seit v0.50).
+             *
+             * `SCHACH.ausdehnung` weist eine Seite ab, sobald das Brett dort an
+             * seine Grenze stösst (8 Spalten, 9 Reihen). Bis v0.49 verpuffte der
+             * Würfel dann ganz: Wer ihn einsammelte, las „ohne Wirkung" und
+             * hatte Glück gehabt — obwohl drei andere Seiten noch Platz hatten.
+             * Gezogen wird deshalb weiterhin gleichverteilt, aber die übrigen
+             * Seiten werden der Reihe nach durchprobiert.
+             */
             const seiten = ["oben", "unten", "links", "rechts"];
             const wahl = SCHACH_RUNDE._zufallsWert(basis + "|seite");
-            wirkung = SCHACH.ausdehnung(runde.stand,
-                seiten[Math.floor(wahl * seiten.length) % seiten.length]);
+            const erste = Math.floor(wahl * seiten.length) % seiten.length;
+
+            for (let schritt = 0; schritt < seiten.length && !wirkung; schritt++) {
+                wirkung = SCHACH.ausdehnung(runde.stand,
+                    seiten[(erste + schritt) % seiten.length]);
+            }
 
         } else if (art === "meuterei") {
             wirkung = SCHACH.meuterei(runde.stand, farbe,
@@ -1459,6 +1706,16 @@ const SCHACH_RUNDE = {
         if (stand.stand.amZug !== farbe) {
             return false;
         }
+
+        /*
+         * `istDerZug` (Sprung, Teleport seit v0.48): Man bleibt zwar am Zug,
+         * aber der Zug gehört der Fähigkeit — NORMAL ziehen kann man danach
+         * nicht mehr. Genau das verspricht das Pluszeichen, also darf es hier
+         * nicht stehen.
+         */
+        if (beschreibung.istDerZug) {
+            return false;
+        }
         if (!beschreibung.beendetZug) {
             return true;
         }
@@ -1821,8 +2078,20 @@ const SCHACH_RUNDE = {
     /* Neue Partie: Brett zurück, Teams bleiben, Bereitschaft muss neu kommen. */
     neuePartie(runde, zeitpunkt) {
         const neu = SCHACH_RUNDE.kopieren(runde);
+        const wann = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
 
         neu.stand = SCHACH.neuerStand(neu.variante);
+
+        /* Eine zweite Partie in derselben Runde bekommt eine ANDERE Armee —
+           sonst spielte man dieselbe Aufstellung noch einmal. Deshalb geht der
+           Zeitpunkt in die Rechnung ein. Das Brett steht danach im gemeinsamen
+           Stand; nachgerechnet wird es nirgends mehr, es kann also gar nicht
+           auseinanderlaufen. */
+        if (SCHACH_VARIANTEN.holen(neu.variante).zufallsArmee) {
+            neu.stand = SCHACH_RUNDE._armeeStand(neu.stand,
+                (neu.id || "partie") + "|neu|" + wann);
+        }
+
         neu.zugZaehler = 0;
         neu.laeuft = false;
         neu.ergebnis = "";
@@ -1837,7 +2106,7 @@ const SCHACH_RUNDE = {
         neu.verloren = { weiss: [], schwarz: [] };
         neu.verlauf = [];
 
-        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        neu.geaendertAm = wann;
         return neu;
     },
 

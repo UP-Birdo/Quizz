@@ -1004,19 +1004,31 @@ pruefe("Es ist immer nur ein Eintrag aufgeklappt", () => {
     TEAM_SCHACH.infoSchliessen();
 });
 
-pruefe("Ein Unglueckswuerfel traegt ein umgedrehtes Fragezeichen", () => {
+/*
+ * Zeichnet einen Unglueckswuerfel auf g5 und liefert seine Zelle zurueck.
+ * `pechZeigen` ist der Haken aus v0.49.
+ */
+function unglueckswuerfelZeichnen(pechZeigen, wann) {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
     partie = SCHACH_RUNDE.kopieren(partie);
+    partie.regeln.pechZeigen = pechZeigen;
+
     /* Ein noch freies Feld — auf d5 liegt aus einem frueheren Test schon einer,
        und je Feld gilt der erste Eintrag. */
-    partie.bonus.push({ feld: SCHACH.feldNummer("g5"), art: "erdrutsch", pech: true });
+    if (!partie.bonus.some((eintrag) => eintrag.feld === SCHACH.feldNummer("g5"))) {
+        partie.bonus.push({ feld: SCHACH.feldNummer("g5"), art: "erdrutsch", pech: true });
+    }
 
     TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
-        TEAM_SCHACH.abgleich.daten, partie, 5500);
+        TEAM_SCHACH.abgleich.daten, partie, wann);
     TEAM_SCHACH.partieOeffnen(partie.id);
 
-    const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+    return TEAM_SCHACH.wurzelEl.querySelector(
         "[data-feld=\"" + SCHACH.feldNummer("g5") + "\"]");
+}
+
+pruefe("Mit Haken traegt ein Unglueckswuerfel ein umgedrehtes Fragezeichen", () => {
+    const zelle = unglueckswuerfelZeichnen(true, 5500);
     const wuerfel = zelle.kinder.find((kind) => kind.attribute
         && kind.attribute["class"] === "wuerfel");
 
@@ -1032,6 +1044,32 @@ pruefe("Ein Unglueckswuerfel traegt ein umgedrehtes Fragezeichen", () => {
     /* Und der Titel verraet weiterhin nicht, was drin ist. */
     if (String(zelle.title).indexOf("Erdrutsch") !== -1) {
         throw new Error("der Titel verraet den Inhalt");
+    }
+});
+
+pruefe("Ohne Haken ist ein Unglueckswuerfel nicht zu erkennen (v0.49)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: Grau gelassen sollen die Unglueckswuerfel
+     * aussehen wie die guten — gleiche Farbe, Fragezeichen richtig herum. Bis
+     * v0.48 war das Gegenteil eine EISERNE REGEL.
+     */
+    const zelle = unglueckswuerfelZeichnen(false, 5600);
+    const wuerfel = zelle.kinder.find((kind) => kind.attribute
+        && kind.attribute["class"] === "wuerfel");
+
+    if (!wuerfel) {
+        throw new Error("kein Wuerfel");
+    }
+
+    const zeichen = wuerfel.kinder.find((kind) => kind.tagName === "text");
+    if (!zeichen) {
+        throw new Error("kein Fragezeichen");
+    }
+    if (zeichen.attribute.transform) {
+        throw new Error("das Fragezeichen steht auf dem Kopf, obwohl der Haken aus ist");
+    }
+    if (String(zelle.title).indexOf("Unglück") !== -1) {
+        throw new Error("der Titel verraet das Unglueck");
     }
 });
 
@@ -1303,10 +1341,11 @@ pruefe("Ein Weg ohne Laenge ist genau ein Feld", () => {
 /*
  * Die Klassen aller Kinder einer Marke, als eine Zeichenkette.
  *
- * Seit v0.41 haengt das Pluszeichen am Spielstand (`SCHACH_RUNDE.behaeltZug`),
- * nicht mehr allein an der Faehigkeit — deshalb wird hier ausdruecklich
- * gesagt, wer am Zug ist, statt sich auf die Partie zu verlassen (frühere
- * Tests ziehen darin).
+ * SEIT v0.48 SIND DIE ZEICHEN EIGENSCHAFTEN DER FAEHIGKEIT: Sie stehen immer
+ * und ueberall, auch beim Gegner und auch, waehrend der Gegner am Zug ist.
+ * Zwischen v0.41 und v0.47 fragten sie den Spielstand — deshalb bekommt dieser
+ * Helfer weiterhin mit, wer am Zug ist, und deshalb prueft ein eigener Test,
+ * dass es keinen Unterschied mehr macht.
  */
 function zeichenAn(art, amZug) {
     const partie = SCHACH_RUNDE.kopieren(
@@ -1317,7 +1356,7 @@ function zeichenAn(art, amZug) {
     partie.stand.amZug = amZug || "weiss";
 
     const marke = TEAM_SCHACH._faehigkeitMarkeBauen(
-        partie, { id: "id-anna", name: "Anna" }, "weiss", art, false);
+        partie, { id: "id-anna", name: "Anna" }, art, false);
 
     return marke.kinder
         .map((kind) => String(kind.className || (kind.attribute && kind.attribute["class"]) || ""))
@@ -1357,28 +1396,58 @@ pruefe("Der Bauernschub traegt das Pluszeichen, aber keinen Blitz", () => {
     }
 });
 
-pruefe("Der Sprung traegt seit v0.47 kein Pluszeichen mehr", () => {
-    /* Er kostet den Zug: Erst zieht der Gegner, dann darf man springen. */
+pruefe("Der Sprung traegt kein Pluszeichen", () => {
+    /* Seit v0.48: Er IST der Zug — danach bleibt kein normaler uebrig. */
     const zeichen = zeichenAn("sprung");
 
     if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
-        throw new Error("Pluszeichen, obwohl der Sprung den Zug kostet");
+        throw new Error("Pluszeichen, obwohl der Sprung der Zug selbst ist");
     }
 });
 
-pruefe("Im Gegnerzug gibt es kein Pluszeichen, den Blitz aber schon", () => {
+pruefe("Die Zeichen stehen auch im Gegnerzug (v0.48)", () => {
     /*
-     * v0.41: Das Pluszeichen verspricht einen Zug. Waehrend Schwarz am Zug
-     * ist, hat Weiss keinen — auch nicht nach Ausweichen. Der Blitz bleibt:
-     * EINSETZEN darf man es ja gerade.
+     * DIE UMKEHR VON v0.41.
+     *
+     * Zwischen v0.41 und v0.47 verschwand das Pluszeichen, sobald der Gegner am
+     * Zug war — es beantwortete die Frage „habe ich JETZT danach noch einen
+     * Zug". Damit war es kein Merkmal der Faehigkeit mehr, sondern ein
+     * flackernder Zustand, und bei gegnerischen Faehigkeiten stand es nie.
+     * Seit v0.48 sagt es, was die Faehigkeit IST — und ist deshalb von der
+     * Frage, wer am Zug ist, unabhaengig.
      */
-    const zeichen = zeichenAn("ausweichen", "schwarz");
+    for (const amZug of ["weiss", "schwarz"]) {
+        const zeichen = zeichenAn("ausweichen", amZug);
 
-    if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
-        throw new Error("Pluszeichen, obwohl Weiss gar nicht am Zug ist");
+        if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
+            throw new Error("kein Pluszeichen bei amZug=" + amZug);
+        }
+        if (zeichen.indexOf("faehigkeit-blitz") === -1) {
+            throw new Error("kein Blitz bei amZug=" + amZug);
+        }
     }
-    if (zeichen.indexOf("faehigkeit-blitz") === -1) {
-        throw new Error("kein Blitz — im Gegenzug einsetzen geht weiterhin");
+});
+
+pruefe("Auch eine fremde Faehigkeit laesst sich antippen (v0.48)", () => {
+    /*
+     * Wer nicht einsetzen darf, bekommt Beschreibung und Anleitung zu sehen.
+     * Dafuer muss die Marke ein KNOPF sein — bis v0.47 war sie ein totes
+     * Schildchen.
+     */
+    const partie = SCHACH_RUNDE.kopieren(
+        SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard));
+
+    partie.laeuft = true;
+    partie.ergebnis = "";
+
+    const marke = TEAM_SCHACH._faehigkeitMarkeBauen(
+        partie, { id: "id-anna", name: "Anna" }, "friedhof", false);
+
+    if (String(marke.tagName || "").toLowerCase() !== "button") {
+        throw new Error("erwartet ein button, war '" + marke.tagName + "'");
+    }
+    if (String(marke.className || "").indexOf("faehigkeit-knopf-fremd") === -1) {
+        throw new Error("fremde Faehigkeit ohne eigene Klasse");
     }
 });
 

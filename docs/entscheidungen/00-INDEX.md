@@ -16,6 +16,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die Zielpunkte blieben nach dem Zug stehen (v4.0)
     - Die Seite fror ein, bis der Gegner zog (v3.9)
     - Die Fähigkeit war verbraucht, ihre Wirkung nie da (v0.41)
+    - Der gerechnete Zufall streute nicht (v0.49.1)
     - Die neue Partie war da — man stand nur davor (v0.44)
     - Die Bildanleitung hat zwei Regeln entlarvt (v0.46)
     - Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
@@ -109,6 +110,13 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum Rot und Blau und nicht Grün und Gelb (v0.41)
 - Warum die Bildanleitung gerechnet und nicht gezeichnet wird (v0.41)
 - Wie eine Fähigkeit eingepreist wird (v0.47)
+- Die Zeichen gehören der Fähigkeit, nicht der Lage (v0.48) — **kehrt v0.41 um**
+- Sprung und Teleport SIND der Zug (v0.48) — **kehrt einen Teil von v0.47 um**
+- Warum die Wiedergeburt nur noch episch ist (v0.48)
+- Wie lange eine Wirkung hält, steht jetzt dabei (v0.48)
+- Der Unglückswürfel ist kein Gesetz mehr, sondern ein Haken (v0.49) — **hebt
+  eine eiserne Regel auf**
+- Zwei Könige sind zwei Leben (v0.49, Spielart „Zufallsarmee")
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

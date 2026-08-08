@@ -77,6 +77,8 @@ const TEAM_SCHACH = {
     neueRegeln: {
         faehigkeiten: false,
         seltenheitZeigen: false,
+        pechZeigen: false,
+        regen: false,
         einigkeit: false
     },
 
@@ -915,6 +917,8 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.neueRegeln = {
             faehigkeiten: false,
             seltenheitZeigen: false,
+            pechZeigen: false,
+            regen: false,
             einigkeit: false
         };
 
@@ -966,6 +970,8 @@ const TEAM_SCHACH = {
             faehigkeiten: TEAM_SCHACH.neueRegeln.faehigkeiten
                 || !!SCHACH_VARIANTEN.holen(varianteId).faehigkeiten,
             seltenheitZeigen: TEAM_SCHACH.neueRegeln.seltenheitZeigen,
+            pechZeigen: TEAM_SCHACH.neueRegeln.pechZeigen,
+            regen: TEAM_SCHACH.neueRegeln.regen,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
         };
 
@@ -1090,6 +1096,33 @@ const TEAM_SCHACH = {
     },
 
     /*
+     * NUR ANSEHEN (seit v0.48): Beschreibung, was sie kostet, und die
+     * abgespielte Anleitung — ohne etwas einzusetzen.
+     *
+     * Das ist der Weg für jede Fähigkeit, die man gerade NICHT einsetzen darf:
+     * die des Gegners, oder die eigene, während der Gegner am Zug ist. Bis
+     * v0.47 war so eine Fähigkeit ein totes Schildchen; wer wissen wollte, was
+     * dahintersteckt, musste in der Bibliothek danach suchen. Dieselben Bilder
+     * wie beim Einsetzen — es gibt nur eine Anleitung je Fähigkeit.
+     */
+    async faehigkeitAnsehen(art) {
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        if (!beschreibung) {
+            return;
+        }
+
+        await DIALOG.hinweis(
+            SCHACH_VARIANTEN.faehigkeitTitel(art),
+            SCHACH_VARIANTEN.faehigkeitBeschreibung(art)
+                + "\n\n" + TEAM_SCHACH._kostenSatz(beschreibung)
+                + (beschreibung.imGegenzug
+                    ? "\n\nBlitz: Sie geht auch, während der Gegner am Zug ist."
+                    : ""),
+            TEAM_SCHACH._anleitungBauen(art)
+        );
+    },
+
+    /*
      * Der Knopf an einer Fähigkeit. Braucht sie ein Ziel, wird hier nur der
      * Auswahl-Zustand gesetzt — der Einsatz folgt beim Antippen des Feldes.
      */
@@ -1125,10 +1158,13 @@ const TEAM_SCHACH = {
                 + "\n\nSie ist danach verbraucht."
                 + (behaeltZug
                     ? " Dein normaler Zug bleibt dir."
-                    : (beschreibung.beendetZug
-                        ? " Und sie kostet den ganzen Zug: Danach ist der Gegner dran."
-                        : " Einen Zug bekommst du dadurch nicht — du bist gerade "
-                            + "nicht dran.")),
+                    : (beschreibung.istDerZug
+                        ? " Sie IST dein Zug: Gleich danach tippst du deine Figur "
+                            + "und ihr Ziel an — etwas anderes geht dann nicht mehr."
+                        : (beschreibung.beendetZug
+                            ? " Und sie kostet den ganzen Zug: Danach ist der Gegner dran."
+                            : " Einen Zug bekommst du dadurch nicht — du bist gerade "
+                                + "nicht dran."))),
             "Einsetzen",
             false,
             /* Zwei Bilder statt eines langen Satzes: was die Fähigkeit tut,

@@ -45,11 +45,16 @@ const DIALOG = {
         });
     },
 
-    /* Reine Mitteilung mit einem Knopf. */
-    hinweis(titel, text) {
+    /*
+     * Reine Mitteilung mit einem Knopf. `zusatz` ist wahlfrei und wirkt wie bei
+     * `frage`: ein fertiges Element unter dem Text — gebraucht wird es für die
+     * Bildanleitung einer Fähigkeit, die man nur ansieht (seit v0.48).
+     */
+    hinweis(titel, text, zusatz) {
         return DIALOG._zeigen({
             titel: titel,
             text: text,
+            zusatz: zusatz || null,
             knoepfe: [{ beschriftung: "Verstanden", wert: true, stil: "knopf-haupt" }]
         });
     },

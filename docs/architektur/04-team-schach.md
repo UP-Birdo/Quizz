@@ -142,11 +142,49 @@ die die Regeln lesen:
 | `aufstellung` | Startbrett. |
 | `rochade` | `false` schaltet die Rochade ganz ab (sie hängt an den festen Plätzen von König und Turm). |
 | `koenigSchlagbar` | `true` heißt: kein Schach, kein Matt, kein Zugfilter. Der König ist eine Figur wie jede andere, und wer keinen mehr hat, verliert. Nötig für Bretter mit **zwei Königen je Seite** (Doppelbrett). |
+| `koenigeAlsLeben` | `true` heißt: **zwei Könige sind zwei Leben** (seit v0.49). Solange eine Seite mehr als einen König hat, gilt für SIE dasselbe wie bei `koenigSchlagbar`; beim letzten kippt es zurück zu Schach und Matt. Zufallsarmee. |
+| `zufallsArmee` | `true` heißt: Die Aufstellung wird je Partie gerechnet (`SCHACH_RUNDE._armeeStand`). `aufstellung` ist dann nur noch Beispielbild und Rückfall. |
 | `bonusFelder` | Felder, auf denen Fähigkeiten liegen. |
+
+**Eine neue Spielart kommt ans ENDE der Liste.** Die Partie-Kennungen in
+`test-bildschirm.js` entstehen aus der Reihenfolge dieser Liste, und die
+gerechneten Würfel hängen an der Kennung — ein Eintrag in der Mitte verschiebt
+alles dahinter und lässt fremde Tests scheitern (beim Bau von v0.49 passiert).
 
 Die Spielart steht in der Partie **und** im Brett-Stand. Die Partie ist die
 Wahrheit; `SCHACH_RUNDE.normalisieren()` schreibt sie in den Stand, damit die
 Regeln allein aus dem Stand arbeiten können.
+
+#### Schlagbarer König: zwei Wege, eine Antwort
+
+`SCHACH.koenigSchlagbarFuer(stand, farbe)` beantwortet die Frage „zählt der
+König dieser Farbe gerade als gewöhnliche Figur?" — **je Farbe**, nicht je
+Brett. Weiss kann zwei Könige haben und Schwarz einen; dann kennt Weiss kein
+Schach und Schwarz schon, gleichzeitig.
+
+Drei Stellen fragen sie, und alle drei mit der jeweils gemeinten Farbe:
+
+| Stelle | Frage |
+|---|---|
+| `imSchach(stand, farbe)` | Kann DIESE Farbe überhaupt im Schach stehen? |
+| `zuege` — Schlagfilter | Darf der König des GEGNERS geschlagen werden? |
+| `zuege` — Selbstschach-Filter | Muss ich meinen EIGENEN König aus dem Schach halten? |
+
+Wer stattdessen `variante.koenigSchlagbar` direkt abfragt, übersieht die zwei
+Leben. `lage()` fragt beide Schalter: „kein König mehr" beendet die Partie in
+beiden Fällen, danach trennen sich die Wege.
+
+#### Die gerechnete Aufstellung
+
+`SCHACH_RUNDE._armeeStand(stand, id)` baut das Brett aus der Partie-Kennung —
+gerechnet über `_zufallsWert`, nie gewürfelt (eiserne Regel). Danach steht es
+als ganz gewöhnliches Brett im Stand; wer die Partie lädt, liest es ab und
+rechnet nichts nach. Die Zahlen (Anzahl, Randbreite, Chancen je Figur, Chance
+auf zwei Könige) stehen in `SCHACH_VARIANTEN.ARMEE`.
+
+Die acht Figuren je Seite sind **keine gewählte Zahl**: Zwei freie Spalten links
+und rechts lassen auf dem 8er-Brett vier Spalten mal zwei Grundreihen übrig —
+acht Felder, ein Feld je Figur.
 
 ### Fähigkeiten
 
@@ -187,23 +225,35 @@ bei allen Fähigkeiten.
 > Wer Material oder einen Angriff geschenkt bekommt, gibt den Zug ab.
 > Wer nur die Stellung verändert, behält ihn.
 
-| Gruppe | Fähigkeiten | `beendetZug` |
+| Gruppe | Fähigkeiten | Schalter |
 |---|---|---|
-| Material dazu | Wiedergeburt, Wiederbelebung, Spiegel, Verstärkung, Friedhof, Händler | ja |
-| Zusätzliche Gangart zum Schlagen oder Springen | Sprung, Teleport | ja |
-| Nur die Stellung | Bauernschub, Erdbeben, Nudelholz, Mauer, Schutzschild, Fessel, Frost | nein |
-| Schlägt gar nicht | Ausweichen | nein |
-| Ausnahme: das Plus IST die Wirkung | Doppelzug | nein |
+| Material dazu | Wiedergeburt, Wiederbelebung, Spiegel, Verstärkung, Friedhof, Händler | `beendetZug` |
+| Andere Gangart, sofort ausgeführt | Sprung, Teleport | `istDerZug` (seit v0.48) |
+| Nur die Stellung | Bauernschub, Erdbeben, Nudelholz, Mauer, Schutzschild, Fessel, Frost | — |
+| Schlägt gar nicht | Ausweichen | — |
+| Ausnahme: das Plus IST die Wirkung | Doppelzug | — |
 
-Die Stufe sagt, wie SELTEN eine Fähigkeit ist; `beendetZug` sagt, was sie
+Die Stufe sagt, wie SELTEN eine Fähigkeit ist; die Schalter sagen, was sie
 KOSTET. Wird eine zu stark, nimmt man ihr das Pluszeichen — man verschiebt sie
 nicht auf eine andere Stufe. Ein Test (`test-schach-runde.js`) hält die
 Einteilung fest, damit eine neue Fähigkeit nicht ohne Einordnung durchrutscht.
 
-**Ein Zusatzmuster überlebt das Abgeben des Zuges** (seit v0.47, nötig durch
-Sprung und Teleport): Es gilt bis zum eigenen ZUG, nicht bis zum Ende des
-Zugrechts. Verbraucht wird es in `_ausfuehren`, sobald die Farbe zieht, der es
-gehört.
+`istDerZug` und `beendetZug` kosten dasselbe (den eigenen Zug), nur zu
+verschiedenen Zeitpunkten: `beendetZug` gibt ihn ab, die Wirkung kommt eine
+Runde später; `istDerZug` lässt einen am Zug und schränkt ihn auf das Muster
+ein (`stand.zusatzNurDieses`). Wer dabei gar keinen Zug mehr hätte, darf die
+Fähigkeit nicht einsetzen — sonst stünde die Partie.
+
+**Das Pluszeichen zeigt `!beendetZug && !istDerZug`** — eine Eigenschaft der
+Fähigkeit, seit v0.48 wieder unabhängig vom Spielstand. Von v0.41 bis v0.47
+fragte es `SCHACH_RUNDE.behaeltZug`; das gibt es weiterhin, versorgt aber nur
+noch den Satz im Einsetzen-Dialog. Begründung in
+`docs\entscheidungen\entschieden.md`.
+
+**Ein Zusatzmuster überlebt das Abgeben des Zuges** (seit v0.47): Es gilt bis
+zum eigenen ZUG, nicht bis zum Ende des Zugrechts. Verbraucht wird es in
+`_ausfuehren`, sobald die Farbe zieht, der es gehört. Betroffen ist seit v0.48
+nur noch das Ausweichen — die Regel bleibt trotzdem, sie gilt für jedes Muster.
 
 `imGegenzug` hat bisher genau eine Fähigkeit (Ausweichen). Was dabei zu beachten
 war — das Rennen um den Zugzähler und die entfallende Abstimmung — steht in
@@ -229,6 +279,10 @@ stillschweigend weggeworfen: Die Fähigkeit ist verbraucht, die Wirkung nie da.
 Genau das ist „ausweichen" von v3.6 bis v0.40 passiert — die Ursache steht in
 `docs\entscheidungen\erkenntnisse.md`, und ein Test geht diesen Weg jetzt für
 jedes Muster.
+
+| Feld | Wirkung |
+|---|---|
+| `zusatzNurDieses` | Seit v0.48, gilt nur zusammen mit `zusatzMuster`: `_rohzuege` verwirft die gewohnte Gangart der Figur und bietet **ausschliesslich** das Muster an. Gesetzt wird es von Fähigkeiten mit `istDerZug` (Sprung, Teleport) — sie sind der Zug, kein Zusatz dazu. Verfällt mit dem Muster, also beim eigenen Zug. `faehigkeitEinsetzen` weist das Einsetzen ab, wenn danach kein Zug mehr übrig bliebe. |
 | `extraZug` | `_ausfuehren` lässt `amZug` stehen, statt zu wechseln. |
 | `schildFeld` / `schildFarbe` | `zuege()` filtert alle gegnerischen Züge auf dieses Feld weg. Verfällt nach dem nächsten gegnerischen Zug oder wenn die geschützte Figur selbst zieht. |
 | `fesselFeld` / `fesselFarbe` | `zuege()` liefert für dieses Feld nichts. Verfällt nach dem nächsten Zug der gefesselten Seite. |
@@ -559,9 +613,30 @@ wie „Klassisch" mit gesetztem Würfel-Haken. **Gelöscht wird eine Spielart ni
 ### Einstellungen je Partie
 
 `partie.regeln` hält, was beim Anlegen gewählt wurde: `faehigkeiten` (Würfel an
-oder aus, `null` = die Spielart entscheidet), `seltenheitZeigen` und
-`einigkeit`. Die Vorgaben entsprechen dem Verhalten von vor v2.5 — eine Partie
-ohne dieses Feld verhält sich also unverändert.
+oder aus, `null` = die Spielart entscheidet), `seltenheitZeigen`, `pechZeigen`
+und `einigkeit`. Die Vorgaben entsprechen dem Verhalten von vor v2.5 — eine
+Partie ohne dieses Feld verhält sich also unverändert.
+
+**Wie ein Würfel aussieht, sind ZWEI Fragen** (seit v0.49), und sie hängen an
+zwei Haken:
+
+| Haken | Antwortet auf | Aus heisst |
+|---|---|---|
+| `seltenheitZeigen` | Welche FARBE hat er? | einheitliches Grau (`STUFE_UNBEKANNT`) |
+| `pechZeigen` | Steht sein Fragezeichen auf dem KOPF? | kein Unterschied zu einem guten Würfel |
+
+Ein dritter Haken betrifft nicht das Aussehen, sondern die Menge:
+`regeln.regen` (**Glücksboxen-Regen**, seit v0.50). Chance und Anzahl hängen
+dann am ANTEIL der freien Felder — `SCHACH_VARIANTEN.regenChance` und
+`regenAnzahl`, gefragt über `SCHACH_RUNDE.regenAn`. Der Anteil und nicht die
+Anzahl, weil es sonst auf dem Doppelbrett (128 Felder) von Beginn an regnete
+und auf dem kleinen Brett (36) nie.
+
+Bis v0.48 hing beides am ersten Haken, und das Unglück war zusätzlich eine
+eiserne Regel (immer sichtbar). Getrennt lässt sich einstellen, was gemeint war:
+Farbe ja, Warnung nein. `pechZeigen` liest **`=== true`**, ist ohne Angabe also
+AUS — auch in Partien von vor v0.49. Das ist reine Anzeige und rührt an keine
+Regel.
 
 `SCHACH_RUNDE.faehigkeitenAn()` ist die einzige Stelle, die die Frage
 beantwortet, ob Würfel erscheinen. Der Schalter der Partie geht der Spielart vor.

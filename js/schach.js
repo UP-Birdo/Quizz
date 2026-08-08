@@ -272,6 +272,19 @@ const SCHACH = {
                gelöscht, nur ergänzt. */
             zusatzFarbe: "",
             zusatzMuster: "",
+
+            /*
+             * NUR NOCH DIESES MUSTER (seit v0.48).
+             *
+             * Sprung und Teleport sind seitdem der Zug selbst: Wer sie
+             * einsetzt, bleibt am Zug, darf aber ausschliesslich nach dem
+             * Muster ziehen. Ohne diesen Schalter wäre die Fähigkeit ein
+             * geschenkter Zusatzzug — man könnte auch einfach normal ziehen
+             * und den Sprung liegen lassen. Er gilt zusammen mit
+             * `zusatzMuster` und verfällt mit ihm.
+             */
+            zusatzNurDieses: false,
+
             schildFeld: -1,
             schildFarbe: "",
             fesselFeld: -1,
@@ -443,6 +456,10 @@ const SCHACH = {
             stand.zusatzFarbe = roh.sprungAktiv;
             stand.zusatzMuster = "springer";
         }
+
+        /* Der Schalter gilt nur zusammen mit einem Muster — ohne Muster gibt es
+           nichts, worauf er einschränken könnte. */
+        stand.zusatzNurDieses = !!roh.zusatzNurDieses && !!stand.zusatzMuster;
 
         /* Das alte Feld wird mitgeführt, damit der Vertrag additiv bleibt. */
         stand.sprungAktiv = (stand.zusatzMuster === "springer") ? stand.zusatzFarbe : "";
@@ -782,10 +799,6 @@ const SCHACH = {
             roh = roh.filter((zug) => zug.nach !== stand.frostFeld);
         }
 
-        if (SCHACH.varianteVon(stand).koenigSchlagbar) {
-            return roh;
-        }
-
         /*
          * Der König wird NIE geschlagen — auch nicht durch eine Fähigkeit.
          *
@@ -794,8 +807,19 @@ const SCHACH = {
          * Man setzt Schach und ist sofort wieder am Zug, ohne dass der Gegner
          * reagieren durfte. Ohne diese Sperre endete die Partie damit, dass
          * ein König vom Brett verschwindet, statt durch Schachmatt.
+         *
+         * GEFRAGT WIRD NACH DEM BESITZER (seit v0.49): Wer noch zwei Könige
+         * hat, hat zwei Leben — sein König ist dann eine Figur wie jede andere
+         * und darf geschlagen werden. Der letzte ist wieder unantastbar.
          */
-        roh = roh.filter((zug) => SCHACH.artVon(SCHACH.figurAuf(stand, zug.nach)) !== "K");
+        if (!SCHACH.koenigSchlagbarFuer(stand, SCHACH.gegner(farbe))) {
+            roh = roh.filter((zug) => SCHACH.artVon(SCHACH.figurAuf(stand, zug.nach)) !== "K");
+        }
+
+        /* Und wer selbst kein Schach kennt, muss auch keines auflösen. */
+        if (SCHACH.koenigSchlagbarFuer(stand, farbe)) {
+            return roh;
+        }
 
         return roh.filter((zug) => {
             const danach = SCHACH._ausfuehren(stand, zug);
@@ -849,6 +873,16 @@ const SCHACH = {
          * `_mitUmwandlung`.
          */
         if (stand.zusatzFarbe === farbe && stand.zusatzMuster) {
+            /*
+             * `zusatzNurDieses` (Sprung, Teleport seit v0.48): Die Fähigkeit
+             * IST der Zug — die gewohnte Gangart der Figur zählt in diesem
+             * einen Zug nicht. Deshalb wird die bisherige Liste verworfen,
+             * statt das Muster nur dazuzulegen.
+             */
+            if (stand.zusatzNurDieses) {
+                liste = [];
+            }
+
             for (const zug of SCHACH._musterzuege(stand, von, farbe, stand.zusatzMuster)) {
                 if (!liste.some((vorhanden) => vorhanden.nach === zug.nach)) {
                     for (const einzeln of SCHACH._mitUmwandlung(stand, zug, farbe)) {
@@ -1493,12 +1527,43 @@ const SCHACH = {
     },
 
     /*
+     * ZÄHLT DER KÖNIG DIESER FARBE GERADE ALS GEWÖHNLICHE FIGUR? (seit v0.49)
+     *
+     * Zwei Wege führen dorthin, und sie sind verschieden:
+     *
+     *   `koenigSchlagbar`   Eigenschaft der SPIELART: Auf diesem Brett gibt es
+     *                       nie Schach und nie Matt (Doppelbrett). Die Antwort
+     *                       hängt nicht von der Stellung ab.
+     *
+     *   `koenigeAlsLeben`   Eigenschaft der STELLUNG: Solange eine Seite mehr
+     *                       als einen König hat, sind ihre Könige gewöhnliche
+     *                       Figuren — man schlägt sie einfach. Beim LETZTEN
+     *                       kippt es: Er ist ein richtiger König, mit Schach und
+     *                       Matt. Das sind die zwei Leben der Spielart
+     *                       „Zufallsarmee".
+     *
+     * Die Frage wird JE FARBE gestellt, nicht für das Brett. Weiss kann zwei
+     * Könige haben und Schwarz einen — dann kann Weiss nicht ins Schach kommen,
+     * Schwarz schon, und beides gilt gleichzeitig.
+     */
+    koenigSchlagbarFuer(stand, farbe) {
+        const variante = SCHACH.varianteVon(stand);
+
+        if (variante.koenigSchlagbar) {
+            return true;
+        }
+        if (!variante.koenigeAlsLeben) {
+            return false;
+        }
+        return SCHACH.koenigFelder(stand, farbe).length > 1;
+    },
+
+    /*
      * Steht der König dieser Farbe im Schach?
-     * Auf Brettern mit schlagbarem König gibt es kein Schach — dort ist der
-     * König eine Figur wie jede andere.
+     * Wo der König als gewöhnliche Figur zählt, gibt es kein Schach.
      */
     imSchach(stand, farbe) {
-        if (SCHACH.varianteVon(stand).koenigSchlagbar) {
+        if (SCHACH.koenigSchlagbarFuer(stand, farbe)) {
             return false;
         }
         const koenig = SCHACH.koenigFeld(stand, farbe);
@@ -1538,6 +1603,8 @@ const SCHACH = {
             /* Ein zusätzliches Zugmuster gilt für genau einen Zug. */
             zusatzFarbe: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzFarbe,
             zusatzMuster: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzMuster,
+            zusatzNurDieses: (stand.zusatzFarbe === stand.amZug)
+                ? false : stand.zusatzNurDieses,
             sprungAktiv: "",
 
             /*
@@ -2042,10 +2109,13 @@ const SCHACH = {
          *
          * Es gilt „für deinen nächsten ZUG" — und den hat man noch vor sich,
          * wenn man den Zug abgibt, statt zu ziehen. Bis v0.46 wurde es hier
-         * gelöscht; seit Sprung und Teleport den Zug kosten, wäre die
-         * Fähigkeit damit wirkungslos gewesen: verbraucht, aber nie zu
-         * gebrauchen. Denselben Fehler gab es schon einmal (v0.41, siehe
-         * `docs\entscheidungen\erkenntnisse.md`).
+         * gelöscht; damit war ein Muster, das man vor dem Abgeben gesetzt hat,
+         * verbraucht, aber nie zu gebrauchen. Denselben Fehler gab es schon
+         * einmal (v0.41, siehe `docs\entscheidungen\erkenntnisse.md`).
+         *
+         * Betroffen ist seit v0.48 nur noch das Ausweichen (Sprung und Teleport
+         * geben den Zug nicht mehr ab, sie SIND er) — die Regel bleibt
+         * trotzdem, denn sie gilt für jedes Muster.
          *
          * Verbraucht wird das Muster weiterhin durch den eigenen Zug —
          * `_ausfuehren` löscht es, sobald die Farbe zieht, der es gehört.
@@ -2428,8 +2498,17 @@ const SCHACH = {
     lage(stand) {
         const amZugName = (stand.amZug === SCHACH.WEISS) ? "Weiss" : "Schwarz";
 
-        /* Bretter ohne Schach-Begriff: Es zählt, wer noch einen König hat. */
-        if (SCHACH.varianteVon(stand).koenigSchlagbar) {
+        const variante = SCHACH.varianteVon(stand);
+
+        /*
+         * Wo Könige überhaupt geschlagen werden können, zählt zuerst: Wer
+         * keinen mehr hat, hat verloren. Das gilt für beide Wege dorthin — für
+         * das Doppelbrett (`koenigSchlagbar`, nie Schach) und für die zwei
+         * Leben der Zufallsarmee (`koenigeAlsLeben`). Bei letzterer greift
+         * dieser Fall aber erst, wenn AUCH der letzte König weg ist, und der
+         * ist unantastbar: Die Partie endet dort durch Matt, nicht hier.
+         */
+        if (variante.koenigSchlagbar || variante.koenigeAlsLeben) {
             for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
                 if (SCHACH.koenigFelder(stand, farbe).length === 0) {
                     const sieger = SCHACH.gegner(farbe);
@@ -2441,6 +2520,10 @@ const SCHACH = {
                     };
                 }
             }
+        }
+
+        /* Bretter ohne Schach-Begriff sind damit fertig. */
+        if (variante.koenigSchlagbar) {
             if (SCHACH.alleZuege(stand).length === 0) {
                 return { art: "patt", sieger: "", text: "Patt — unentschieden." };
             }

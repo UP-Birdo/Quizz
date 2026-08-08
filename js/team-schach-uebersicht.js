@@ -68,8 +68,25 @@ Object.assign(TEAM_SCHACH, {
                 schluessel: "seltenheitZeigen",
                 titel: "Seltenheit anzeigen",
                 hinweis: "Der Würfel trägt schon auf dem Brett die Farbe seiner Stufe. "
-                    + "Aus heißt: Alle Würfel sehen gleich aus — auch die schlechten, "
-                    + "und man weiß erst beim Einsammeln, was drin war.",
+                    + "Aus heißt: Alle Würfel haben dasselbe Grau, und man weiß erst "
+                    + "beim Einsammeln, wie selten es war.",
+                nurMitWuerfeln: true
+            },
+            {
+                schluessel: "pechZeigen",
+                titel: "Unglückswürfel anzeigen",
+                hinweis: "Ein schlechter Würfel trägt sein Fragezeichen auf dem Kopf, "
+                    + "man erkennt ihn also von weitem. Aus heißt: Er sieht aus wie "
+                    + "jeder andere — gleiche Farbe, Fragezeichen richtig herum. "
+                    + "Dann ist jeder Würfel ein Wagnis.",
+                nurMitWuerfeln: true
+            },
+            {
+                schluessel: "regen",
+                titel: "Glücksboxen-Regen",
+                hinweis: "Je leerer das Brett, desto mehr Würfel erscheinen — gegen "
+                    + "Ende einer Partie regnet es. Aus heißt: Es kommt wie immer "
+                    + "meist einer nach, unabhängig davon, wie viel Platz ist.",
                 nurMitWuerfeln: true
             },
             {

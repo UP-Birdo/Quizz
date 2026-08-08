@@ -202,6 +202,66 @@ diesen Weg (`JSON.parse(JSON.stringify(...))` und zurück durch
    hätte ein Schachmatt erzeugen können, das keines ist. Wer einer Fähigkeit
    etwas wegnimmt, sucht danach jede Stelle, die es noch voraussetzt.
 
+### Der gerechnete Zufall streute nicht (v0.49.1)
+
+**Was zu sehen war:** Nichts — bis jemand nachgemessen hat. Der Nutzer fragte
+nur, wie hoch die Chance auf einen zweiten König in der Zufallsarmee ist. Die
+Antwort stimmte (12 Prozent), aber beim Nachzählen der übrigen Figuren kam
+heraus: Die Dame erschien in 2 Prozent der Ziehungen statt in 12, der Turm in 28
+statt in 18. Und ein Blick auf die erzeugten Bretter zeigte, warum:
+
+    p-1:  ..ksss.. / ..ssss..
+    p-2:  ..tttt.. / ..tdtk..
+    p-3:  ..kkll.. / ..llll..
+
+Jede Seite bekam **siebenmal fast dieselbe Figur**. Die Spielart, deren ganzer
+Sinn der Zufall ist, hatte keinen.
+
+**Die Ursache lag in der SAAT, nicht in der Streufunktion.**
+`SCHACH_RUNDE._zufallsWert` ist FNV-1a: Jedes Zeichen wird verodert und dann
+mit 16777619 multipliziert. Unterscheiden sich zwei Saaten nur im **letzten**
+Zeichen, ist der Zustand davor identisch, und der Unterschied erlebt genau eine
+Multiplikation. Ein Abstand von 1 im letzten Byte ergibt einen Abstand von
+16777619 / 2³² — also **0,4 Prozent**. Die sieben Ziehungen hiessen
+`…|figur|1` bis `…|figur|7`:
+
+    p-1: 0.7833  0.7794  0.7755  0.8029  0.7989  0.7950  0.7911
+
+Sieben Zahlen, die alle dasselbe sagen. Mit der Zahl VORNE
+(`1|figur|p-1|armee|weiss`) laufen alle übrigen Zeichen als Mischschritte
+hinterher, und es sieht aus wie Zufall:
+
+    p-1: 0.4380  0.6372  0.8740  0.9583  0.7508  0.1387  0.4440
+
+**Dieselbe Falle steckte schon zweimal im Bestand**, gefunden beim Absuchen
+aller Aufrufe:
+
+- **Volles Glas** (`partie.id + "|glas|" + feld`, seit v0.41): Die Felder 0 bis
+  9 trugen alle dasselbe Trugbild, 10 bis 15 ebenfalls. Läufer und Dame kamen
+  als Trugbild überhaupt nie vor. Statt einer Täuschung war es ein Muster —
+  fiel nie auf, weil niemand nachgezählt hat.
+- **Würfelinhalt** (`… + "|inhalt|" + zugZaehler + "|" + feld`): Zwei Würfel,
+  im selben Zug auf benachbarten Feldern eingesammelt, lagen 0,004 auseinander
+  und ergaben damit fast immer dieselbe Fähigkeit. Selten genug, um unbemerkt
+  zu bleiben.
+
+**Die Lehren:**
+
+1. **Was sich unterscheidet, gehört an den Anfang der Saat.** Steht es am Ende,
+   mischt es nicht mehr mit. Der Merksatz steht jetzt über `_zufallsWert`, wo
+   ihn jeder liest, der die Funktion benutzt.
+2. **Gerechneter Zufall braucht einen Test auf die STREUUNG, nicht nur auf die
+   Wiederholbarkeit.** Die vorhandenen Tests prüften genau das Richtige — dass
+   dieselbe Kennung dasselbe Brett ergibt, und dass acht Figuren aufgestellt
+   werden. Beides war die ganze Zeit erfüllt. Dass die acht Figuren fast immer
+   dieselbe waren, prüfte niemand. Ein Test misst jetzt den Abstand
+   aufeinanderfolgender Ziehungen, ein zweiter die Vielfalt der Armeen.
+3. **Eine Schwelle für Zufälliges wird gemessen, nicht geschätzt.** Der erste
+   Versuch verbot sechs gleiche Figuren auf einer Seite — und schlug fehl,
+   obwohl der Code richtig war: Bei sieben unabhängigen Ziehungen kommt das in
+   0,4 Prozent der Fälle vor. Geprüft wird deshalb der Schnitt (4,8 Arten je
+   Seite statt 1,4 beim Fehler) und dass Ausreisser selten BLEIBEN.
+
 ### Die neue Partie war da — man stand nur davor (v0.44)
 
 **Was zu sehen war:** „Wenn man eine Runde erstellt, nach dem Haken setzen und

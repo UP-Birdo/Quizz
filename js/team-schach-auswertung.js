@@ -212,7 +212,7 @@ Object.assign(TEAM_SCHACH, {
 
             for (let stelle = 0; stelle < koennen.length; stelle++) {
                 zeile.appendChild(TEAM_SCHACH._faehigkeitMarkeBauen(
-                    partie, person, farbe, koennen[stelle], meinTeam === farbe));
+                    partie, person, koennen[stelle], meinTeam === farbe));
             }
 
             karte.appendChild(zeile);
@@ -232,27 +232,40 @@ Object.assign(TEAM_SCHACH, {
      * zu erfahren, ob damit der Zug weg ist — bei einer legendären eine teure
      * Art, es herauszufinden.
      *
-     * SEIT v0.41 IST DAS PLUSZEICHEN EINE FRAGE AN DEN SPIELSTAND, keine
-     * Eigenschaft der Fähigkeit: `SCHACH_RUNDE.behaeltZug` weiss, ob DIESE
-     * Seite JETZT danach noch ziehen kann. Im Gegnerzug versprach das feste
-     * Zeichen sonst einen Zug, den es gar nicht gibt.
+     * DIE ZEICHEN SIND EIGENSCHAFTEN DER FÄHIGKEIT (seit v0.48), nicht des
+     * Spielstands. Zwischen v0.41 und v0.47 fragte das Pluszeichen
+     * `SCHACH_RUNDE.behaeltZug` — es verschwand also, sobald der Gegner am Zug
+     * war, und bei gegnerischen Fähigkeiten stand es nie. Damit war es kein
+     * Merkmal mehr, an dem man eine Fähigkeit wiedererkennt, sondern ein
+     * Zustand, der ständig hin und her sprang. Der Nutzer will das Zeichen
+     * IMMER und ÜBERALL sehen, auch beim Gegner: Es sagt, was die Fähigkeit
+     * ist, nicht was gerade geht.
+     *
+     * Was gerade geht, sagt weiterhin der Dialog beim Einsetzen — dort steht
+     * es als Satz, und dort ist Platz für „du bist gerade nicht dran".
+     *
+     * ANTIPPEN GEHT IMMER (seit v0.48). Wer nicht einsetzen darf — der Gegner
+     * ist dran, oder es ist gar nicht die eigene Farbe — bekommt Beschreibung
+     * und Anleitung zu sehen. Vorher war eine fremde Fähigkeit ein totes
+     * Schildchen, und wer wissen wollte, was der Gegner da hat, musste die
+     * Bibliothek durchsuchen.
      */
-    _faehigkeitMarkeBauen(partie, person, farbe, art, meineFarbe) {
+    _faehigkeitMarkeBauen(partie, person, art, meineFarbe) {
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art] || {};
         const stufe = SCHACH_VARIANTEN.stufeVon(art);
         const darf = meineFarbe && SCHACH_RUNDE.darfEinsetzen(partie, person.id, art);
 
-        const marke = darf
-            ? TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
-                "knopf-still knopf-klein faehigkeit-knopf",
-                () => TEAM_SCHACH.faehigkeitEinsetzen(partie, art))
-            : TEAM_SCHACH._element("span", "chip faehigkeit-marke",
-                SCHACH_VARIANTEN.faehigkeitTitel(art));
+        const marke = TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
+            "knopf-still knopf-klein faehigkeit-knopf"
+                + (darf ? "" : " faehigkeit-knopf-fremd"),
+            () => (darf
+                ? TEAM_SCHACH.faehigkeitEinsetzen(partie, art)
+                : TEAM_SCHACH.faehigkeitAnsehen(art)));
 
-        if (SCHACH_RUNDE.behaeltZug(partie, farbe, art)) {
+        if (!beschreibung.beendetZug && !beschreibung.istDerZug) {
             const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
-            plus.title = "Danach bleibt dir dein normaler Zug — du kannst noch "
-                + "ziehen und schlagen.";
+            plus.title = "Danach bleibt der normale Zug — es kann noch gezogen "
+                + "und geschlagen werden.";
             marke.appendChild(plus);
         }
         if (beschreibung.imGegenzug) {
@@ -289,6 +302,24 @@ Object.assign(TEAM_SCHACH, {
         svg.appendChild(titel);
 
         return svg;
+    },
+
+    /*
+     * Was eine Fähigkeit kostet, als ein Satz. Drei Fälle, und sie stehen an
+     * genau EINER Stelle — die Bibliothek und der Blick auf eine fremde
+     * Fähigkeit sagen sonst zweierlei über dasselbe Zeichen.
+     */
+    _kostenSatz(beschreibungsSatz) {
+        if (beschreibungsSatz.istDerZug) {
+            return "Kein Pluszeichen: Die Fähigkeit IST der Zug — du machst sie "
+                + "sofort, etwas anderes geht in diesem Zug nicht mehr.";
+        }
+        if (beschreibungsSatz.beendetZug) {
+            return "Kein Pluszeichen: Das Einsetzen kostet deinen Zug — danach "
+                + "ist der Gegner dran.";
+        }
+        return "Pluszeichen (+): Nach dem Einsetzen darfst du noch ganz "
+            + "normal ziehen.";
     },
 
     /* Der i-Knopf öffnet die Übersicht aller Fähigkeiten. */
@@ -337,8 +368,10 @@ Object.assign(TEAM_SCHACH, {
             "Auf freien Feldern erscheinen Würfel. Wer mit einer Figur darüber oder "
             + "darauf zieht, sammelt ein, was darin steckt — welche Fähigkeit es ist, "
             + "sieht man vorher nie. Nur der Springer sammelt unterwegs nichts ein: "
-            + "Er setzt über die Felder dazwischen hinweg. Ein Würfel mit umgedrehtem "
-            + "Fragezeichen bringt nichts Gutes und wirkt sofort."));
+            + "Er setzt über die Felder dazwischen hinweg. Manche Würfel bringen "
+            + "nichts Gutes und wirken sofort. Ob man ihnen das ansieht — dann steht "
+            + "ihr Fragezeichen auf dem Kopf —, entscheidet der Haken "
+            + "Unglückswürfel anzeigen beim Anlegen der Partie."));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             "Nach jedem Halbzug kann ein neuer dazukommen — solange ein Feld frei "
@@ -355,8 +388,10 @@ Object.assign(TEAM_SCHACH, {
         const plusZeile = TEAM_SCHACH._element("div", "stufen-eintrag");
         plusZeile.appendChild(TEAM_SCHACH._element("span", "stufen-name", "Pluszeichen"));
         plusZeile.appendChild(TEAM_SCHACH._element("span", "stufen-text",
-            "Nach dem Einsetzen bleibt dir dein normaler Zug. Fehlt es, ist danach "
-            + "der Gegner dran."));
+            "Nach dem Einsetzen bleibt dir dein normaler Zug. Fehlt es, ist der Zug "
+            + "damit weg — entweder ist gleich der Gegner dran, oder die Fähigkeit "
+            + "IST dein Zug (Sprung, Teleport). Das Zeichen gehört zur Fähigkeit: "
+            + "Es steht immer da, auch bei denen des Gegners."));
         legende.appendChild(plusZeile);
 
         const blitzZeile = TEAM_SCHACH._element("div", "stufen-eintrag");
@@ -438,12 +473,12 @@ Object.assign(TEAM_SCHACH, {
         kopf.appendChild(TEAM_SCHACH._element("span", "stufen-name", titel));
 
         /*
-         * DIESELBEN ZEICHEN WIE AM VORRAT (seit v0.47), damit man sie hier
-         * kennenlernt und dort wiedererkennt. Am Vorrat hängt das Pluszeichen
-         * am Spielstand (`behaeltZug`) — hier steht die EIGENSCHAFT der
-         * Fähigkeit, denn eine Bibliothek kennt keinen Spielstand.
+         * DIESELBEN ZEICHEN WIE AM VORRAT (seit v0.47) — und seit v0.48 nach
+         * derselben Rechnung: Beide lesen die Eigenschaft der Fähigkeit, nicht
+         * den Spielstand. Nur so ist das Zeichen hier gelernt und dort
+         * wiedererkannt.
          */
-        if (!istPech && !beschreibungsSatz.beendetZug) {
+        if (!istPech && !beschreibungsSatz.beendetZug && !beschreibungsSatz.istDerZug) {
             const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
             plus.title = "Danach bleibt dir dein normaler Zug.";
             kopf.appendChild(plus);
@@ -480,11 +515,7 @@ Object.assign(TEAM_SCHACH, {
                ganz oben. Wer hier nachschlägt, sucht diese eine Fähigkeit. */
             if (!istPech) {
                 inhalt.appendChild(TEAM_SCHACH._element("p", "stufen-kosten",
-                    beschreibungsSatz.beendetZug
-                        ? "Kein Pluszeichen: Das Einsetzen kostet deinen Zug — danach "
-                            + "ist der Gegner dran."
-                        : "Pluszeichen (+): Nach dem Einsetzen darfst du noch ganz "
-                            + "normal ziehen."));
+                    TEAM_SCHACH._kostenSatz(beschreibungsSatz)));
 
                 if (beschreibungsSatz.imGegenzug) {
                     inhalt.appendChild(TEAM_SCHACH._element("p", "stufen-kosten",
@@ -748,7 +779,30 @@ Object.assign(TEAM_SCHACH, {
             brett.appendChild(pfeile);
         }
 
-        return brett;
+        /*
+         * DER GRIFF AN DEN VORRAT (seit v0.50). Getippt wird in diesem Bild
+         * nicht aufs Brett, sondern auf die Fähigkeit — also wird sie gezeigt,
+         * mit dem Fingerabdruck darauf. Dasselbe Zeichen wie auf dem Brett,
+         * damit man es wiedererkennt.
+         *
+         * Zurückgegeben wird dann eine Hülle um beides; der Aufrufer hängt
+         * weiterhin genau EIN Element ein und muss nichts darüber wissen.
+         */
+        if (!schritt.knopf) {
+            return brett;
+        }
+
+        const huelle = TEAM_SCHACH._element("div", "anleitung-mitknopf");
+        huelle.appendChild(brett);
+
+        const leiste = TEAM_SCHACH._element("div", "anleitung-vorrat");
+        const marke = TEAM_SCHACH._element("span",
+            "chip faehigkeit-marke anleitung-knopf", schritt.knopf);
+        marke.appendChild(TEAM_SCHACH._fingerBauen());
+        leiste.appendChild(marke);
+        huelle.appendChild(leiste);
+
+        return huelle;
     },
 
     /*

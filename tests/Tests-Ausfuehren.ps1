@@ -22,11 +22,21 @@ $hier = Split-Path -Parent $MyInvocation.MyCommand.Path
 # Node-Laufzeit finden (VS Codes Electron)
 # ---------------------------------------------------------------------
 
+# ZWEI ANMELDUNGEN AN EINEM RECHNER (seit 2026-08-08): Dieser PC wird sowohl
+# als Domaenen- als auch als lokaler Benutzer benutzt, und VS Code installiert
+# sich je Profil in einen EIGENEN Ordner. Ein fester Pfad ueber
+# $env:LOCALAPPDATA findet es deshalb nur unter einer der beiden Anmeldungen -
+# unter der anderen brach der Testlauf mit "Code.exe wurde nicht gefunden" ab.
+# Gesucht wird darum in dieser Reihenfolge: eigenes Profil, systemweite
+# Installation, dann JEDES andere Benutzerprofil auf diesem Rechner.
 $kandidaten = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Microsoft VS Code\Code.exe"),
     "C:\Program Files\Microsoft VS Code\Code.exe",
     "C:\Program Files (x86)\Microsoft VS Code\Code.exe"
 )
+
+$kandidaten += (Get-ChildItem -LiteralPath "C:\Users" -Directory -ErrorAction SilentlyContinue |
+    ForEach-Object { Join-Path $_.FullName "AppData\Local\Programs\Microsoft VS Code\Code.exe" })
 
 $codeExe = $null
 foreach ($kandidat in $kandidaten) {

@@ -312,6 +312,8 @@ const SCHACH_TAFEL = {
                 partie.regeln.faehigkeiten = regeln.faehigkeiten;
             }
             partie.regeln.seltenheitZeigen = (regeln.seltenheitZeigen !== false);
+            partie.regeln.pechZeigen = (regeln.pechZeigen === true);
+            partie.regeln.regen = (regeln.regen === true);
             partie.regeln.einigkeit = (regeln.einigkeit === true);
         }
 

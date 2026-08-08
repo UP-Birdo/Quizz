@@ -132,23 +132,49 @@ pruefe("Faehigkeiten mit Zielfeld zeigen den Handgriff als eigenen Schritt", () 
         const schritte = SCHACH_VORSCHAU.schritte(art);
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);
 
-        gleich(schritte.length, 3, art + ": drei Schritte");
-        gleich(schritte[1].marken.length, 1, art + ": genau ein angetipptes Feld");
-        gleich(schritte[1].marken[0], beispiel.ziel, art + ": und zwar das aus dem Beispiel");
+        /* Seit v0.50: Stellung, Griff an den Vorrat, Zielfeld, Wirkung. */
+        gleich(schritte.length, 4, art + ": vier Schritte");
+        gleich(schritte[2].marken.length, 1, art + ": genau ein angetipptes Feld");
+        gleich(schritte[2].marken[0], beispiel.ziel, art + ": und zwar das aus dem Beispiel");
     }
 });
 
-pruefe("Ohne Zielfeld und ohne Zug gibt es zwei Schritte", () => {
+pruefe("Jede Faehigkeit zeigt zuerst den Griff an den Vorrat (v0.50)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: „bei allen immer das, was man druecken
+     * muss, anzeigen." Vor v0.50 fing die Anleitung beim Brett an — bei
+     * Bauernschub und Haendler zeigte sie ueberhaupt keinen Handgriff.
+     *
+     * Unglueckswuerfel bekommen den Schritt NICHT: Sie werden nie gedrueckt,
+     * sondern eingesammelt.
+     */
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+
+        gleich(schritte[1].knopf, SCHACH_VARIANTEN.faehigkeitTitel(art),
+            art + ": Bild 2 zeigt die Faehigkeit");
+        gleich(schritte[1].tipp, -1, art + ": und keinen Finger auf dem Brett");
+    }
+
+    for (const art of Object.keys(SCHACH_VARIANTEN.PECH)) {
+        for (const schritt of SCHACH_VORSCHAU.schritte(art)) {
+            gleich(schritt.knopf, "", art + ": ein Unglueckswuerfel wird nicht gedrueckt");
+        }
+    }
+});
+
+pruefe("Ohne Zielfeld und ohne Zug bleiben Stellung, Griff und Wirkung", () => {
     for (const art of ["bauernschub", "haendler"]) {
-        gleich(SCHACH_VORSCHAU.schritte(art).length, 2, art + ": zwei Schritte");
+        gleich(SCHACH_VORSCHAU.schritte(art).length, 3, art + ": drei Schritte");
     }
 });
 
-pruefe("Die Zugmuster haben ein drittes Bild: den Zug selbst", () => {
+pruefe("Die Zugmuster haben ein Bild mehr: den Zug selbst", () => {
     /* v0.46: Was die neuen Punkte bedeuten, sieht man erst, wenn die Figur
-       einmal wirklich dorthin zieht. */
+       einmal wirklich dorthin zieht. Seit v0.50 kommt der Griff an den
+       Vorrat davor. */
     for (const art of ["sprung", "ausweichen", "teleport"]) {
-        gleich(SCHACH_VORSCHAU.schritte(art).length, 3, art + ": drei Schritte");
+        gleich(SCHACH_VORSCHAU.schritte(art).length, 4, art + ": vier Schritte");
     }
 });
 
@@ -160,11 +186,12 @@ pruefe("Wo gezogen wird, sind es vier Schritte", () => {
     for (const art of ["doppelzug", "meuterei", "stolperstein", "erdrutsch"]) {
         const schritte = SCHACH_VORSCHAU.schritte(art);
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+        const mitFinger = schritte.filter((schritt) => schritt.tipp >= 0);
 
-        gleich(schritte.length, 4, art + ": vier Schritte");
-        gleich(schritte[1].tipp, beispiel.zug[0], art + ": erst die Figur antippen");
-        gleich(schritte[2].tipp, beispiel.zug[1], art + ": dann ihr Ziel");
-        wahr(schritte[1].ziele.length > 0, art + ": die Zugpunkte sind dabei");
+        gleich(mitFinger.length, 2, art + ": zwei Tipper aufs Brett");
+        gleich(mitFinger[0].tipp, beispiel.zug[0], art + ": erst die Figur antippen");
+        gleich(mitFinger[1].tipp, beispiel.zug[1], art + ": dann ihr Ziel");
+        wahr(mitFinger[0].ziele.length > 0, art + ": die Zugpunkte sind dabei");
     }
 });
 
@@ -372,9 +399,12 @@ pruefe("Die Auswahl im mittleren Schritt kommt aus der Regel", () => {
     const moeglich = SCHACH_RUNDE.zielFelder(schritte[0].runde,
         SCHACH_VORSCHAU.SPIELER, "mauer");
 
-    gleich(schritte[1].wahl.length, moeglich.length - 1,
+    /* Seit v0.50 steht der Griff an den Vorrat davor — das Zielfeld ist Bild 3. */
+    const zielSchritt = schritte[2];
+
+    gleich(zielSchritt.wahl.length, moeglich.length - 1,
         "alle moeglichen Felder ausser dem angetippten");
-    wahr(schritte[1].wahl.indexOf(beispiel.ziel) === -1,
+    wahr(zielSchritt.wahl.indexOf(beispiel.ziel) === -1,
         "das angetippte steht nicht zweimal drin");
 });
 
@@ -384,6 +414,9 @@ pruefe("Die Auswahl im mittleren Schritt kommt aus der Regel", () => {
 
 pruefe("Sprung: das Nachher-Bild markiert Springerziele", () => {
     const bilder = SCHACH_VORSCHAU.bilder("sprung");
+    /* Das Turmfeld steht im Beispiel, nicht hier — sonst muss dieser Test bei
+       jeder neuen Ausgangsstellung mitgeaendert werden (v0.50 gelernt). */
+    const turm = SCHACH_VORSCHAU.beispielVon("sprung").figur;
 
     gleich(bilder.nachher.runde.stand.zusatzMuster, "springer", "Muster gesetzt");
     wahr(bilder.nachher.ziele.length >= 4, "mehrere neue Ziele");
@@ -393,11 +426,29 @@ pruefe("Sprung: das Nachher-Bild markiert Springerziele", () => {
     for (const feld of bilder.nachher.ziele) {
         const spalte = feld % SCHACH_VORSCHAU.BREITE;
         const reihe = Math.floor(feld / SCHACH_VORSCHAU.BREITE);
-        const abstandSpalte = Math.abs(spalte - 20 % SCHACH_VORSCHAU.BREITE);
-        const abstandReihe = Math.abs(reihe - Math.floor(20 / SCHACH_VORSCHAU.BREITE));
+        const abstandSpalte = Math.abs(spalte - turm % SCHACH_VORSCHAU.BREITE);
+        const abstandReihe = Math.abs(reihe - Math.floor(turm / SCHACH_VORSCHAU.BREITE));
 
         gleich(abstandSpalte * abstandReihe, 2, "Feld " + feld + " ist ein Springerziel");
     }
+});
+
+pruefe("Sprung: das letzte Bild zeigt wirklich den Schlag (v0.50)", () => {
+    /*
+     * Die Ausgangsstellung ist so gebaut, dass der vorgefuehrte Zug die
+     * gegnerische Dame schlaegt — sonst zeigte die Anleitung einen Sprung ins
+     * Leere, und der Satz darunter behauptete etwas anderes als das Bild.
+     */
+    const schritte = SCHACH_VORSCHAU.schritte("sprung");
+    const letzter = schritte[schritte.length - 1];
+    const beispiel = SCHACH_VORSCHAU.beispielVon("sprung");
+
+    gleich(letzter.wege.length, 1, "ein Weg");
+    gleich(letzter.wege[0].von, beispiel.figur, "vom Turmfeld");
+
+    const dame = SCHACH_VORSCHAU._brett(beispiel.brett).indexOf("d");
+    gleich(letzter.wege[0].nach, dame, "auf das Feld der Dame");
+    gleich(SCHACH.figurAuf(letzter.runde.stand, dame), "T", "dort steht jetzt der Turm");
 });
 
 pruefe("Verstaerkung: aus dem Bauern wird wirklich ein Springer", () => {

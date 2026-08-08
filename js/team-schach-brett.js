@@ -94,31 +94,36 @@ Object.assign(TEAM_SCHACH, {
             const bonusHier = bonus.find((eintrag) => eintrag.feld === feld);
             if (bonusHier) {
                 /*
-                 * Ist „Seltenheit anzeigen“ aus, sehen alle Würfel gleich aus.
-                 *
                  * WELCHE Fähigkeit drin ist, verrät die Oberfläche NIE — auch
                  * nicht beim Darüberfahren. Ein Würfel, dessen Inhalt man
                  * vorher lesen kann, ist kein Überraschungswürfel mehr.
-                 */
-                /*
-                 * Ist „Seltenheit anzeigen" aus, sehen ALLE Würfel gleich aus —
-                 * auch die schlechten. Dann ist jeder Würfel ein Risiko, und
-                 * genau das ist der Sinn dieser Einstellung. Ist sie an, trägt
-                 * er seine Stufenfarbe und das umgedrehte Fragezeichen.
+                 *
+                 * ZWEI GETRENNTE FRAGEN (seit v0.49):
+                 *
+                 *   `seltenheitZeigen`  Die FARBE — wie selten ist er?
+                 *   `pechZeigen`        Das ZEICHEN — ist er schlecht?
+                 *                       (umgedrehtes Fragezeichen)
+                 *
+                 * Bis v0.48 hing beides am ersten Haken, und das Unglück war
+                 * ausserdem eine eiserne Regel. Getrennt lässt sich einstellen,
+                 * was gemeint war: Farbe ja, Warnung nein — dann ist jeder
+                 * Würfel ein Wagnis, sieht aber weiter nach seiner Stufe aus.
                  */
                 const zeigen = (partie.regeln.seltenheitZeigen !== false);
+                const pechZeigen = (partie.regeln.pechZeigen === true)
+                    && !!bonusHier.pech;
                 const stufe = SCHACH_RUNDE.bonusStufe(bonusHier);
 
                 zelle.classList.add("feld-bonus");
-                zelle.title = zeigen
-                    ? ("Würfel — " + stufe.titel + (bonusHier.pech ? ", Unglück" : ""))
-                    : "Würfel";
+                zelle.title = "Würfel"
+                    + (zeigen ? " — " + stufe.titel : "")
+                    + (pechZeigen ? (zeigen ? ", Unglück" : " — Unglück") : "");
                 zelle.setAttribute("aria-label",
                     SCHACH.feldName(feld, breite, hoehe) + ", " + zelle.title);
 
                 zelle.appendChild(TEAM_SCHACH._wuerfelBauen(
                     zeigen ? stufe : SCHACH_VARIANTEN.STUFE_UNBEKANNT,
-                    zeigen && bonusHier.pech));
+                    pechZeigen));
             }
 
             /*
@@ -669,7 +674,21 @@ Object.assign(TEAM_SCHACH, {
      */
     _glasZeichen(partie, feld, figur) {
         const arten = ["B", "S", "L", "T", "D"];
-        const wert = SCHACH_RUNDE._zufallsWert(partie.id + "|glas|" + feld);
+
+        /*
+         * DIE FELDNUMMER STEHT VORNE (seit v0.49.1) — und das ist kein Zierat.
+         *
+         * `_zufallsWert` ist FNV-1a: Ein Unterschied im LETZTEN Zeichen der
+         * Saat erlebt nur noch eine Multiplikation und verschiebt das Ergebnis
+         * um Bruchteile. Mit `… + "|glas|" + feld` lagen benachbarte Felder
+         * praktisch auf demselben Wert: Die Felder 0 bis 9 sahen alle wie ein
+         * Springer aus, 10 bis 15 wie ein Turm, und Läufer und Dame kamen als
+         * Trugbild überhaupt nie vor. Statt einer Täuschung war es ein Muster.
+         *
+         * Vorne durchläuft die Zahl alle übrigen Mischschritte. Die Zusage von
+         * oben bleibt: dieselbe Partie, dasselbe Feld, dasselbe Trugbild.
+         */
+        const wert = SCHACH_RUNDE._zufallsWert(feld + "|glas|" + partie.id);
         const art = arten[Math.floor(wert * arten.length) % arten.length];
 
         return (SCHACH.farbeVon(figur) === "weiss") ? art : art.toLowerCase();

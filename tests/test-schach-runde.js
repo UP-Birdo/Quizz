@@ -652,8 +652,7 @@ function einsetzen(runde, art, zielFeld, spieler) {
     return SCHACH_RUNDE.faehigkeitEinsetzen(vorbereitet, wer, art, zielFeld, wer, 3000);
 }
 
-/* Laesst Schwarz einen belanglosen Zug machen — noetig, seit Sprung und
-   Teleport den Zug kosten (v0.47): Wirken koennen sie erst danach. */
+/* Laesst Schwarz einen belanglosen Zug machen. */
 function gegnerZiehtEinmal(runde, zeitpunkt) {
     const neu = SCHACH_RUNDE.ziehen(runde, "id-bert",
         SCHACH.feldNummer("e7"), SCHACH.feldNummer("e6"), "D", "Bert",
@@ -668,9 +667,7 @@ pruefe("Sprung: eine beliebige Figur zieht wie ein Springer", () => {
     wahr(runde !== null, "eingesetzt");
 
     gleich(runde.stand.zusatzMuster, "springer", "Muster gesetzt");
-    gleich(runde.stand.amZug, "schwarz", "der Sprung kostet den Zug");
-
-    runde = gegnerZiehtEinmal(runde);
+    gleich(runde.stand.amZug, "weiss", "seit v0.48 bleibt Weiss am Zug");
 
     const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
@@ -794,7 +791,7 @@ pruefe("Das Pluszeichen sagt die Wahrheit ueber den naechsten Zug", () => {
     gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "friedhof"), false,
         "der Friedhof kostet den Zug");
     gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "sprung"), false,
-        "der Sprung seit v0.47 auch");
+        "der Sprung ist der Zug selbst");
     gleich(SCHACH_RUNDE.behaeltZug(runde, "schwarz", "bauernschub"), false,
         "Schwarz ist gar nicht am Zug");
 
@@ -1029,8 +1026,8 @@ pruefe("Teleport: eine Figur springt auf ein freies Feld im Umkreis", () => {
     let runde = einsetzen(faehigkeitenPartie(), "teleport", -1);
     wahr(runde !== null, "eingesetzt");
 
-    /* Auch der Teleport kostet seit v0.47 den Zug. */
-    runde = gegnerZiehtEinmal(runde);
+    /* Seit v0.48 teleportiert man SOFORT — Weiss ist noch am Zug. */
+    gleich(runde.stand.amZug, "weiss", "Weiss bleibt am Zug");
 
     const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach)).sort().join(",");
@@ -1281,24 +1278,77 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
      * Faehigkeit einbringt. Dieser Test haelt die Einteilung fest — kommt eine
      * neue Faehigkeit dazu, muss jemand sie hier einordnen.
      */
-    const kostetDenZug = ["sprung", "teleport", "verstaerkung", "spiegel",
+    const kostetDenZug = ["verstaerkung", "spiegel",
         "wiedergeburt", "wiederbelebung", "friedhof", "haendler"];
     const behaeltDenZug = ["ausweichen", "bauernschub", "schutzschild", "erdbeben",
         "nudelholz", "mauer", "fessel", "frost", "doppelzug"];
+
+    /* Die dritte Gruppe seit v0.48: Die Faehigkeit IST der Zug. Man bleibt am
+       Zug, macht ihn sofort — und kann sonst nichts mehr. */
+    const istDerZug = ["sprung", "teleport"];
 
     for (const art of kostetDenZug) {
         gleich(SCHACH_VARIANTEN.FAEHIGKEITEN[art].beendetZug, true,
             art + " kostet den Zug");
     }
     for (const art of behaeltDenZug) {
-        wahr(!SCHACH_VARIANTEN.FAEHIGKEITEN[art].beendetZug,
+        wahr(!SCHACH_VARIANTEN.FAEHIGKEITEN[art].beendetZug
+            && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].istDerZug,
             art + " behaelt den Zug");
+    }
+    for (const art of istDerZug) {
+        gleich(SCHACH_VARIANTEN.FAEHIGKEITEN[art].istDerZug, true,
+            art + " ist der Zug");
+        wahr(!SCHACH_VARIANTEN.FAEHIGKEITEN[art].beendetZug,
+            art + " gibt den Zug NICHT ab");
     }
 
     /* Und keine ist vergessen worden. */
-    gleich(kostetDenZug.length + behaeltDenZug.length,
+    gleich(kostetDenZug.length + behaeltDenZug.length + istDerZug.length,
         Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN).length,
         "jede Faehigkeit ist eingeordnet");
+});
+
+pruefe("Sprung und Teleport sind der Zug selbst (v0.48)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: „einsetzen bedeutet, dass man einsetzen
+     * drueckt, dann den besonderen Move macht, und dann ist der Zug vorbei."
+     *
+     * Also: Man bleibt am Zug (v0.47 gab ihn ab), darf aber NUR noch nach dem
+     * Muster ziehen — ein normaler Zug waere ein geschenkter.
+     */
+    for (const art of ["sprung", "teleport"]) {
+        const runde = einsetzen(faehigkeitenPartie(), art, -1);
+
+        wahr(runde !== null, art + " laesst sich einsetzen");
+        gleich(runde.stand.amZug, "weiss", art + ": Weiss bleibt am Zug");
+        gleich(runde.stand.zusatzNurDieses, true, art + ": nur noch dieses Muster");
+        gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", art), false,
+            art + ": kein Pluszeichen");
+    }
+});
+
+pruefe("Wer nur noch springen darf, zieht auch nur so", () => {
+    const runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
+
+    /* Der Bauer vor dem Koenig kann normal zwei Felder — jetzt nicht mehr. */
+    const zuege = SCHACH.zuege(runde.stand, SCHACH.feldNummer("e2"));
+    for (const zug of zuege) {
+        wahr(SCHACH.feldName(zug.nach) !== "e3" && SCHACH.feldName(zug.nach) !== "e4",
+            "kein gewoehnlicher Bauernzug mehr (" + SCHACH.feldName(zug.nach) + ")");
+    }
+
+    /* Der Turm in der Ecke dagegen springt jetzt wie ein Springer. */
+    const turm = SCHACH.zuege(runde.stand, SCHACH.feldNummer("a1"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(turm.indexOf("b3") !== -1, "der Turm darf nach b3 springen");
+
+    /* Und der Sprung ist danach verbraucht. */
+    const danach = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 3100);
+    gleich(danach.stand.amZug, "schwarz", "danach ist der Gegner dran");
+    gleich(danach.stand.zusatzMuster, "", "Muster verbraucht");
+    gleich(danach.stand.zusatzNurDieses, false, "und die Einschraenkung mit ihm");
 });
 
 pruefe("Der Doppelzug geht der Wiederbelebung vor", () => {
@@ -1467,24 +1517,27 @@ pruefe("Der Doppelzug laesst dieselbe Seite noch einmal ziehen", () => {
 
 pruefe("Ein Zusatzmuster gilt bis zum eigenen Zug", () => {
     /*
-     * SEIT v0.47 KOSTET DER SPRUNG DEN ZUG: Erst zieht der Gegner, dann darf
-     * man springen. Das Muster muss den Gegenzug also UEBERLEBEN — sonst waere
-     * die Faehigkeit verbraucht und wirkungslos. Verbraucht wird sie durch den
-     * eigenen Zug, und nur dadurch.
+     * Verbraucht wird ein Muster durch den EIGENEN Zug, und nur dadurch. Der
+     * Gegenzug darf es nicht loeschen — sonst waere eine Faehigkeit, die man
+     * waehrend des gegnerischen Zuges einsetzt (Ausweichen, Blitz), verbraucht
+     * und wirkungslos. Genau dieser Fehler ist schon zweimal passiert (v0.41
+     * und v0.47, siehe `docs\entscheidungen\erkenntnisse.md`).
      */
-    let runde = einsetzen(faehigkeitenPartie(), "sprung", -1);
-    gleich(runde.stand.amZug, "schwarz", "der Zug ist abgegeben");
-    gleich(runde.stand.zusatzMuster, "springer", "das Muster steht bereit");
+    let runde = faehigkeitenPartie();
+    runde.stand.amZug = "schwarz";
+    runde.faehigkeiten.weiss.push("ausweichen");
+
+    runde = SCHACH_RUNDE.faehigkeitEinsetzen(
+        runde, "id-anna", "ausweichen", -1, "Anna", 3000);
+    gleich(runde.stand.zusatzMuster, "ausweichen", "das Muster steht bereit");
 
     runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
         SCHACH.feldNummer("e7"), SCHACH.feldNummer("e6"), "D", "Bert", 3050);
-    gleich(runde.stand.zusatzMuster, "springer", "der Gegenzug loescht es nicht");
+    gleich(runde.stand.zusatzMuster, "ausweichen", "der Gegenzug loescht es nicht");
 
     runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
-        SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 3100);
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e3"), "D", "Anna", 3100);
 
-    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("b3")), "T",
-        "der Turm ist wirklich gesprungen");
     gleich(runde.stand.zusatzMuster, "", "verbraucht");
     gleich(runde.stand.zusatzFarbe, "", "und keine Farbe mehr");
 });
@@ -1748,6 +1801,333 @@ pruefe("Die Rochade zeichnet zwei Wege — Koenig und Turm", () => {
     const letzter = danach.verlauf[danach.verlauf.length - 1];
     gleich(letzter.wege.length, 2, "zwei Wege");
     gleich(letzter.wege[1].von, SCHACH.feldNummer("h1"), "der Turm kommt von h1");
+});
+
+/* ------------------------------------------------------------------ *
+ * Die Zufallsarmee (seit v0.49)
+ * ------------------------------------------------------------------ */
+
+/* Zaehlt, wie oft jede Figurenart auf dem Brett steht, je Farbe. */
+function figurenZaehlen(stand, farbe) {
+    const gezaehlt = {};
+
+    for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+        const figur = SCHACH.figurAuf(stand, feld);
+        if (SCHACH.farbeVon(figur) !== farbe) {
+            continue;
+        }
+        const art = SCHACH.artVon(figur);
+        gezaehlt[art] = (gezaehlt[art] || 0) + 1;
+    }
+
+    return gezaehlt;
+}
+
+pruefe("Die Zufallsarmee stellt acht Figuren in die Mitte", () => {
+    const regel = SCHACH_VARIANTEN.ARMEE;
+
+    /* Mehrere Kennungen, damit nicht eine einzelne Ziehung geprueft wird. */
+    for (const kennung of ["p-a", "p-b", "p-c", "p-d", "p-e"]) {
+        const runde = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", kennung, "Zufall");
+        const breite = SCHACH.breiteVon(runde.stand);
+
+        for (const farbe of ["weiss", "schwarz"]) {
+            const gezaehlt = figurenZaehlen(runde.stand, farbe);
+            const summe = Object.keys(gezaehlt)
+                .reduce((wert, art) => wert + gezaehlt[art], 0);
+
+            gleich(summe, regel.anzahl, kennung + "/" + farbe + ": acht Figuren");
+            wahr(gezaehlt.K >= 1, kennung + "/" + farbe + ": mindestens ein Koenig");
+            wahr(gezaehlt.K <= 2, kennung + "/" + farbe + ": hoechstens zwei Koenige");
+            wahr(!gezaehlt.D || gezaehlt.D <= regel.hoechstensDamen,
+                kennung + "/" + farbe + ": hoechstens eine Dame");
+        }
+
+        /* Der Rand bleibt frei — je zwei Spalten links und rechts. */
+        for (let feld = 0; feld < SCHACH.felderVon(runde.stand); feld++) {
+            const spalte = SCHACH.spalteVon(feld, breite);
+            if (spalte >= regel.randBreite && spalte < breite - regel.randBreite) {
+                continue;
+            }
+            gleich(SCHACH.figurAuf(runde.stand, feld), ".",
+                kennung + ": Rand frei auf " + SCHACH.feldName(feld));
+        }
+    }
+});
+
+pruefe("Dieselbe Kennung ergibt dieselbe Armee", () => {
+    /*
+     * DIE EISERNE REGEL: `Math.random()` hat im Modell nichts zu suchen. Sonst
+     * saehe jedes Geraet ein anderes Brett, und der erste Schreibvorgang
+     * gewaenne — dieselbe Falle wie v0.8.
+     */
+    const eine = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", "p-gleich", "A");
+    const andere = SCHACH_RUNDE.leereRunde(9999, "zufallsarmee", "p-gleich", "B");
+
+    gleich(andere.stand.brett, eine.stand.brett, "gerechnet, nicht gewuerfelt");
+
+    const fremde = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", "p-anders", "C");
+    wahr(fremde.stand.brett !== eine.stand.brett,
+        "eine andere Partie bekommt eine andere Armee");
+});
+
+pruefe("Eine Armee ist wirklich gemischt, nicht siebenmal dieselbe Figur", () => {
+    /*
+     * DER FEHLER AUS v0.49 (gefunden beim Nachmessen, behoben in v0.49.1):
+     *
+     * Die sieben Ziehungen einer Seite hiessen `…|figur|1` bis `…|figur|7` und
+     * unterschieden sich damit nur im LETZTEN Zeichen der Saat. `_zufallsWert`
+     * ist FNV-1a; ein Unterschied ganz am Ende erlebt nur noch eine einzige
+     * Multiplikation und verschiebt das Ergebnis um rund 0,4 Prozent. Alle
+     * sieben Werte lagen also praktisch aufeinander, und jede Seite bekam
+     * siebenmal fast dieselbe Figur (…ksss / ssss…).
+     *
+     * Geprueft wird deshalb nicht die Verteilung, sondern die VIELFALT: Wie
+     * viele VERSCHIEDENE Figurenarten eine Seite im Schnitt hat. Gemessen sind
+     * es 4,8; beim Fehler waren es 1,4. Die Schwelle liegt mit 3,5 weit von
+     * beidem entfernt.
+     *
+     * NICHT geprueft wird, dass es NIE sechs gleiche gibt: Bei sieben echt
+     * unabhaengigen Ziehungen kommt das vor (gemessen 0,4 Prozent der Seiten),
+     * und eine Schwelle darauf war der erste Versuch — sie schlug fehl, obwohl
+     * der Code richtig war. Ein seltener Ausreisser ist Zufall, kein Fehler;
+     * geprueft wird stattdessen, dass er selten BLEIBT.
+     */
+    let summeArten = 0;
+    let fastEinfarbig = 0;
+    const versuche = 500;
+
+    for (let nummer = 0; nummer < versuche; nummer++) {
+        const runde = SCHACH_RUNDE.leereRunde(
+            1000, "zufallsarmee", "p-vielfalt-" + nummer, "V");
+        const gezaehlt = figurenZaehlen(runde.stand, "weiss");
+        const arten = Object.keys(gezaehlt);
+
+        summeArten += arten.length;
+
+        /* Der Koenig zaehlt nicht mit — er wird gesetzt, nicht gezogen. */
+        for (const art of arten) {
+            if (art !== "K" && gezaehlt[art] >= 6) {
+                fastEinfarbig++;
+            }
+        }
+    }
+
+    const schnitt = summeArten / versuche;
+    wahr(schnitt > 3.5, "im Schnitt mehr als dreieinhalb Arten je Seite (waren "
+        + schnitt.toFixed(2) + ")");
+
+    const anteil = fastEinfarbig / versuche * 100;
+    wahr(anteil < 5, "fast einfarbige Armeen bleiben die Ausnahme ("
+        + anteil.toFixed(1) + " Prozent)");
+});
+
+pruefe("Die gezaehlten Ziehungen einer Armee streuen wirklich", () => {
+    /*
+     * Dasselbe eine Ebene tiefer, an der Saat selbst: Die Werte zweier
+     * benachbarter Stellen duerfen nicht dicht beieinander liegen. Das ist der
+     * Test, der den Fehler von v0.49 sofort gefunden haette.
+     */
+    const basis = "p-streuung|armee|weiss";
+    const werte = [];
+
+    for (let stelle = 0; stelle < 8; stelle++) {
+        werte.push(SCHACH_RUNDE._zufallsWert(
+            SCHACH_RUNDE._armeeSaat(stelle, "figur", basis)));
+    }
+
+    let groessterAbstand = 0;
+    for (let stelle = 1; stelle < werte.length; stelle++) {
+        groessterAbstand = Math.max(groessterAbstand,
+            Math.abs(werte[stelle] - werte[stelle - 1]));
+    }
+
+    wahr(groessterAbstand > 0.2, "aufeinanderfolgende Ziehungen liegen auseinander "
+        + "(groesster Abstand " + groessterAbstand.toFixed(3) + ")");
+});
+
+pruefe("Zwei Koenige kommen vor, aber selten", () => {
+    let mitZweien = 0;
+    const versuche = 200;
+
+    for (let nummer = 0; nummer < versuche; nummer++) {
+        const runde = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", "p-" + nummer, "Z");
+        if (figurenZaehlen(runde.stand, "weiss").K === 2) {
+            mitZweien++;
+        }
+    }
+
+    const anteil = mitZweien / versuche * 100;
+    wahr(mitZweien > 0, "es kommt vor (" + mitZweien + " von " + versuche + ")");
+    wahr(anteil < SCHACH_VARIANTEN.ARMEE.zweiKoenige * 2,
+        "und bleibt selten (" + anteil.toFixed(1) + " Prozent)");
+});
+
+/*
+ * Ein Brett der Zufallsarmee, von Hand gestellt: Weiss hat zwei Koenige
+ * (e1, a1), Schwarz einen (e8). Ein schwarzer Turm steht auf h1 und kann den
+ * Koenig auf a1 nicht erreichen — die Reihe ist frei bis a1.
+ */
+function zweiLebenPartie(brett) {
+    const runde = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", "p-leben", "Leben");
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "zufallsarmee",
+        brett: brett,
+        amZug: "schwarz",
+        rochade: ""
+    });
+
+    return runde;
+}
+
+pruefe("Mit zwei Koenigen gibt es kein Schach", () => {
+    /* Schwarzer Turm auf e5 greift die e-Linie an, weisser Koenig auf e1. */
+    const runde = zweiLebenPartie(
+        "....k..."
+        + "........"
+        + "........"
+        + "....t..."
+        + "........"
+        + "........"
+        + "........"
+        + "K...K...");
+
+    gleich(SCHACH.imSchach(runde.stand, "weiss"), false,
+        "wer zwei Koenige hat, steht nie im Schach");
+    gleich(SCHACH.koenigSchlagbarFuer(runde.stand, "weiss"), true,
+        "sein Koenig ist eine Figur wie jede andere");
+    gleich(SCHACH.koenigSchlagbarFuer(runde.stand, "schwarz"), false,
+        "der einzelne schwarze Koenig dagegen nicht");
+
+    /* Und der Turm darf ihn wirklich schlagen. */
+    const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("e5"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ziele.indexOf("e1") !== -1, "der Turm schlaegt den einen Koenig");
+});
+
+pruefe("Nach dem ersten Koenig gelten wieder Schach und Matt", () => {
+    let runde = zweiLebenPartie(
+        "....k..."
+        + "........"
+        + "........"
+        + "....t..."
+        + "........"
+        + "........"
+        + "........"
+        + "K...K...");
+
+    runde.laeuft = true;
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
+    runde = SCHACH_RUNDE.teamBeitreten(runde, "id-bert", "schwarz", 1000);
+
+    /* Schwarz schlaegt den Koenig auf e1 — Weiss hat noch einen. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("e5"), SCHACH.feldNummer("e1"), "D", "Bert", 2000);
+
+    wahr(runde !== null, "der Koenig laesst sich schlagen");
+    gleich(SCHACH.koenigFelder(runde.stand, "weiss").length, 1, "einer steht noch");
+    gleich(SCHACH.koenigSchlagbarFuer(runde.stand, "weiss"), false,
+        "und der letzte ist wieder unantastbar");
+
+    /* Der Turm auf e1 steht jetzt in derselben Reihe wie der Koenig auf a1. */
+    gleich(SCHACH.imSchach(runde.stand, "weiss"), true, "Weiss steht im Schach");
+
+    /* Und schlagen laesst er sich nicht mehr. */
+    const ziele = SCHACH.zuege(runde.stand, SCHACH.feldNummer("e1"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ziele.indexOf("a1") === -1, "den letzten Koenig schlaegt niemand");
+});
+
+pruefe("Wer gar keinen Koenig mehr hat, verliert", () => {
+    const runde = zweiLebenPartie(
+        "....k..."
+        + "........"
+        + "........"
+        + "........"
+        + "........"
+        + "........"
+        + "........"
+        + "....t...");
+
+    const lage = SCHACH.lage(runde.stand);
+    gleich(lage.art, "matt", "die Partie ist entschieden");
+    gleich(lage.sieger, "schwarz", "Schwarz gewinnt");
+});
+
+/* ------------------------------------------------------------------ *
+ * Gluecksboxen-Regen (seit v0.50)
+ * ------------------------------------------------------------------ */
+
+pruefe("Der Regen haengt am ANTEIL der freien Felder", () => {
+    /*
+     * Nicht an ihrer Anzahl: Sonst regnete es auf dem Doppelbrett (128 Felder)
+     * von Beginn an und auf dem kleinen Brett (36) nie.
+     */
+    const voll = SCHACH_VARIANTEN.regenChance(0, 64);
+    const halb = SCHACH_VARIANTEN.regenChance(32, 64);
+    const leer = SCHACH_VARIANTEN.regenChance(64, 64);
+
+    gleich(voll, 0, "auf vollem Brett regnet es nicht");
+    gleich(leer, SCHACH_VARIANTEN.REGEN.chance, "auf leerem Brett am staerksten");
+    wahr(halb > voll && halb < leer, "dazwischen steigt es an");
+
+    /* Derselbe Fuellstand, anderes Brett: dieselbe Chance. */
+    gleich(SCHACH_VARIANTEN.regenChance(18, 36), halb, "der Anteil zaehlt, nicht die Zahl");
+});
+
+pruefe("Je mehr Platz, desto mehr Wuerfel", () => {
+    const regel = SCHACH_VARIANTEN.REGEN;
+
+    gleich(SCHACH_VARIANTEN.regenAnzahl(0), 1, "mindestens einer");
+    wahr(SCHACH_VARIANTEN.regenAnzahl(50) > SCHACH_VARIANTEN.regenAnzahl(20),
+        "mehr freie Felder, mehr Wuerfel");
+    gleich(SCHACH_VARIANTEN.regenAnzahl(1000), regel.hoechstens,
+        "aber nie mehr als die Hoechstzahl");
+});
+
+pruefe("Der Regen braucht den Wuerfel-Haken", () => {
+    /* Ein Regen ohne Wuerfel waere keiner — deshalb fragt `regenAn` beides. */
+    const ohne = SCHACH_RUNDE.leereRunde(1000, "standard", "p-regen", "R");
+    ohne.regeln.regen = true;
+    ohne.regeln.faehigkeiten = false;
+    gleich(SCHACH_RUNDE.regenAn(ohne), false, "ohne Wuerfel kein Regen");
+
+    const mit = SCHACH_RUNDE.kopieren(ohne);
+    mit.regeln.faehigkeiten = true;
+    gleich(SCHACH_RUNDE.regenAn(mit), true, "mit Wuerfeln schon");
+
+    const aus = SCHACH_RUNDE.kopieren(mit);
+    aus.regeln.regen = false;
+    gleich(SCHACH_RUNDE.regenAn(aus), false, "und nur mit gesetztem Haken");
+});
+
+pruefe("Im Regen erscheinen mehr Wuerfel als ohne", () => {
+    /*
+     * Gemessen wird ueber viele Halbzuege auf demselben Brett: Der Regen muss
+     * SPUERBAR mehr auswerfen, sonst ist der Haken eine Behauptung.
+     */
+    const zaehlen = (regen) => {
+        let gesamt = 0;
+
+        for (let nummer = 0; nummer < 120; nummer++) {
+            const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-r" + nummer, "R");
+            runde.regeln.faehigkeiten = true;
+            runde.regeln.regen = regen;
+            runde.zugZaehler = nummer;
+
+            SCHACH_RUNDE._bonusNachziehen(runde);
+            gesamt += runde.bonus.length;
+        }
+
+        return gesamt;
+    };
+
+    const ohne = zaehlen(false);
+    const mit = zaehlen(true);
+
+    wahr(mit > ohne * 2, "der Regen wirft deutlich mehr aus ("
+        + mit + " gegen " + ohne + ")");
 });
 
 pruefe("Die Bilanz zaehlt Beute und Verlust nach Figurenwert", () => {

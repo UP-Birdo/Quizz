@@ -1441,6 +1441,155 @@ Legende ganz oben, denn wer dort nachschlägt, sucht genau diese eine Fähigkeit
 Der Unterschied bleibt erhalten: Die Bibliothek zeigt die EIGENSCHAFT, der
 Vorrat die LAGE.
 
+**Nachtrag v0.48: Dieser letzte Absatz ist zurückgenommen.** Der Unterschied
+zwischen Bibliothek und Vorrat war der Fehler, nicht die Lösung — siehe unten.
+
+## Die Zeichen gehören der Fähigkeit, nicht der Lage (v0.48)
+
+Vom Nutzer, wörtlich: *„Das Plus und der Blitz sollen für jeden Spieler immer
+und überall ein Indikator sein … man soll in seinem Fähigkeiten-Inventar immer
+das Zeichen sehen, auch bei gegnerischen Items."*
+
+Das kehrt die Entscheidung von v0.41 um, das Pluszeichen an `behaeltZug` zu
+hängen. Sie war für sich genommen richtig — im Gegnerzug versprach ein festes
+Zeichen einen Zug, den es nicht gab. Nur war der Preis höher als der Gewinn:
+
+- Bei den Fähigkeiten des Gegners stand nie ein Zeichen. Wer wissen wollte, was
+  auf ihn zukommt, sah nichts.
+- Am eigenen Vorrat kam und ging es im Takt der Züge. Ein Merkmal, an dem man
+  eine Fähigkeit wiedererkennt, darf nicht flackern.
+
+**Ein Zeichen sagt jetzt, was die Fähigkeit IST. Was gerade geht, sagt der
+Satz** — im Einsetzen-Dialog, wo Platz für „du bist gerade nicht dran" ist.
+`SCHACH_RUNDE.behaeltZug` bleibt dafür bestehen und wird weiter geprüft; es hat
+nur seinen Platz gewechselt, vom Zeichen zum Text.
+
+Daraus folgt der zweite Teil: **Jede Marke ist ein Knopf.** Eine Fähigkeit, die
+man nicht einsetzen darf, zeigt beim Antippen Beschreibung, Kosten und die
+abgespielte Anleitung — dieselbe wie beim Einsetzen. Vorher war sie ein totes
+Schildchen, und die einzige Auskunft stand in der Bibliothek.
+
+## Sprung und Teleport SIND der Zug (v0.48)
+
+Vom Nutzer: *„Einsetzen bedeutet, dass man Einsetzen drückt, dann den besonderen
+Move macht, und dann soll der Zug vorbei sein — bei der Fähigkeit soll kein Plus
+stehen."*
+
+Damit ist auch der zweite Teil von v0.47 korrigiert. Der Preis war richtig
+angesetzt (ein Springerzug obendrauf ist zu viel), der Weg dorthin nicht:
+`beendetZug` gibt den Zug ab, die Wirkung kommt erst eine Runde später. Aus
+„Sprung" wurde dadurch „Sprung, aber erst nachdem der Gegner gezogen hat" — und
+der Gegner sah es kommen.
+
+Gebaut ist es als dritter Schalter `istDerZug` neben `beendetZug` und
+`imGegenzug`. Er tut zwei Dinge auf einmal:
+
+1. **Man bleibt am Zug** und macht ihn sofort.
+2. **Nur das Muster zählt** (`stand.zusatzNurDieses`). Ohne diesen zweiten Teil
+   wäre die Fähigkeit ein Geschenk: Man könnte sie einsetzen und trotzdem ganz
+   normal ziehen.
+
+Der Preis ist also derselbe wie mit `beendetZug` — der eigene Zug —, er wird nur
+sofort bezahlt statt auf Kredit.
+
+**Was dabei herauskam:** Eine Fähigkeit, die den Zug an sich zieht, kann
+scheitern. Wer nur noch springen darf und kein Sprungfeld frei hat, wäre am Zug,
+ohne einen zu haben — `SCHACH.alleZuege` läse das als Schachmatt. Das Einsetzen
+wird deshalb abgewiesen, die Fähigkeit bleibt im Vorrat. Dieselbe Falle wie
+schon zweimal zuvor (v0.41 und v0.47): Eine Fähigkeit, die sich verbraucht,
+ohne zu wirken.
+
+## Warum die Wiedergeburt nur noch episch ist (v0.48)
+
+Auf Ansage des Nutzers, und sie fügt sich in die Regel von v0.47: Die Stufe sagt,
+wie oft etwas kommt. Legendär waren fünf Fähigkeiten, und die Wiedergeburt war
+unter ihnen die schwächste — sie setzt eine Figur auf die eigene GRUNDREIHE,
+also weit weg vom Geschehen, während die Wiederbelebung sie dorthin
+zurückbringt, wo sie fiel, und der Friedhof gleich vier auf einmal holt. Eine
+legendäre Ziehung, die sich wie eine epische anfühlt, entwertet die Stufe.
+
+## Wie lange eine Wirkung hält, steht jetzt dabei (v0.48)
+
+Vom Nutzer: *„Überall, wo ein paar Runden steht, sollst du dir überlegen, was am
+fairsten ist … und lege eine Zahl fest und schreibe sie mit dazu."*
+
+Nachgerechnet wurde jede zeitlich begrenzte Wirkung; **verändert wurde keine**.
+Die eingestellten Werte sind ausgewogen — sie standen nur nirgends:
+
+| Wirkung | Dauer | Warum sie passt |
+|---|---|---|
+| Mauer | 6 Halbzüge | Je drei eigene Züge für beide Seiten. Lang genug, um einen Angriff zu stoppen, kurz genug, dass man nicht einfach dahinter wartet. |
+| Friedhof | 8 Halbzüge | Vier eigene Züge, um vier geliehene Figuren zu nutzen — einer je Figur. Weniger wäre geschenkt, mehr wäre die Partie. |
+| Volles Glas | 8 Halbzüge | Reine Sicht, keine Regel. Vier eigene Züge sind lästig, aber nicht ruinös. |
+
+## Der Unglückswürfel ist kein Gesetz mehr, sondern ein Haken (v0.49)
+
+Bis v0.48 stand in `CLAUDE.md`: *„Dass es ein UNGLÜCKSwürfel ist, wird dagegen
+immer gezeigt (umgedrehtes Fragezeichen)."* Vom Nutzer, auf Rückfrage: *„Es soll
+keine eiserne Regel sein, das ist nur noch so, wenn man den Haken drückt; wenn
+man ihn grau lässt, werden die Unglücksboxen nicht unterscheidbar."*
+
+Damit ist die Regel zur Vorgabe geworden: Der Haken heisst **Unglückswürfel
+anzeigen** und ist wie alle Haken standardmässig aus. Auch Partien von vor v0.49
+zeigen das Unglück ab jetzt nicht mehr (`pechZeigen` liest `=== true`, nicht
+`!== false`) — es ist reine Anzeige und rührt an keine Regel.
+
+**Was beim Bauen herauskam: Es waren nie zwei Fragen, sondern eine.** Die
+Sichtbarkeit des Unglücks hing am Haken „Seltenheit anzeigen" mit dran:
+
+    zeigen ? stufe : STUFE_UNBEKANNT      // die Farbe
+    zeigen && bonusHier.pech              // das umgedrehte Fragezeichen
+
+Wer die Farben sehen, aber nicht vorgewarnt werden wollte, hatte keine
+Einstellung dafür. Jetzt sind es zwei: `seltenheitZeigen` beantwortet „welche
+FARBE", `pechZeigen` „steht das Fragezeichen auf dem KOPF". Alle vier
+Kombinationen ergeben Sinn.
+
+Unangetastet bleibt die eiserne Regel darüber: **WELCHE Fähigkeit in einem
+Würfel steckt, verrät die Oberfläche nie** — auch nicht im Titel beim
+Darüberfahren.
+
+## Zwei Könige sind zwei Leben (v0.49, Spielart „Zufallsarmee")
+
+Vom Nutzer: *„Baue es so um, dass egal welcher König zuerst geschlagen wird, der
+zweite ins Schachmatt gestellt werden muss — also so wie zwei Leben."*
+
+Das war die offene Frage aus der Triage. Zwei Könige je Seite gab es bisher nur
+im Doppelbrett, und dort über `koenigSchlagbar`: **kein Schach und kein Matt,
+für das ganze Brett, die ganze Partie.** Wer keinen König mehr hat, verliert. Das
+ist eine andere Regel als „zwei Leben" — sie kennt das Schachmatt gar nicht.
+
+Gebaut ist es deshalb als **Frage an die Stellung, je Farbe**:
+
+    SCHACH.koenigSchlagbarFuer(stand, farbe)
+
+Sie hat zwei Quellen. `koenigSchlagbar` ist eine Eigenschaft des BRETTS und
+antwortet immer gleich. `koenigeAlsLeben` ist eine Eigenschaft der STELLUNG:
+Solange die Farbe mehr als einen König hat, ist ihr König eine Figur wie jede
+andere — er wird geschlagen, sie kann nicht ins Schach kommen und nicht mattgesetzt
+werden. Beim letzten kippt es zurück, und zwar mitten in der Partie.
+
+**Warum je Farbe und nicht je Brett:** Weiss kann zwei Könige haben und Schwarz
+einen. Dann muss beides gleichzeitig gelten — Weiss kennt kein Schach, Schwarz
+schon. Eine Antwort fürs ganze Brett könnte das nicht abbilden. Betroffen sind
+genau drei Stellen (`imSchach`, der Schlagfilter in `zuege`, der Selbstschach-Filter
+in `zuege`), und alle drei fragen jetzt nach der jeweils gemeinten Farbe.
+
+**Warum acht Figuren:** Das ist keine gewählte Zahl. Der Nutzer wollte „König +
+7 weitere" und „links und rechts jeweils 2×2 Felder frei". Auf dem 8er-Brett
+bleiben bei zwei freien Spalten je Seite genau vier Spalten mal zwei Grundreihen
+— acht Felder. Ein Feld, eine Figur; die Vorgaben passen exakt zusammen.
+
+**Warum höchstens eine Dame:** Beide Seiten ziehen unabhängig. Ohne Grenze zieht
+eine Seite gelegentlich zwei oder drei Damen, und gegen sieben Bauern ist das
+keine Partie mehr, sondern ein Ergebnis. Was darüber hinaus gezogen wird, wird
+zum Turm. Die Schwankung an sich bleibt — sie ist der Sinn der Spielart.
+
+**Warum keine Rochade:** Sie wird aus der Stellung gelesen (König auf seinem
+Startfeld, Turm auf derselben Grundreihe). Bei einer gewürfelten Aufstellung ist
+„das Startfeld des Königs" nur noch Zufall, und mit zwei Königen wäre nicht
+einmal klar, wessen Recht gemeint ist.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

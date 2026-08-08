@@ -1556,6 +1556,20 @@ body {
 }
 
 /*
+ * Eine Fähigkeit, die man gerade nicht einsetzen darf (seit v0.48).
+ *
+ * Antippen geht trotzdem — es zeigt dann nur Beschreibung und Anleitung. Sie
+ * muss sich deshalb sichtbar von einer einsatzbereiten unterscheiden, ohne
+ * auszusehen wie abgeschaltet: gestrichelter Rand statt durchgezogenem, dazu
+ * ein zurückgenommener Grund.
+ */
+.faehigkeit-knopf-fremd {
+    border-style: dashed;
+    background: transparent;
+    font-weight: 500;
+}
+
+/*
  * Die beiden Zeichen am Vorrat (seit v3.6):
  *
  *     +      Danach bleibt dir dein normaler Zug.
@@ -1938,6 +1952,38 @@ body {
     flex: 1 1 140px;
     min-width: 130px;
     max-width: 220px;
+}
+
+/*
+ * Der Griff an den Vorrat (seit v0.50).
+ *
+ * In einem Bild wird nicht das Brett angetippt, sondern die Fähigkeit. Sie
+ * steht dann UNTER dem Brett, an der Stelle, an der sie auch im Spiel steht —
+ * mit demselben Fingerabdruck, den das Brett sonst trägt. Das Brett bleibt
+ * dabei stehen und behält seine Grösse: Sonst hüpfte das Bild bei jedem Takt.
+ */
+.anleitung-mitknopf {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.anleitung-vorrat {
+    display: flex;
+    justify-content: center;
+}
+
+.anleitung-knopf {
+    position: relative;
+    --stufe-farbe: var(--haupt);
+}
+
+/* Auf dem Brett füllt der Abdruck ein Feld; auf der Marke sitzt er daneben. */
+.anleitung-knopf .anleitung-finger {
+    position: static;
+    width: 1.1em;
+    height: 1.1em;
+    margin-left: 4px;
 }
 
 .anleitung-marke {

@@ -283,6 +283,22 @@ Bauvorgänge je Stunde.
    im Klartext und wird nie mit hochgeladen (er steht auf der Sperrliste im
    Skript).
 
+> **ZWEI ANMELDUNGEN = ZWEI SCHLÜSSEL** (festgestellt 2026-08-08). Dieser
+> Rechner wird als Domänen- und als lokaler Benutzer benutzt. Die
+> Verschlüsselung (DPAPI) ist an das Windows-KONTO gebunden — unter der jeweils
+> anderen Anmeldung meldet das Skript:
+>
+>     Der hinterlegte Schluessel laesst sich nicht lesen:
+>     Schlüssel ist im angegebenen Status nicht gültig.
+>
+> Das ist kein Fehler und kein kaputter Token, sondern der Zweck von DPAPI.
+> Anders als beim Suchen nach `Code.exe` lässt es sich **nicht** umgehen: Der
+> Schlüssel kann nicht zwischen Konten geteilt werden, ohne die Verschlüsselung
+> aufzugeben. Wer aus beiden Anmeldungen ausliefern will, führt `-SetToken`
+> einmal je Anmeldung aus — dieselbe Datei wird dabei überschrieben, es gilt
+> also immer die zuletzt eingerichtete. Einfacher ist: **immer aus derselben
+> Anmeldung ausliefern.**
+
 ### Jedes Mal
 
 1. Version in [../js/konfig.js](../js/konfig.js) um 0.1 erhöhen.

@@ -27,6 +27,18 @@
  *                    geschlagen wie jede andere Figur, und wer keinen König
  *                    mehr hat, verliert. Nötig für Bretter mit mehreren
  *                    Königen je Seite (Doppelbrett).
+ *     koenigeAlsLeben  true = zwei Könige sind zwei Leben (seit v0.49). Solange
+ *                    eine Seite mehr als einen König hat, ist ihr König eine
+ *                    Figur wie jede andere; beim LETZTEN gelten wieder Schach
+ *                    und Matt. Der Unterschied zu `koenigSchlagbar`: Der hängt
+ *                    am BRETT und gilt immer, dieser hier an der STELLUNG und
+ *                    je Farbe getrennt. Beantwortet wird beides an einer Stelle,
+ *                    `SCHACH.koenigSchlagbarFuer`.
+ *     zufallsArmee   true = die Aufstellung wird je Partie GERECHNET, nicht aus
+ *                    `aufstellung` gelesen (seit v0.49, siehe
+ *                    `SCHACH_RUNDE._armeeStand`). Das Feld `aufstellung` bleibt
+ *                    trotzdem gefüllt: Es ist das BEISPIEL für die Kachel in der
+ *                    Auswahl und der Rückfall, falls ein Stand ohne Brett kommt.
  *     bonusFelder    Fähigkeiten, die auf dem Brett liegen:
  *                    [ { feld: <Nummer>, art: "sprung" } ]. Leer = keine.
  */
@@ -126,15 +138,16 @@ const SCHACH_VARIANTEN = {
         ausdehnung: {
             titel: "Ausdehnung",
             stufe: "blau",
-            beschreibung: "Das Spielfeld wächst an einer zufälligen Seite um eine "
-                + "Reihe oder Spalte. Alle Wege werden länger."
+            beschreibung: "Das Spielfeld wächst um eine Reihe oder Spalte — oben, "
+                + "unten, links oder rechts, jede Seite mit derselben Chance von "
+                + "einem Viertel. Alle Wege werden länger."
         },
         vollesGlas: {
             titel: "Volles Glas",
             stufe: "gruen",
-            beschreibung: "Wer ihn einsammelt, sieht die gegnerischen Figuren eine "
-                + "Weile falsch: Sie ziehen wie immer, sehen aber aus wie etwas "
-                + "anderes. Nur die eigene Ansicht ist betroffen — der Gegner "
+            beschreibung: "Wer ihn einsammelt, sieht die gegnerischen Figuren 8 "
+                + "Halbzüge lang falsch: Sie ziehen wie immer, sehen aber aus wie "
+                + "etwas anderes. Nur die eigene Ansicht ist betroffen — der Gegner "
                 + "merkt nichts."
         },
         /*
@@ -243,6 +256,55 @@ const SCHACH_VARIANTEN = {
         { anzahl: 3, chance: 3 }
     ],
 
+    /* ---------------------------------------------------------------- *
+     * Glücksboxen-Regen (seit v0.50)
+     *
+     * Ein Haken beim Anlegen: Je mehr Felder frei sind, desto mehr Würfel
+     * erscheinen. Gedacht für den späten Teil einer Partie, wenn das Brett
+     * leergefegt ist und sonst kaum noch etwas passiert.
+     *
+     * Beide Zahlen hängen am ANTEIL der freien Felder, nicht an ihrer Anzahl —
+     * sonst regnete es auf dem Doppelbrett (128 Felder) von Beginn an, und auf
+     * dem kleinen Brett (36) nie.
+     * ---------------------------------------------------------------- */
+
+    REGEN: {
+        /*
+         * Wie oft nach einem Halbzug überhaupt etwas erscheint, wenn das Brett
+         * VÖLLIG leer wäre (Prozent). Bei halb belegtem Brett also die Hälfte
+         * davon. Zum Vergleich: ohne Regen sind es feste 18 Prozent.
+         */
+        chance: 80,
+
+        /*
+         * Ein Würfel je so vielen freien Feldern. Auf dem klassischen Brett
+         * sind zu Beginn 32 frei — das ergibt zwei. Gegen Ende, bei 55 freien
+         * Feldern, sind es vier.
+         */
+        jeFelder: 12,
+
+        /* Mehr als das werden es nie, egal wie leer es ist. Ein Brett, das
+           schneller Würfel auswirft, als man sie einsammeln kann, ist kein
+           Spiel mehr. */
+        hoechstens: 5
+    },
+
+    /* Wie viele Würfel der Regen bei so vielen freien Feldern auswirft. */
+    regenAnzahl(freieFelder) {
+        const regel = SCHACH_VARIANTEN.REGEN;
+        const gewuenscht = Math.floor(freieFelder / regel.jeFelder);
+
+        return Math.max(1, Math.min(regel.hoechstens, gewuenscht));
+    },
+
+    /* Mit welcher Chance (Prozent) der Regen bei diesem Füllstand einsetzt. */
+    regenChance(freieFelder, alleFelder) {
+        if (!alleFelder) {
+            return 0;
+        }
+        return SCHACH_VARIANTEN.REGEN.chance * (freieFelder / alleFelder);
+    },
+
     /* Wie viele Würfel erscheinen bei diesem Zufallswert? */
     anzahlZiehen(wert) {
         let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
@@ -280,6 +342,19 @@ const SCHACH_VARIANTEN = {
      *                        stark: Man bekäme Material geschenkt und dürfte im
      *                        selben Atemzug damit angreifen.
      *
+     *   `istDerZug: true`    Die Fähigkeit IST der Zug (seit v0.48). Man bleibt
+     *                        am Zug und muss ihn sofort machen — aber nur nach
+     *                        dem Muster der Fähigkeit, nichts anderes
+     *                        (`stand.zusatzNurDieses`). Kein Pluszeichen: Ein
+     *                        normaler Zug bleibt eben NICHT.
+     *
+     *                        Der Unterschied zu `beendetZug`: Dort zieht erst
+     *                        der Gegner, und die Wirkung kommt eine Runde
+     *                        später. Sprung und Teleport wirken sofort — so
+     *                        hatte der Nutzer sie gemeint, und so sind sie seit
+     *                        v0.48 gebaut (v0.47 hatte ihnen `beendetZug`
+     *                        gegeben).
+     *
      *   `imGegenzug: true`   Darf auch eingesetzt werden, während der Gegner am
      *                        Zug ist (seit v3.6). Das ist ein echtes Rennen:
      *                        Wer zuerst drückt, war zuerst — abgesichert über
@@ -302,9 +377,11 @@ const SCHACH_VARIANTEN = {
      *   1. Material dazu (Wiedergeburt, Wiederbelebung, Spiegel, Verstärkung,
      *      Friedhof, Händler) → `beendetZug`. Sonst bekäme man Figuren
      *      geschenkt und dürfte im selben Atemzug damit angreifen.
-     *   2. Eine zusätzliche Gangart, mit der man SCHLAGEN oder springen kann
-     *      (Sprung, Teleport) → `beendetZug`. Sie sind gewöhnlich, kommen also
-     *      ständig; ein geschenkter Springerzug obendrauf ist zu viel.
+     *   2. Eine andere Gangart für genau diesen Zug (Sprung, Teleport) →
+     *      `istDerZug`. Sie sind gewöhnlich, kommen also ständig; ein
+     *      geschenkter Springerzug obendrauf wäre zu viel. Bezahlt wird er
+     *      deshalb mit dem eigenen Zug — nur eben sofort, nicht erst nach dem
+     *      Gegner (bis v0.47 hatten sie `beendetZug`).
      *   3. Nur die Stellung verändert (Bauernschub, Erdbeben, Nudelholz,
      *      Mauer, Schutzschild, Fessel, Frost) oder gar keine Figur berührt
      *      (Ausweichen: zieht nur auf FREIE Felder und schlägt nie) → das
@@ -328,10 +405,11 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "zugmuster",
             muster: "springer",
-            beendetZug: true,
-            beschreibung: "Bei deinem nächsten Zug darf eine Figur deiner Wahl auch "
-                + "wie ein Springer gehen — und dabei schlagen. Das Einsetzen kostet "
-                + "dich diesen Zug: Danach ist erst der Gegner dran."
+            istDerZug: true,
+            beschreibung: "Einsetzen, dann sofort springen: Eine Figur deiner Wahl "
+                + "geht jetzt wie ein Springer — und darf dabei schlagen. Der Sprung "
+                + "IST dein Zug; etwas anderes kannst du in diesem Zug nicht mehr "
+                + "machen, und danach ist der Gegner dran."
         },
         ausweichen: {
             titel: "Ausweichen",
@@ -350,11 +428,11 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "zugmuster",
             muster: "umkreis2",
-            beendetZug: true,
-            beschreibung: "Bei deinem nächsten Zug darf eine Figur deiner Wahl auch "
-                + "auf ein FREIES Feld im Umkreis von zwei springen, über alles "
-                + "hinweg — geschlagen wird dabei nicht. Das Einsetzen kostet dich "
-                + "diesen Zug: Danach ist erst der Gegner dran."
+            istDerZug: true,
+            beschreibung: "Einsetzen, dann Figur antippen und Zielfeld wählen: Sie "
+                + "setzt auf ein FREIES Feld im Umkreis von zwei, über alles hinweg "
+                + "— geschlagen wird dabei nicht. Der Teleport IST dein Zug; normal "
+                + "ziehen kannst du danach nicht mehr, es ist der Gegner dran."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ----
@@ -440,9 +518,18 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Nach dem nächsten Zug ist dein Team sofort noch "
                 + "einmal am Zug. Der König des Gegners bleibt dabei unantastbar."
         },
+        /*
+         * Wiedergeburt ist seit v0.48 EPISCH, nicht mehr legendär.
+         *
+         * Sie holt eine Figur auf die eigene GRUNDREIHE zurück — weit weg vom
+         * Geschehen, und der Gegner sieht sie kommen. Damit ist sie deutlich
+         * schwächer als ihre legendären Nachbarn (Wiederbelebung setzt an den
+         * Ort des Geschehens, der Friedhof bringt gleich vier). Auf der
+         * legendären Stufe war sie die Enttäuschung unter fünf.
+         */
         wiedergeburt: {
             titel: "Wiedergeburt",
-            stufe: "gelb",
+            stufe: "lila",
             art: "ziel",
             zielArt: "eigeneGrundreihe",
             beendetZug: true,
@@ -493,8 +580,8 @@ const SCHACH_VARIANTEN = {
             zielArt: "mauerplatz",
             beschreibung: "Legt eine Mauer über drei freie Felder derselben Reihe — auf "
                 + "das angetippte Feld und je eines links und rechts davon. Niemand zieht "
-                + "hindurch, aber Springer setzen darüber hinweg. Nach einigen Zügen "
-                + "zerfällt sie."
+                + "hindurch, aber Springer setzen darüber hinweg. Nach 6 Halbzügen — "
+                + "also je drei Zügen für dich und den Gegner — zerfällt sie."
         },
 
         /*
@@ -532,8 +619,8 @@ const SCHACH_VARIANTEN = {
             beendetZug: true,
             beschreibung: "Bis zu vier gefallene GEGNER stehen auf einem freien "
                 + "2×2-Feld wieder auf — in deiner Farbe, und du ziehst mit ihnen "
-                + "wie mit eigenen. Nach ein paar Zügen zerfallen sie. Danach ist "
-                + "der Gegner am Zug."
+                + "wie mit eigenen. Nach 8 Halbzügen — also je vier Zügen für dich "
+                + "und den Gegner — zerfallen sie. Danach ist der Gegner am Zug."
         }
     },
 
@@ -701,8 +788,134 @@ const SCHACH_VARIANTEN = {
                 { feld: 34, art: "doppelzug" },
                 { feld: 37, art: "sprung" }
             ]
+        },
+
+        /*
+         * NEUE SPIELARTEN KOMMEN ANS ENDE DER LISTE.
+         *
+         * Nicht aus Bequemlichkeit: Die Partie-Kennungen der Tests entstehen
+         * aus der Reihenfolge dieser Liste, und die gerechneten Würfel hängen
+         * an der Kennung. Ein Eintrag in der Mitte verschiebt alles dahinter
+         * und lässt Tests scheitern, die mit der neuen Spielart nichts zu tun
+         * haben (genau so beim Bau von v0.49 passiert).
+         */
+        {
+            id: "zufallsarmee",
+            titel: "Zufallsarmee",
+            beschreibung: "Gewohntes Brett, aber jede Seite bekommt nur 8 Figuren — "
+                + "gewürfelt, König inbegriffen. Selten sind es ZWEI Könige: Dann "
+                + "hast du zwei Leben. Der erste wird geschlagen wie jede Figur, "
+                + "der letzte muss schachmatt gesetzt werden.",
+            breite: 8,
+            hoehe: 8,
+
+            /*
+             * NUR EIN BEISPIEL. Die echte Aufstellung wird je Partie gerechnet
+             * (`zufallsArmee` unten); dieses Bild füllt die Kachel in der
+             * Auswahl und dient als Rückfall. Es zeigt zugleich, wo Figuren
+             * überhaupt stehen können: zwei Spalten links und rechts bleiben
+             * frei.
+             */
+            aufstellung:
+                "..stlk.."
+                + "..bbdb.."
+                + "........"
+                + "........"
+                + "........"
+                + "........"
+                + "..BBDB.."
+                + "..STLK..",
+
+            /*
+             * Keine Rochade: Sie wird aus der STELLUNG gelesen (König auf
+             * seinem Startfeld, Turm auf derselben Grundreihe) — bei einer
+             * gewürfelten Aufstellung ist das Startfeld des Königs nur noch
+             * Zufall, und mit zwei Königen wäre nicht einmal klar, wessen Recht
+             * gemeint ist.
+             */
+            rochade: false,
+            koenigSchlagbar: false,
+
+            /* Das Herz dieser Spielart, siehe SCHACH.koenigSchlagbarFuer. */
+            koenigeAlsLeben: true,
+
+            /* Und deshalb steht die Aufstellung oben nur als Beispiel da. */
+            zufallsArmee: true,
+
+            bonusFelder: []
         }
     ],
+
+    /* ---------------------------------------------------------------- *
+     * Die Zufallsarmee (seit v0.49)
+     *
+     * Nur Zahlen — WIE daraus ein Brett wird, steht in
+     * `SCHACH_RUNDE._armeeStand`; hier steht, WAS gezogen wird.
+     * ---------------------------------------------------------------- */
+
+    ARMEE: {
+        /*
+         * Wie viele Figuren je Seite, König eingerechnet. Acht statt sechzehn:
+         * Das halbe Material auf ganzem Brett macht die Partien offen und kurz.
+         *
+         * Die Zahl ist NICHT frei gewählt — sie fällt aus dem freien Rand: Auf
+         * einem 8er-Brett bleiben bei zwei freien Spalten links und rechts
+         * genau vier Spalten mal zwei Grundreihen übrig, also acht Felder. Ein
+         * Feld, eine Figur.
+         */
+        anzahl: 8,
+
+        /* Wie viele Spalten links und rechts beim Aufstellen frei bleiben. */
+        randBreite: 2,
+
+        /*
+         * Wie oft eine Seite mit ZWEI Königen startet, in Prozent.
+         *
+         * Zwei Könige sind zwei Leben und damit der grösste Vorteil, den diese
+         * Spielart kennt — dafür fehlt eine Figur, denn die Acht bleibt. Selten
+         * genug, dass es eine Überraschung ist (etwa jede achte Seite), aber
+         * nicht so selten, dass man es nie erlebt.
+         */
+        zweiKoenige: 12,
+
+        /*
+         * Woraus die übrigen Figuren gezogen werden. Summe 100.
+         *
+         * Die Verteilung folgt dem gewohnten Schach, nur gestaucht: Bauern
+         * bleiben das Rückgrat, die Dame ist die Ausnahme. Ohne den hohen
+         * Bauernanteil stünden acht Offiziere auf dem Brett, und die Partie
+         * wäre nach vier Zügen entschieden.
+         */
+        figuren: [
+            { art: "B", chance: 34 },
+            { art: "S", chance: 18 },
+            { art: "L", chance: 18 },
+            { art: "T", chance: 18 },
+            { art: "D", chance: 12 }
+        ],
+
+        /*
+         * Höchstens so viele Damen je Seite. Ohne diese Grenze zieht eine Seite
+         * gelegentlich zwei oder drei — gegen sieben Bauern ist das keine
+         * Partie mehr, sondern ein Ergebnis. Was darüber hinaus gezogen wird,
+         * wird zum Turm.
+         */
+        hoechstensDamen: 1
+    },
+
+    /* Zieht eine Figur der Zufallsarmee. `wert` ist eine Zahl von 0 bis 1. */
+    armeeFigurZiehen(wert) {
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
+
+        for (const eintrag of SCHACH_VARIANTEN.ARMEE.figuren) {
+            if (rest < eintrag.chance) {
+                return eintrag.art;
+            }
+            rest -= eintrag.chance;
+        }
+
+        return "B";
+    },
 
     /* Die Variante zu einer Kennung; unbekannte Kennungen ergeben die klassische. */
     holen(id) {
