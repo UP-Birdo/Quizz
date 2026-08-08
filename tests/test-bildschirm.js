@@ -710,6 +710,49 @@ pruefe("Anlegen und Loeschen melden sich beim Abgleich an (v0.52)", () => {
     }
 });
 
+pruefe("Das i beim Wuerfel-Haken fuehrt in die Bibliothek (v0.55)", () => {
+    /*
+     * „Ich meinte bei dem i neben Zufallswuerfel an das ganze Menue mit den
+     * Faehigkeiten, welche es gibt, mit Animationen und co."
+     *
+     * Moeglich ist das ohne Umbau, weil `zeichnen` die Bibliothek VOR der
+     * Spielart-Auswahl abfragt — und `infoSchliessen` bringt einen deshalb
+     * genau dorthin zurueck. Genau das prueft dieser Test.
+     */
+    TEAM_SCHACH.partieAnlegen();
+    TEAM_SCHACH.neueRegeln.faehigkeiten = true;
+
+    TEAM_SCHACH.faehigkeitenOeffnen();
+
+    if (!TEAM_SCHACH.infoOffen) {
+        throw new Error("die Bibliothek ist nicht offen");
+    }
+    if (!TEAM_SCHACH.auswahlOffen) {
+        throw new Error("die Spielart-Auswahl darf darunter offen bleiben");
+    }
+
+    /* Gezeichnet wird die Bibliothek, nicht die Auswahl. */
+    const ueberschrift = TEAM_SCHACH.wurzelEl.kinder
+        .find((kind) => String(kind.className || "").indexOf("partie-kopf") !== -1);
+    if (!ueberschrift) {
+        throw new Error("kein Kopf gezeichnet");
+    }
+
+    /* Und zurueck landet man wieder bei der Auswahl. */
+    TEAM_SCHACH.infoSchliessen();
+    if (TEAM_SCHACH.infoOffen) {
+        throw new Error("die Bibliothek ist nicht zugegangen");
+    }
+
+    const feld = TEAM_SCHACH.wurzelEl.kinder
+        .find((kind) => kind.className === "spielart-feld");
+    if (!feld) {
+        throw new Error("nach dem Zurueck fehlt die Spielart-Auswahl");
+    }
+
+    TEAM_SCHACH.auswahlSchliessen();
+});
+
 pruefe("Der Abschluss schluesselt die Punkte auf (v0.53)", () => {
     /*
      * „Beim Endscreen soll aufgelistet werden, mit Ueberschrift links und

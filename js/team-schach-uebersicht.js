@@ -72,17 +72,20 @@ Object.assign(TEAM_SCHACH, {
                 hinweis: "Auf freien Feldern erscheinen Würfel mit Fähigkeiten — "
                     + "gute wie schlechte.",
 
-                /* Was die Würfel WIRKLICH sind, füllt einen Absatz. Der steht
-                   hinter dem i daneben, damit die Zeile kurz bleibt. */
-                mehr: "Nach jedem Halbzug kann auf einem freien Feld ein Würfel "
-                    + "erscheinen. Wer mit einer Figur darüber oder darauf zieht, "
-                    + "sammelt ein, was darin steckt — welche Fähigkeit es ist, "
-                    + "sieht man vorher nie. Nur der Springer sammelt unterwegs "
-                    + "nichts ein: Er setzt über die Felder dazwischen hinweg.\n\n"
-                    + "Eingesammelte Fähigkeiten landen in deinem Vorrat und "
-                    + "werden von dort eingesetzt. Manche Würfel bringen nichts "
-                    + "Gutes und wirken sofort gegen dich. Was es alles gibt, "
-                    + "steht in der Partie hinter dem i bei den Fähigkeiten."
+                /*
+                 * DAS i FÜHRT IN DIE GANZE BIBLIOTHEK (seit v0.55).
+                 *
+                 * In v0.52 zeigte es nur einen Absatz Text. Gemeint war aber
+                 * das ganze Menü: alle Fähigkeiten mit ihren Stufen, Zeichen und
+                 * abgespielten Anleitungen. Wer sich beim Anlegen fragt, ob er
+                 * Würfel will, will genau das sehen — und nicht erst eine Partie
+                 * anlegen müssen, um es zu erfahren.
+                 *
+                 * Möglich ist das ohne Umbau: `zeichnen` fragt `infoOffen` VOR
+                 * `auswahlOffen` ab, und `infoSchliessen` bringt einen deshalb
+                 * genau hierher zurück.
+                 */
+                bibliothek: true
             },
             {
                 schluessel: "seltenheitZeigen",
@@ -185,7 +188,9 @@ Object.assign(TEAM_SCHACH, {
             const halter = TEAM_SCHACH._element("div", "schalter-halter");
             halter.appendChild(zeile);
 
-            if (eintrag.mehr) {
+            if (eintrag.bibliothek) {
+                halter.appendChild(TEAM_SCHACH._infoKnopfBauen());
+            } else if (eintrag.mehr) {
                 halter.appendChild(TEAM_SCHACH._infoZeichenBauen(eintrag.titel, eintrag.mehr));
             }
 

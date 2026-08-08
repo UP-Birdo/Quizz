@@ -3,6 +3,14 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.55.0 — 2026-08-08
+
+- **Das i beim Würfel-Haken führt in die ganze Fähigkeiten-Bibliothek.** Vorher
+  zeigte es einen Absatz Text. Gemeint war das ganze Menü — alle Fähigkeiten mit
+  Stufen, Zeichen und abgespielten Anleitungen. Wer beim Anlegen überlegt, ob er
+  Würfel will, sieht jetzt sofort, worum es geht, statt erst eine Partie anlegen
+  zu müssen. Zurück landet man wieder in der Spielart-Auswahl.
+
 ## v0.54.0 — 2026-08-08
 
 Die letzten drei Punkte aus dem Eingangskorb — alle drei Eingriffe ins
