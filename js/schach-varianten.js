@@ -802,29 +802,41 @@ const SCHACH_VARIANTEN = {
         {
             id: "zufallsarmee",
             titel: "Zufallsarmee",
-            beschreibung: "Gewohntes Brett, aber jede Seite bekommt nur 8 Figuren — "
-                + "gewürfelt, König inbegriffen. Selten sind es ZWEI Könige: Dann "
-                + "hast du zwei Leben. Der erste wird geschlagen wie jede Figur, "
-                + "der letzte muss schachmatt gesetzt werden.",
+            beschreibung: "Gibt es seit v0.51 nicht mehr zur Auswahl — dasselbe "
+                + "erreicht man mit jeder Spielart und dem Haken Zufallsarmee.",
+
+            /*
+             * NICHT MEHR ZUR AUSWAHL, aber weiterhin im Katalog — dieselbe
+             * Geschichte wie bei „Fähigkeiten sammeln" (v2.9).
+             *
+             * In v0.49 war die Zufallsarmee eine eigene Spielart und damit an
+             * das 8-mal-8-Brett gefesselt. Seit v0.51 ist sie ein HAKEN
+             * (`regeln.zufallsArmee`) und gilt für jedes Brett; die Spielart
+             * wäre nur noch „Klassisch mit Haken" und stünde doppelt in der
+             * Liste. Gelöscht wird sie trotzdem nicht: Laufende Partien tragen
+             * diese Kennung im Stand und verlören sonst ihre Spielart.
+             */
+            versteckt: true,
+
             breite: 8,
             hoehe: 8,
 
             /*
-             * NUR EIN BEISPIEL. Die echte Aufstellung wird je Partie gerechnet
-             * (`zufallsArmee` unten); dieses Bild füllt die Kachel in der
-             * Auswahl und dient als Rückfall. Es zeigt zugleich, wo Figuren
-             * überhaupt stehen können: zwei Spalten links und rechts bleiben
-             * frei.
+             * Die KLASSISCHE Aufstellung, obwohl sie hier nie gespielt wird:
+             * Aus ihr zählt `armeeAnzahl` die gewohnte Armee (16 → 8 Figuren) —
+             * genau die Zahl, die diese Spielart in v0.49 und v0.50 hatte. Sie
+             * ist ausserdem der Rückfall, falls ein Stand ohne Brett kommt. Das
+             * echte Brett rechnet `SCHACH_RUNDE._armeeStand`.
              */
             aufstellung:
-                "..stlk.."
-                + "..bbdb.."
+                "tsldklst"
+                + "bbbbbbbb"
                 + "........"
                 + "........"
                 + "........"
                 + "........"
-                + "..BBDB.."
-                + "..STLK..",
+                + "BBBBBBBB"
+                + "TSLDKLST",
 
             /*
              * Keine Rochade: Sie wird aus der STELLUNG gelesen (König auf
@@ -836,10 +848,9 @@ const SCHACH_VARIANTEN = {
             rochade: false,
             koenigSchlagbar: false,
 
-            /* Das Herz dieser Spielart, siehe SCHACH.koenigSchlagbarFuer. */
+            /* Für Partien, die noch mit dieser Spielart laufen. Neue Partien
+               bekommen beides über den Haken, siehe `SCHACH_RUNDE.armeeAn`. */
             koenigeAlsLeben: true,
-
-            /* Und deshalb steht die Aufstellung oben nur als Beispiel da. */
             zufallsArmee: true,
 
             bonusFelder: []
@@ -855,26 +866,32 @@ const SCHACH_VARIANTEN = {
 
     ARMEE: {
         /*
-         * Wie viele Figuren je Seite, König eingerechnet. Acht statt sechzehn:
-         * Das halbe Material auf ganzem Brett macht die Partien offen und kurz.
+         * WIE VIELE FIGUREN? DIE HÄLFTE DER GEWOHNTEN ARMEE (seit v0.51).
          *
-         * Die Zahl ist NICHT frei gewählt — sie fällt aus dem freien Rand: Auf
-         * einem 8er-Brett bleiben bei zwei freien Spalten links und rechts
-         * genau vier Spalten mal zwei Grundreihen übrig, also acht Felder. Ein
-         * Feld, eine Figur.
+         * Bis v0.50 stand hier die feste Zahl 8 — richtig für das klassische
+         * Brett, aber die Zufallsarmee ist seit v0.51 ein HAKEN und gilt für
+         * jede Spielart. Auf dem Doppelbrett (32 Figuren je Seite) wären acht
+         * lächerlich, auf dem kleinen (12) wären sie fast die volle Armee.
+         *
+         * Gerechnet wird deshalb aus der Aufstellung der Spielart: die Hälfte,
+         * abgerundet. Für „Klassisch" ergibt das genau die 8 von vorher — die
+         * Zahl bleibt also, wo sie war, sie ist nur nicht mehr hingeschrieben.
+         *
+         *     Klassisch     16 → 8      Kleines Brett  12 → 6
+         *     Großes Brett  20 → 10     Doppelbrett    32 → 16
+         *
+         * Das halbe Material auf ganzem Brett macht die Partien offen und kurz;
+         * dieselbe Überlegung wie in v0.49, nur jetzt für jedes Brett.
          */
-        anzahl: 8,
-
-        /* Wie viele Spalten links und rechts beim Aufstellen frei bleiben. */
-        randBreite: 2,
+        anteil: 0.5,
 
         /*
          * Wie oft eine Seite mit ZWEI Königen startet, in Prozent.
          *
-         * Zwei Könige sind zwei Leben und damit der grösste Vorteil, den diese
-         * Spielart kennt — dafür fehlt eine Figur, denn die Acht bleibt. Selten
-         * genug, dass es eine Überraschung ist (etwa jede achte Seite), aber
-         * nicht so selten, dass man es nie erlebt.
+         * Zwei Könige sind zwei Leben und damit der grösste Vorteil, den es
+         * hier gibt — dafür fehlt eine Figur, denn die Gesamtzahl bleibt.
+         * Selten genug, dass es eine Überraschung ist (etwa jede achte Seite),
+         * aber nicht so selten, dass man es nie erlebt.
          */
         zweiKoenige: 12,
 
@@ -901,6 +918,40 @@ const SCHACH_VARIANTEN = {
          * wird zum Turm.
          */
         hoechstensDamen: 1
+    },
+
+    /*
+     * Wie viele Figuren eine Seite in dieser Spielart bekommt. Gezählt wird die
+     * gewohnte Armee AUS DER AUFSTELLUNG — so muss keine Spielart eine Zahl
+     * angeben, und eine neue passt von selbst.
+     *
+     * Mindestens zwei: der König und eine Figur. Ein König allein wäre keine
+     * Partie, sondern ein Wettlauf.
+     */
+    armeeAnzahl(variante) {
+        const gross = /[A-Z]/g;
+        const gefunden = String(variante.aufstellung || "").match(gross);
+        const gewohnt = gefunden ? gefunden.length : 0;
+
+        return Math.max(2, Math.floor(gewohnt * SCHACH_VARIANTEN.ARMEE.anteil));
+    },
+
+    /*
+     * Wie viele Spalten die Armee einnimmt, und wie breit der freie Rand links
+     * und rechts dafür ist. Aufgestellt wird auf ZWEI Grundreihen, also braucht
+     * es die halbe Anzahl an Spalten — mittig, damit beide Ränder frei bleiben.
+     *
+     * Auf dem klassischen Brett ergibt das vier Spalten und je zwei freie
+     * daneben: genau die 2-mal-2-Ecken aus dem ursprünglichen Wunsch.
+     */
+    armeeSpalten(variante) {
+        const anzahl = SCHACH_VARIANTEN.armeeAnzahl(variante);
+        const spalten = Math.min(variante.breite, Math.ceil(anzahl / 2));
+
+        return {
+            spalten: spalten,
+            rand: Math.floor((variante.breite - spalten) / 2)
+        };
     },
 
     /* Zieht eine Figur der Zufallsarmee. `wert` ist eine Zahl von 0 bis 1. */

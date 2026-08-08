@@ -173,6 +173,23 @@ const SCHACH_RUNDE = {
                  */
                 regen: false,
 
+                /*
+                 * Zufallsarmee (seit v0.51 ein Haken, vorher eine eigene
+                 * Spielart): Beide Seiten bekommen gewürfelt die halbe Armee,
+                 * und selten sind zwei Könige darunter — zwei Leben.
+                 */
+                zufallsArmee: false,
+
+                /*
+                 * Nur mit `zufallsArmee`: Ziehen beide Seiten GETRENNT?
+                 *
+                 * Aus (Vorgabe) heisst: Es wird EINMAL gewürfelt, und beide
+                 * Mannschaften bekommen dieselben Einheiten, spiegelbildlich
+                 * aufgestellt — gewürfelt, aber gerecht. An heisst: Jede Seite
+                 * zieht für sich, wie in v0.49 und v0.50.
+                 */
+                armeeGetrennt: false,
+
                 /* Muss sich das Team über einen Zug einig werden? */
                 einigkeit: false
             },
@@ -197,14 +214,42 @@ const SCHACH_RUNDE = {
         };
 
         /*
-         * Die Zufallsarmee hat keine feste Aufstellung — sie wird hier
-         * gerechnet, aus der Partie-Kennung. Sie steht danach als ganz
-         * gewöhnliches Brett im Stand; wer die Partie später lädt, liest sie
-         * einfach ab und rechnet nichts nach.
+         * Die Zufallsarmee hat keine feste Aufstellung — sie wird gerechnet,
+         * aus der Partie-Kennung. Hier greift nur die alte SPIELART; der HAKEN
+         * steht erst nach `SCHACH_TAFEL.partieAnlegen` fest, das ruft
+         * `armeeAufstellen` deshalb noch einmal (seit v0.51).
          */
-        if (variante.zufallsArmee) {
-            runde.stand = SCHACH_RUNDE._armeeStand(runde.stand, runde.id);
+        return SCHACH_RUNDE.armeeAufstellen(runde);
+    },
+
+    /*
+     * Stellt die Zufallsarmee auf, wenn diese Partie sie hat. Sonst bleibt die
+     * Runde, wie sie ist. Aufgerufen wird das an drei Stellen — beim Anlegen
+     * einer leeren Runde, nach dem Setzen der Regeln und bei einer neuen Partie
+     * in derselben Runde.
+     *
+     * `saatZusatz` unterscheidet die zweite Partie von der ersten; ohne ihn
+     * käme dieselbe Aufstellung noch einmal. Zweimal mit demselben Zusatz
+     * gerufen ergibt dasselbe Brett — das Rechnen ist absichtlich wiederholbar.
+     */
+    armeeAufstellen(runde, saatZusatz) {
+        /*
+         * HIER NICHT `armeeAn` FRAGEN. Die Frage normalisiert, und
+         * `normalisieren` baut sich eine leere Runde — die wiederum hier
+         * landet. Das wäre eine Endlosschleife. An dieser Stelle liegt die
+         * Runde ohnehin schon vollständig vor, also wird direkt gelesen.
+         */
+        const gehoertDazu = (runde.regeln && runde.regeln.zufallsArmee === true)
+            || !!SCHACH_VARIANTEN.holen(runde.variante).zufallsArmee;
+
+        if (!gehoertDazu) {
+            return runde;
         }
+
+        runde.stand = SCHACH_RUNDE._armeeStand(
+            runde.stand,
+            (runde.id || "partie") + (saatZusatz || ""),
+            runde.regeln.armeeGetrennt === true);
 
         return runde;
     },
@@ -220,18 +265,38 @@ const SCHACH_RUNDE = {
      * ---------------------------------------------------------------- */
 
     /*
-     * Die Felder, auf denen eine Seite aufgestellt wird: ihre beiden
-     * Grundreihen, ohne den freien Rand links und rechts. Die hintere Reihe
-     * zuerst — dort landen die zuerst gezogenen Figuren.
+     * Gilt in dieser Partie die Zufallsarmee? (seit v0.51)
+     *
+     * Zwei Quellen: der HAKEN der Partie (der neue Weg, gilt für jede Spielart)
+     * und die alte Spielart „Zufallsarmee", die für laufende Partien im Katalog
+     * bleibt. Gefragt wird an dieser einen Stelle, damit nicht an drei Orten
+     * dieselbe Oder-Verknüpfung steht.
      */
-    _armeeFelder(breite, hoehe, farbe) {
-        const rand = SCHACH_VARIANTEN.ARMEE.randBreite;
+    armeeAn(runde) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        return stand.regeln.zufallsArmee === true
+            || !!SCHACH_RUNDE.varianteVon(stand).zufallsArmee;
+    },
+
+    /*
+     * Die Felder, auf denen eine Seite aufgestellt wird: ihre beiden
+     * Grundreihen, mittig, mit freiem Rand links und rechts. Die hintere Reihe
+     * zuerst — dort landen die zuerst gezogenen Figuren.
+     *
+     * Wie breit die Armee steht, rechnet `SCHACH_VARIANTEN.armeeSpalten` aus
+     * der Spielart (seit v0.51) — auf dem klassischen Brett sind das vier
+     * Spalten mit je zwei freien daneben, auf dem Doppelbrett acht mit je vier.
+     */
+    _armeeFelder(variante, farbe) {
+        const breite = variante.breite;
+        const hoehe = variante.hoehe;
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
         const reihen = (farbe === SCHACH.WEISS) ? [hoehe - 1, hoehe - 2] : [0, 1];
         const felder = [];
 
         for (const reihe of reihen) {
-            for (let spalte = rand; spalte < breite - rand; spalte++) {
-                felder.push(reihe * breite + spalte);
+            for (let schritt = 0; schritt < platz.spalten; schritt++) {
+                felder.push(reihe * breite + platz.rand + schritt);
             }
         }
 
@@ -267,9 +332,21 @@ const SCHACH_RUNDE = {
         return stelle + "|" + was + "|" + basis;
     },
 
-    _armeeFiguren(id, farbe) {
+    _armeeFiguren(id, farbe, variante, getrennt) {
         const regel = SCHACH_VARIANTEN.ARMEE;
-        const basis = (id || "partie") + "|armee|" + farbe;
+        const anzahl = SCHACH_VARIANTEN.armeeAnzahl(variante);
+
+        /*
+         * DIESELBE ARMEE FÜR BEIDE, WENN NICHT ANDERS GEWÜNSCHT (seit v0.51).
+         *
+         * Steckt die Farbe in der Saat, zieht jede Seite für sich — dann kann
+         * eine zwei Damen bekommen und die andere sieben Bauern. Ohne die Farbe
+         * fällt für beide dieselbe Ziehung, und weil `_armeeFelder` die Felder
+         * spiegelbildlich liefert, steht am Ende eine symmetrische Stellung:
+         * gewürfelt, aber gerecht. Das ist die Vorgabe; wer die Schieflage
+         * will, hakt „Beide Seiten getrennt würfeln" an.
+         */
+        const basis = (id || "partie") + "|armee" + (getrennt ? "|" + farbe : "");
 
         const zweiKoenige = (SCHACH_RUNDE._zufallsWert(basis + "|koenige") * 100)
             < regel.zweiKoenige;
@@ -277,7 +354,7 @@ const SCHACH_RUNDE = {
         const arten = zweiKoenige ? ["K", "K"] : ["K"];
         let damen = 0;
 
-        while (arten.length < regel.anzahl) {
+        while (arten.length < anzahl) {
             let art = SCHACH_VARIANTEN.armeeFigurZiehen(SCHACH_RUNDE._zufallsWert(
                 SCHACH_RUNDE._armeeSaat(arten.length, "figur", basis)));
 
@@ -305,7 +382,8 @@ const SCHACH_RUNDE = {
     },
 
     /* Ein Brett-Stand mit gewürfelten Armeen auf beiden Seiten. */
-    _armeeStand(stand, id) {
+    _armeeStand(stand, id, getrennt) {
+        const variante = SCHACH.varianteVon(stand);
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
 
@@ -315,8 +393,8 @@ const SCHACH_RUNDE = {
         }
 
         for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
-            const felder = SCHACH_RUNDE._armeeFelder(breite, hoehe, farbe);
-            const arten = SCHACH_RUNDE._armeeFiguren(id, farbe);
+            const felder = SCHACH_RUNDE._armeeFelder(variante, farbe);
+            const arten = SCHACH_RUNDE._armeeFiguren(id, farbe, variante, getrennt);
             const anzahl = Math.min(felder.length, arten.length);
 
             for (let stelle = 0; stelle < anzahl; stelle++) {
@@ -325,7 +403,12 @@ const SCHACH_RUNDE = {
             }
         }
 
-        return Object.assign({}, stand, { brett: zeichen.join("") });
+        /* Die zwei Leben gehören zur Zufallsarmee und damit in den Stand —
+           `schach.js` kennt die Regeln der Partie nicht. */
+        return Object.assign({}, stand, {
+            brett: zeichen.join(""),
+            koenigeAlsLeben: true
+        });
     },
 
     normalisieren(roh) {
@@ -423,6 +506,8 @@ const SCHACH_RUNDE = {
                das ist gewollt, es ist reine Anzeige und ändert keine Regel. */
             runde.regeln.pechZeigen = (roh.regeln.pechZeigen === true);
             runde.regeln.regen = (roh.regeln.regen === true);
+            runde.regeln.zufallsArmee = (roh.regeln.zufallsArmee === true);
+            runde.regeln.armeeGetrennt = (roh.regeln.armeeGetrennt === true);
 
             runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
         }
@@ -2087,10 +2172,7 @@ const SCHACH_RUNDE = {
            Zeitpunkt in die Rechnung ein. Das Brett steht danach im gemeinsamen
            Stand; nachgerechnet wird es nirgends mehr, es kann also gar nicht
            auseinanderlaufen. */
-        if (SCHACH_VARIANTEN.holen(neu.variante).zufallsArmee) {
-            neu.stand = SCHACH_RUNDE._armeeStand(neu.stand,
-                (neu.id || "partie") + "|neu|" + wann);
-        }
+        SCHACH_RUNDE.armeeAufstellen(neu, "|neu|" + wann);
 
         neu.zugZaehler = 0;
         neu.laeuft = false;

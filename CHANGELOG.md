@@ -3,6 +3,49 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.51.0 — 2026-08-08
+
+Die Zufallsarmee ist keine Spielart mehr, sondern ein **Haken** — und passt sich
+jedem Brett an.
+
+- **Haken „Zufallsarmee" beim Anlegen, für JEDE Spielart.** Vorher war sie eine
+  eigene Spielart und damit ans 8×8-Brett gefesselt. Jetzt lässt sie sich auf
+  Klassisch, Kleines Brett, Großes Brett und Doppelbrett setzen — auch zusammen
+  mit den Würfeln.
+
+- **Die Menge skaliert mit dem Brett.** Gerechnet wird die **Hälfte der
+  gewohnten Armee**, abgerundet, aus der Aufstellung der Spielart. Für das
+  klassische Brett ergibt das genau die 8 Figuren von vorher; die Zahl steht
+  also nicht mehr im Code, sie fällt aus dem Brett:
+
+  | Spielart | gewohnt | Zufallsarmee |
+  |---|---|---|
+  | Klassisch | 16 | 8 |
+  | Kleines Brett | 12 | 6 |
+  | Großes Brett | 20 | 10 |
+  | Doppelbrett | 32 | 16 |
+
+  Aufgestellt wird weiter mittig auf den beiden Grundreihen, mit freiem Rand
+  links und rechts — beim klassischen Brett je zwei Spalten, beim Doppelbrett
+  je vier. Die Breite folgt der Anzahl, deshalb geht es immer genau auf.
+
+- **Unter-Haken „Beide Seiten getrennt würfeln".** Neu ist die **Vorgabe**: Ohne
+  diesen Haken wird **einmal** gewürfelt, und beide Mannschaften bekommen
+  **dieselben Einheiten**, spiegelbildlich aufgestellt — gewürfelt, aber
+  gerecht. Angehakt zieht jede Seite für sich, wie in v0.49 und v0.50; dann kann
+  eine Seite eine Dame und zwei Türme haben und die andere fast nur Bauern.
+
+- **Die zwei Leben stehen jetzt im Spielstand.** Sie hingen bisher an der
+  Spielart, aber `schach.js` kennt die Regeln einer Partie nicht — nur den
+  Stand. `SCHACH_RUNDE` schreibt `koenigeAlsLeben` beim Aufstellen hinein,
+  `SCHACH.koenigSchlagbarFuer` liest beide Quellen. Am Verhalten ändert das
+  nichts: erster König schlagbar, letzter mattzusetzen.
+
+- **Die alte Spielart „Zufallsarmee" ist versteckt, nicht gelöscht** — dieselbe
+  Behandlung wie „Fähigkeiten sammeln" in v2.9. Laufende Partien tragen ihre
+  Kennung im Stand und verhalten sich unverändert (weiterhin 8 Figuren, zwei
+  Leben); zur Auswahl steht sie nicht mehr.
+
 ## v0.50.0 — 2026-08-08
 
 Die Bildanleitungen (D6) und zwei weitere Punkte aus dem Eingangskorb.

@@ -285,6 +285,14 @@ const SCHACH = {
              */
             zusatzNurDieses: false,
 
+            /*
+             * Zwei Könige sind zwei Leben (seit v0.51 auch als Haken auf jeder
+             * Spielart, siehe `SCHACH.koenigSchlagbarFuer`). Der Schalter steht
+             * im STAND, weil `schach.js` die Regeln der Partie nicht kennt —
+             * `SCHACH_RUNDE` setzt ihn beim Anlegen.
+             */
+            koenigeAlsLeben: false,
+
             schildFeld: -1,
             schildFarbe: "",
             fesselFeld: -1,
@@ -460,6 +468,9 @@ const SCHACH = {
         /* Der Schalter gilt nur zusammen mit einem Muster — ohne Muster gibt es
            nichts, worauf er einschränken könnte. */
         stand.zusatzNurDieses = !!roh.zusatzNurDieses && !!stand.zusatzMuster;
+
+        /* Zwei Leben: aus dem Stand gelesen, ergänzt um die alte Spielart. */
+        stand.koenigeAlsLeben = !!roh.koenigeAlsLeben || !!variante.koenigeAlsLeben;
 
         /* Das alte Feld wird mitgeführt, damit der Vertrag additiv bleibt. */
         stand.sprungAktiv = (stand.zusatzMuster === "springer") ? stand.zusatzFarbe : "";
@@ -1552,7 +1563,16 @@ const SCHACH = {
         if (variante.koenigSchlagbar) {
             return true;
         }
-        if (!variante.koenigeAlsLeben) {
+
+        /*
+         * `koenigeAlsLeben` kommt aus zwei Quellen (seit v0.51): aus der
+         * SPIELART (die alte Spielart „Zufallsarmee", jetzt versteckt) oder aus
+         * dem STAND. Der Stand ist der neue Weg: Seit die Zufallsarmee ein
+         * Haken ist, kann sie auf jeder Spielart liegen — und `schach.js` sieht
+         * nur den Stand, nie die Regeln der Partie. Also schreibt
+         * `SCHACH_RUNDE` sie beim Anlegen in den Stand hinein.
+         */
+        if (!variante.koenigeAlsLeben && !stand.koenigeAlsLeben) {
             return false;
         }
         return SCHACH.koenigFelder(stand, farbe).length > 1;
@@ -1605,6 +1625,10 @@ const SCHACH = {
             zusatzMuster: (stand.zusatzFarbe === stand.amZug) ? "" : stand.zusatzMuster,
             zusatzNurDieses: (stand.zusatzFarbe === stand.amZug)
                 ? false : stand.zusatzNurDieses,
+
+            /* Gilt für die ganze Partie und wandert deshalb unverändert mit. */
+            koenigeAlsLeben: stand.koenigeAlsLeben,
+
             sprungAktiv: "",
 
             /*

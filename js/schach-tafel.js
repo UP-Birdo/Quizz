@@ -314,8 +314,18 @@ const SCHACH_TAFEL = {
             partie.regeln.seltenheitZeigen = (regeln.seltenheitZeigen !== false);
             partie.regeln.pechZeigen = (regeln.pechZeigen === true);
             partie.regeln.regen = (regeln.regen === true);
+            partie.regeln.zufallsArmee = (regeln.zufallsArmee === true);
+            partie.regeln.armeeGetrennt = (regeln.armeeGetrennt === true);
             partie.regeln.einigkeit = (regeln.einigkeit === true);
         }
+
+        /*
+         * ERST JETZT steht der Haken fest, deshalb wird die Zufallsarmee hier
+         * aufgestellt (seit v0.51). `leereRunde` konnte es nur für die alte
+         * SPIELART tun — die Regeln kommen von aussen und sind dort noch nicht
+         * gesetzt. Ohne Haken ändert der Aufruf nichts.
+         */
+        SCHACH_RUNDE.armeeAufstellen(partie);
 
         neu.partien[id] = partie;
         neu.geaendertAm = wann;

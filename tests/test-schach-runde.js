@@ -1823,36 +1823,170 @@ function figurenZaehlen(stand, farbe) {
     return gezaehlt;
 }
 
-pruefe("Die Zufallsarmee stellt acht Figuren in die Mitte", () => {
+/*
+ * Eine Partie mit dem Zufallsarmee-HAKEN auf einer beliebigen Spielart.
+ *
+ * Nachgebaut wird genau der Weg von `SCHACH_TAFEL.partieAnlegen`: leere Runde,
+ * dann die Regeln setzen, dann aufstellen. (Die Tafel selbst wird hier nicht
+ * geladen — diese Datei prueft die RUNDE.)
+ */
+function armeePartie(varianteId, kennung, getrennt) {
+    const runde = SCHACH_RUNDE.leereRunde(1000, varianteId, kennung, "Zufall");
+
+    runde.regeln.zufallsArmee = true;
+    runde.regeln.armeeGetrennt = (getrennt === true);
+
+    return SCHACH_RUNDE.armeeAufstellen(runde);
+}
+
+pruefe("Die Zufallsarmee stellt die halbe Armee mittig auf", () => {
     const regel = SCHACH_VARIANTEN.ARMEE;
 
     /* Mehrere Kennungen, damit nicht eine einzelne Ziehung geprueft wird. */
     for (const kennung of ["p-a", "p-b", "p-c", "p-d", "p-e"]) {
-        const runde = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", kennung, "Zufall");
+        const runde = armeePartie("standard", kennung, true);
+        const variante = SCHACH_VARIANTEN.holen("standard");
+        const soll = SCHACH_VARIANTEN.armeeAnzahl(variante);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
         const breite = SCHACH.breiteVon(runde.stand);
+
+        gleich(soll, 8, "auf dem klassischen Brett acht Figuren (wie vor v0.51)");
 
         for (const farbe of ["weiss", "schwarz"]) {
             const gezaehlt = figurenZaehlen(runde.stand, farbe);
             const summe = Object.keys(gezaehlt)
                 .reduce((wert, art) => wert + gezaehlt[art], 0);
 
-            gleich(summe, regel.anzahl, kennung + "/" + farbe + ": acht Figuren");
+            gleich(summe, soll, kennung + "/" + farbe + ": die halbe Armee");
             wahr(gezaehlt.K >= 1, kennung + "/" + farbe + ": mindestens ein Koenig");
             wahr(gezaehlt.K <= 2, kennung + "/" + farbe + ": hoechstens zwei Koenige");
             wahr(!gezaehlt.D || gezaehlt.D <= regel.hoechstensDamen,
                 kennung + "/" + farbe + ": hoechstens eine Dame");
         }
 
-        /* Der Rand bleibt frei — je zwei Spalten links und rechts. */
+        /* Der Rand bleibt frei — auf dem 8er-Brett je zwei Spalten. */
+        gleich(platz.rand, 2, "zwei freie Spalten je Seite");
+
         for (let feld = 0; feld < SCHACH.felderVon(runde.stand); feld++) {
             const spalte = SCHACH.spalteVon(feld, breite);
-            if (spalte >= regel.randBreite && spalte < breite - regel.randBreite) {
+            if (spalte >= platz.rand && spalte < platz.rand + platz.spalten) {
                 continue;
             }
             gleich(SCHACH.figurAuf(runde.stand, feld), ".",
                 kennung + ": Rand frei auf " + SCHACH.feldName(feld));
         }
     }
+});
+
+pruefe("Die Menge passt sich jedem Brett an (v0.51)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: „beim Standard-Spielfeld waren es 8
+     * Figuren wie derzeit, dann skaliere es bei den anderen Karten auch so,
+     * dass es von der Menge her passt."
+     *
+     * Gerechnet wird die HAELFTE der gewohnten Armee. Die 8 des klassischen
+     * Bretts bleiben damit, wo sie waren; alle anderen folgen von selbst.
+     */
+    const erwartet = { standard: 8, klein: 6, gross: 10, doppelbrett: 16 };
+
+    for (const id of Object.keys(erwartet)) {
+        const variante = SCHACH_VARIANTEN.holen(id);
+        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante), erwartet[id],
+            id + ": passende Anzahl");
+
+        /* Und die Felder reichen dafuer genau aus — zwei Grundreihen. */
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        gleich(platz.spalten * 2, erwartet[id], id + ": zwei Reihen voll");
+        wahr(platz.rand >= 1, id + ": es bleibt Rand frei");
+
+        const runde = armeePartie(id, "p-menge-" + id, true);
+        for (const farbe of ["weiss", "schwarz"]) {
+            const gezaehlt = figurenZaehlen(runde.stand, farbe);
+            const summe = Object.keys(gezaehlt)
+                .reduce((wert, art) => wert + gezaehlt[art], 0);
+            gleich(summe, erwartet[id], id + "/" + farbe + ": so viele stehen da");
+        }
+    }
+});
+
+pruefe("Ohne den Unter-Haken bekommen beide dieselbe Armee (v0.51)", () => {
+    /*
+     * „Wenn man es nicht anhakt, sollen beide Teams die identischen Einheiten
+     * haben — nur zu Beginn wird einmal entschieden, welche Figuren."
+     *
+     * Geprueft wird nicht die Ziehung, sondern die SYMMETRIE: Die Figurenliste
+     * von Weiss muss der von Schwarz gleichen.
+     */
+    const zaehlenGleich = (runde) => {
+        const weiss = figurenZaehlen(runde.stand, "weiss");
+        const schwarz = figurenZaehlen(runde.stand, "schwarz");
+        const arten = Object.keys(weiss).concat(Object.keys(schwarz));
+
+        for (const art of arten) {
+            if ((weiss[art] || 0) !== (schwarz[art] || 0)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    let gleiche = 0;
+    let verschiedene = 0;
+
+    for (let nummer = 0; nummer < 30; nummer++) {
+        if (zaehlenGleich(armeePartie("standard", "p-sym" + nummer, false))) {
+            gleiche++;
+        }
+        if (!zaehlenGleich(armeePartie("standard", "p-sym" + nummer, true))) {
+            verschiedene++;
+        }
+    }
+
+    gleich(gleiche, 30, "ohne Haken sind beide Armeen immer gleich");
+    wahr(verschiedene > 20, "mit Haken sind sie meist verschieden ("
+        + verschiedene + " von 30)");
+});
+
+pruefe("Der Haken gilt auf jeder Spielart, und die zwei Leben mit ihm", () => {
+    /*
+     * Bis v0.50 hing beides an der SPIELART „zufallsarmee" und damit am
+     * 8-mal-8-Brett. `schach.js` kennt die Regeln der Partie nicht — deshalb
+     * wandert `koenigeAlsLeben` beim Aufstellen in den STAND.
+     */
+    const runde = armeePartie("gross", "p-haken", true);
+
+    gleich(runde.variante, "gross", "die Spielart bleibt, was sie ist");
+    gleich(runde.stand.koenigeAlsLeben, true, "die zwei Leben stehen im Stand");
+    gleich(SCHACH_RUNDE.armeeAn(runde), true, "und der Haken wird erkannt");
+
+    /* Ohne Haken bleibt die gewohnte Aufstellung stehen. */
+    const ohne = SCHACH_RUNDE.leereRunde(1000, "gross", "p-normal", "Normal");
+
+    gleich(ohne.stand.brett, SCHACH.neuerStand("gross").brett, "unveraendert");
+    gleich(ohne.stand.koenigeAlsLeben, false, "und nur ein Leben");
+    gleich(SCHACH_RUNDE.armeeAn(ohne), false, "kein Haken, keine Zufallsarmee");
+});
+
+pruefe("Die alte Spielart Zufallsarmee laeuft weiter", () => {
+    /*
+     * Sie ist seit v0.51 versteckt, aber laufende Partien tragen ihre Kennung
+     * im Stand — sie muessen sich weiter genauso verhalten wie in v0.49.
+     */
+    const alt = SCHACH_VARIANTEN.holen("zufallsarmee");
+
+    gleich(alt.versteckt, true, "nicht mehr zur Auswahl");
+    wahr(SCHACH_VARIANTEN.zurAuswahl().every((eintrag) => eintrag.id !== "zufallsarmee"),
+        "und wirklich nicht in der Auswahl");
+
+    const runde = SCHACH_RUNDE.leereRunde(1000, "zufallsarmee", "p-alt", "Alt");
+    const gezaehlt = figurenZaehlen(runde.stand, "weiss");
+    const summe = Object.keys(gezaehlt).reduce((wert, art) => wert + gezaehlt[art], 0);
+
+    gleich(summe, 8, "weiterhin acht Figuren");
+    gleich(SCHACH_RUNDE.armeeAn(runde), true, "auch ohne Haken");
+    gleich(SCHACH.koenigSchlagbarFuer(runde.stand, "weiss"),
+        SCHACH.koenigFelder(runde.stand, "weiss").length > 1,
+        "und die zwei Leben gelten");
 });
 
 pruefe("Dieselbe Kennung ergibt dieselbe Armee", () => {

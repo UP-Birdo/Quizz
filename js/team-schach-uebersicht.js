@@ -90,6 +90,24 @@ Object.assign(TEAM_SCHACH, {
                 nurMitWuerfeln: true
             },
             {
+                schluessel: "zufallsArmee",
+                titel: "Zufallsarmee",
+                hinweis: "Jede Seite bekommt gewürfelt die halbe Armee statt der "
+                    + "gewohnten Aufstellung — beim klassischen Brett 8 Figuren, "
+                    + "König inbegriffen. Selten sind es ZWEI Könige: Dann hast du "
+                    + "zwei Leben. Der erste wird geschlagen wie jede Figur, den "
+                    + "letzten muss der Gegner schachmatt setzen."
+            },
+            {
+                schluessel: "armeeGetrennt",
+                titel: "Beide Seiten getrennt würfeln",
+                hinweis: "Jede Mannschaft zieht für sich — dann kann eine Seite zwei "
+                    + "Türme und eine Dame haben und die andere fast nur Bauern. Aus "
+                    + "heißt: Es wird einmal gewürfelt, und beide bekommen dieselben "
+                    + "Einheiten, spiegelbildlich aufgestellt.",
+                nurMitArmee: true
+            },
+            {
                 schluessel: "einigkeit",
                 titel: "Team muss sich einig sein",
                 hinweis: "Ein Zug oder eine Fähigkeit wird erst vorgeschlagen und "
@@ -99,13 +117,25 @@ Object.assign(TEAM_SCHACH, {
             }
         ];
 
+        /*
+         * Zwei Haken haben Unterpunkte: der Würfel-Haken und (seit v0.51) die
+         * Zufallsarmee. Ein Unterpunkt erscheint erst, wenn sein Oberpunkt
+         * gesetzt ist — sonst stünde dort eine Einstellung zu einer Sache, die
+         * es in dieser Partie gar nicht gibt.
+         */
+        const obenDrueber = { nurMitWuerfeln: "faehigkeiten", nurMitArmee: "zufallsArmee" };
+
         for (const eintrag of schalter) {
-            if (eintrag.nurMitWuerfeln && !TEAM_SCHACH.neueRegeln.faehigkeiten) {
+            const oben = eintrag.nurMitWuerfeln
+                ? obenDrueber.nurMitWuerfeln
+                : (eintrag.nurMitArmee ? obenDrueber.nurMitArmee : "");
+
+            if (oben && !TEAM_SCHACH.neueRegeln[oben]) {
                 continue;
             }
 
             const zeile = TEAM_SCHACH._element("label",
-                "schalter-zeile" + (eintrag.nurMitWuerfeln ? " schalter-unterpunkt" : ""));
+                "schalter-zeile" + (oben ? " schalter-unterpunkt" : ""));
 
             const kasten = document.createElement("input");
             kasten.type = "checkbox";
@@ -114,8 +144,9 @@ Object.assign(TEAM_SCHACH, {
             kasten.addEventListener("change", () => {
                 TEAM_SCHACH.neueRegeln[eintrag.schluessel] = !!kasten.checked;
 
-                /* Der Würfel-Haken blendet den Unterpunkt ein oder aus. */
-                if (eintrag.schluessel === "faehigkeiten") {
+                /* Ein Oberpunkt blendet seine Unterpunkte ein oder aus. */
+                if (eintrag.schluessel === "faehigkeiten"
+                    || eintrag.schluessel === "zufallsArmee") {
                     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
                 }
             });

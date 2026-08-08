@@ -79,6 +79,8 @@ const TEAM_SCHACH = {
         seltenheitZeigen: false,
         pechZeigen: false,
         regen: false,
+        zufallsArmee: false,
+        armeeGetrennt: false,
         einigkeit: false
     },
 
@@ -919,6 +921,8 @@ const TEAM_SCHACH = {
             seltenheitZeigen: false,
             pechZeigen: false,
             regen: false,
+            zufallsArmee: false,
+            armeeGetrennt: false,
             einigkeit: false
         };
 
@@ -972,6 +976,8 @@ const TEAM_SCHACH = {
             seltenheitZeigen: TEAM_SCHACH.neueRegeln.seltenheitZeigen,
             pechZeigen: TEAM_SCHACH.neueRegeln.pechZeigen,
             regen: TEAM_SCHACH.neueRegeln.regen,
+            zufallsArmee: TEAM_SCHACH.neueRegeln.zufallsArmee,
+            armeeGetrennt: TEAM_SCHACH.neueRegeln.armeeGetrennt,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
         };
 

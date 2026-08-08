@@ -142,8 +142,8 @@ die die Regeln lesen:
 | `aufstellung` | Startbrett. |
 | `rochade` | `false` schaltet die Rochade ganz ab (sie hängt an den festen Plätzen von König und Turm). |
 | `koenigSchlagbar` | `true` heißt: kein Schach, kein Matt, kein Zugfilter. Der König ist eine Figur wie jede andere, und wer keinen mehr hat, verliert. Nötig für Bretter mit **zwei Königen je Seite** (Doppelbrett). |
-| `koenigeAlsLeben` | `true` heißt: **zwei Könige sind zwei Leben** (seit v0.49). Solange eine Seite mehr als einen König hat, gilt für SIE dasselbe wie bei `koenigSchlagbar`; beim letzten kippt es zurück zu Schach und Matt. Zufallsarmee. |
-| `zufallsArmee` | `true` heißt: Die Aufstellung wird je Partie gerechnet (`SCHACH_RUNDE._armeeStand`). `aufstellung` ist dann nur noch Beispielbild und Rückfall. |
+| `koenigeAlsLeben` | `true` heißt: **zwei Könige sind zwei Leben** (seit v0.49). Solange eine Seite mehr als einen König hat, gilt für SIE dasselbe wie bei `koenigSchlagbar`; beim letzten kippt es zurück zu Schach und Matt. **Seit v0.51 auch ein Feld im STAND** — siehe unten. |
+| `zufallsArmee` | `true` heißt: Die Aufstellung wird je Partie gerechnet (`SCHACH_RUNDE._armeeStand`). **Seit v0.51 ein Haken der Partie**; an der Spielart steht es nur noch für die versteckte Alt-Spielart `zufallsarmee`. |
 | `bonusFelder` | Felder, auf denen Fähigkeiten liegen. |
 
 **Eine neue Spielart kommt ans ENDE der Liste.** Die Partie-Kennungen in
@@ -176,15 +176,36 @@ beiden Fällen, danach trennen sich die Wege.
 
 #### Die gerechnete Aufstellung
 
-`SCHACH_RUNDE._armeeStand(stand, id)` baut das Brett aus der Partie-Kennung —
-gerechnet über `_zufallsWert`, nie gewürfelt (eiserne Regel). Danach steht es
-als ganz gewöhnliches Brett im Stand; wer die Partie lädt, liest es ab und
-rechnet nichts nach. Die Zahlen (Anzahl, Randbreite, Chancen je Figur, Chance
-auf zwei Könige) stehen in `SCHACH_VARIANTEN.ARMEE`.
+`SCHACH_RUNDE._armeeStand(stand, id, getrennt)` baut das Brett aus der
+Partie-Kennung — gerechnet über `_zufallsWert`, nie gewürfelt (eiserne Regel).
+Danach steht es als ganz gewöhnliches Brett im Stand; wer die Partie lädt, liest
+es ab und rechnet nichts nach. Chancen je Figur, Chance auf zwei Könige und die
+Damen-Grenze stehen in `SCHACH_VARIANTEN.ARMEE`.
 
-Die acht Figuren je Seite sind **keine gewählte Zahl**: Zwei freie Spalten links
-und rechts lassen auf dem 8er-Brett vier Spalten mal zwei Grundreihen übrig —
-acht Felder, ein Feld je Figur.
+**Aufgerufen wird an drei Stellen**, alle über `SCHACH_RUNDE.armeeAufstellen`:
+`leereRunde` (deckt nur die Alt-Spielart ab — die Regeln sind dort noch nicht
+gesetzt), `SCHACH_TAFEL.partieAnlegen` (dort steht der Haken fest) und
+`neuePartie` (mit einem Saat-Zusatz, damit die zweite Partie anders aussieht).
+`armeeAufstellen` darf **nicht** `armeeAn` fragen: Das normalisiert, und
+`normalisieren` baut sich eine leere Runde — das wäre eine Endlosschleife.
+
+**Wie viele Figuren?** `SCHACH_VARIANTEN.armeeAnzahl` zählt die Grossbuchstaben
+der `aufstellung` und nimmt die Hälfte (`ARMEE.anteil`). Für „Klassisch" sind
+das die 8 aus v0.49; jedes andere Brett folgt von selbst, und eine neue Spielart
+braucht keine eigene Zahl. `armeeSpalten` leitet daraus die Breite ab
+(`ceil(anzahl / 2)`, weil auf ZWEI Grundreihen gestellt wird) und zentriert sie
+— auf dem 8er-Brett vier Spalten mit je zwei freien daneben.
+
+**Dieselbe Armee für beide?** Steckt die Farbe in der Saat, zieht jede Seite für
+sich; ohne sie fällt für beide dieselbe Ziehung. Weil `_armeeFelder` die Felder
+spiegelbildlich liefert (gleicher Spaltenindex, gespiegelte Reihe), ergibt das
+eine symmetrische Stellung. Entschieden wird es über `regeln.armeeGetrennt` —
+**aus** ist die Vorgabe, also gerecht.
+
+**Warum `koenigeAlsLeben` im STAND steht:** Seit die Zufallsarmee ein Haken ist,
+kann sie auf jeder Spielart liegen. `schach.js` sieht aber nur den Stand, nie
+die `regeln` der Partie — also schreibt `_armeeStand` den Schalter dort hinein,
+und `koenigSchlagbarFuer` liest Spielart ODER Stand.
 
 ### Fähigkeiten
 
