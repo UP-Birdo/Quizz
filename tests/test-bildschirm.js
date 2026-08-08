@@ -922,9 +922,11 @@ pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
 
     TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 9400);
 
+    /* Seit v0.56 wertet die Verstaerkung jede eigene Figur auf: 16 Steine
+       minus dem einen Koenig, der stehen bleiben muss. */
     const felder = SCHACH_RUNDE.zielFelder(partie, "id-anna", "verstaerkung");
-    if (felder.length !== 8) {
-        throw new Error("erwartet 8 eigene Bauern, waren " + felder.length);
+    if (felder.length !== 15) {
+        throw new Error("erwartet 15 aufwertbare Figuren, waren " + felder.length);
     }
 
     TEAM_SCHACH.partieOeffnen(partie.id);
@@ -945,6 +947,80 @@ pruefe("Wartet eine Faehigkeit auf ihr Ziel, sind die Felder markiert", () => {
 
     TEAM_SCHACH._auswahlAufheben();
     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+});
+
+pruefe("Ein Tipp setzt den Vorschau-Kasten, statt sofort einzusetzen (v0.57)", () => {
+    /*
+     * BIS v0.56 WIRKTE DER ERSTE TIPP SOFORT. Bei Mauer (drei Felder) und
+     * Frost (2x2) sah man dabei nie, WO die Wirkung landet. Jetzt setzt der
+     * Tipp den Kasten, und ausgefuehrt wird ueber "Einsetzen" unter dem Brett.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "faehigkeiten", "Vorschau", 9500);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 9500);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 9500);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 9500);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 9500);
+    partie.faehigkeiten.weiss.push("mauer");
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(angelegt.tafel, partie, 9500);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    TEAM_SCHACH.zielFaehigkeit = "mauer";
+    TEAM_SCHACH.zielFelder = SCHACH_RUNDE.zielFelder(partie, "id-anna", "mauer");
+    TEAM_SCHACH.auswahlZaehler = partie.zugZaehler;
+
+    const mitte = SCHACH.feldNummer("d4");
+    TEAM_SCHACH.feldAngetippt(partie, { id: "id-anna", name: "Anna" }, mitte);
+
+    /* Der Tipp darf NICHTS eingesetzt haben — die Faehigkeit liegt noch da. */
+    if (TEAM_SCHACH.zielVorschau !== mitte) {
+        throw new Error("der Kasten liegt nicht auf dem angetippten Feld");
+    }
+    if (TEAM_SCHACH.zielUmriss.length !== SCHACH.MAUER_LAENGE) {
+        throw new Error("erwartet " + SCHACH.MAUER_LAENGE + " Felder im Umriss, waren "
+            + TEAM_SCHACH.zielUmriss.length);
+    }
+
+    /* Und die drei Felder tragen den Rahmen, aussen mit Kanten. */
+    for (const name of ["c4", "d4", "e4"]) {
+        const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+            "[data-feld=\"" + SCHACH.feldNummer(name) + "\"]");
+
+        if (!zelle || !zelle.classList.contains("feld-vorschau")) {
+            throw new Error(name + " traegt keinen Vorschau-Rahmen");
+        }
+        if (!zelle.classList.contains("kante-oben")) {
+            throw new Error(name + " hat keine Oberkante");
+        }
+    }
+
+    const links = TEAM_SCHACH.wurzelEl.querySelector(
+        "[data-feld=\"" + SCHACH.feldNummer("c4") + "\"]");
+    if (!links.classList.contains("kante-links")) {
+        throw new Error("das linke Ende hat keine linke Kante");
+    }
+    if (links.classList.contains("kante-rechts")) {
+        throw new Error("innen darf keine Kante stehen");
+    }
+
+    TEAM_SCHACH._auswahlAufheben();
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+});
+
+pruefe("Abbrechen raeumt den Vorschau-Kasten wieder weg (v0.57)", () => {
+    TEAM_SCHACH.zielFaehigkeit = "mauer";
+    TEAM_SCHACH.zielFelder = [1, 2, 3];
+    TEAM_SCHACH.zielVorschau = 2;
+    TEAM_SCHACH.zielUmriss = [1, 2, 3];
+
+    TEAM_SCHACH.zielVerwerfen();
+
+    if (TEAM_SCHACH.zielFaehigkeit !== "" || TEAM_SCHACH.zielVorschau !== -1
+        || TEAM_SCHACH.zielUmriss.length !== 0) {
+        throw new Error("nach dem Abbrechen liegt noch etwas herum");
+    }
 });
 
 pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () => {
@@ -1485,11 +1561,17 @@ function zeichenAn(art, amZug) {
         .join(" ");
 }
 
-pruefe("Ausweichen traegt Pluszeichen und Blitz", () => {
+pruefe("Ausweichen traegt nur noch den Blitz (v0.58)", () => {
+    /*
+     * Bis v0.57 trug es beides. Seit es NUR im Gegenzug geht, faellt das
+     * Pluszeichen von selbst weg: Wer am Zug ist, darf es gar nicht einsetzen
+     * — es gibt also keinen Zug zu behalten. Der Blitz bleibt und ist jetzt
+     * das einzige Zeichen an ihm.
+     */
     const zeichen = zeichenAn("ausweichen");
 
-    if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
-        throw new Error("kein Pluszeichen — Ausweichen kostet keinen Zug");
+    if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
+        throw new Error("Pluszeichen, obwohl Ausweichen nur im Gegenzug geht");
     }
     if (zeichen.indexOf("faehigkeit-blitz") === -1) {
         throw new Error("kein Blitz — Ausweichen geht im Gegenzug");
@@ -1507,11 +1589,28 @@ pruefe("Der Friedhof traegt keines von beiden", () => {
     }
 });
 
-pruefe("Der Bauernschub traegt das Pluszeichen, aber keinen Blitz", () => {
-    const zeichen = zeichenAn("bauernschub");
+pruefe("Die Mauer traegt das Pluszeichen, aber keinen Blitz", () => {
+    const zeichen = zeichenAn("mauer");
 
     if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
         throw new Error("kein Pluszeichen — danach zieht man noch normal");
+    }
+    if (zeichen.indexOf("faehigkeit-blitz") !== -1) {
+        throw new Error("Blitz, obwohl sie nur am eigenen Zug geht");
+    }
+});
+
+pruefe("Der Bauernschub hat sein Pluszeichen verloren (v0.56)", () => {
+    /*
+     * Bis v0.55 trug er es: Er aendert ja nur die Stellung. Er schiebt aber
+     * bis zu acht Figuren, und mit dem Zug obendrauf war das zu stark —
+     * gemeldet vom Nutzer am 08.08. Nach der Regel von v0.47 nimmt man einer
+     * zu starken Faehigkeit das Pluszeichen, statt ihre Stufe zu verschieben.
+     */
+    const zeichen = zeichenAn("bauernschub");
+
+    if (zeichen.indexOf("faehigkeit-zeichen") !== -1) {
+        throw new Error("Pluszeichen, obwohl der Bauernschub den Zug beendet");
     }
     if (zeichen.indexOf("faehigkeit-blitz") !== -1) {
         throw new Error("Blitz, obwohl er nur am eigenen Zug geht");
@@ -1538,13 +1637,18 @@ pruefe("Die Zeichen stehen auch im Gegnerzug (v0.48)", () => {
      * Seit v0.48 sagt es, was die Faehigkeit IST — und ist deshalb von der
      * Frage, wer am Zug ist, unabhaengig.
      */
+    /*
+     * Geprueft wird das seit v0.58 an der MAUER (Pluszeichen) und am
+     * AUSWEICHEN (Blitz): Ausweichen hat sein Pluszeichen verloren, taugt
+     * also nicht mehr, um beide Zeichen an einer Faehigkeit zu zeigen. Die
+     * Aussage bleibt dieselbe — die Zeichen haengen an der Faehigkeit, nicht
+     * daran, wer gerade am Zug ist.
+     */
     for (const amZug of ["weiss", "schwarz"]) {
-        const zeichen = zeichenAn("ausweichen", amZug);
-
-        if (zeichen.indexOf("faehigkeit-zeichen") === -1) {
-            throw new Error("kein Pluszeichen bei amZug=" + amZug);
+        if (zeichenAn("mauer", amZug).indexOf("faehigkeit-zeichen") === -1) {
+            throw new Error("kein Pluszeichen an der Mauer bei amZug=" + amZug);
         }
-        if (zeichen.indexOf("faehigkeit-blitz") === -1) {
+        if (zeichenAn("ausweichen", amZug).indexOf("faehigkeit-blitz") === -1) {
             throw new Error("kein Blitz bei amZug=" + amZug);
         }
     }

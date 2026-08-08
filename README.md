@@ -224,7 +224,10 @@ allen Zahlen steht in der App hinter dem **i** bei den Fähigkeiten.
 
 Jeder achte Würfel ist ein **Unglückswürfel** (umgedrehtes Fragezeichen): Er
 kommt nicht in den Vorrat, sondern wirkt sofort gegen den, der ihn eingesammelt
-hat.
+hat. „Sofort" heisst wirklich sofort: Sammelst du unterwegs ein **Erdbeben**
+ein, reissen die Löcher mitten in deinem Weg auf — liegt eines davon noch vor
+dir, endet dein Zug davor. Und was du am Zielfeld schlagen wolltest, bleibt
+dann stehen; wer nicht ankommt, schlägt auch nichts.
 
 ### Was eine Fähigkeit kostet
 
@@ -237,13 +240,35 @@ Zwei Zeichen stehen an jeder Fähigkeit — im Vorrat unter dem Brett und in der
 | *(kein +)* | Das Einsetzen kostet deinen Zug — danach ist der Gegner dran. |
 | **Blitz** | Du darfst sie auch einsetzen, während der Gegner am Zug ist. |
 
+**Ausweichen** ist die Ausnahme: Es geht **nur**, während der Gegner am Zug
+ist — im eigenen Zug lässt es sich gar nicht drücken. Es ist die Notbremse,
+kein zusätzlicher Zug.
+
 Dahinter steckt eine einfache Regel: **Wer Material oder einen Angriff
 geschenkt bekommt, gibt den Zug ab.** Wiedergeburt, Wiederbelebung, Spiegel,
 Verstärkung, Friedhof und Händler bringen Figuren; Sprung und Teleport bringen
 eine zusätzliche Gangart zum Schlagen oder Springen — sie alle kosten den Zug.
-Alles, was nur die Stellung verändert (Bauernschub, Erdbeben, Nudelholz, Mauer,
-Schutzschild, Fessel, Frost), behält das Pluszeichen. Ausweichen ebenfalls: Es
-schlägt nie und ist die Notbremse.
+Alles, was nur die Stellung verändert (Nudelholz, Mauer, Schutzschild, Fessel,
+Frost), behält das Pluszeichen. Ausweichen ebenfalls: Es schlägt nie und ist
+die Notbremse.
+
+Eine Ausnahme gibt es: Der **Bauernschub** ändert auch nur die Stellung, kostet
+seit v0.56 aber trotzdem den Zug. Er schiebt bis zu acht Figuren auf einmal,
+und mit dem Zug obendrauf konnte man erst vorrücken und dann mit einem der
+geschobenen Bauern schlagen — das war zu stark. Dafür wandeln Bauern, die durch
+den Schub die letzte Reihe erreichen, jetzt alle um, und du wählst die Figur.
+
+Zwei Fähigkeiten sehen sich ähnlich und sind es nicht: Der **Frost** friert ein
+2-mal-2-Feld für einen Zug ein und macht alles darin unantastbar — auch deine
+eigenen Figuren, also gut zielen. Die **Fessel** hält eine einzelne gegnerische
+Figur mehrere Züge fest, und die bleibt dabei ganz normal schlagbar.
+
+Die **Verstärkung** wertet eine eigene Figur eine Stufe auf: Bauer wird
+Springer, Springer wird Läufer oder Turm, Läufer und Turm werden Dame, Dame
+wird König. **Ein zweiter König sind zwei Leben** — solange du zwei hast, gibt
+es für dich kein Schach und kein Matt, deine Könige sind dann aber schlagbar
+wie jede andere Figur. Umgekehrt geht es auch: Wer zwei Könige hat, tippt einen
+an und bekommt zwei Damen. Dein letzter König bleibt immer stehen.
 
 **Bevor du eine Fähigkeit einsetzt, siehst du, wie sie wirkt:** ein kleines
 Brett spielt den Ablauf ab — Ausgangsstellung, wo du hintippst (ein
@@ -252,8 +277,17 @@ sich wohin bewegt; die Sätze zu allen Bildern stehen darunter. Dasselbe steht h
 Unglückswürfel als Liste von Überschriften — tippe eine an, und sie klappt mit
 Beschreibung und Anleitung auf.
 
-Manche Fähigkeiten brauchen ein Feld (etwa Schutzschild oder Erdbeben). Nach dem
-Einsetzen sind die möglichen Felder hervorgehoben — einfach eines antippen.
+Manche Fähigkeiten brauchen ein Feld (etwa Schutzschild oder Mauer). Nach dem
+Einsetzen sind die möglichen Felder hell umrandet. Tippst du eines an, erscheint
+ein **grüner Rahmen** um genau das, was passieren wird — bei der Mauer drei
+Felder, bei Frost und Friedhof ein 2-mal-2-Feld. Passt es nicht, tippst du ein
+anderes Feld an; passt es, drückst du unter dem Brett auf **Einsetzen**. Mit
+**Abbrechen** behältst du die Fähigkeit.
+
+Beim **Friedhof** und bei der **Wiederbelebung** siehst du dabei blass, wo
+Figuren gefallen sind — beim Friedhof die des Gegners, bei der Wiederbelebung
+deine eigenen. So legst du den Rahmen dorthin, wo etwas zu holen ist. Liegt auf
+einem Feld mehr als einer, kommt der zuletzt Gefallene zurück.
 
 Eine eingesetzte Fähigkeit ist verbraucht. Solange sie wirkt, steht sie oben in
 der Leiste, und alle betroffenen Felder leuchten auf — **bei allen

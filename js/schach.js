@@ -298,9 +298,37 @@ const SCHACH = {
             fesselFeld: -1,
             fesselFarbe: "",
 
-            /* Frost: wie die Fessel, aber die Figur ist zusätzlich unantastbar
-               — eingefroren zieht sie nicht und wird nicht geschlagen. */
+            /*
+             * Wie lange die Fessel noch hält, als Wert von `takt` (seit v0.56).
+             *
+             * Bis v0.55 galt sie für genau einen Zug der gefesselten Seite und
+             * brauchte deshalb keine Uhr — sie verfiel, sobald diese Farbe zog.
+             * Jetzt hält sie mehrere Züge, und dafür gibt es nur eine
+             * brauchbare Uhr: den Takt. `halbzuege` springt bei jedem Bauernzug
+             * auf 0 zurück und machte die Fessel unsterblich (dieselbe Falle
+             * wie bei den Mauern, siehe dort).
+             *
+             * 0 heisst „keine Frist gesetzt": Ein Stand von vor v0.56 bekommt
+             * beim Normalisieren die alte Frist von einem Halbzug.
+             */
+            fesselBis: 0,
+
+            /*
+             * Frost: eingefroren zieht nichts und wird nichts geschlagen.
+             *
+             * SEIT v0.56 IST DAS EINE FLÄCHE, KEINE FIGUR. `frostFelder` sind
+             * die Felder eines 2×2-Blocks, und was darin steht, friert ein —
+             * egal, wem es gehört. `frostFeld` bleibt als linke obere Ecke
+             * daneben stehen, damit der Datenvertrag additiv bleibt und ein
+             * Stand von vorher weiterläuft.
+             *
+             * `frostFarbe` ist weiterhin die Seite, GEGEN die er gerichtet ist
+             * — an ihrem nächsten Zug läuft er ab. Sie sagt also nicht mehr,
+             * wer einfriert (das tun alle im Block), sondern nur noch, wann es
+             * vorbei ist.
+             */
             frostFeld: -1,
+            frostFelder: [],
             frostFarbe: "",
 
             /*
@@ -491,11 +519,40 @@ const SCHACH = {
             && roh.fesselFeld < felder && farben.indexOf(roh.fesselFarbe) !== -1) {
             stand.fesselFeld = roh.fesselFeld;
             stand.fesselFarbe = roh.fesselFarbe;
+
+            /*
+             * Ohne Frist stammt der Stand aus der Zeit vor v0.56: Damals galt
+             * die Fessel für genau einen Halbzug. Genau das wird hier
+             * nachgetragen, damit eine angefangene Partie nicht plötzlich
+             * länger fesselt, als beim Einsetzen versprochen war.
+             */
+            stand.fesselBis = (Number.isInteger(roh.fesselBis) && roh.fesselBis > stand.takt)
+                ? roh.fesselBis
+                : stand.takt + 1;
         }
-        if (Number.isInteger(roh.frostFeld) && roh.frostFeld >= 0
-            && roh.frostFeld < felder && farben.indexOf(roh.frostFarbe) !== -1) {
-            stand.frostFeld = roh.frostFeld;
-            stand.frostFarbe = roh.frostFarbe;
+
+        /*
+         * Frost: die Liste gewinnt, das Einzelfeld ist der Rückfall. Ein Stand
+         * von vor v0.56 kennt nur `frostFeld` — daraus wird ein Block aus
+         * einem Feld, und die Partie läuft unverändert weiter.
+         */
+        if (farben.indexOf(roh.frostFarbe) !== -1) {
+            const ausListe = Array.isArray(roh.frostFelder)
+                ? roh.frostFelder.filter((feld) => Number.isInteger(feld)
+                    && feld >= 0 && feld < felder)
+                : [];
+
+            const block = (ausListe.length > 0)
+                ? ausListe
+                : ((Number.isInteger(roh.frostFeld) && roh.frostFeld >= 0
+                    && roh.frostFeld < felder) ? [roh.frostFeld] : []);
+
+            if (block.length > 0) {
+                stand.frostFelder = block.filter(
+                    (feld, stelle, alle) => alle.indexOf(feld) === stelle);
+                stand.frostFeld = stand.frostFelder[0];
+                stand.frostFarbe = roh.frostFarbe;
+            }
         }
         if (farben.indexOf(roh.glasFarbe) !== -1 && Number.isInteger(roh.glasBis)
             && roh.glasBis > 0) {
@@ -600,6 +657,99 @@ const SCHACH = {
      */
     gesperrt(stand, feld) {
         return SCHACH.mauerAuf(stand, feld) || SCHACH.rissAuf(stand, feld);
+    },
+
+    /* ---------------------------------------------------------------- *
+     * Frost und Fessel (Frost als Fläche seit v0.56)
+     *
+     * Beide halten eine Figur fest, und trotzdem sind es zwei verschiedene
+     * Dinge — deshalb stehen sie hier nebeneinander:
+     *
+     *     Frost    sperrt eine FLÄCHE (2×2) für EINEN Zug. Was darin steht,
+     *              zieht nicht und lässt sich auch nicht schlagen. Es gilt für
+     *              beide Seiten, auch für die, die ihn gelegt hat.
+     *     Fessel   hält EINE Figur über MEHRERE Züge fest. Sie bleibt dabei
+     *              ganz normal schlagbar — das ist ihr Sinn.
+     *
+     * Könige sind von beidem ausgenommen. Ein König, der nicht ziehen darf,
+     * wäre ohne eigenen Fehler matt, und ein unantastbarer König machte
+     * „Schachmatt" mehrdeutig.
+     * ---------------------------------------------------------------- */
+
+    /* Kantenlänge des Frost-Blocks. */
+    FROST_KANTE: 2,
+
+    /* Wie viele Halbzüge eine Fessel hält. Vier heisst: zwei Züge des
+       Gegners — genug, um etwas daraus zu machen, zu wenig, um die Partie
+       damit einzufrieren. */
+    FESSEL_HALBZUEGE: 4,
+
+    /* Die eingefrorenen Felder. Ein Stand von vor v0.56 kennt nur `frostFeld`;
+       `standNormalisieren` hat daraus längst eine Liste gemacht. */
+    frostFelder(stand) {
+        if (Array.isArray(stand.frostFelder) && stand.frostFelder.length > 0) {
+            return stand.frostFelder;
+        }
+        return (stand.frostFeld >= 0) ? [stand.frostFeld] : [];
+    },
+
+    /*
+     * Steht auf diesem Feld etwas Eingefrorenes?
+     *
+     * Die Frage ist bewusst FARBLOS: Der Block friert ein, was darin steht,
+     * gleich wem es gehört (Nutzer-Entscheidung 08.08.). Der König bleibt
+     * verschont — er steht im Block, zieht aber und ist schlagbar wie sonst.
+     *
+     * EIN LEERES FELD IM BLOCK IST NICHT GESPERRT. Der Frost hält FIGUREN
+     * fest, er riegelt keine Fläche ab — dafür gibt es die Mauer. Ohne diese
+     * Zeile wäre er beides gewesen: eine Mauer, die man auch noch über den
+     * Gegner legen kann.
+     */
+    eingefroren(stand, feld) {
+        if (SCHACH.frostFelder(stand).indexOf(feld) === -1) {
+            return false;
+        }
+
+        const art = SCHACH.artVon(SCHACH.figurAuf(stand, feld));
+        return art !== "" && art !== "K";
+    },
+
+    /* Ist diese Figur gefesselt? Anders als der Frost hängt das an der FARBE:
+       Gefesselt wird immer nur eine Seite. */
+    gefesselt(stand, feld) {
+        return stand.fesselFeld === feld
+            && !!stand.fesselFarbe
+            && SCHACH.farbeVon(SCHACH.figurAuf(stand, feld)) === stand.fesselFarbe;
+    },
+
+    /*
+     * Die Felder eines Frost-Blocks, oder null. `feld` ist die linke obere
+     * Ecke — dieselbe Lesart wie beim Friedhof, damit man nicht zwei
+     * Bedienungen für zwei 2×2-Fähigkeiten lernen muss.
+     *
+     * Anders als der Friedhof verlangt der Frost KEINE freien Felder: Er
+     * friert ja gerade das ein, was dort steht. Nur im Brett liegen muss der
+     * Block.
+     */
+    frostBlock(stand, feld) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+        const kante = SCHACH.FROST_KANTE;
+
+        if (feld < 0 || reihe + kante > hoehe || spalte + kante > breite) {
+            return null;
+        }
+
+        const block = [];
+        for (let dr = 0; dr < kante; dr++) {
+            for (let ds = 0; ds < kante; ds++) {
+                block.push(SCHACH._feld(stand, reihe + dr, spalte + ds));
+            }
+        }
+
+        return block;
     },
 
     /*
@@ -829,11 +979,17 @@ const SCHACH = {
             return [];
         }
 
-        /* Fessel und Frost: Diese Figur darf gerade nicht ziehen. */
-        if (stand.fesselFeld === von && stand.fesselFarbe === farbe) {
+        /*
+         * Fessel und Frost: Diese Figur darf gerade nicht ziehen.
+         *
+         * Der Unterschied steckt in den beiden Funktionen: Die Fessel trifft
+         * eine FARBE, der Frost eine FLÄCHE — seit v0.56 also auch die eigenen
+         * Figuren im Block. Beide lassen Könige stehen.
+         */
+        if (SCHACH.gefesselt(stand, von)) {
             return [];
         }
-        if (stand.frostFeld === von && stand.frostFarbe === farbe) {
+        if (SCHACH.eingefroren(stand, von)) {
             return [];
         }
 
@@ -856,12 +1012,17 @@ const SCHACH = {
             roh = roh.filter((zug) => zug.nach !== stand.schildFeld);
         }
 
-        /* Eingefroren heißt auch: unantastbar. Sonst wäre Frost nur eine
-           teurere Fessel — und eine Figur, die sich nicht wehren kann, einfach
-           nur ein Geschenk an den Gegner. */
-        if (stand.frostFeld >= 0 && stand.frostFarbe !== farbe) {
-            roh = roh.filter((zug) => zug.nach !== stand.frostFeld);
-        }
+        /*
+         * Eingefroren heißt auch: unantastbar. Sonst wäre Frost nur eine
+         * teurere Fessel — und eine Figur, die sich nicht wehren kann, einfach
+         * nur ein Geschenk an den Gegner.
+         *
+         * Seit v0.56 gilt das für JEDEN, der den Block angreifen will, auch
+         * für den, der ihn gelegt hat: Der Frost sperrt eine Fläche, er wählt
+         * keine Seite. Das ist der Preis dafür, dass er gleich vier Felder
+         * erfasst — man kann sich damit die eigene Beute wegfrieren.
+         */
+        roh = roh.filter((zug) => !SCHACH.eingefroren(stand, zug.nach));
 
         /*
          * Der König wird NIE geschlagen — auch nicht durch eine Fähigkeit.
@@ -1708,11 +1869,28 @@ const SCHACH = {
             schildFeld: -1,
             schildFarbe: "",
 
-            /* Fessel und Frost gelten für den nächsten Zug der betroffenen Seite. */
-            fesselFeld: (stand.fesselFarbe === stand.amZug) ? -1 : stand.fesselFeld,
-            fesselFarbe: (stand.fesselFarbe === stand.amZug) ? "" : stand.fesselFarbe,
+            /*
+             * DER FROST gilt für den nächsten Zug der betroffenen Seite — ein
+             * Halbzug, wie bisher. Nur die Fläche ist grösser geworden.
+             */
             frostFeld: (stand.frostFarbe === stand.amZug) ? -1 : stand.frostFeld,
+            frostFelder: (stand.frostFarbe === stand.amZug)
+                ? [] : SCHACH.frostFelder(stand).slice(),
             frostFarbe: (stand.frostFarbe === stand.amZug) ? "" : stand.frostFarbe,
+
+            /*
+             * DIE FESSEL LÄUFT SEIT v0.56 NACH DER UHR AB, nicht mehr nach dem
+             * ersten Zug der gefesselten Seite. Verglichen wird gegen den NEUEN
+             * Takt (`stand.takt + 1`) — dieser Halbzug ist ja gerade vorbei.
+             *
+             * Warum `takt` und nicht `halbzuege`: Der Zähler der
+             * Fünfzig-Züge-Regel springt bei jedem Bauernzug auf 0 zurück, und
+             * eine Fessel mit `bis = halbzuege + 4` wäre nach einem einzigen
+             * Bauernzug unsterblich. Dieselbe Falle wie bei den Mauern.
+             */
+            fesselFeld: (stand.fesselBis > stand.takt + 1) ? stand.fesselFeld : -1,
+            fesselFarbe: (stand.fesselBis > stand.takt + 1) ? stand.fesselFarbe : "",
+            fesselBis: (stand.fesselBis > stand.takt + 1) ? stand.fesselBis : 0,
 
             /* Das volle Glas läuft nach Zugzähler ab, nicht nach Farbe. */
             glasFarbe: stand.glasFarbe,
@@ -1898,18 +2076,35 @@ const SCHACH = {
      * die Animation.
      * ---------------------------------------------------------------- */
 
-    /* Alle eigenen Bauern ein Feld vor, soweit frei. Geschlagen wird nicht. */
-    bauernschub(stand, farbe) {
+    /*
+     * Alle eigenen Bauern ein Feld vor, soweit frei. Geschlagen wird nicht.
+     *
+     * `umwandlung` (seit v0.56) sagt, zu WAS die Bauern werden, die dabei die
+     * letzte Reihe erreichen — "D", "T", "L" oder "S", Vorgabe "D". Bis v0.55
+     * wurden sie stillschweigend zu Damen; jetzt fragt der Bildschirm einmal
+     * für alle. Der Aufruf ohne den Parameter verhält sich unverändert, damit
+     * jede alte Stelle gültig bleibt.
+     *
+     * Zurück kommt zusätzlich `umgewandelt`: die Felder, auf denen ein Bauer
+     * eine neue Figur geworden ist. Daran hängt die Frage des Bildschirms.
+     */
+    UMWANDLUNGEN: ["D", "T", "L", "S"],
+
+    bauernschub(stand, farbe, umwandlung) {
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
         const richtung = (farbe === SCHACH.WEISS) ? -1 : 1;
         const letzteReihe = (farbe === SCHACH.WEISS) ? 0 : hoehe - 1;
         const bauer = (farbe === SCHACH.WEISS) ? "B" : "b";
-        const dame = (farbe === SCHACH.WEISS) ? "D" : "d";
+
+        const gewaehlt = (SCHACH.UMWANDLUNGEN.indexOf(umwandlung) !== -1)
+            ? umwandlung : "D";
+        const neueFigur = (farbe === SCHACH.WEISS) ? gewaehlt : gewaehlt.toLowerCase();
 
         let brett = stand.brett;
         const felder = [];
         const wege = [];
+        const umgewandelt = [];
 
         /*
          * Von vorn nach hinten durchgehen (in Zugrichtung), damit ein Bauer
@@ -1938,11 +2133,16 @@ const SCHACH = {
                     continue;
                 }
 
+                const wandelt = (SCHACH.reiheVon(ziel, breite) === letzteReihe);
+
                 brett = SCHACH._brettMit(brett, feld, ".");
-                brett = SCHACH._brettMit(brett, ziel,
-                    (SCHACH.reiheVon(ziel, breite) === letzteReihe) ? dame : bauer);
+                brett = SCHACH._brettMit(brett, ziel, wandelt ? neueFigur : bauer);
                 felder.push(feld, ziel);
                 wege.push({ von: feld, nach: ziel });
+
+                if (wandelt) {
+                    umgewandelt.push(ziel);
+                }
             }
         }
 
@@ -1951,27 +2151,178 @@ const SCHACH = {
         }
 
         const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
-        return { stand: neu, felder: felder, wege: wege, text: "Bauernschub" };
+        return {
+            stand: neu,
+            felder: felder,
+            wege: wege,
+            umgewandelt: umgewandelt,
+            text: (umgewandelt.length === 0)
+                ? "Bauernschub"
+                : ("Bauernschub, " + umgewandelt.length + " mal "
+                    + SCHACH.artName(gewaehlt))
+        };
     },
 
-    /* Ein eigener Bauer wird zum Springer. */
-    verstaerkung(stand, farbe, feld) {
-        const bauer = (farbe === SCHACH.WEISS) ? "B" : "b";
-        if (SCHACH.figurAuf(stand, feld) !== bauer) {
+    /* ---------------------------------------------------------------- *
+     * Die Aufwertungskette (Verstärkung, seit v0.56)
+     *
+     * Bis v0.55 machte die Verstärkung aus einem Bauern einen Springer, und
+     * das war alles. Jetzt steigt JEDE eigene Figur eine Stufe. Die Kette
+     * steht hier als reine Tabelle, damit man sie an einer Stelle liest:
+     *
+     *     Bauer            → Springer
+     *     Springer         → Läufer ODER Turm (je zur Hälfte)
+     *     Läufer, Turm     → Dame
+     *     Dame             → König        (und damit: ein zweites Leben)
+     *     König            → zwei Damen   (nur, wenn man zwei Könige hat)
+     *
+     * WARUM DER KÖNIG DAS OBERE ENDE IST: Ein zweiter König sind zwei Leben —
+     * `koenigeAlsLeben` im Stand, dieselbe Maschinerie wie bei der
+     * Zufallsarmee (siehe `SCHACH.koenigSchlagbarFuer`). Solange zwei stehen,
+     * kennt diese Seite kein Schach und kein Matt; beim letzten kippt es
+     * zurück. Ohne diesen Schalter wäre ein zweiter König ein unschlagbarer
+     * Klotz und „Schachmatt" nicht mehr eindeutig.
+     *
+     * UND WARUM ES ZURÜCK GEHT: Zwei Leben sind nicht immer das Richtige —
+     * wer angreifen will, braucht Material. Deshalb tauscht man einen von
+     * zwei Königen gegen zwei Damen ein. Dass es zwei Könige BRAUCHT, ist die
+     * Sperre, die den letzten König schützt: Er lässt sich nicht wegtauschen.
+     *
+     * Mehrere Ergebnisse werden vom ANGETIPPTEN Feld aus verteilt: das erste
+     * kommt dorthin, jedes weitere auf das nächste freie Nachbarfeld in
+     * derselben festen Reihenfolge wie beim Spiegel. Fest, damit alle Geräte
+     * dasselbe Brett rechnen.
+     * ---------------------------------------------------------------- */
+
+    AUFWERTUNG: {
+        B: [["S"]],
+        S: [["L"], ["T"]],
+        L: [["D"]],
+        T: [["D"]],
+        D: [["K"]],
+        K: [["D", "D"]]
+    },
+
+    /*
+     * Was wird aus dieser Figurenart? Liefert eine Liste von Arten (meist
+     * eine, beim König zwei) oder null, wenn es keine Aufwertung gibt.
+     *
+     * `wert` ist eine Zahl von 0 bis 1 und entscheidet dort, wo es mehrere
+     * Möglichkeiten gibt (Springer → Läufer oder Turm). Sie wird GERECHNET
+     * übergeben, nie gewürfelt — `Math.random()` hat im Modell nichts zu
+     * suchen, sonst sähe jedes Gerät ein anderes Brett.
+     */
+    aufwertungVon(art, wert) {
+        const moeglich = SCHACH.AUFWERTUNG[art];
+        if (!moeglich || moeglich.length === 0) {
             return null;
         }
 
-        const springer = (farbe === SCHACH.WEISS) ? "S" : "s";
-        const neu = Object.assign({}, stand, {
-            brett: SCHACH._brettMit(stand.brett, feld, springer)
-        });
+        const sauber = Math.min(Math.max(Number(wert) || 0, 0), 0.999999);
+        return moeglich[Math.floor(sauber * moeglich.length)] || moeglich[0];
+    },
+
+    /*
+     * Eine eigene Figur steigt eine Stufe auf. `wert` steuert die Auswahl bei
+     * mehreren Möglichkeiten (siehe `aufwertungVon`).
+     */
+    verstaerkung(stand, farbe, feld, wert) {
+        const figur = SCHACH.figurAuf(stand, feld);
+        if (SCHACH.farbeVon(figur) !== farbe) {
+            return null;
+        }
+
+        const art = SCHACH.artVon(figur);
+        const neueArten = SCHACH.aufwertungVon(art, wert);
+        if (!neueArten) {
+            return null;
+        }
+
+        /* Der LETZTE König bleibt stehen. Ohne ihn hätte die Seite verloren,
+           und eine Fähigkeit darf keine Partie beenden. */
+        if (art === "K" && SCHACH.koenigFelder(stand, farbe).length < 2) {
+            return null;
+        }
+
+        const plaetze = SCHACH._aufwertungsPlaetze(stand, feld, neueArten.length);
+        if (plaetze.length < neueArten.length) {
+            return null;
+        }
+
+        let brett = SCHACH._brettMit(stand.brett, feld, ".");
+
+        for (let stelle = 0; stelle < neueArten.length; stelle++) {
+            const zeichen = (farbe === SCHACH.WEISS)
+                ? neueArten[stelle]
+                : neueArten[stelle].toLowerCase();
+
+            brett = SCHACH._brettMit(brett, plaetze[stelle], zeichen);
+        }
+
+        const neu = Object.assign({}, stand, { brett: brett, enPassant: "" });
+
+        /*
+         * Ein zweiter König schaltet die zwei Leben ein — für BEIDE Seiten im
+         * Stand, aber wirksam nur dort, wo wirklich zwei stehen:
+         * `koenigSchlagbarFuer` zählt je Farbe nach. Einmal gesetzt, bleibt
+         * der Schalter; das ist gewollt, sonst kippten die Regeln mitten in
+         * der Partie hin und her, sobald jemand einen König verliert.
+         */
+        if (neueArten.indexOf("K") !== -1) {
+            neu.koenigeAlsLeben = true;
+        }
+
+        /* Ein König, der sich in Damen verwandelt, verliert sein Rochaderecht
+           — er steht ja nicht mehr da. */
+        if (art === "K" && Array.isArray(neu.rochadeKoenige)) {
+            neu.rochadeKoenige = neu.rochadeKoenige.filter((platz) => platz !== feld);
+        }
 
         return {
             stand: neu,
-            felder: [feld],
-            text: "Verstärkung auf " + SCHACH.feldName(feld, SCHACH.breiteVon(stand),
-                SCHACH.hoeheVon(stand))
+            felder: plaetze.slice(),
+            text: SCHACH.artName(art) + " wird "
+                + neueArten.map((neueArt) => SCHACH.artName(neueArt)).join(" und ")
         };
+    },
+
+    /*
+     * Wohin die aufgewerteten Figuren kommen: zuerst das angetippte Feld,
+     * dann die freien Nachbarfelder in derselben festen Reihenfolge wie beim
+     * Spiegel — gerade Richtungen vor schrägen.
+     */
+    _aufwertungsPlaetze(stand, feld, anzahl) {
+        const plaetze = [feld];
+        if (anzahl <= 1) {
+            return plaetze;
+        }
+
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        for (const richtung of [[0, 1], [0, -1], [1, 0], [-1, 0],
+            [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            if (plaetze.length >= anzahl) {
+                break;
+            }
+
+            const r = reihe + richtung[0];
+            const s = spalte + richtung[1];
+
+            if (!SCHACH._imBrett(stand, r, s)) {
+                continue;
+            }
+
+            const ziel = SCHACH._feld(stand, r, s);
+            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.gesperrt(stand, ziel)) {
+                continue;
+            }
+
+            plaetze.push(ziel);
+        }
+
+        return plaetze;
     },
 
     /*
@@ -2249,8 +2600,56 @@ const SCHACH = {
      * und wird von JEDER Stelle gerufen, die eine Figur bewegt.
      * ---------------------------------------------------------------- */
 
-    /* Wie lange geliehene Figuren bleiben, in Halbzügen. */
+    /*
+     * Wie lange geliehene Figuren bleiben, in Halbzügen — JE FIGURENART
+     * (seit v0.57). Bis v0.56 blieben alle gleich lang (8).
+     *
+     * JE STÄRKER, DESTO KÜRZER. Der Friedhof ist die stärkste Fähigkeit im
+     * Spiel: Er bringt bis zu vier gefallene GEGNER auf die eigene Seite. Mit
+     * einer pauschalen Frist war er umso besser, je schwerer die Figuren
+     * waren, die dort gefallen sind — also genau dort am stärksten, wo man
+     * ohnehin gewinnt. Die Staffel dreht das um: Eine geliehene Dame darf
+     * einmal ziehen, ein geliehener Bauer bleibt eine ganze Weile.
+     *
+     * Die Zahlen sind Halbzüge, also halbe Runden: Die Dame mit 2 zieht genau
+     * einmal, bevor sie zerfällt. Der Bauer behält den alten Wert.
+     */
+    LEIHDAUER: { B: 8, S: 6, L: 6, T: 4, D: 2 },
+
+    /*
+     * DER VORLAUF — nachgemessen und korrigiert beim Bau von v0.57.
+     *
+     * Die Zahlen oben zählen ab dem Zeitpunkt, zu dem man WIEDER AM ZUG IST,
+     * nicht ab dem Einsetzen. Der Grund steckt im Friedhof selbst: Er hat
+     * `beendetZug`. Zwischen dem Aufstehen der Figuren und dem ersten Zug, den
+     * man mit ihnen machen kann, liegen also immer zwei Halbzüge — der eigene,
+     * den man hergibt, und die Antwort des Gegners.
+     *
+     * Ohne diesen Vorlauf wäre die Dame mit ihren 2 Halbzügen schon zerfallen,
+     * BEVOR man sie ein einziges Mal ziehen könnte: Sie hätte nur ein Feld
+     * blockiert. Genau das kam beim Nachmessen heraus — die Tabelle war
+     * richtig, der Nullpunkt nicht.
+     */
+    LEIHGABE_VORLAUF: 2,
+
+    /*
+     * Für Fälle ohne bekannte Art — und als Rückfall, falls je eine Figurenart
+     * dazukommt, die in der Tabelle fehlt. Der alte Wert, damit ein Vergessen
+     * nicht heimlich etwas verkürzt.
+     */
     FRIEDHOF_HALBZUEGE: 8,
+
+    /*
+     * Wie lange eine geliehene Figur dieser Art bleibt, in Halbzügen ab dem
+     * Einsetzen — also die Tabelle plus den Vorlauf. Eine Dame kommt damit auf
+     * 4 und zieht genau einmal.
+     */
+    leihdauerVon(art) {
+        const dauer = SCHACH.LEIHDAUER[art];
+
+        return SCHACH.LEIHGABE_VORLAUF
+            + (Number.isInteger(dauer) ? dauer : SCHACH.FRIEDHOF_HALBZUEGE);
+    },
 
     /* Kantenlänge des Feldes, auf dem sie erscheinen. */
     FRIEDHOF_KANTE: 2,
@@ -2361,7 +2760,6 @@ const SCHACH = {
         let brett = stand.brett;
         const geliehen = SCHACH.geliehene(stand).slice();
         const felder = [];
-        const bis = stand.takt + SCHACH.FRIEDHOF_HALBZUEGE;
 
         for (const eintrag of gefallene) {
             const art = eintrag.art;
@@ -2376,9 +2774,11 @@ const SCHACH = {
                 continue;
             }
 
+            /* Jede Figur bringt ihre eigene Frist mit (seit v0.57): je
+               stärker, desto kürzer. Siehe `SCHACH.LEIHDAUER`. */
             const figur = (farbe === SCHACH.WEISS) ? art : art.toLowerCase();
             brett = SCHACH._brettMit(brett, platz, figur);
-            geliehen.push({ feld: platz, bis: bis });
+            geliehen.push({ feld: platz, bis: stand.takt + SCHACH.leihdauerVon(art) });
             felder.push(platz);
         }
 
@@ -2538,6 +2938,10 @@ const SCHACH = {
 
             schildFeld: (stand.schildFeld >= 0) ? umrechnen(stand.schildFeld) : -1,
             fesselFeld: (stand.fesselFeld >= 0) ? umrechnen(stand.fesselFeld) : -1,
+
+            /* Der Frost ist seit v0.56 eine Liste — umgerechnet wird jedes
+               Feld, und was vom Brett fällt, fällt aus dem Block. */
+            frostFelder: liste(SCHACH.frostFelder(stand)),
             frostFeld: (stand.frostFeld >= 0) ? umrechnen(stand.frostFeld) : -1,
 
             /* Eine Mauer, von der nichts mehr übrig ist, verschwindet ganz. */
@@ -2824,18 +3228,21 @@ const SCHACH = {
         }
 
         /*
-         * Schild, Fessel und Frost hängen an keiner Uhr, sondern am nächsten
-         * Zug der betroffenen Seite. Das ist genau ein Halbzug — ist die Seite
-         * gerade am Zug, läuft er JETZT ab, sonst nach dem Zug des Gegners.
+         * Schild und Frost hängen an keiner Uhr, sondern am nächsten Zug der
+         * betroffenen Seite. Das ist genau ein Halbzug — ist die Seite gerade
+         * am Zug, läuft er JETZT ab, sonst nach dem Zug des Gegners.
          */
         if (stand.schildFeld === feld && stand.schildFarbe) {
             reste.push((stand.amZug === stand.schildFarbe) ? 2 : 1);
         }
-        if (stand.fesselFeld === feld && stand.fesselFarbe) {
-            reste.push((stand.amZug === stand.fesselFarbe) ? 1 : 2);
-        }
-        if (stand.frostFeld === feld && stand.frostFarbe) {
+        if (stand.frostFarbe && SCHACH.frostFelder(stand).indexOf(feld) !== -1) {
             reste.push((stand.amZug === stand.frostFarbe) ? 1 : 2);
+        }
+
+        /* Die Fessel läuft seit v0.56 nach der Uhr — sie wird gerechnet wie
+           eine Mauer, nicht wie das Schild. */
+        if (stand.fesselFeld === feld && stand.fesselFarbe) {
+            reste.push(stand.fesselBis - stand.takt);
         }
 
         const gueltig = reste.filter((rest) => rest > 0);

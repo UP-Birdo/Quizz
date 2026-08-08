@@ -1405,8 +1405,7 @@ body {
 }
 
 .feld-schild::before,
-.feld-fessel::before,
-.feld-frost::before {
+.feld-fessel::before {
     content: "";
     position: absolute;
     inset: 6%;
@@ -1425,11 +1424,93 @@ body {
     box-shadow: 0 0 0 1px var(--ziel-rand);
 }
 
-/* Frost: hellblau und flächig — eingefroren ist mehr als nur festgehalten. */
+/* ------------------------------------------------------------------ *
+ * EIN RAHMEN UM EINE FELDERGRUPPE (seit v0.56, geteilt seit v0.57)
+ *
+ * Zwei Dinge zeichnen sich so: der eingefrorene 2×2-Block (`feld-frost`,
+ * blau) und der Vorschau-Kasten beim Platzieren (`feld-vorschau`, grün).
+ * Beide sollen als EINE Fläche erscheinen, nicht als Kästchen — der
+ * Strich läuft nur aussen um die Gruppe herum, innen bleibt er weg.
+ * Dieselbe Bauweise wie bei der Mauer.
+ *
+ * Dass der Vorschau-Kasten genauso gebaut ist wie der Frost, ist
+ * Absicht: Er zeigt vorher, was hinterher dasteht.
+ *
+ * WARUM DIE KANTEN AUS DEM HINTERGRUND KOMMEN UND NICHT AUS `border`:
+ * Jede Markierung auf dem Brett muss zweifarbig sein (heller Rand,
+ * dunkler Kern) — sonst verschwindet sie auf einem der beiden
+ * Feldtöne. Ein `border` kann das nicht, ein Farbverlauf schon: 1 Pixel
+ * hell, dann 3 Pixel Kern. Und weil jede Kante ihr eigenes Bild ist,
+ * lassen sich beliebige Kombinationen aus vier Klassen zusammensetzen,
+ * ohne fünfzehn Regeln zu schreiben.
+ * ------------------------------------------------------------------ */
+
+.feld-frost::before,
+.feld-vorschau::before {
+    --umriss-licht: rgba(255, 255, 255, 0.55);
+
+    /* Ohne Kante: kein Bild. Die vier Klassen unten setzen ein. */
+    --kante-oben: none;
+    --kante-unten: none;
+    --kante-links: none;
+    --kante-rechts: none;
+
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: var(--umriss-fuellung);
+    background-image:
+        var(--kante-oben), var(--kante-unten),
+        var(--kante-links), var(--kante-rechts);
+    background-repeat: no-repeat;
+    background-position: top left, bottom left, top left, top right;
+    background-size: 100% 4px, 100% 4px, 4px 100%, 4px 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
 .feld-frost::before {
-    border: 3px solid #56b4e9;
-    background: rgba(86, 180, 233, 0.3);
-    box-shadow: 0 0 0 1px var(--ziel-rand), inset 0 0 8px rgba(255, 255, 255, 0.6);
+    --umriss-kern: #2f7fd0;
+    --umriss-fuellung: rgba(47, 127, 208, 0.28);
+}
+
+/*
+ * DER VORSCHAU-KASTEN STEHT NACH DEM FROST — und das entscheidet den
+ * Gleichstand: Liegt der Kasten gerade über einem eingefrorenen Feld,
+ * gewinnt er. Richtig so, denn in diesem Moment fragt man sich, wohin
+ * die neue Wirkung geht, nicht wo die alte liegt.
+ */
+.feld-vorschau::before {
+    --umriss-kern: #2e9e52;
+    --umriss-fuellung: rgba(46, 158, 82, 0.28);
+}
+
+.kante-oben::before {
+    --kante-oben: linear-gradient(180deg,
+        var(--umriss-licht) 0 1px, var(--umriss-kern) 1px 4px);
+}
+
+.kante-unten::before {
+    --kante-unten: linear-gradient(0deg,
+        var(--umriss-licht) 0 1px, var(--umriss-kern) 1px 4px);
+}
+
+.kante-links::before {
+    --kante-links: linear-gradient(90deg,
+        var(--umriss-licht) 0 1px, var(--umriss-kern) 1px 4px);
+}
+
+.kante-rechts::before {
+    --kante-rechts: linear-gradient(270deg,
+        var(--umriss-licht) 0 1px, var(--umriss-kern) 1px 4px);
+}
+
+/* Die Knöpfe unter dem Brett beim Platzieren. */
+.knopf-zeile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
 }
 
 
@@ -1962,17 +2043,38 @@ body {
  * Ränder: Eine Mauer ist ein Riegel und gehört zusammen, Risse sind einzelne
  * Löcher.
  */
+/*
+ * EIN RISS SIEHT AUS WIE EIN LOCH (v0.57 nachgeschärft).
+ *
+ * Bis v0.56 lag ein kräftiger Schatten darüber — das wirkte wie ein dunkles
+ * Feld, nicht wie fehlendes Brett. Jetzt trägt das Feld GENAU die Farbe der
+ * Fläche hinter dem Brett, und ein zarter Schatten liegt nur an der Oberkante:
+ * So sieht man Tiefe, aber die Farbe bleibt die des Untergrundes.
+ *
+ * Ein Riss darf ausserdem NICHTS mehr darüber bekommen — keine Spur, keine
+ * Auswahlmarke, keinen Zugpunkt. Er ist kein Feld mehr, auf das man zieht,
+ * und jede Markierung darauf wäre eine Einladung ins Leere.
+ */
 .feld-riss {
     background: var(--hintergrund) !important;
-    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.55);
+    box-shadow: inset 0 3px 4px -2px rgba(0, 0, 0, 0.5);
     cursor: default;
 }
 
+.feld-riss::before,
+.feld-riss::after {
+    content: none !important;
+}
+
 /*
- * Ein gefallener Gegner, blass gezeigt (seit v0.54).
+ * Eine gefallene Figur, blass gezeigt (seit v0.54, seit v0.57 für beide
+ * Fähigkeiten).
  *
- * Nur solange der Friedhof auf sein Zielfeld wartet: Dann sieht man, WO
- * jemand gefallen ist, und weiss, welchen 2×2-Block man antippen will.
+ * Nur solange der Friedhof oder die Wiederbelebung auf ihr Zielfeld warten:
+ * Dann sieht man, WO jemand gefallen ist — beim Friedhof, um den 2×2-Kasten
+ * gut zu legen, bei der Wiederbelebung, um die richtige Figur zu wählen.
+ * Solange sie liegen, sind die Würfel ausgeblendet; beides übereinander wäre
+ * nicht lesbar.
  */
 .figur-schemen {
     opacity: 0.3;
@@ -2106,6 +2208,15 @@ body {
 .anleitung-knopf {
     position: relative;
     --stufe-farbe: var(--haupt);
+}
+
+/*
+ * Die Marke steht seit v0.58 in JEDEM Bild, damit die Anleitung nicht mit
+ * jedem Takt in der Höhe springt. In den Bildern, in denen gerade nicht
+ * gedrückt wird, tritt sie zurück — sichtbar, aber ohne sich anzubieten.
+ */
+.anleitung-knopf-ruht {
+    opacity: 0.45;
 }
 
 /* Auf dem Brett füllt der Abdruck ein Feld; auf der Marke sitzt er daneben. */

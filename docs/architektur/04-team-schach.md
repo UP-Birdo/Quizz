@@ -250,9 +250,21 @@ bei allen Fähigkeiten.
 |---|---|---|
 | Material dazu | Wiedergeburt, Wiederbelebung, Spiegel, Verstärkung, Friedhof, Händler | `beendetZug` |
 | Andere Gangart, sofort ausgeführt | Sprung, Teleport | `istDerZug` (seit v0.48) |
-| Nur die Stellung | Bauernschub, Erdbeben, Nudelholz, Mauer, Schutzschild, Fessel, Frost | — |
+| Nur die Stellung | Nudelholz, Mauer, Schutzschild, Fessel, Frost | — |
 | Schlägt gar nicht | Ausweichen | — |
 | Ausnahme: das Plus IST die Wirkung | Doppelzug | — |
+| Zu stark geworden | Bauernschub | `beendetZug` (seit v0.56) |
+
+**Der Bauernschub ist die Ausnahme, die die Regel erklärt.** Er ändert nur die
+Stellung und gehörte damit in Gruppe 3 — aber er verschiebt bis zu acht Figuren
+auf einmal, und mit dem Zug obendrauf konnte man erst die ganze Reihe vorrücken
+und dann mit einem der geschobenen Bauern schlagen. Nach der Regel von v0.47
+nimmt man einer zu starken Fähigkeit das Pluszeichen, statt ihre Stufe zu
+verschieben; genau das ist in v0.56 passiert. Als Ausgleich wandeln geschobene
+Bauern auf der letzten Reihe jetzt in eine **gewählte** Figur um statt
+stillschweigend in eine Dame — `SCHACH.bauernschub(stand, farbe, umwandlung)`,
+und `SCHACH_RUNDE.schubWandeltUm` sagt dem Bildschirm, ob die Frage überhaupt
+lohnt.
 
 Die Stufe sagt, wie SELTEN eine Fähigkeit ist; die Schalter sagen, was sie
 KOSTET. Wird eine zu stark, nimmt man ihr das Pluszeichen — man verschiebt sie
@@ -306,7 +318,55 @@ jedes Muster.
 | `zusatzNurDieses` | Seit v0.48, gilt nur zusammen mit `zusatzMuster`: `_rohzuege` verwirft die gewohnte Gangart der Figur und bietet **ausschliesslich** das Muster an. Gesetzt wird es von Fähigkeiten mit `istDerZug` (Sprung, Teleport) — sie sind der Zug, kein Zusatz dazu. Verfällt mit dem Muster, also beim eigenen Zug. `faehigkeitEinsetzen` weist das Einsetzen ab, wenn danach kein Zug mehr übrig bliebe. |
 | `extraZug` | `_ausfuehren` lässt `amZug` stehen, statt zu wechseln. |
 | `schildFeld` / `schildFarbe` | `zuege()` filtert alle gegnerischen Züge auf dieses Feld weg. Verfällt nach dem nächsten gegnerischen Zug oder wenn die geschützte Figur selbst zieht. |
-| `fesselFeld` / `fesselFarbe` | `zuege()` liefert für dieses Feld nichts. Verfällt nach dem nächsten Zug der gefesselten Seite. |
+| `fesselFeld` / `fesselFarbe` / `fesselBis` | `zuege()` liefert für dieses Feld nichts. Verfällt nach `SCHACH.FESSEL_HALBZUEGE` Halbzügen, gemessen am **Takt** (seit v0.56 — vorher nach dem nächsten Zug der gefesselten Seite). Gefragt wird `SCHACH.gefesselt`. |
+| `frostFelder` / `frostFeld` / `frostFarbe` | Die Felder eines 2×2-Blocks (seit v0.56). Was darin steht, zieht nicht und ist unantastbar — **farblos**, also auch die eigenen Figuren. Gefragt wird `SCHACH.eingefroren`. |
+
+#### Frost und Fessel: zwei Fähigkeiten, zwei Fragen (seit v0.56)
+
+Bis v0.55 taten beide fast dasselbe — eine Figur steht still. Der Unterschied
+lag allein in „unantastbar ja/nein", und das war zu wenig für zwei epische
+Fähigkeiten. Seither trennen sie sich in **beiden** Achsen:
+
+| | Fläche | Dauer | Schlagbar? | Farbe |
+|---|---|---|---|---|
+| Frost | 2×2-Block | ein Zug | nein | trifft **jeden** im Block |
+| Fessel | ein Feld | mehrere Züge (`fesselBis`) | ja | trifft nur den Gegner |
+
+Drei Dinge daran sind leicht zu übersehen:
+
+- **`frostFeld` bleibt stehen** (linke obere Ecke). Der Datenvertrag ist
+  additiv; ein Stand von vor v0.56 kennt nur dieses Feld, und
+  `standNormalisieren` macht daraus einen Block aus einem Feld.
+- **`frostFarbe` sagt nicht mehr, WER einfriert**, sondern nur noch, wann es
+  vorbei ist: an ihrem nächsten Zug läuft der Block ab.
+- **Ein LEERES Feld im Block sperrt nichts.** Der Frost hält Figuren fest, er
+  riegelt keine Fläche ab — sonst wäre er eine Mauer, die man auch noch über
+  den Gegner legen kann. Genau das war er einen halben Bau-Nachmittag lang, bis
+  ein Test es zeigte.
+
+#### Die Aufwertungskette (Verstärkung, seit v0.56)
+
+`SCHACH.AUFWERTUNG` ist eine reine Tabelle: Bauer → Springer, Springer → Läufer
+oder Turm, Läufer und Turm → Dame, Dame → König, König → zwei Damen. Die Wahl
+bei mehreren Möglichkeiten trifft `SCHACH.aufwertungVon(art, wert)` — der Wert
+kommt **gerechnet** aus `SCHACH_RUNDE._zufallsWert`, mit dem Feld am ANFANG der
+Saat (siehe „Der gerechnete Zufall"). Mit `Math.random()` sähe jedes Gerät eine
+andere Figur, und der erste Schreibvorgang gewönne.
+
+Am oberen Ende hängt eine Regelfrage: **Ein zweiter König sind zwei Leben.**
+`verstaerkung` setzt dafür `koenigeAlsLeben` im Stand — dieselbe Maschinerie
+wie bei der Zufallsarmee, und deshalb war dafür keine neue Regel nötig:
+`koenigSchlagbarFuer` zählt ohnehin je Farbe nach, wie viele Könige stehen.
+Zwei Sperren halten „Schachmatt" eindeutig:
+
+- Der **letzte** König lässt sich nicht in Damen eintauschen (sonst hätte die
+  Seite ohne Zug verloren).
+- Der Tausch braucht ein freies Nachbarfeld für die zweite Dame
+  (`_aufwertungsPlaetze`, dieselbe feste Reihenfolge wie beim Spiegel), sonst
+  wird das Einsetzen abgewiesen.
+
+Der Schalter bleibt gesetzt, auch wenn später ein König fällt. Das ist Absicht:
+Sonst kippten die Regeln mitten in der Partie hin und her.
 
 **Warum König und Matt geschützt sind:** Das Schild wirkt nicht auf den König,
 der König wird nicht gefesselt, das Erdbeben lässt Könige stehen, und der
@@ -340,10 +400,38 @@ beginnt. Jeder Schritt beantwortet eine Frage:
 
 | Schritt | Frage | Wann |
 |---|---|---|
+| Vorspiel | Was war vorher? | mit `todeszug` (Wiedergeburt, seit v0.58) |
 | Ausgangsstellung | Worum geht es? | immer |
+| Griff an den Vorrat | Welche Fähigkeit drücke ich? | jede Fähigkeit (seit v0.50) |
+| Angebot | Was bietet er? | Händler (seit v0.58) |
 | Handgriff | WO tippst du hin? (Fingerabdruck) | Fähigkeit mit Zielfeld |
 | Figur, dann Ziel | Welche Figur, und wohin? (zwei Fingerabdrücke) | wo gezogen wird (Doppelzug, Unglückswürfel) |
 | Wirkung | Was ist daraus geworden? | immer |
+| Nachspiel | Was bringt der Zug, der mir bleibt? | mit `nachspiel` (seit v0.58) |
+
+**Die Zahl der Schritte steht nicht fest.** Bis v0.57 waren es je nach Art
+genau drei oder vier, und Tests griffen über feste Stellen zu. Seit v0.58 kann
+vorne ein Bild dazukommen (`todeszug`) und hinten auch (`nachspiel`) — wer
+einen bestimmten Schritt braucht, SUCHT ihn (etwa über `tipp >= 0`), statt zu
+zählen.
+
+**Die Marke im Vorrat steht in JEDEM Bild** (seit v0.58); `knopfTipp` sagt, in
+welchem sie gedrückt wird — nur dort liegt der Fingerabdruck darauf. Vorher
+kam die ganze Leiste mit einem Bild und verschwand wieder, und die Anleitung
+sprang bei jedem Takt in der Höhe.
+
+**Zwei Fallen beim Stellen einer Szene**, beide beim Bau von v0.58 aufgelaufen
+(Einzelheiten in `entscheidungen\erkenntnisse.md`):
+
+- **Jede Seite braucht eine Figur, die ziehen kann.** Die Bilder werden mit den
+  echten Regeln gerechnet — also gelten auch die echten Abbruchbedingungen.
+  Wer die letzte Figur einer Seite schlagen lässt, beendet die Partie durch
+  Patt, und danach lässt sich keine Fähigkeit mehr einsetzen.
+- **Was gestreut wird, hängt an der Partie-Kennung.** An welcher Seite die
+  Ausdehnung wächst, wohin das Erdbeben reisst — all das rechnet sich aus
+  `id` und Zugzähler. Eine Szene, die eine bestimmte Wirkung zeigen soll,
+  bekommt deshalb über `saat` ihre eigene Kennung. Das ist keine Ausnahme von
+  „gerechnet, nicht gewürfelt", sondern deren Anwendung.
 
 Ein Schritt trägt `marken` (worum es geht), `wahl` (die übrigen möglichen
 Felder), `ziele` (Zugpunkte wie im Spiel), `tipp` (Fingerabdruck) und `wege`
@@ -423,10 +511,52 @@ rechts nur an den Enden `mauer-anfang`/`mauer-ende`), und jedes Stück reicht ei
 Pixel in seinen Nachbarn hinein. Bis v0.40 zog der Rand um jedes Feld herum —
 gemeldet als „die Mauer ist nicht in sich geschlossen".
 
+### Platzieren mit Vorschau-Kasten (seit v0.57)
+
+Eine Fähigkeit mit Zielfeld wirkt nicht mehr beim ersten Tipp. Der Bildschirm
+führt durch zwei Schritte:
+
+1. **Tipp auf ein gültiges Feld** → `TEAM_SCHACH.zielVorschau` merkt es sich,
+   `zielUmriss` bekommt die Felder, die die Wirkung berühren würde.
+2. **„Einsetzen"** unter dem Brett (`_platzierenBauen`) führt aus. Ein Tipp auf
+   ein anderes gültiges Feld verschiebt den Kasten; ein zweiter Tipp auf
+   DASSELBE Feld gilt als Bestätigung, damit der gewohnte Doppeltipp weiter
+   durchgeht.
+
+**Der Umriss wird gefragt, nicht gerechnet.** `SCHACH_RUNDE.zielUmriss` ruft
+`_zielWirkung` auf — dieselbe Rechnung, die hinterher wirklich läuft, und
+liefert deren `felder`. Eine zweite Liste von „was passiert wo" wäre eine
+zweite Wahrheit; dieselbe Überlegung wie bei `zielFelder`.
+
+Gezeichnet wird der Kasten wie der Frost-Block: `_umrissKanten` setzt
+`kante-oben` bis `kante-rechts` auf die Aussenseiten der Gruppe, und die
+Stildatei macht daraus einen durchgehenden Rahmen. Beide teilen sich diese
+Funktion — der Vorschau-Kasten soll ja genau so aussehen wie das, was danach
+dasteht.
+
+**Warum antippen und nicht ziehen** (Nutzer-Entscheidung 08.08.): Echtes Ziehen
+kämpft auf dem Handy mit dem Scrollen der Seite, und der Finger verdeckt genau
+das Feld, das man treffen will.
+
 ### Geliehene Figuren (Friedhof, seit v3.5)
 
 `stand.geliehen` ist eine Liste `[{ feld, bis }]`. Die Figuren stehen in der
 Farbe dessen auf dem Brett, der sie geholt hat, und ziehen wie seine eigenen.
+
+**Wie lange, hängt seit v0.57 an der FIGURENART** (`SCHACH.LEIHDAUER`): Bauer
+8, Springer und Läufer 6, Turm 4, Dame 2 Halbzüge. Je stärker, desto kürzer —
+sonst war der Friedhof ausgerechnet dort am stärksten, wo ohnehin viel
+Schweres gefallen ist.
+
+**Dazu kommt ein Vorlauf von 2** (`SCHACH.LEIHGABE_VORLAUF`), und der ist kein
+Zierat: Der Friedhof hat `beendetZug`. Zwischen dem Aufstehen und dem ersten
+Zug, den man mit den Figuren machen kann, liegen deshalb immer zwei Halbzüge —
+der abgegebene und die Antwort des Gegners. Die Tabelle zählt ab dem Zeitpunkt,
+zu dem man wieder am Zug ist; `leihdauerVon` addiert den Vorlauf. Ohne ihn wäre
+die Dame zerfallen, **bevor** man sie ein einziges Mal ziehen kann — beim
+Nachmessen von v0.57 genau so aufgefallen. Wer eine weitere Fähigkeit mit
+Leihgabe baut und den Zug NICHT abgibt, denkt daran, dass der Vorlauf dann
+falsch wäre.
 
 **Verfolgt wird das FELD, nicht die Figur.** Deshalb muss jede Stelle, die etwas
 bewegt, den Eintrag nachführen (`_geliehenNachfuehren`): Zieht eine geliehene
@@ -457,6 +587,32 @@ gewinnt. Beim Wachsen verschieben sich **alle Feldnummern**; deshalb rechnet
 `SCHACH.ausdehnung` auch die gemerkten Felder um (Rochaderechte, Schild, Fessel,
 Frost). Wer das vergisst, hat ein Schild auf dem falschen Feld — ein Test hält
 es fest.
+
+### Der Zug, der unterwegs endet (seit v0.58)
+
+Ein Erdbeben reisst den Boden auf, **sobald der Würfel eingesammelt wird** —
+und eingesammelt wird er seit v0.53 auch im Vorbeiziehen. Wer mit dem Turm
+über ihn hinweggleitet, öffnet die Löcher also mitten in seinem eigenen Weg.
+Liegt eines davon noch vor ihm, endet der Zug auf dem letzten freien Feld
+davor (`SCHACH_RUNDE._zugAmRissAbbrechen`).
+
+**`SCHACH.zuege` bleibt davon unberührt**, und das ist der Kern: Als der Zug
+gewählt wurde, war der Weg frei. Die Sperre entsteht erst währenddessen. Eine
+Zugerzeugung, die das vorhersehen müsste, müsste den Inhalt jedes Würfels
+kennen — und der entscheidet sich erst beim Einsammeln.
+
+Vier Dinge hängen daran:
+
+| | |
+|---|---|
+| **Ab wo eine Sperre zählt** | Erst ab dem Feld des Würfels. Was HINTER der Figur aufreisst, hat sie längst passiert. Beim Bauen zuerst falsch gemacht: Der Turm blieb auf dem Startfeld stehen, weil ein Riss zufällig hinter ihm lag. |
+| **Der Schlag fällt aus** | Wer sein Ziel nicht erreicht, schlägt dort nichts. Die geschlagene Figur kommt zurück aufs Brett und aus `verloren`/`gefallen` heraus (`_verlustZuruecknehmen`). |
+| **Die Figur endet nie AUF einem Riss** | Gesucht wird rückwärts das letzte freie Feld; findet sich keines, bleibt der Zug, wie er war. |
+| **Der Verlauf wird nachgeführt** | `nach` und `wege` des Zug-Eintrags zeigen auf das Haltefeld — sonst wandert die Figur am Bildschirm auf ein Feld, auf dem sie nicht steht. Deshalb merkt sich `ziehen` den Eintrag als OBJEKT, nicht über seine Stelle im Verlauf. |
+
+Ausgenommen sind Sprünge und Ein-Feld-Züge (kein Weg zum Abbrechen), die
+Rochade (zwei Figuren) und Würfel, die die Brettgrösse geändert haben (danach
+zeigen alle gemerkten Feldnummern woanders hin).
 
 ### Was der Verlauf verrät
 

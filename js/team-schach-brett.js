@@ -14,6 +14,58 @@
 
 Object.assign(TEAM_SCHACH, {
 
+    /*
+     * DER FROST-RAHMEN (seit v0.56) — gebraucht an ZWEI Stellen.
+     *
+     * Der Frost sperrt seit v0.56 einen 2×2-Block, und ein Block soll auch
+     * wie einer aussehen: Die Linie läuft nur aussen herum, innen bleibt sie
+     * weg. Dafür fragt jedes Feld seine vier Nachbarn — liegt der Nachbar
+     * auch im Block, fällt die Kante zu ihm hin weg. Dieselbe Bauweise wie
+     * bei der Mauer (`mauer-anfang` / `mauer-ende`), nur in beide Richtungen.
+     *
+     * Die Funktion steht hier und nicht zweimal, weil das echte Brett und das
+     * Beispielbrett der Anleitung (`_beispielBrettBauen`) beide zeichnen
+     * müssen. Zwei Fassungen liefen früher oder später auseinander.
+     *
+     * Liefert true, wenn dieses Feld eingefroren ist.
+     */
+    _frostKanten(stand, feld, zelle) {
+        if (SCHACH.frostFelder(stand).indexOf(feld) === -1) {
+            return false;
+        }
+
+        zelle.classList.add("feld-frost");
+        TEAM_SCHACH._umrissKanten(stand, feld, SCHACH.frostFelder(stand), zelle);
+        return true;
+    },
+
+    /*
+     * DIE AUSSENKANTEN EINER FELDERGRUPPE (seit v0.57 eigenständig).
+     *
+     * Setzt `kante-oben` bis `kante-rechts` auf die Seiten, an denen die
+     * Gruppe aufhört. Die Stildatei macht daraus einen durchgehenden Rahmen;
+     * WELCHE Farbe er hat, entscheidet die Klasse daneben (`feld-frost`
+     * blau, `feld-vorschau` grün).
+     *
+     * Zwei Nutzer teilen sich das: der eingefrorene Block und der
+     * Vorschau-Kasten beim Platzieren. Zwei Fassungen liefen früher oder
+     * später auseinander — und der Vorschau-Kasten muss genau so aussehen wie
+     * das, was danach dasteht.
+     */
+    _umrissKanten(stand, feld, gruppe, zelle) {
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        const dabei = (r, s) => SCHACH._imBrett(stand, r, s)
+            && gruppe.indexOf(SCHACH._feld(stand, r, s)) !== -1;
+
+        if (!dabei(reihe - 1, spalte)) { zelle.classList.add("kante-oben"); }
+        if (!dabei(reihe + 1, spalte)) { zelle.classList.add("kante-unten"); }
+        if (!dabei(reihe, spalte - 1)) { zelle.classList.add("kante-links"); }
+        if (!dabei(reihe, spalte + 1)) { zelle.classList.add("kante-rechts"); }
+    },
+
     _brettBauen(partie, person) {
         const halter = TEAM_SCHACH._element("div", "brett-halter");
 
@@ -45,6 +97,18 @@ Object.assign(TEAM_SCHACH, {
         const darfZiehen = SCHACH_RUNDE.darfZiehen(partie, person.id);
         const bonus = SCHACH_RUNDE.offeneBonusFelder(partie);
         const glas = TEAM_SCHACH._glasWirkt(partie, meinTeam);
+
+        /*
+         * WANN DIE GRÄBER BLASS ZU SEHEN SIND (seit v0.57 für BEIDE
+         * Fähigkeiten, vorher nur beim Friedhof).
+         *
+         * Friedhof und Wiederbelebung holen etwas von einem bestimmten FELD —
+         * ohne zu sehen, wo etwas liegt, tippt man ins Blaue. Der Unterschied
+         * steckt nur darin, WESSEN Gefallene gemeint sind, und das beantwortet
+         * `_grabAuf`.
+         */
+        const graeberZeigen = (TEAM_SCHACH.zielFaehigkeit === "friedhof"
+            || TEAM_SCHACH.zielFaehigkeit === "wiederbelebung");
 
         /* Die Felder, über die zuletzt gezogen wurde — siehe _letzteSpur. */
         const spur = TEAM_SCHACH._letzteSpur(partie);
@@ -90,8 +154,20 @@ Object.assign(TEAM_SCHACH, {
                 zelle.appendChild(zeichen);
             }
 
-            /* Liegt hier ein Würfel mit einer Fähigkeit? */
-            const bonusHier = bonus.find((eintrag) => eintrag.feld === feld);
+            /*
+             * Liegt hier ein Würfel mit einer Fähigkeit?
+             *
+             * WÄHREND DIE GEFALLENEN BLASS LIEGEN, BLEIBEN DIE WÜRFEL AUS
+             * (seit v0.57). Friedhof und Wiederbelebung zeigen ihre Gräber auf
+             * genau den Feldern, die auch Würfel tragen können — beides
+             * übereinander ist nicht mehr lesbar, und in diesem Moment sucht
+             * man Gräber, keine Würfel. Sie sind nur verborgen, nicht weg:
+             * Wer abbricht, sieht sie sofort wieder.
+             */
+            const bonusHier = graeberZeigen
+                ? null
+                : bonus.find((eintrag) => eintrag.feld === feld);
+
             if (bonusHier) {
                 /*
                  * WELCHE Fähigkeit drin ist, verrät die Oberfläche NIE — auch
@@ -190,10 +266,11 @@ Object.assign(TEAM_SCHACH, {
             }
             if (partie.stand.fesselFeld === feld) {
                 zelle.classList.add("feld-fessel");
-                zelle.title = "Gefesselt: darf einen Zug lang nicht ziehen";
+                zelle.title = "Gefesselt: darf mehrere Züge lang nicht ziehen, "
+                    + "ist dabei aber schlagbar";
             }
-            if (partie.stand.frostFeld === feld) {
-                zelle.classList.add("feld-frost");
+
+            if (TEAM_SCHACH._frostKanten(stand, feld, zelle)) {
                 zelle.title = "Eingefroren: zieht nicht und ist unantastbar";
             }
 
@@ -225,7 +302,7 @@ Object.assign(TEAM_SCHACH, {
              * jetzt frei ist. Liegen auf einem Feld mehrere, steht der zuletzt
              * gefallene oben — genau der, den die Regel weckt.
              */
-            if (TEAM_SCHACH.zielFaehigkeit === "friedhof" && figur === ".") {
+            if (graeberZeigen && figur === ".") {
                 const grab = TEAM_SCHACH._grabAuf(partie, meinTeam, feld);
 
                 if (grab) {
@@ -235,6 +312,11 @@ Object.assign(TEAM_SCHACH, {
                         TEAM_SCHACH._figurZeichen(
                             (meinTeam === "weiss") ? grab : grab.toLowerCase()));
                     zelle.appendChild(schemen);
+
+                    zelle.title = "Hier fiel " + SCHACH.artName(grab);
+                    zelle.setAttribute("aria-label",
+                        SCHACH.feldName(feld, breite, hoehe) + ", Grab: "
+                        + SCHACH.artName(grab));
                 }
             }
 
@@ -242,6 +324,17 @@ Object.assign(TEAM_SCHACH, {
                Felder markiert. */
             if (TEAM_SCHACH.zielFelder.indexOf(feld) !== -1) {
                 zelle.classList.add("feld-wahl");
+            }
+
+            /*
+             * DER VORSCHAU-KASTEN (seit v0.57): der Umriss dessen, was
+             * passieren WÜRDE — drei Felder bei der Mauer, ein 2×2 beim Frost
+             * und beim Friedhof. Er liegt über der Auswahlmarke, denn er ist
+             * die genauere Auskunft.
+             */
+            if (TEAM_SCHACH.zielUmriss.indexOf(feld) !== -1) {
+                zelle.classList.add("feld-vorschau");
+                TEAM_SCHACH._umrissKanten(stand, feld, TEAM_SCHACH.zielUmriss, zelle);
             }
 
             if (feld === TEAM_SCHACH.gewaehltesFeld) {
@@ -310,7 +403,10 @@ Object.assign(TEAM_SCHACH, {
                 meinTeam
                     ? "Warte, bis dein Team wieder am Zug ist."
                     : "Tritt einem Team bei, um mitzuspielen."));
-        } else if (darfZiehen) {
+        } else if (darfZiehen && !TEAM_SCHACH.zielFaehigkeit) {
+            /* Wartet eine Fähigkeit auf ihr Ziel, erklärt die Platzier-Leiste
+               weiter unten, was zu tun ist — zwei Anleitungen gleichzeitig
+               widersprächen sich. */
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
                 "Figur antippen, dann ein Feld mit Punkt. Wer aus deinem Team "
                 + "zuerst zieht, hat gezogen."));
@@ -329,12 +425,67 @@ Object.assign(TEAM_SCHACH, {
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung erklaerung-rochade", rochade));
         }
 
+        const platzieren = TEAM_SCHACH._platzierenBauen(partie, person);
+        if (platzieren) {
+            halter.appendChild(platzieren);
+        }
+
         const abstimmung = TEAM_SCHACH._abstimmungBauen(partie, person);
         if (abstimmung) {
             halter.appendChild(abstimmung);
         }
 
         return halter;
+    },
+
+    /*
+     * DIE LEISTE ZUM PLATZIEREN (seit v0.57).
+     *
+     * Sie erscheint, sobald eine Fähigkeit auf ihr Ziel wartet, und führt
+     * durch zwei Schritte: erst ein Feld antippen, dann „Einsetzen". Bis v0.56
+     * wirkte der erste Tipp sofort — bei Mauer, Frost und Friedhof sah man
+     * dabei nie, WO die Wirkung landet.
+     *
+     * Der Abbrechen-Knopf ist dabei mehr als Höflichkeit: Er ist der einzige
+     * sichtbare Ausweg, wenn man sich vertippt hat. (Ein Tipp neben die
+     * gültigen Felder bricht weiterhin ebenfalls ab — das bleibt, weil es der
+     * schnellere Weg ist.)
+     */
+    _platzierenBauen(partie, person) {
+        if (!TEAM_SCHACH.zielFaehigkeit) {
+            return null;
+        }
+        if (!SCHACH_RUNDE.darfEinsetzen(partie, person.id, TEAM_SCHACH.zielFaehigkeit)) {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(partie.stand);
+        const hoehe = SCHACH.hoeheVon(partie.stand);
+        const titel = SCHACH_VARIANTEN.faehigkeitTitel(TEAM_SCHACH.zielFaehigkeit);
+        const gesetzt = (TEAM_SCHACH.zielVorschau >= 0);
+
+        const karte = TEAM_SCHACH._element("section", "karte platzieren");
+        karte.appendChild(TEAM_SCHACH._element("h3", "", titel + " platzieren"));
+
+        karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            gesetzt
+                ? ("Der grüne Rahmen zeigt, was passiert — auf "
+                    + SCHACH.feldName(TEAM_SCHACH.zielVorschau, breite, hoehe)
+                    + ". Ein anderes helles Feld antippen verschiebt ihn.")
+                : "Tippe eines der hell umrandeten Felder an. Der grüne Rahmen "
+                    + "zeigt dann, wohin die Wirkung wirklich geht."));
+
+        const leiste = TEAM_SCHACH._element("div", "knopf-zeile");
+
+        if (gesetzt) {
+            leiste.appendChild(TEAM_SCHACH._knopf("Einsetzen", "knopf-haupt",
+                () => TEAM_SCHACH.zielBestaetigen(partie)));
+        }
+        leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still",
+            () => TEAM_SCHACH.zielVerwerfen()));
+
+        karte.appendChild(leiste);
+        return karte;
     },
 
     /*
@@ -724,19 +875,27 @@ Object.assign(TEAM_SCHACH, {
      * immer gleich falsch aus, sonst wäre es Flackern statt Täuschung.
      */
     /*
-     * Welcher gefallene GEGNER liegt auf diesem Feld? (seit v0.54)
+     * Welche gefallene Figur liegt auf diesem Feld? (seit v0.54)
      *
      * Liefert die Figurenart oder "". Gefragt wird die Grabliste der Runde —
-     * dieselbe, aus der `_zielWirkung` den Friedhof bedient, damit das blasse
-     * Bild und die Regel nicht auseinanderlaufen. Der ZULETZT Gefallene
+     * dieselbe, aus der `_zielWirkung` beide Fähigkeiten bedient, damit das
+     * blasse Bild und die Regel nicht auseinanderlaufen. Der ZULETZT Gefallene
      * gewinnt: Genau den weckt die Fähigkeit.
+     *
+     * WESSEN GRÄBER, hängt an der Fähigkeit (seit v0.57): Der Friedhof holt
+     * gefallene GEGNER und leiht sie sich; die Wiederbelebung holt die EIGENE
+     * Figur endgültig zurück. Zwei Fähigkeiten, dieselbe Frage ans Feld.
      */
     _grabAuf(partie, meinTeam, feld) {
         if (!meinTeam) {
             return "";
         }
 
-        const gefallene = partie.gefallen[SCHACH.gegner(meinTeam)] || [];
+        const wessen = (TEAM_SCHACH.zielFaehigkeit === "wiederbelebung")
+            ? meinTeam
+            : SCHACH.gegner(meinTeam);
+
+        const gefallene = partie.gefallen[wessen] || [];
 
         for (let stelle = gefallene.length - 1; stelle >= 0; stelle--) {
             if (gefallene[stelle].feld === feld) {

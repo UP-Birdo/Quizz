@@ -3,6 +3,138 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.58.0 — 2026-08-08
+
+Die Bildanleitungen aus drei offenen Bündeln (F, G und H) auf einmal, dazu die
+zwei Regeln, die noch dazugehörten.
+
+**An den Anleitungen**
+
+- **Die Marke im Vorrat steht jetzt in jedem Bild.** Vorher kam sie mit einem
+  Bild und verschwand wieder — die Anleitung sprang dadurch im Sekundentakt in
+  der Höhe. Der Fingerabdruck liegt weiterhin nur auf dem Bild, in dem wirklich
+  gedrückt wird.
+- **Die Könige sind aus allen Beispielen verschwunden.** Sie standen nur herum:
+  Ein Beispielbrett braucht sie nicht, das ist am 08.08. nachgemessen worden.
+- **Die Restzeit steht auch in der Anleitung** an jedem Feld, auf dem etwas
+  abläuft — bei Mauer, Schild, Fessel, Frost und den geliehenen Figuren.
+- **Wo eine Fähigkeit dir den Zug lässt, zieht das Beispiel danach wirklich
+  noch.** Mauer, Nudelholz, Schutzschild, Fessel und Frost zeigen im letzten
+  Bild, was das Pluszeichen wert ist: Der Springer setzt über die eigene Mauer,
+  der geschobene Bauer schlägt zu, der Turm holt sich woanders eine Figur.
+- **Neue Szenen für Teleport, Stolperstein, Volles Glas, Bauernschub,
+  Erdbeben, Erdrutsch, Ausdehnung, Einsturz und Doppelzug.** Sie zeigen jetzt
+  alle, worum es geht: Der Teleport befreit einen eingemauerten Turm und greift
+  von dort an; der Stolperstein wirft ihn kurz vor dem Ziel zurück; Ausdehnung
+  und Einsturz kosten **dich** etwas statt den Gegner; der Doppelzug schlägt
+  zweimal hintereinander.
+- **Die Wiedergeburt zeigt zuerst den Tod.** Die Anleitung beginnt jetzt eine
+  Stellung früher: Die Dame steht noch, der Turm schlägt sie, dann holt die
+  Fähigkeit sie zurück.
+- **Der Händler zeigt sein Angebot.** Bisher sah man den Griff an den Vorrat
+  und dann das Ergebnis, aber nie den Tausch dazwischen.
+
+**An den Regeln**
+
+- **Ein Erdbeben kann deinen Zug mittendrin beenden.** Die Risse reissen jetzt
+  auf, **sobald** der Würfel eingesammelt wird — und eingesammelt wird er auch
+  im Vorbeiziehen. Wer mit dem Turm über ihn hinweggleitet, öffnet die Löcher
+  also im eigenen Weg: Liegt eines davon noch vor dir, bleibst du davor stehen.
+  Was du am Zielfeld schlagen wolltest, bleibt dann natürlich stehen — wer
+  nicht ankommt, schlägt auch nichts.
+
+- **Ausweichen geht nur noch, während der Gegner am Zug ist.** Es ist die
+  Notbremse; im eigenen Zug war es ein geschenktes Extra-Feld für jede Figur.
+  Das Pluszeichen fällt damit weg, der Blitz bleibt.
+- **Ein neues, seltenes Händler-Angebot: Dame und Bauer gegen einen König** —
+  also gegen ein zweites Leben. Dafür kann eine Seite eines Angebots jetzt
+  mehrere Figurenarten tragen.
+
+**Behoben**
+
+- **Der Stolperstein verpuffte, wenn man über ihn hinwegzog.** Seit v0.53
+  sammelt man Würfel auch im Vorbeiziehen ein — der Stolperstein suchte die
+  Figur aber weiter auf dem Feld des Würfels, wo längst niemand mehr stand.
+  Jetzt trifft er die Figur dort, wo sie wirklich steht. Gefunden beim Stellen
+  der neuen Anleitung.
+
+## v0.57.0 — 2026-08-08
+
+Bedienung und zwei Regeln am Team Schach. Die Beispielbilder aus den drei
+offenen Bündeln kommen gesammelt in der nächsten Fassung.
+
+- **Platzieren mit Vorschau statt Blind-Tipp.** Wartet eine Fähigkeit auf ihr
+  Ziel, setzt ein Tipp jetzt erst einen **grünen Rahmen** — genau um die
+  Felder, die die Wirkung wirklich trifft: drei bei der Mauer, ein 2-mal-2-Feld
+  bei Frost und Friedhof. Ein anderes helles Feld antippen verschiebt ihn,
+  unter dem Brett stehen **Einsetzen** und **Abbrechen**. Wer wie gewohnt
+  zweimal auf dasselbe Feld tippt, setzt direkt ein. Bis v0.56 wirkte der erste
+  Tipp sofort, und man sah vorher nie, wo die Wirkung landet.
+
+- **Friedhof und Wiederbelebung zeigen jetzt beide, wo jemand gefallen ist.**
+  Solange sie auf ihr Ziel warten, liegen alle infrage kommenden Gefallenen
+  blass auf dem Brett — beim Friedhof die des Gegners, bei der Wiederbelebung
+  die eigenen. Vorher tat das nur der Friedhof, und bei der Wiederbelebung
+  tippte man ins Blaue. Die Würfel sind so lange ausgeblendet: Beides
+  übereinander war nicht mehr lesbar.
+
+- **Geliehene Figuren bleiben unterschiedlich lang.** Je stärker die Figur,
+  desto kürzer: Ein geliehener Bauer hält lange durch, eine geliehene **Dame
+  zieht genau einmal**, dann zerfällt sie. Die Restzeit steht wie bisher als
+  kleine Zahl an ihrem Feld. Vorher blieben alle gleich lang — der Friedhof war
+  damit ausgerechnet dort am stärksten, wo ohnehin viel Schweres gefallen war.
+
+- **Ein Riss sieht endlich aus wie ein Loch.** Er trägt jetzt genau die Farbe
+  der Fläche hinter dem Brett, mit einem zarten Schatten an der Oberkante — und
+  bekommt keine Markierungen mehr darüber. Vorher war er ein dunkles Feld.
+
+- Nachgemessen und für gut befunden: Liegen auf einem Feld mehrere Gefallene,
+  lässt sich nur der **zuletzt** gefallene holen (gilt seit v0.54), und eine
+  Figur, die auf einem Würfel erscheint, sammelt ihn ein (seit v0.53). Tests
+  halten beides jetzt fest.
+
+## v0.56.0 — 2026-08-08
+
+Fünf Regeländerungen am Team Schach, alle aus dem Eingangskorb vom 08.08. Die
+Beispielbilder dazu kommen in der nächsten Fassung — sie werden gerechnet und
+ziehen deshalb von selbst mit, brauchen aber neue Szenen.
+
+- **Der Bauernschub kostet jetzt den Zug.** Bis v0.55 rückten alle Bauern vor
+  UND du durftest danach noch ziehen — also erst die ganze Reihe vorschieben
+  und dann mit einem der geschobenen Bauern schlagen. Das waren zwei Züge für
+  eine Fähigkeit. Das Pluszeichen ist weg; nach dem Schub ist der Gegner dran.
+
+- **Dafür wandeln geschobene Bauern jetzt richtig um.** Erreichen durch den
+  Schub ein oder mehrere Bauern die letzte Reihe, fragt die App **einmal**, in
+  welche Figur sie werden sollen — die Wahl gilt für alle. Vorher wurden sie
+  stillschweigend zu Damen.
+
+- **Der Frost friert ein 2-mal-2-Feld ein statt einer einzelnen Figur.**
+  Angetippt wird die linke obere Ecke, wie beim Friedhof. Was im Block steht,
+  zieht nicht und lässt sich nicht schlagen — **auch deine eigenen Figuren**,
+  also gut zielen. Könige bleiben verschont. Am Brett liegt jetzt eine blaue
+  Linie um den ganzen Block, im selben Blau wie die Mauer, statt eines Kreises
+  um jede Figur. Ein leeres Feld im Block sperrt nichts: Der Frost hält
+  Figuren fest, er riegelt keine Fläche ab.
+
+- **Die Fessel hält mehrere Züge.** Vier Halbzüge, also zwei Züge des Gegners;
+  die Restzeit steht als kleine Zahl am Feld. Die gefesselte Figur bleibt dabei
+  ganz normal schlagbar — genau darin liegt der Unterschied zum Frost, der
+  unantastbar macht. Bis v0.55 taten beide fast dasselbe.
+
+- **Die Verstärkung ist eine Aufwertungskette geworden.** Statt „Bauer wird
+  Springer" steigt jede eigene Figur eine Stufe: Bauer → Springer, Springer →
+  Läufer oder Turm (je zur Hälfte), Läufer und Turm → Dame, Dame → König.
+  **Ein zweiter König sind zwei Leben:** Solange du zwei hast, gibt es für dich
+  kein Schach und kein Matt, und deine Könige sind schlagbar wie jede andere
+  Figur; beim letzten kippt es zurück. Der Weg geht auch zurück — wer zwei
+  Könige hat, tippt einen an und bekommt zwei Damen (die zweite auf dem
+  nächsten freien Nachbarfeld). Der letzte König lässt sich nie eintauschen.
+
+- Nachgemessen und für gut befunden: Das **Nudelholz** liess sich schon immer
+  ganz am Rand antippen — dort rollt eben nur die eine Spalte, die noch auf dem
+  Brett liegt. Ein Test hält das jetzt fest.
+
 ## v0.55.0 — 2026-08-08
 
 - **Das i beim Würfel-Haken führt in die ganze Fähigkeiten-Bibliothek.** Vorher

@@ -120,8 +120,13 @@ for (const art of alleArten) {
 
 pruefe("Faehigkeiten mit Zielfeld zeigen den Handgriff als eigenen Schritt", () => {
     /*
-     * Der mittlere Schritt ist der, den ein Vorher-Bild nicht zeigen kann:
-     * dass man selbst ein Feld aussucht — und welche zur Auswahl stehen.
+     * Der Schritt mit dem Fingerabdruck ist der, den ein Vorher-Bild nicht
+     * zeigen kann: dass man selbst ein Feld aussucht — und welche zur Auswahl
+     * stehen.
+     *
+     * GESUCHT WIRD ER, NICHT GEZAEHLT (seit v0.58): Eine Anleitung darf jetzt
+     * vorne ein Bild mehr haben (`todeszug`, Wiedergeburt) und hinten auch
+     * (`nachspiel`). Ein fester Index waere damit nur noch zufaellig richtig.
      */
     const mitZiel = Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
         .filter((art) => SCHACH_VARIANTEN.FAEHIGKEITEN[art].art === "ziel");
@@ -131,41 +136,120 @@ pruefe("Faehigkeiten mit Zielfeld zeigen den Handgriff als eigenen Schritt", () 
     for (const art of mitZiel) {
         const schritte = SCHACH_VORSCHAU.schritte(art);
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+        const zielSchritt = schritte.filter((schritt) => schritt.tipp >= 0);
 
-        /* Seit v0.50: Stellung, Griff an den Vorrat, Zielfeld, Wirkung. */
-        gleich(schritte.length, 4, art + ": vier Schritte");
-        gleich(schritte[2].marken.length, 1, art + ": genau ein angetipptes Feld");
-        gleich(schritte[2].marken[0], beispiel.ziel, art + ": und zwar das aus dem Beispiel");
+        wahr(schritte.length >= 4, art + ": mindestens vier Schritte");
+        gleich(zielSchritt.length, 1, art + ": genau ein Handgriff aufs Brett");
+        gleich(zielSchritt[0].marken.length, 1, art + ": genau ein angetipptes Feld");
+        gleich(zielSchritt[0].marken[0], beispiel.ziel,
+            art + ": und zwar das aus dem Beispiel");
     }
 });
 
-pruefe("Jede Faehigkeit zeigt zuerst den Griff an den Vorrat (v0.50)", () => {
+pruefe("Der Vorrat-Knopf steht in JEDEM Bild, der Finger nur in einem (v0.58)", () => {
     /*
-     * DER PUNKT AUS DEM EINGANGSKORB: „bei allen immer das, was man druecken
-     * muss, anzeigen." Vor v0.50 fing die Anleitung beim Brett an — bei
-     * Bauernschub und Haendler zeigte sie ueberhaupt keinen Handgriff.
+     * BIS v0.57 KAM DIE MARKE MIT EINEM BILD UND VERSCHWAND WIEDER — die
+     * Anleitung sprang dadurch bei jedem Takt in der Hoehe, und das Auge folgte
+     * dem Sprung statt dem Brett. Jetzt steht sie durchgehend da; `knopfTipp`
+     * sagt, in welchem Bild sie gedrueckt wird.
      *
-     * Unglueckswuerfel bekommen den Schritt NICHT: Sie werden nie gedrueckt,
-     * sondern eingesammelt.
+     * Unglueckswuerfel bekommen keine Marke: Sie werden nie gedrueckt, sondern
+     * eingesammelt.
      */
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
         const schritte = SCHACH_VORSCHAU.schritte(art);
+        const titel = SCHACH_VARIANTEN.faehigkeitTitel(art);
 
-        gleich(schritte[1].knopf, SCHACH_VARIANTEN.faehigkeitTitel(art),
-            art + ": Bild 2 zeigt die Faehigkeit");
-        gleich(schritte[1].tipp, -1, art + ": und keinen Finger auf dem Brett");
+        for (const schritt of schritte) {
+            gleich(schritt.knopf, titel, art + ": die Marke steht in jedem Bild");
+        }
+
+        const gedrueckt = schritte.filter((schritt) => schritt.knopfTipp);
+        gleich(gedrueckt.length, 1, art + ": genau ein Bild zeigt das Druecken");
+        gleich(gedrueckt[0].tipp, -1, art + ": und dabei keinen Finger auf dem Brett");
     }
 
     for (const art of Object.keys(SCHACH_VARIANTEN.PECH)) {
         for (const schritt of SCHACH_VORSCHAU.schritte(art)) {
             gleich(schritt.knopf, "", art + ": ein Unglueckswuerfel wird nicht gedrueckt");
+            gleich(schritt.knopfTipp, false, art + ": und nicht angetippt");
         }
     }
 });
 
 pruefe("Ohne Zielfeld und ohne Zug bleiben Stellung, Griff und Wirkung", () => {
-    for (const art of ["bauernschub", "haendler"]) {
-        gleich(SCHACH_VORSCHAU.schritte(art).length, 3, art + ": drei Schritte");
+    gleich(SCHACH_VORSCHAU.schritte("bauernschub").length, 3, "bauernschub: drei Schritte");
+});
+
+pruefe("Der Haendler zeigt sein Angebot als eigenes Bild (v0.58)", () => {
+    /*
+     * Er ist die einzige Faehigkeit mit einer Rueckfrage — und genau die fehlte
+     * in der Anleitung: Man sah den Griff an den Vorrat und dann das Ergebnis,
+     * aber nie das Angebot dazwischen.
+     */
+    const schritte = SCHACH_VORSCHAU.schritte("haendler");
+    const angebot = SCHACH_RUNDE.handelsAngebot(schritte[0].runde, SCHACH_VORSCHAU.FARBE);
+
+    gleich(schritte.length, 4, "Stellung, Griff, Angebot, Wirkung");
+    wahr(!!angebot, "es gibt ein Angebot");
+    wahr(schritte[2].text.indexOf(angebot.text) !== -1,
+        "das Bild nennt den konkreten Tausch");
+
+    /* Markiert ist, was weggeht und wo Neues erscheint — beides zusammen. */
+    for (const feld of angebot.gibtFelder.concat(angebot.bekommtFelder)) {
+        wahr(schritte[2].marken.indexOf(feld) !== -1, "Feld " + feld + " ist markiert");
+    }
+});
+
+pruefe("Die Wiedergeburt zeigt zuerst den Tod der Figur (v0.58)", () => {
+    /*
+     * Bis v0.57 stand die Dame einfach in `verloren`, und das erste Bild
+     * behauptete, sie sei gefallen — zu sehen war davon nichts. Der Schlag
+     * wird jetzt mit den echten Regeln gerechnet, also stimmen Brett und
+     * Verlustliste zwangslaeufig ueberein.
+     */
+    const beispiel = SCHACH_VORSCHAU.beispielVon("wiedergeburt");
+    const schritte = SCHACH_VORSCHAU.schritte("wiedergeburt");
+
+    wahr(Array.isArray(beispiel.todeszug), "das Beispiel hat einen Todeszug");
+
+    /* Bild 1: Die Figur lebt noch. Bild 2: Sie ist geschlagen. */
+    const lebt = SCHACH.figurAuf(schritte[0].runde.stand, beispiel.todeszug[1]);
+    gleich(lebt, "D", "im ersten Bild steht die Dame noch da");
+
+    gleich(SCHACH.figurAuf(schritte[1].runde.stand, beispiel.todeszug[1]), "t",
+        "im zweiten steht der Turm auf ihrem Feld");
+    gleich(schritte[1].runde.verloren.weiss.join(","), "D",
+        "und sie zaehlt als verloren");
+    gleich(schritte[1].wege.length, 1, "ein Pfeil zeigt den Schlag");
+
+    /* Und am Ende steht sie wieder auf der eigenen Grundreihe. */
+    const letzter = schritte[schritte.length - 1];
+    gleich(SCHACH.figurAuf(letzter.runde.stand, beispiel.ziel), "D",
+        "am Ende steht sie wieder da");
+});
+
+pruefe("Wo eine Faehigkeit den Zug laesst, zieht das Beispiel danach (v0.58)", () => {
+    /*
+     * DAS PLUSZEICHEN WIRD SICHTBAR. Es steht zwar im Text, war aber nie zu
+     * sehen. Jede dieser Faehigkeiten fuehrt jetzt im letzten Bild den Zug vor,
+     * den sie einem laesst — und der bringt etwas ein.
+     */
+    const mitNachspiel = ["mauer", "nudelholz", "schutzschild", "fessel", "frost"];
+
+    for (const art of mitNachspiel) {
+        const beispiel = SCHACH_VORSCHAU.beispielVon(art);
+        const schritte = SCHACH_VORSCHAU.schritte(art);
+        const letzter = schritte[schritte.length - 1];
+
+        wahr(Array.isArray(beispiel.nachspiel), art + ": das Beispiel hat ein Nachspiel");
+        wahr(SCHACH_VARIANTEN.zeigtPlus(art), art + ": sie traegt auch wirklich das Plus");
+
+        gleich(letzter.wege.length, 1, art + ": ein Pfeil zeigt den Zug");
+        gleich(letzter.wege[0].von, beispiel.nachspiel[0], art + ": von der richtigen Figur");
+        gleich(letzter.wege[0].nach, beispiel.nachspiel[1], art + ": auf das richtige Feld");
+        gleich(SCHACH.figurAuf(letzter.runde.stand, beispiel.nachspiel[0]), ".",
+            art + ": das alte Feld ist frei");
     }
 });
 
@@ -490,8 +574,44 @@ pruefe("Jedes Beispielbrett hat genau 6 mal 6 Felder", () => {
 
         gleich(brett.length, SCHACH_VORSCHAU.BREITE * SCHACH_VORSCHAU.HOEHE,
             "Brettlaenge bei " + art);
-        wahr(brett.indexOf("K") !== -1 && brett.indexOf("k") !== -1,
-            "beide Koenige stehen im Beispiel " + art);
+    }
+});
+
+pruefe("In den Beispielen steht kein Koenig herum (v0.58)", () => {
+    /*
+     * BIS v0.57 STAND IN JEDEM BEISPIEL EIN KOENIGSPAAR, mit der Begruendung,
+     * das Regelwerk brauche es. Am 08.08. nachgemessen: `imSchach` liefert ohne
+     * Koenig schlicht `false`, und die Bilder laufen durch. Die beiden lenkten
+     * also nur ab.
+     *
+     * Koenige gehoeren nur noch dorthin, wo Schach zur Sache gehoert — derzeit
+     * nirgends. Kommt einmal eine Szene dazu, in der es um Matt geht, wird
+     * dieser Test entsprechend geoeffnet.
+     */
+    for (const art of alleArten) {
+        const brett = SCHACH_VORSCHAU._brett(SCHACH_VORSCHAU.beispielVon(art).brett);
+
+        wahr(brett.indexOf("K") === -1 && brett.indexOf("k") === -1,
+            "kein Koenig im Beispiel " + art);
+    }
+});
+
+pruefe("Beide Seiten haben in jedem Beispiel noch etwas zu ziehen (v0.58)", () => {
+    /*
+     * TEUER GELERNT BEIM BAU VON v0.58: Wer in einer Szene die letzte Figur
+     * einer Seite schlagen laesst, beendet die Partie — `SCHACH_RUNDE.ziehen`
+     * erkennt Patt und setzt ein Ergebnis. Danach laesst sich keine Faehigkeit
+     * mehr einsetzen, und die ganze Anleitung faellt weg (bei der Wiedergeburt
+     * genau so passiert).
+     *
+     * Deshalb steht hier die Mindestbedingung: Auf jedem Beispielbrett hat
+     * jede Seite wenigstens eine Figur.
+     */
+    for (const art of alleArten) {
+        const brett = SCHACH_VORSCHAU._brett(SCHACH_VORSCHAU.beispielVon(art).brett);
+
+        wahr(/[BTSLDK]/.test(brett), "Weiss hat eine Figur im Beispiel " + art);
+        wahr(/[btsldk]/.test(brett), "Schwarz hat eine Figur im Beispiel " + art);
     }
 });
 

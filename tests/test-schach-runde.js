@@ -643,13 +643,14 @@ pruefe("Eine Partie aus der Zeit der festen Felder behaelt sie", () => {
  * ------------------------------------------------------------------ */
 
 /* Legt eine Fähigkeit direkt ins Team und setzt sie ein. */
-function einsetzen(runde, art, zielFeld, spieler) {
+function einsetzen(runde, art, zielFeld, spieler, umwandlung) {
     const wer = spieler || "id-anna";
     const farbe = SCHACH_RUNDE.teamVon(runde, wer);
     const vorbereitet = SCHACH_RUNDE.kopieren(runde);
 
     vorbereitet.faehigkeiten[farbe].push(art);
-    return SCHACH_RUNDE.faehigkeitEinsetzen(vorbereitet, wer, art, zielFeld, wer, 3000);
+    return SCHACH_RUNDE.faehigkeitEinsetzen(vorbereitet, wer, art, zielFeld, wer,
+        3000, umwandlung);
 }
 
 /* Laesst Schwarz einen belanglosen Zug machen. */
@@ -674,6 +675,33 @@ pruefe("Sprung: eine beliebige Figur zieht wie ein Springer", () => {
     gleich(ziele, "b3", "der Turm springt");
 });
 
+/*
+ * AUSWEICHEN GEHT SEIT v0.58 NUR IM GEGENZUG.
+ *
+ * Die Tests unten setzen es deshalb ein, waehrend SCHWARZ am Zug ist, und
+ * lassen Schwarz danach ziehen — genau der Ablauf, den es im Spiel hat. Bis
+ * v0.57 durfte man es im eigenen Zug einsetzen; das war der Fehler, der es zum
+ * geschenkten Extra-Feld machte.
+ */
+function ausweichenImGegenzug(runde) {
+    const vorbereitet = SCHACH_RUNDE.kopieren(runde);
+    vorbereitet.stand.amZug = "schwarz";
+    vorbereitet.faehigkeiten.weiss.push("ausweichen");
+
+    const gesetzt = SCHACH_RUNDE.faehigkeitEinsetzen(
+        vorbereitet, "id-anna", "ausweichen", -1, "Anna", 3000);
+
+    if (!gesetzt) {
+        return null;
+    }
+
+    /* Schwarz macht seinen Zug — danach ist Weiss dran und darf das Muster
+       benutzen. Der belanglose Bauernzug e7-e6 steht in jeder Stellung der
+       Tests unten zur Verfuegung. */
+    return SCHACH_RUNDE.ziehen(gesetzt, "id-bert",
+        SCHACH.feldNummer("e7"), SCHACH.feldNummer("e6"), "D", "Bert", 3050);
+}
+
 pruefe("Ausweichen: eine beliebige Figur zieht ein Feld weit", () => {
     let runde = faehigkeitenPartie();
 
@@ -681,7 +709,7 @@ pruefe("Ausweichen: eine beliebige Figur zieht ein Feld weit", () => {
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
         brett: "....k..."
-            + "........"
+            + "....b..."
             + "........"
             + "........"
             + "........"
@@ -696,14 +724,39 @@ pruefe("Ausweichen: eine beliebige Figur zieht ein Feld weit", () => {
         .map((zug) => SCHACH.feldName(zug.nach));
     wahr(ohne.indexOf("b2") === -1, "ohne Faehigkeit kein Schraegzug");
 
-    const mit = einsetzen(runde, "ausweichen", -1);
-    wahr(mit !== null, "eingesetzt");
+    const mit = ausweichenImGegenzug(runde);
+    wahr(mit !== null, "im Gegenzug eingesetzt");
     gleich(mit.stand.zusatzMuster, "ausweichen", "Muster gesetzt");
+    gleich(mit.stand.amZug, "weiss", "und jetzt ist Weiss dran");
 
     const ziele = SCHACH.zuege(mit.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach));
     wahr(ziele.indexOf("b2") !== -1, "jetzt auch ein Feld schraeg");
     wahr(ziele.indexOf("a2") !== -1, "und weiterhin gerade");
+});
+
+pruefe("Ausweichen laesst sich im EIGENEN Zug nicht einsetzen (v0.58)", () => {
+    /*
+     * Die Notbremse ist eine Notbremse: Sie geht, WÄHREND der Gegner
+     * zuschlaegt. Bis v0.57 durfte man sie auch im eigenen Zug druecken und
+     * behielt den Zug — ein geschenktes Extra-Feld fuer jede Figur, jederzeit.
+     */
+    const runde = faehigkeitenPartie();
+
+    gleich(SCHACH_RUNDE.darfEinsetzen(runde, "id-anna", "ausweichen"), false,
+        "am eigenen Zug nicht");
+    gleich(einsetzen(runde, "ausweichen", -1), null, "und einsetzen geht auch nicht");
+
+    const imGegenzug = SCHACH_RUNDE.kopieren(runde);
+    imGegenzug.stand.amZug = "schwarz";
+    gleich(SCHACH_RUNDE.darfEinsetzen(imGegenzug, "id-anna", "ausweichen"), true,
+        "im Gegenzug schon");
+
+    /* Und das Pluszeichen faellt dadurch von selbst weg. */
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "ausweichen"), false,
+        "kein Pluszeichen mehr");
+    gleich(SCHACH_VARIANTEN.zeigtPlus("ausweichen"), false,
+        "auch nicht als Eigenschaft der Faehigkeit");
 });
 
 pruefe("Ausweichen schlaegt nicht", () => {
@@ -713,7 +766,7 @@ pruefe("Ausweichen schlaegt nicht", () => {
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
         brett: "....k..."
-            + "........"
+            + "....b..."
             + "........"
             + "........"
             + "........"
@@ -724,7 +777,9 @@ pruefe("Ausweichen schlaegt nicht", () => {
         rochade: ""
     });
 
-    const mit = einsetzen(runde, "ausweichen", -1);
+    const mit = ausweichenImGegenzug(runde);
+    wahr(mit !== null, "im Gegenzug eingesetzt");
+
     const ziele = SCHACH.zuege(mit.stand, SCHACH.feldNummer("a1"))
         .map((zug) => SCHACH.feldName(zug.nach));
 
@@ -786,13 +841,15 @@ pruefe("Das Pluszeichen sagt die Wahrheit ueber den naechsten Zug", () => {
      */
     const runde = faehigkeitenPartie();
 
-    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "bauernschub"), true,
-        "der Bauernschub beendet den Zug nicht");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "mauer"), true,
+        "die Mauer beendet den Zug nicht");
     gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "friedhof"), false,
         "der Friedhof kostet den Zug");
     gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "sprung"), false,
         "der Sprung ist der Zug selbst");
-    gleich(SCHACH_RUNDE.behaeltZug(runde, "schwarz", "bauernschub"), false,
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "bauernschub"), false,
+        "der Bauernschub kostet den Zug seit v0.56");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "schwarz", "mauer"), false,
         "Schwarz ist gar nicht am Zug");
 
     /* Wer den Doppelzug offen hat, behaelt den Zug sogar bei einer
@@ -870,9 +927,17 @@ pruefe("Im Schach ist keine Faehigkeit erlaubt, die den Zug beendet", () => {
 });
 
 pruefe("Im Schach bleibt erlaubt, was den Zug NICHT beendet", () => {
-    /* Das Ausweichen kostet keinen Zug — man muss danach ohnehin aus dem
-       Schach ziehen, und genau dabei kann es helfen. */
-    const neu = einsetzen(partieImSchach(), "ausweichen", -1);
+    /*
+     * Die Mauer kostet keinen Zug — man muss danach ohnehin aus dem Schach
+     * ziehen, und genau dabei kann sie helfen. (Bis v0.57 stand hier das
+     * Ausweichen; seit v0.58 geht das nur noch im Gegenzug und taugt als
+     * Beispiel nicht mehr.)
+     */
+    const runde = partieImSchach();
+    const felder = SCHACH_RUNDE.zielFelder(runde, "id-anna", "mauer");
+    wahr(felder.length > 0, "es gibt einen Platz fuer die Mauer");
+
+    const neu = einsetzen(runde, "mauer", felder[0]);
 
     wahr(neu !== null, "eingesetzt");
     gleich(neu.stand.amZug, "weiss", "Weiss bleibt am Zug");
@@ -1048,17 +1113,187 @@ pruefe("Bauernschub: alle eigenen Bauern ruecken ein Feld vor", () => {
     }
     gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("a7")), "b",
         "schwarze Bauern bleiben stehen");
+
+    /* Seit v0.56 kostet er den Zug. */
+    gleich(runde.stand.amZug, "schwarz", "danach ist der Gegner dran");
 });
 
-pruefe("Verstaerkung: ein eigener Bauer wird zum Springer", () => {
-    const runde = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e2"));
-    wahr(runde !== null, "eingesetzt");
-    gleich(SCHACH.figurAuf(runde.stand, SCHACH.feldNummer("e2")), "S", "jetzt ein Springer");
+pruefe("Bauernschub: geschobene Bauern auf der letzten Reihe wandeln um (v0.56)", () => {
+    /*
+     * DER AUSGLEICH FUER DAS VERLORENE PLUSZEICHEN (v0.56). Bis v0.55 wurden
+     * sie stillschweigend zu Damen; jetzt sagt der Aufrufer, was sie werden,
+     * und zwar EINMAL fuer alle.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "B.B....."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    /* Ohne Angabe wie frueher: Damen. */
+    const damen = einsetzen(runde, "bauernschub", -1);
+    wahr(damen !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(damen.stand, SCHACH.feldNummer("a8")), "D", "a8 wird Dame");
+    gleich(SCHACH.figurAuf(damen.stand, SCHACH.feldNummer("c8")), "D", "c8 auch");
+
+    /* Und mit Angabe: beide dieselbe Figur. */
+    const springer = einsetzen(runde, "bauernschub", -1, "id-anna", "S");
+    wahr(springer !== null, "mit Wahl eingesetzt");
+    gleich(SCHACH.figurAuf(springer.stand, SCHACH.feldNummer("a8")), "S", "a8 wird Springer");
+    gleich(SCHACH.figurAuf(springer.stand, SCHACH.feldNummer("c8")), "S", "c8 auch");
+
+    /* Unsinn faellt auf die Vorgabe zurueck — nie auf eine ungueltige Figur. */
+    const unsinn = einsetzen(runde, "bauernschub", -1, "id-anna", "K");
+    gleich(SCHACH.figurAuf(unsinn.stand, SCHACH.feldNummer("a8")), "D",
+        "eine unbekannte Wahl ergibt die Dame");
+});
+
+pruefe("Der Bildschirm erfaehrt vom Modell, ob der Schub umwandelt (v0.56)", () => {
+    /*
+     * `schubWandeltUm` ist die Frage, die vor der Rueckfrage steht: Lohnt es
+     * ueberhaupt, nach der Figur zu fragen? Sie gehoert ins Modell, weil sie
+     * an freien Feldern und an der Zugrichtung haengt.
+     */
+    gleich(SCHACH_RUNDE.schubWandeltUm(faehigkeitenPartie(), "id-anna"), 0,
+        "in der Grundstellung wandelt keiner um");
+
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "B.B....."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH_RUNDE.schubWandeltUm(runde, "id-anna"), 2, "hier sind es zwei");
+    gleich(SCHACH_RUNDE.schubWandeltUm(runde, "id-niemand"), 0,
+        "wer in keinem Team ist, bekommt 0");
+});
+
+pruefe("Verstaerkung: jede Figur steigt eine Stufe (v0.56)", () => {
+    /*
+     * DIE AUFWERTUNGSKETTE (v0.56). Bis v0.55 machte sie aus einem Bauern
+     * einen Springer und sonst nichts. Geprueft wird hier die ganze Kette an
+     * der Grundstellung — je Figurenart ein Feld.
+     */
+    const bauer = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e2"));
+    gleich(SCHACH.figurAuf(bauer.stand, SCHACH.feldNummer("e2")), "S",
+        "aus dem Bauern wird ein Springer");
+
+    const springer = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("b1"));
+    wahr("LT".indexOf(SCHACH.figurAuf(springer.stand, SCHACH.feldNummer("b1"))) !== -1,
+        "aus dem Springer wird ein Laeufer oder ein Turm");
+
+    const laeufer = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("c1"));
+    gleich(SCHACH.figurAuf(laeufer.stand, SCHACH.feldNummer("c1")), "D",
+        "aus dem Laeufer wird eine Dame");
+
+    const turm = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("a1"));
+    gleich(SCHACH.figurAuf(turm.stand, SCHACH.feldNummer("a1")), "D",
+        "aus dem Turm auch");
 
     gleich(einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e7")),
-        null, "nicht auf einen gegnerischen Bauern");
+        null, "nicht auf eine gegnerische Figur");
     gleich(einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("e1")),
-        null, "nicht auf den Koenig");
+        null, "und nicht auf den letzten Koenig");
+});
+
+pruefe("Die Aufwertung wird gerechnet, nicht gewuerfelt (v0.56)", () => {
+    /*
+     * Beim Springer gibt es zwei Ergebnisse. Alle Geraete muessen dasselbe
+     * rechnen, sonst gewinnt der erste Schreibvorgang — dieselbe Falle wie in
+     * v0.8. Also: zweimal dieselbe Lage, zweimal dasselbe Ergebnis.
+     */
+    const einmal = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("b1"));
+    const nochmal = einsetzen(faehigkeitenPartie(), "verstaerkung", SCHACH.feldNummer("b1"));
+
+    gleich(SCHACH.figurAuf(nochmal.stand, SCHACH.feldNummer("b1")),
+        SCHACH.figurAuf(einmal.stand, SCHACH.feldNummer("b1")),
+        "zweimal dasselbe Ergebnis");
+
+    /* Und die Tabelle selbst: beide Ergebnisse sind erreichbar. */
+    gleich(SCHACH.aufwertungVon("S", 0.1).join(""), "L", "unten der Laeufer");
+    gleich(SCHACH.aufwertungVon("S", 0.9).join(""), "T", "oben der Turm");
+    gleich(SCHACH.aufwertungVon("D", 0).join(""), "K", "die Dame wird Koenig");
+    gleich(SCHACH.aufwertungVon("K", 0).join(""), "DD", "der Koenig zwei Damen");
+});
+
+pruefe("Dame zu Koenig heisst zwei Leben, und der Weg geht zurueck (v0.56)", () => {
+    /*
+     * DAS OBERE ENDE DER KETTE. Ein zweiter Koenig ist kein unschlagbarer
+     * Klotz, sondern ein zweites Leben — `koenigeAlsLeben` im Stand, dieselbe
+     * Maschinerie wie bei der Zufallsarmee. Ohne diesen Schalter waere
+     * "Schachmatt" nicht mehr eindeutig.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "...D...."
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(runde.stand.koenigeAlsLeben, false, "vorher gilt gewoehnliches Schach");
+
+    const zweiKoenige = einsetzen(runde, "verstaerkung", SCHACH.feldNummer("d5"));
+    wahr(zweiKoenige !== null, "die Dame laesst sich aufwerten");
+    gleich(SCHACH.figurAuf(zweiKoenige.stand, SCHACH.feldNummer("d5")), "K",
+        "auf d5 steht ein zweiter Koenig");
+    gleich(zweiKoenige.stand.koenigeAlsLeben, true, "die zwei Leben sind an");
+    gleich(SCHACH.koenigSchlagbarFuer(zweiKoenige.stand, "weiss"), true,
+        "Weiss kennt jetzt kein Schach");
+    gleich(SCHACH.koenigSchlagbarFuer(zweiKoenige.stand, "schwarz"), false,
+        "Schwarz hat weiter nur einen und damit Schach und Matt");
+
+    /*
+     * Und zurueck: Wer zwei hat, tauscht einen gegen zwei Damen. Weiss muss
+     * dafuer wieder am Zug sein — die Verstaerkung hat ihn ja gerade
+     * abgegeben (`beendetZug`).
+     */
+    const nochmal = SCHACH_RUNDE.kopieren(zweiKoenige);
+    nochmal.stand.amZug = "weiss";
+
+    const zurueck = einsetzen(nochmal, "verstaerkung", SCHACH.feldNummer("d5"),
+        "id-anna");
+    wahr(zurueck !== null, "der zweite Koenig laesst sich eintauschen");
+    gleich(SCHACH.figurAuf(zurueck.stand, SCHACH.feldNummer("d5")), "D",
+        "auf seinem Feld steht eine Dame");
+    gleich(SCHACH.koenigFelder(zurueck.stand, "weiss").length, 1,
+        "es bleibt genau ein Koenig");
+    gleich(SCHACH.koenigSchlagbarFuer(zurueck.stand, "weiss"), false,
+        "und damit gelten wieder Schach und Matt");
+
+    /* Die zweite Dame steht auf dem naechsten freien Nachbarfeld. */
+    const damen = [];
+    for (let feld = 0; feld < SCHACH.felderVon(zurueck.stand); feld++) {
+        if (SCHACH.figurAuf(zurueck.stand, feld) === "D") {
+            damen.push(feld);
+        }
+    }
+    gleich(damen.length, 2, "zwei Damen sind es geworden");
 });
 
 pruefe("Schutzschild: die geschuetzte Figur laesst sich nicht schlagen", () => {
@@ -1099,11 +1334,19 @@ pruefe("Schutzschild: die geschuetzte Figur laesst sich nicht schlagen", () => {
         "auf den Koenig wirkt es nicht");
 });
 
-pruefe("Fessel: die gefesselte Figur darf einen Zug lang nicht ziehen", () => {
+pruefe("Fessel: die gefesselte Figur haelt mehrere Zuege still (v0.56)", () => {
+    /*
+     * BIS v0.55 GALT SIE FUER GENAU EINEN ZUG der gefesselten Seite. Seit
+     * v0.56 laeuft sie nach dem TAKT ab (`SCHACH.FESSEL_HALBZUEGE`) — damit
+     * unterscheidet sie sich vom Frost, der eine Flaeche fuer einen Zug
+     * sperrt. Gezaehlt wird hier Halbzug fuer Halbzug nach.
+     */
     let runde = einsetzen(faehigkeitenPartie(), "fessel", SCHACH.feldNummer("b8"));
     wahr(runde !== null, "eingesetzt");
     gleich(runde.stand.fesselFeld, SCHACH.feldNummer("b8"), "Fessel liegt");
     gleich(runde.stand.fesselFarbe, "schwarz", "auf Schwarz");
+    gleich(runde.stand.fesselBis, runde.stand.takt + SCHACH.FESSEL_HALBZUEGE,
+        "mit Frist am Takt");
 
     /* Weiss zieht, damit Schwarz an der Reihe ist. */
     runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
@@ -1115,15 +1358,73 @@ pruefe("Fessel: die gefesselte Figur darf einen Zug lang nicht ziehen", () => {
     wahr(SCHACH.zuege(runde.stand, SCHACH.feldNummer("g8")).length > 0,
         "der andere Springer darf");
 
-    /* Nach dem Zug der gefesselten Seite ist sie wieder frei. */
-    const danach = SCHACH_RUNDE.ziehen(runde, "id-bert",
+    /* Ein Zug der gefesselten Seite loest sie NICHT mehr auf. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
         SCHACH.feldNummer("g8"), SCHACH.feldNummer("f6"), "D", "Bert", 3100);
-    gleich(danach.stand.fesselFeld, -1, "Fessel verfallen");
+    gleich(runde.stand.fesselFeld, SCHACH.feldNummer("b8"),
+        "nach einem Zug haelt sie weiter");
+
+    /* Weiss zieht (Halbzug 3), Schwarz zieht (Halbzug 4) — dann ist sie um. */
+    runde = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("d2"), SCHACH.feldNummer("d4"), "D", "Anna", 3150);
+    gleich(runde.stand.fesselFeld, SCHACH.feldNummer("b8"), "auch nach dem dritten");
+    gleich(SCHACH.zuege(runde.stand, SCHACH.feldNummer("b8")).length, 0,
+        "der Springer steht immer noch fest");
+
+    runde = SCHACH_RUNDE.ziehen(runde, "id-bert",
+        SCHACH.feldNummer("f6"), SCHACH.feldNummer("g8"), "D", "Bert", 3200);
+    gleich(runde.stand.fesselFeld, -1, "nach vier Halbzuegen verfallen");
+    gleich(runde.stand.fesselBis, 0, "und die Frist ist weg");
 
     gleich(einsetzen(faehigkeitenPartie(), "fessel", SCHACH.feldNummer("e8")), null,
         "der Koenig wird nicht gefesselt");
     gleich(einsetzen(faehigkeitenPartie(), "fessel", SCHACH.feldNummer("b1")), null,
         "und keine eigene Figur");
+});
+
+pruefe("Fessel: eine gefesselte Figur bleibt schlagbar (v0.56)", () => {
+    /*
+     * DER UNTERSCHIED ZUM FROST, und der Grund, warum es beide gibt: Der
+     * Frost macht unantastbar, die Fessel nicht. Wer festgehalten wird, kann
+     * sich nicht wehren — genau darin liegt ihr Wert.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "...s...."
+            + "........"
+            + "...T...."
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const gefesselt = einsetzen(runde, "fessel", SCHACH.feldNummer("d6"));
+    wahr(gefesselt !== null, "eingesetzt");
+
+    const ziele = SCHACH.zuege(gefesselt.stand, SCHACH.feldNummer("d4"))
+        .map((zug) => SCHACH.feldName(zug.nach));
+    wahr(ziele.indexOf("d6") !== -1, "der Turm darf den gefesselten Springer schlagen");
+});
+
+pruefe("Ein Stand von vor v0.56 bekommt die alte Fessel-Frist", () => {
+    /*
+     * Eine angefangene Partie kennt `fesselBis` nicht. Sie darf dadurch nicht
+     * laenger fesseln, als beim Einsetzen versprochen war — also traegt
+     * `standNormalisieren` die alte Frist von einem Halbzug nach.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        takt: 7,
+        fesselFeld: SCHACH.feldNummer("b8"),
+        fesselFarbe: "schwarz"
+    });
+
+    gleich(stand.fesselBis, 8, "eine Frist von einem Halbzug");
 });
 
 pruefe("Erdbeben reisst Risse in den Boden (v0.54)", () => {
@@ -1446,8 +1747,8 @@ pruefe("Wiederbelebung kostet den ganzen Zug", () => {
 
     /* Zum Vergleich: Was nur die Stellung aendert, laesst einen am Zug. */
     let andere = faehigkeitenPartie();
-    gleich(einsetzen(andere, "bauernschub", -1).stand.amZug, "weiss",
-        "der Bauernschub nicht");
+    gleich(einsetzen(andere, "mauer", SCHACH.feldNummer("d4")).stand.amZug, "weiss",
+        "die Mauer nicht");
 });
 
 pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
@@ -1457,10 +1758,17 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
      * Faehigkeit einbringt. Dieser Test haelt die Einteilung fest — kommt eine
      * neue Faehigkeit dazu, muss jemand sie hier einordnen.
      */
-    const kostetDenZug = ["verstaerkung", "spiegel",
+    /*
+     * DER BAUERNSCHUB STEHT SEIT v0.56 HIER, obwohl er nur die Stellung
+     * aendert. Das ist der zweite Teil derselben Regel: Wird eine Faehigkeit
+     * zu stark, nimmt man ihr das Pluszeichen. Er schiebt bis zu acht Figuren,
+     * und mit dem Zug obendrauf konnte man erst schieben und dann mit einem
+     * der geschobenen Bauern schlagen.
+     */
+    const kostetDenZug = ["bauernschub", "verstaerkung", "spiegel",
         "wiedergeburt", "wiederbelebung", "friedhof", "haendler"];
     /* Das Erdbeben steht seit v0.54 bei den Unglueckswuerfeln. */
-    const behaeltDenZug = ["ausweichen", "bauernschub", "schutzschild",
+    const behaeltDenZug = ["ausweichen", "schutzschild",
         "nudelholz", "mauer", "fessel", "frost", "doppelzug"];
 
     /* Die dritte Gruppe seit v0.48: Die Faehigkeit IST der Zug. Man bleibt am
@@ -1577,16 +1885,58 @@ pruefe("Die Grabliste ueberlebt das Speichern", () => {
  * ------------------------------------------------------------------ */
 
 pruefe("Jedes Angebot des Haendlers ist ungefaehr gleichwertig", () => {
-    const wert = (seite) => (SCHACH_RUNDE.FIGUR_WERT[seite.art] || 0) * seite.anzahl;
+    /*
+     * Seit v0.58 kann eine Seite MEHRERE Figurenarten tragen, deshalb wird
+     * ueber die Liste summiert.
+     *
+     * DAS KOENIGS-ANGEBOT IST DIE AUSNAHME und steht deshalb ausdruecklich
+     * hier: Ein zweiter Koenig hat keinen Materialwert (FIGUR_WERT K = 0),
+     * sondern ist ein zweites LEBEN. Nach Figurenwerten waere der Tausch ein
+     * reines Verlustgeschaeft; er wird trotzdem angenommen, wenn man die
+     * Sicherheit braucht. Dafuer kommt er mit einem Zehntel des Gewichts.
+     */
+    const wert = (seite) => SCHACH_VARIANTEN.handelSeite(seite)
+        .reduce((summe, teil) =>
+            summe + (SCHACH_RUNDE.FIGUR_WERT[teil.art] || 0) * teil.anzahl, 0);
+
+    const namen = (seite) => SCHACH_VARIANTEN.handelSeite(seite)
+        .map((teil) => teil.anzahl + " " + teil.art).join(" und ");
+
+    let koenigsAngebote = 0;
 
     for (const angebot of SCHACH_VARIANTEN.HANDEL) {
+        const bringtKoenig = SCHACH_VARIANTEN.handelSeite(angebot.bekommt)
+            .some((teil) => teil.art === "K");
+
+        if (bringtKoenig) {
+            koenigsAngebote++;
+            wahr(typeof angebot.gewicht === "number" && angebot.gewicht < 1,
+                "das Koenigs-Angebot ist selten");
+            continue;
+        }
+
         const abstand = Math.abs(wert(angebot.gibt) - wert(angebot.bekommt));
 
-        wahr(abstand <= 1, "Abstand hoechstens 1 bei "
-            + angebot.gibt.anzahl + " " + angebot.gibt.art + " gegen "
-            + angebot.bekommt.anzahl + " " + angebot.bekommt.art
-            + " (war " + abstand + ")");
+        wahr(abstand <= 1, "Abstand hoechstens 1 bei " + namen(angebot.gibt)
+            + " gegen " + namen(angebot.bekommt) + " (war " + abstand + ")");
     }
+
+    gleich(koenigsAngebote, 1, "genau ein Angebot bringt einen Koenig");
+});
+
+pruefe("Ein erhandelter Koenig ist ein zweites Leben (v0.58)", () => {
+    /*
+     * Dieselbe Regel wie bei der Verstaerkung: Ohne `koenigeAlsLeben` waere
+     * der zweite Koenig ein unschlagbarer Klotz und "Schachmatt" nicht mehr
+     * eindeutig.
+     */
+    const angebot = SCHACH_VARIANTEN.HANDEL.find((eintrag) =>
+        SCHACH_VARIANTEN.handelSeite(eintrag.bekommt).some((teil) => teil.art === "K"));
+
+    wahr(!!angebot, "es gibt das Angebot");
+    gleich(SCHACH_VARIANTEN.handelAnzahl(angebot.gibt), 2, "zwei Figuren dafuer");
+    gleich(SCHACH_RUNDE._handelsText(angebot.gibt), "1 Dame und 1 Bauer",
+        "und der Text nennt beide");
 });
 
 pruefe("Alle Geraete sehen dasselbe Angebot", () => {
@@ -1606,13 +1956,17 @@ pruefe("Der Haendler nimmt die hintersten Figuren", () => {
         return;
     }
 
-    /* Alles, was weggeht, gehoert mir und ist von der richtigen Art. */
+    /* Alles, was weggeht, gehoert mir und ist von einer der verlangten Arten
+       (seit v0.58 koennen es mehrere sein). */
+    const arten = SCHACH_VARIANTEN.handelSeite(angebot.gibt).map((teil) => teil.art);
+
     for (const feld of angebot.gibtFelder) {
         const figur = SCHACH.figurAuf(runde.stand, feld);
         gleich(SCHACH.farbeVon(figur), "weiss", "eigene Figur");
-        gleich(SCHACH.artVon(figur), angebot.gibt.art, "richtige Art");
+        wahr(arten.indexOf(SCHACH.artVon(figur)) !== -1, "richtige Art");
     }
-    gleich(angebot.gibtFelder.length, angebot.gibt.anzahl, "genau so viele");
+    gleich(angebot.gibtFelder.length, SCHACH_VARIANTEN.handelAnzahl(angebot.gibt),
+        "genau so viele");
 });
 
 pruefe("Ein angenommener Handel tauscht wirklich", () => {
@@ -2677,7 +3031,502 @@ pruefe("Frost: eingefroren zieht nicht und wird nicht geschlagen", () => {
         "der Springer steht fest");
 
     gleich(einsetzen(runde, "frost", SCHACH.feldNummer("e8")), null,
-        "der Koenig wird nicht eingefroren");
+        "auf einen Block mit nur dem Koenig wirkt er nicht");
+});
+
+pruefe("Frost sperrt einen 2x2-Block, auch die eigenen Figuren (v0.56)", () => {
+    /*
+     * NUTZER-ENTSCHEIDUNG VOM 08.08.: Der Block friert ein, was darin steht —
+     * gleich wem es gehoert. Das macht ihn stark und zweischneidig zugleich;
+     * man muss ihn sauber setzen.
+     *
+     * Die Stellung: schwarzer Springer auf c6 und schwarzer Laeufer auf d6,
+     * darunter ein EIGENER Turm auf c5. Der Block mit der Ecke c6 erfasst
+     * c6, d6, c5 und d5.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "..sl...."
+            + "..T....."
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const kalt = einsetzen(runde, "frost", SCHACH.feldNummer("c6"));
+    wahr(kalt !== null, "eingesetzt");
+
+    const block = SCHACH.frostFelder(kalt.stand).slice().sort((a, b) => a - b);
+    const erwartet = ["c6", "d6", "c5", "d5"]
+        .map((name) => SCHACH.feldNummer(name)).sort((a, b) => a - b);
+    gleich(block.join(","), erwartet.join(","), "vier Felder im Block");
+
+    gleich(SCHACH.figurAuf(kalt.stand, SCHACH.feldNummer("c5")), "T",
+        "der eigene Turm steht mit im Block");
+    gleich(SCHACH.zuege(kalt.stand, SCHACH.feldNummer("c5")).length, 0,
+        "und er friert mit ein");
+
+    /* Der Gegner kommt an nichts im Block heran. */
+    const schwarzAmZug = Object.assign({}, kalt.stand, { amZug: "schwarz" });
+    gleich(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("c6")).length, 0,
+        "der eingefrorene Springer zieht nicht");
+    gleich(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("d6")).length, 0,
+        "der Laeufer auch nicht");
+
+    /* Ein leeres Feld im Block ist KEINE Sperre — dafuer gibt es die Mauer. */
+    gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("d5")), false,
+        "das leere Feld im Block ist frei");
+
+    /* Und ohne gegnerische Figur im Block gibt es kein Ziel. */
+    gleich(einsetzen(runde, "frost", SCHACH.feldNummer("a2")), null,
+        "ein Block ohne Gegner wird nicht angeboten");
+});
+
+pruefe("Der Koenig bleibt vom Frost verschont, auch im Block (v0.56)", () => {
+    /*
+     * Ein eingefrorener Koenig waere unantastbar UND bewegungslos — damit
+     * waere "Schachmatt" nicht mehr eindeutig. Dieselbe Ausnahme wie bei der
+     * Fessel, nur greift sie jetzt mitten im Block statt an der Auswahl.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "........"
+            + "........"
+            + "..sk...."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const kalt = einsetzen(runde, "frost", SCHACH.feldNummer("c6"));
+    wahr(kalt !== null, "eingesetzt");
+
+    gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("c6")), true,
+        "der Springer friert ein");
+    gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("d6")), false,
+        "der Koenig nicht");
+
+    const schwarzAmZug = Object.assign({}, kalt.stand, { amZug: "schwarz" });
+    wahr(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("d6")).length > 0,
+        "und er zieht weiter");
+});
+
+pruefe("Ein Stand von vor v0.56 kennt den Frost noch als Einzelfeld", () => {
+    /* Additiver Vertrag: `frostFeld` bleibt gueltig und wird zum Block aus
+       einem Feld — eine angefangene Partie laeuft unveraendert weiter. */
+    const stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        frostFeld: SCHACH.feldNummer("e7"),
+        frostFarbe: "schwarz"
+    });
+
+    gleich(stand.frostFelder.join(","), String(SCHACH.feldNummer("e7")),
+        "ein Feld im Block");
+    gleich(stand.frostFeld, SCHACH.feldNummer("e7"), "und die Ecke steht daneben");
+});
+
+pruefe("Friedhof: je staerker die Figur, desto kuerzer bleibt sie (v0.57)", () => {
+    /*
+     * Bis v0.56 blieben alle geliehenen Figuren gleich lang (8 Halbzuege).
+     * Damit war der Friedhof umso staerker, je schwerer die Figuren waren,
+     * die dort gefallen sind — also genau dort am staerksten, wo man ohnehin
+     * gewinnt. Die Staffel dreht das um.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const ecke = SCHACH.feldNummer("c6");
+    runde.gefallen.schwarz = [
+        { art: "B", feld: SCHACH.feldNummer("c6") },
+        { art: "D", feld: SCHACH.feldNummer("d6") },
+        { art: "T", feld: SCHACH.feldNummer("c5") },
+        { art: "S", feld: SCHACH.feldNummer("d5") }
+    ];
+
+    const nachher = einsetzen(runde, "friedhof", ecke);
+    wahr(nachher !== null, "eingesetzt");
+
+    const bisAuf = (name) => {
+        const feld = SCHACH.feldNummer(name);
+        const eintrag = nachher.stand.geliehen.find((wert) => wert.feld === feld);
+        return eintrag ? eintrag.bis : -1;
+    };
+
+    /* Gerechnet wird ab Takt 0 (Einsetzen), plus dem Vorlauf. */
+    gleich(bisAuf("c6"), SCHACH.leihdauerVon("B"), "der Bauer bleibt am laengsten");
+    gleich(bisAuf("d5"), SCHACH.leihdauerVon("S"), "der Springer mittel");
+    gleich(bisAuf("c5"), SCHACH.leihdauerVon("T"), "der Turm kuerzer");
+    gleich(bisAuf("d6"), SCHACH.leihdauerVon("D"), "die Dame am kuerzesten");
+
+    wahr(bisAuf("c6") > bisAuf("d5"), "Bauer laenger als Springer");
+    wahr(bisAuf("d5") > bisAuf("c5"), "Springer laenger als Turm");
+    wahr(bisAuf("c5") > bisAuf("d6"), "Turm laenger als Dame");
+});
+
+pruefe("Die geliehene Dame zieht genau einmal, bevor sie zerfaellt (v0.57)", () => {
+    /*
+     * DAS IST DER GRUND FUER DEN VORLAUF (`SCHACH.LEIHGABE_VORLAUF`).
+     *
+     * Der Friedhof beendet den Zug. Zwischen dem Aufstehen und dem ersten
+     * eigenen Zug liegen deshalb IMMER zwei Halbzuege — der abgegebene und die
+     * Antwort des Gegners. Ohne Vorlauf waere die Dame mit ihren zwei
+     * Halbzuegen zerfallen, bevor man sie ein einziges Mal ziehen kann; sie
+     * haette nur ein Feld blockiert. Beim Nachmessen genau so aufgefallen.
+     */
+    /*
+     * Der schwarze Koenig steht auf h8 und die geweckte Dame auf c4: Von dort
+     * bedroht sie ihn NICHT. Stuende er wie ueblich auf e8, gaebe die Dame
+     * ueber die Diagonale c6-d7-e8 Schach, und Schwarz koennte den harmlosen
+     * Bauernzug gar nicht machen — beim Schreiben des Tests genau so passiert.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: ".......k"
+            + "b......."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const ecke = SCHACH.feldNummer("c4");
+    runde.gefallen.schwarz = [{ art: "D", feld: ecke }];
+
+    let nach = einsetzen(runde, "friedhof", ecke);
+    wahr(nach !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(nach.stand, ecke), "D", "die Dame steht auf");
+    gleich(nach.stand.amZug, "schwarz", "und der Gegner ist dran");
+
+    /* Schwarz antwortet — die Dame muss das ueberleben. */
+    nach = SCHACH_RUNDE.ziehen(nach, "id-bert",
+        SCHACH.feldNummer("a7"), SCHACH.feldNummer("a6"), "D", "Bert", 3100);
+    wahr(nach !== null, "Schwarz zieht");
+    gleich(SCHACH.figurAuf(nach.stand, ecke), "D", "die Dame steht noch");
+
+    /* Jetzt darf sie ziehen — genau einmal. */
+    const gezogen = SCHACH_RUNDE.ziehen(nach, "id-anna",
+        ecke, SCHACH.feldNummer("c5"), "D", "Anna", 3150);
+    wahr(gezogen !== null, "die geliehene Dame zieht");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("c5")), "D",
+        "und steht auf ihrem neuen Feld");
+
+    /* Und danach ist sie weg: Der naechste Zug des Gegners raeumt sie ab. */
+    const danach = SCHACH_RUNDE.ziehen(gezogen, "id-bert",
+        SCHACH.feldNummer("a6"), SCHACH.feldNummer("a5"), "D", "Bert", 3200);
+    wahr(danach !== null, "Schwarz zieht noch einmal");
+    gleich(SCHACH.figurAuf(danach.stand, SCHACH.feldNummer("c5")), ".",
+        "die geliehene Dame ist zerfallen");
+});
+
+pruefe("Der Umriss sagt vorher, was die Wirkung beruehrt (v0.57)", () => {
+    /*
+     * Grundlage des Vorschau-Kastens. Gefragt wird `_zielWirkung`, also die
+     * echte Rechnung — eine zweite Liste von "was passiert wo" waere eine
+     * zweite Wahrheit.
+     */
+    const runde = faehigkeitenPartie();
+
+    const mauer = SCHACH_RUNDE.zielUmriss(runde, "id-anna", "mauer",
+        SCHACH.feldNummer("d4"));
+    gleich(mauer.length, SCHACH.MAUER_LAENGE, "die Mauer ist drei Felder breit");
+    wahr(mauer.indexOf(SCHACH.feldNummer("d4")) !== -1, "das angetippte Feld ist dabei");
+    wahr(mauer.indexOf(SCHACH.feldNummer("c4")) !== -1, "und der linke Nachbar");
+    wahr(mauer.indexOf(SCHACH.feldNummer("e4")) !== -1, "und der rechte");
+
+    const schild = SCHACH_RUNDE.zielUmriss(runde, "id-anna", "schutzschild",
+        SCHACH.feldNummer("e2"));
+    gleich(schild.join(","), String(SCHACH.feldNummer("e2")),
+        "das Schild beruehrt genau ein Feld");
+
+    /* Wo die Wirkung nicht zustande kommt, gibt es auch keinen Umriss. */
+    gleich(SCHACH_RUNDE.zielUmriss(runde, "id-anna", "schutzschild",
+        SCHACH.feldNummer("e7")).length, 0, "nicht auf eine gegnerische Figur");
+    gleich(SCHACH_RUNDE.zielUmriss(runde, "id-anna", "sprung", 0).length, 0,
+        "und nicht bei einer Faehigkeit ohne Ziel");
+});
+
+pruefe("Nur der ZULETZT Gefallene laesst sich holen (nachgemessen v0.57)", () => {
+    /*
+     * Behauptung aus dem Eingangskorb, am 08.08. nachgemessen: Liegen auf
+     * einem Feld mehrere Gefallene, zaehlt der letzte — und zwar bei BEIDEN
+     * Faehigkeiten. Das galt schon seit v0.54; dieser Test haelt es fest.
+     */
+    const leer = "....k..." + "........" + "........" + "........"
+        + "........" + "........" + "........" + "....K...";
+
+    const bauen = () => {
+        const runde = faehigkeitenPartie();
+        runde.stand = SCHACH.standNormalisieren({
+            variante: "faehigkeiten", brett: leer, amZug: "weiss", rochade: ""
+        });
+        return runde;
+    };
+
+    const ecke = SCHACH.feldNummer("c6");
+    const friedhof = bauen();
+    friedhof.gefallen.schwarz = [
+        { art: "B", feld: ecke },
+        { art: "D", feld: ecke }
+    ];
+
+    const nachFriedhof = einsetzen(friedhof, "friedhof", ecke);
+    gleich(SCHACH.figurAuf(nachFriedhof.stand, ecke), "D",
+        "der Friedhof weckt die zuletzt Gefallene");
+    gleich(nachFriedhof.gefallen.schwarz.length, 1,
+        "der aeltere Eintrag bleibt liegen");
+
+    const grab = SCHACH.feldNummer("d4");
+    const belebung = bauen();
+    belebung.gefallen.weiss = [
+        { art: "B", feld: grab },
+        { art: "T", feld: grab }
+    ];
+
+    const nachBelebung = einsetzen(belebung, "wiederbelebung", grab);
+    gleich(SCHACH.figurAuf(nachBelebung.stand, grab), "T",
+        "die Wiederbelebung genauso");
+});
+
+pruefe("Der Stolperstein trifft die einsammelnde Figur, auch im Vorbeiziehen (v0.58)", () => {
+    /*
+     * DER FEHLER, DEN v0.53 EINGEBAUT HAT.
+     *
+     * `_pechAusloesen` bekam immer das Feld des WÜRFELS — mit der Begruendung
+     * "dort steht jetzt die einsammelnde Figur". Das stimmte, solange man
+     * Wuerfel nur durch Betreten des Zielfelds einsammelte. Seit "Beruehren
+     * heisst Einsammeln" (v0.53) nimmt ein Turm sie auch im Vorbeiziehen mit
+     * und steht danach woanders — der Stolperstein suchte auf einem leeren
+     * Feld nach einer Figur und verpuffte still.
+     *
+     * Gefunden beim Stellen der Anleitung fuer v0.58, nicht im Spiel: Kein
+     * Test hatte je ueber einen Stolperstein hinweggezogen.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    /* Der Wuerfel liegt MITTEN auf dem Weg, nicht am Ziel. */
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("a4"), art: "stolperstein", pech: true }];
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("a7"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Turm zieht die Spalte hinauf");
+    gleich(gezogen.bonus.length, 0, "den Wuerfel hat er unterwegs mitgenommen");
+
+    /* Zurueckgeworfen wird er von seinem ZIELFELD aus, eine Reihe Richtung
+       eigener Grundreihe — also von a7 nach a6. */
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a7")), ".",
+        "auf a7 steht er nicht mehr");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a6")), "T",
+        "sondern ein Feld zurueck auf a6");
+
+    const letzter = gezogen.verlauf[gezogen.verlauf.length - 1];
+    gleich(letzter.wirkung, "pech", "und der Verlauf haelt es fest");
+});
+
+/*
+ * DER ZUG BRICHT AM RISS AB (v0.58)
+ *
+ * Ein Erdbeben reisst den Boden auf, SOBALD der Wuerfel eingesammelt wird —
+ * und eingesammelt wird er seit v0.53 auch im Vorbeiziehen. Liegt danach ein
+ * Loch vor der Figur, kommt sie nicht mehr daran vorbei.
+ *
+ * Die Stellung ist absichtlich dicht: `erdbebenRisse` trifft freie Felder, und
+ * frei ist hier fast nur die Spalte des Turms. Wo genau die Risse landen,
+ * rechnet der Spielstand aus — die Tests pruefen deshalb die REGEL, nicht
+ * bestimmte Feldnummern.
+ */
+function rissPartie(zielFigur) {
+    const runde = faehigkeitenPartie();
+    const oben = zielFigur || ".";
+
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: ("bb" + oben + "bbbbb")
+            + "bb.bbbbb"
+            + "bb.bbbbb"
+            + "bb.bbbbb"
+            + "BB.BBBBB"
+            + "BB.BBBBB"
+            + "BB.BBBBB"
+            + "BBTBBBBB",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    /* Der Wuerfel liegt auf dem ERSTEN Feld des Weges, nicht am Ziel. */
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("c2"), art: "erdbeben", pech: true }];
+
+    return runde;
+}
+
+pruefe("Ein Riss vor der Figur bricht den Zug ab (v0.58)", () => {
+    const runde = rissPartie();
+    const weg = SCHACH.betreteneFelder(runde.stand,
+        SCHACH.feldNummer("c1"), SCHACH.feldNummer("c8"));
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c1"), SCHACH.feldNummer("c8"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Zug ist erlaubt");
+    gleich(gezogen.bonus.length, 0, "den Wuerfel hat er unterwegs mitgenommen");
+    wahr(SCHACH.risse(gezogen.stand).length > 0, "und es sind Risse entstanden");
+
+    /* Oben angekommen ist er nicht. */
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("c8")), ".",
+        "auf dem Zielfeld steht er nicht");
+
+    /* Sondern irgendwo auf seinem Weg — und zwar auf einem FREIEN Feld. */
+    let steht = -1;
+    for (const feld of weg) {
+        if (SCHACH.figurAuf(gezogen.stand, feld) === "T") {
+            steht = feld;
+        }
+    }
+    wahr(steht !== -1, "er steht auf einem Feld seines Weges");
+    wahr(!SCHACH.gesperrt(gezogen.stand, steht), "und niemals auf einem Riss");
+
+    /* Direkt vor ihm liegt der Grund: ein gesperrtes Feld. */
+    const naechstes = weg[weg.indexOf(steht) + 1];
+    wahr(Number.isInteger(naechstes) && SCHACH.gesperrt(gezogen.stand, naechstes),
+        "vor ihm liegt das Loch, das ihn aufgehalten hat");
+
+    /* Und der Verlauf sagt es: Der Zug endet woanders als geplant. */
+    const zugEintrag = gezogen.verlauf.find((zeile) => zeile.von === SCHACH.feldNummer("c1"));
+    gleich(zugEintrag.nach, steht, "der Verlauf nennt das Haltefeld");
+    gleich(zugEintrag.wege[0].nach, steht, "und der Pfeil endet dort");
+});
+
+pruefe("Wer sein Ziel nicht erreicht, schlaegt dort auch nichts (v0.58)", () => {
+    /*
+     * Sonst waere der Abbruch ein Angriff aus der Ferne: Die Figur bliebe
+     * unterwegs stehen, und der Gegner haette trotzdem eine Figur verloren.
+     */
+    const runde = rissPartie("t");
+    const ziel = SCHACH.feldNummer("c8");
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c1"), ziel, "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Zug ist erlaubt");
+    gleich(SCHACH.figurAuf(gezogen.stand, ziel), "t",
+        "der schwarze Turm steht noch da");
+    gleich(gezogen.verloren.schwarz.indexOf("T"), -1,
+        "und zaehlt nicht als verloren");
+    wahr(!gezogen.gefallen.schwarz.some((eintrag) => eintrag.feld === ziel),
+        "auch nicht als gefallen");
+});
+
+pruefe("Ohne Riss auf dem weiteren Weg bleibt der Zug, wie er war (v0.58)", () => {
+    /*
+     * DIE GRENZE DER REGEL. Ein Riss HINTER der Figur haelt sie nicht auf —
+     * dort war sie schon vorbei. Geprueft an einem Springer: Er betritt nur
+     * sein Zielfeld, hat also gar keinen Weg, auf dem etwas aufreissen
+     * koennte.
+     */
+    const runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + ".S..K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("c3"), art: "erdbeben", pech: true }];
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("b1"), SCHACH.feldNummer("c3"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Springer zieht");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("c3")), "S",
+        "und steht auf seinem Zielfeld");
+});
+
+pruefe("Nudelholz: auch das aeusserste Feld der Grundreihe geht", () => {
+    /*
+     * NACHGEMESSEN AM 08.08. (Eingangskorb G3): Die Frage war, ob man das
+     * Nudelholz ganz am Rand ueberhaupt druecken kann. Man kann — die
+     * Spalte ausserhalb des Bretts faellt einfach weg, und es rollt die eine
+     * verbliebene. Dieser Test haelt es fest, damit die Frage nicht
+     * wiederkommt.
+     */
+    const runde = faehigkeitenPartie();
+    const breite = SCHACH.breiteVon(runde.stand);
+    const hoehe = SCHACH.hoeheVon(runde.stand);
+    const felder = SCHACH_RUNDE.zielFelder(runde, "id-anna", "nudelholz");
+
+    const rechts = SCHACH._feld(runde.stand, hoehe - 1, breite - 1);
+    const links = SCHACH._feld(runde.stand, hoehe - 1, 0);
+
+    wahr(felder.indexOf(rechts) !== -1, "das Feld ganz rechts wird angeboten");
+    wahr(felder.indexOf(links) !== -1, "das Feld ganz links auch");
+
+    /* Ganz aussen rollt nur EINE Spalte — die zweite liegt nicht mehr im
+       Brett. Weiter innen sind es zwei. Gezaehlt werden die beruehrten
+       SPALTEN, nicht die Wege: In einer Spalte ruecken mehrere Figuren. */
+    const spaltenVon = (wirkung) => wirkung.felder
+        .map((feld) => SCHACH.spalteVon(feld, breite))
+        .filter((spalte, stelle, alle) => alle.indexOf(spalte) === stelle)
+        .sort((a, b) => a - b);
+
+    const amRand = SCHACH.nudelholz(runde.stand, breite - 1, -1);
+    wahr(amRand !== null, "am Rand passiert etwas");
+    gleich(spaltenVon(amRand).join(","), String(breite - 1),
+        "ganz aussen rollt nur die letzte Spalte");
+
+    const innen = SCHACH.nudelholz(runde.stand, breite - 3, -1);
+    gleich(spaltenVon(innen).join(","), (breite - 3) + "," + (breite - 2),
+        "weiter innen sind es zwei");
 });
 
 pruefe("Spiegel: eine Figur wird auf ein freies Nachbarfeld verdoppelt", () => {
@@ -2932,8 +3781,13 @@ pruefe("Der Verlauf verraet nicht, was in einem Wuerfel steckt", () => {
 pruefe("Die Zielfelder passen zu dem, was die Wirkung wirklich zulaesst", () => {
     const runde = faehigkeitenPartie();
 
-    gleich(SCHACH_RUNDE.zielFelder(runde, "id-anna", "verstaerkung").length, 8,
-        "acht eigene Bauern");
+    /* Seit v0.56 wertet die Verstaerkung JEDE eigene Figur auf, nicht nur
+       Bauern — nur der einzelne Koenig bleibt aussen vor. */
+    const aufwertbar = SCHACH_RUNDE.zielFelder(runde, "id-anna", "verstaerkung");
+    gleich(aufwertbar.length, 15, "alle eigenen Figuren ausser dem einen Koenig");
+    wahr(aufwertbar.indexOf(SCHACH.feldNummer("e1")) === -1,
+        "der letzte Koenig laesst sich nicht eintauschen");
+    wahr(aufwertbar.indexOf(SCHACH.feldNummer("a1")) !== -1, "der Turm ist dabei");
 
     const schild = SCHACH_RUNDE.zielFelder(runde, "id-anna", "schutzschild");
     gleich(schild.length, 15, "alle eigenen Figuren ausser dem Koenig");
@@ -2999,6 +3853,12 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
                hat. */
             runde.stand.brett = SCHACH._brettMit(runde.stand.brett,
                 SCHACH.feldNummer("a5"), "b");
+        }
+
+        /* Ausweichen geht seit v0.58 NUR im Gegenzug — sonst waere es hier
+           zu Recht abgewiesen. */
+        if (SCHACH_VARIANTEN.FAEHIGKEITEN[art].nurImGegenzug) {
+            runde.stand.amZug = "schwarz";
         }
 
         const nachher = einsetzen(runde, art, feld);

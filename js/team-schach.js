@@ -119,6 +119,29 @@ const TEAM_SCHACH = {
     zielFaehigkeit: "",
     zielFelder: [],
 
+    /*
+     * DER VORSCHAU-KASTEN (seit v0.57).
+     *
+     * Bis v0.56 wirkte eine Fähigkeit sofort beim Antippen eines Feldes. Bei
+     * Mauer (drei Felder), Frost und Friedhof (2×2) sah man dabei nicht, WO
+     * genau sie landet — man tippte und hoffte. Jetzt setzt ein Tipp erst den
+     * Kasten, ein weiterer Tipp verschiebt ihn, und unter dem Brett stehen
+     * „Einsetzen" und „Abbrechen".
+     *
+     *     zielVorschau   das angetippte Feld (-1 = noch keines)
+     *     zielUmriss     die Felder, die die Wirkung berühren würde
+     *
+     * Der Umriss wird NICHT hier gerechnet, sondern bei
+     * `SCHACH_RUNDE.zielUmriss` erfragt — das ist dieselbe Rechnung, die
+     * hinterher wirklich läuft.
+     *
+     * Warum antippen und nicht ziehen (Nutzer-Entscheidung 08.08.): Echtes
+     * Ziehen kämpft auf dem Handy mit dem Scrollen der Seite, und der Finger
+     * verdeckt genau das Feld, das man treffen will.
+     */
+    zielVorschau: -1,
+    zielUmriss: [],
+
     /* Bis zu welchem Zugzähler die Wirkung einer Fähigkeit gezeigt wurde. */
     wirkungBis: {},
 
@@ -660,7 +683,25 @@ const TEAM_SCHACH = {
                 TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
                 return;
             }
-            TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit, feld);
+
+            /*
+             * DER TIPP SETZT DEN KASTEN, ER SETZT NICHT EIN (seit v0.57).
+             *
+             * Ausgeführt wird erst über „Einsetzen" unter dem Brett. Ein
+             * zweiter Tipp auf ein anderes gültiges Feld verschiebt den
+             * Kasten; ein Tipp auf DASSELBE Feld gilt als Bestätigung, damit
+             * der gewohnte Doppeltipp weiter durchgeht.
+             */
+            if (TEAM_SCHACH.zielVorschau === feld) {
+                TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit, feld);
+                return;
+            }
+
+            TEAM_SCHACH.zielVorschau = feld;
+            TEAM_SCHACH.zielUmriss = SCHACH_RUNDE.zielUmriss(
+                partie, person.id, TEAM_SCHACH.zielFaehigkeit, feld);
+
+            TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
         }
 
@@ -712,7 +753,28 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.moeglicheZiele = [];
         TEAM_SCHACH.zielFaehigkeit = "";
         TEAM_SCHACH.zielFelder = [];
+        TEAM_SCHACH.zielVorschau = -1;
+        TEAM_SCHACH.zielUmriss = [];
         TEAM_SCHACH.auswahlZaehler = -1;
+    },
+
+    /*
+     * „Einsetzen" unter dem Brett: Die Fähigkeit wirkt auf das Feld, auf dem
+     * der Vorschau-Kasten gerade liegt (seit v0.57).
+     */
+    zielBestaetigen(partie) {
+        if (!TEAM_SCHACH.zielFaehigkeit || TEAM_SCHACH.zielVorschau < 0) {
+            return;
+        }
+
+        TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit,
+            TEAM_SCHACH.zielVorschau);
+    },
+
+    /* „Abbrechen": Die Fähigkeit bleibt im Vorrat. */
+    zielVerwerfen() {
+        TEAM_SCHACH._auswahlAufheben();
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
     /*
@@ -1236,6 +1298,45 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /*
+         * DER BAUERNSCHUB FRAGT NACH DER FIGUR (seit v0.56).
+         *
+         * Erreichen durch ihn Bauern die letzte Reihe, werden sie ALLE
+         * umgewandelt — und zwar in dieselbe Figur, einmal gefragt statt
+         * fünfmal. Wer abbricht, behält die Fähigkeit.
+         *
+         * Ob überhaupt jemand umwandelt, beantwortet das Modell
+         * (`SCHACH_RUNDE.schubWandeltUm`); der Bildschirm zählt nicht selbst
+         * nach, welcher Bauer wie weit vorn steht.
+         */
+        const wandelnd = SCHACH_RUNDE.schubWandeltUm(partie, person.id);
+
+        if (beschreibung.art === "sofort" && wandelnd > 0) {
+            const wahl = await DIALOG.liste(
+                (wandelnd === 1) ? "Ein Bauer wandelt um" : wandelnd + " Bauern wandeln um",
+                (wandelnd === 1)
+                    ? "Der Schub bringt einen Bauern auf die letzte Reihe. In welche "
+                        + "Figur soll er umgewandelt werden?"
+                    : "Der Schub bringt " + wandelnd + " Bauern auf die letzte Reihe. "
+                        + "In welche Figur sollen sie umgewandelt werden? Die Wahl "
+                        + "gilt für alle.",
+                [
+                    { beschriftung: "Dame", hinweis: "die übliche Wahl", wert: "D" },
+                    { beschriftung: "Turm", hinweis: "", wert: "T" },
+                    { beschriftung: "Läufer", hinweis: "", wert: "L" },
+                    { beschriftung: "Springer", hinweis: "manchmal stärker", wert: "S" }
+                ],
+                "Abbrechen"
+            );
+
+            if (!wahl) {
+                return;
+            }
+
+            await TEAM_SCHACH.faehigkeitAusfuehren(partie, art, -1, wahl);
+            return;
+        }
+
         await TEAM_SCHACH.faehigkeitAusfuehren(partie, art, -1);
     },
 
@@ -1283,8 +1384,13 @@ const TEAM_SCHACH = {
         await TEAM_SCHACH.faehigkeitAusfuehren(partie, art, -1);
     },
 
-    /* Setzt die Fähigkeit wirklich ein — mit Ziel, wenn sie eines braucht. */
-    async faehigkeitAusfuehren(partie, art, zielFeld) {
+    /*
+     * Setzt die Fähigkeit wirklich ein — mit Ziel, wenn sie eines braucht.
+     *
+     * `umwandlung` braucht bisher nur der Bauernschub (seit v0.56) und ist
+     * wahlfrei; ohne Angabe werden umgewandelte Bauern zu Damen.
+     */
+    async faehigkeitAusfuehren(partie, art, zielFeld, umwandlung) {
         const person = TEAM_SCHACH._ich();
         if (!person) {
             return;
@@ -1294,9 +1400,9 @@ const TEAM_SCHACH = {
            vorgeschlagen — genau wie ein Zug. */
         const neu = SCHACH_RUNDE.brauchtEinigkeit(partie)
             ? SCHACH_RUNDE.faehigkeitVorschlagen(
-                partie, person.id, art, zielFeld, person.name)
+                partie, person.id, art, zielFeld, person.name, undefined, umwandlung)
             : SCHACH_RUNDE.faehigkeitEinsetzen(
-                partie, person.id, art, zielFeld, person.name);
+                partie, person.id, art, zielFeld, person.name, undefined, umwandlung);
 
         TEAM_SCHACH._auswahlAufheben();
 

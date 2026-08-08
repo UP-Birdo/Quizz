@@ -369,7 +369,7 @@ Object.assign(TEAM_SCHACH, {
                 ? TEAM_SCHACH.faehigkeitEinsetzen(partie, art)
                 : TEAM_SCHACH.faehigkeitAnsehen(art)));
 
-        if (!beschreibung.beendetZug && !beschreibung.istDerZug) {
+        if (SCHACH_VARIANTEN.zeigtPlus(art)) {
             const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
             plus.title = "Danach bleibt der normale Zug — es kann noch gezogen "
                 + "und geschlagen werden.";
@@ -605,7 +605,7 @@ Object.assign(TEAM_SCHACH, {
          * den Spielstand. Nur so ist das Zeichen hier gelernt und dort
          * wiedererkannt.
          */
-        if (!istPech && !beschreibungsSatz.beendetZug && !beschreibungsSatz.istDerZug) {
+        if (!istPech && SCHACH_VARIANTEN.zeigtPlus(art)) {
             const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
             plus.title = "Danach bleibt dir dein normaler Zug.";
             kopf.appendChild(plus);
@@ -871,11 +871,27 @@ Object.assign(TEAM_SCHACH, {
             if (stand.fesselFeld === feld) {
                 zelle.classList.add("feld-fessel");
             }
-            if (stand.frostFeld === feld) {
-                zelle.classList.add("feld-frost");
-            }
+
+            /* Der Frost ist seit v0.56 ein Block mit Rahmen — gezeichnet von
+               derselben Funktion wie am echten Brett. */
+            TEAM_SCHACH._frostKanten(stand, feld, zelle);
             if (SCHACH.istGeliehen(stand, feld)) {
                 zelle.classList.add("feld-geliehen");
+            }
+
+            /*
+             * DIE RESTZEIT AUCH IN DER ANLEITUNG (seit v0.58).
+             *
+             * Am echten Brett steht sie seit v0.53 an jedem Feld, auf dem etwas
+             * abläuft; im Beispielbrett fehlte sie. Gerade dort ist sie aber
+             * die halbe Auskunft: „Die Mauer steht sechs Halbzüge" liest sich
+             * anders, als die 6 am Feld zu sehen. Gefragt wird dasselbe
+             * Regelwerk wie am echten Brett.
+             */
+            const restzeit = SCHACH.restzeitAuf(stand, feld);
+            if (restzeit > 0) {
+                zelle.appendChild(TEAM_SCHACH._element("span", "feld-restzeit",
+                    String(restzeit)));
             }
             /* Die übrigen möglichen Felder — dieselbe Marke wie am echten
                Brett, wenn eine Fähigkeit auf ihr Ziel wartet. */
@@ -922,10 +938,22 @@ Object.assign(TEAM_SCHACH, {
         const huelle = TEAM_SCHACH._element("div", "anleitung-mitknopf");
         huelle.appendChild(brett);
 
+        /*
+         * DIE MARKE STEHT IN JEDEM BILD (seit v0.58), der Fingerabdruck nur in
+         * dem, in dem gedrückt wird. Bis v0.57 kam die ganze Leiste mit dem
+         * einen Bild und verschwand danach — die Anleitung sprang bei jedem
+         * Takt in der Höhe, und das Auge folgte dem Sprung statt dem Brett.
+         */
         const leiste = TEAM_SCHACH._element("div", "anleitung-vorrat");
         const marke = TEAM_SCHACH._element("span",
-            "chip faehigkeit-marke anleitung-knopf", schritt.knopf);
-        marke.appendChild(TEAM_SCHACH._fingerBauen());
+            "chip faehigkeit-marke anleitung-knopf"
+                + (schritt.knopfTipp ? "" : " anleitung-knopf-ruht"),
+            schritt.knopf);
+
+        if (schritt.knopfTipp) {
+            marke.appendChild(TEAM_SCHACH._fingerBauen());
+        }
+
         leiste.appendChild(marke);
         huelle.appendChild(leiste);
 

@@ -21,6 +21,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die neue Partie war da — und verschwand wieder (v0.52)
     - Die Bildanleitung hat zwei Regeln entlarvt (v0.46)
     - Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
+    - Der Stolperstein verpuffte im Vorbeiziehen (v0.53, gefunden v0.58)
+    - Eine Beispielszene ohne Figuren beendet die Partie (v0.58)
 
 ## entschieden.md - Entschieden - und warum
 
@@ -118,6 +120,16 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Der Unglückswürfel ist kein Gesetz mehr, sondern ein Haken (v0.49) — **hebt
   eine eiserne Regel auf**
 - Zwei Könige sind zwei Leben (v0.49, Spielart „Zufallsarmee")
+- Frost und Fessel mussten sich unterscheiden (v0.56)
+- Warum aus der Verstärkung eine Kette wurde (v0.56) — **zweite Quelle für
+  „zwei Könige sind zwei Leben"**
+- Warum der Bauernschub sein Pluszeichen verloren hat (v0.56) — **erster
+  Anwendungsfall von „zu stark heisst Plus weg, nicht Stufe verschieben"**
+- Warum der Vorschau-Kasten angetippt und nicht gezogen wird (v0.57) — **weicht
+  bewusst vom Wortlaut des Wunsches ab**
+- Warum eine Leihgabe erst zählt, wenn man wieder am Zug ist (v0.57)
+- Warum ein Zug unterwegs enden kann (v0.58) — **nimmt eine Aussage aus
+  derselben Runde zurück**
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

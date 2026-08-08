@@ -1590,6 +1590,162 @@ Startfeld, Turm auf derselben Grundreihe). Bei einer gewürfelten Aufstellung is
 „das Startfeld des Königs" nur noch Zufall, und mit zwei Königen wäre nicht
 einmal klar, wessen Recht gemeint ist.
 
+## Frost und Fessel mussten sich unterscheiden (v0.56)
+
+Bis v0.55 taten beide fast dasselbe: Eine Figur steht einen Zug lang still. Der
+ganze Unterschied war „unantastbar ja/nein" — zu wenig, um zwei Plätze auf der
+epischen Stufe zu rechtfertigen. Wer beide im Vorrat hatte, hatte faktisch
+zweimal dieselbe Karte.
+
+Seither trennen sie sich in **beiden** Achsen, und zwar über Kreuz:
+
+| | Fläche | Dauer | Opfer schlagbar? |
+|---|---|---|---|
+| Frost | 2×2-Block | ein Zug | nein |
+| Fessel | ein Feld | vier Halbzüge | ja |
+
+Damit beantworten sie zwei verschiedene Fragen. Der Frost ist die **Notbremse**:
+Er hält kurz eine ganze Ecke des Bretts an, kostet dafür aber auch die eigenen
+Figuren darin. Die Fessel ist die **Vorbereitung**: Sie nagelt eine Figur fest,
+lange genug, um sie in Ruhe anzugreifen.
+
+**Warum der Frost auch die eigenen Figuren trifft** (Nutzer-Entscheidung
+08.08.): Vier Felder sind viel. Ohne diesen Preis wäre er auf einem vollen
+Brett fast immer der beste Zug — man legt ihn über die dichteste Stelle und
+nimmt mit, was darin steht. Dass die eigenen mit einfrieren, macht aus der
+Fähigkeit eine Zielübung.
+
+**Warum ein leeres Feld im Block trotzdem nichts sperrt.** Beim Bauen war es
+zuerst andersherum, weil die Prüfung nur „liegt das Feld im Block?" fragte. Das
+Ergebnis war eine Mauer, die man zusätzlich über den Gegner legen kann — eine
+zweite Fähigkeit im Bauch der ersten. Der Frost hält FIGUREN fest; Flächen
+sperrt die Mauer, und die gehört bewusst keiner Seite.
+
+**Warum die Fessel eine Uhr braucht und der Frost nicht.** „Ein Zug" lässt sich
+an der Farbe ablesen (`frostFarbe` zieht, also ist es vorbei). „Mehrere Züge"
+geht nur mit einem Zähler, und der einzige brauchbare ist `takt` — `halbzuege`
+springt bei jedem Bauernzug auf 0 zurück und hätte die Fessel unsterblich
+gemacht. Dieselbe Falle wie bei den Mauern in v3.5.
+
+## Warum aus der Verstärkung eine Kette wurde (v0.56)
+
+Die alte Verstärkung machte aus einem Bauern einen Springer: plus zwei Punkte
+Material, immer derselbe Handgriff, und in der Endphase ohne Bauern wertlos.
+Für eine epische Fähigkeit war das wenig, und interessant war sie nie.
+
+Als Kette (Bauer → Springer → Läufer oder Turm → Dame → König) hat sie eine
+Eigenschaft, die keine andere hat: **Sie ist überall einsetzbar, aber der
+Gewinn hängt davon ab, worauf man sie legt.** Auf einen Bauern gibt sie zwei
+Punkte, auf einen Turm vier. Das ist eine Entscheidung, kein Handgriff.
+
+**Warum der König das obere Ende ist und was das kostet.** Ein zweiter König
+wäre normalerweise ein unschlagbarer Klotz, und „Schachmatt" wäre nicht mehr
+eindeutig. Deshalb setzt die Aufwertung `koenigeAlsLeben` im Stand — die
+Maschinerie aus v0.49, die für die Zufallsarmee gebaut wurde: Solange eine
+Seite mehr als einen König hat, kennt SIE kein Schach und kein Matt, und ihre
+Könige sind gewöhnliche Figuren. Es war keine neue Regel nötig, nur ein
+Schalter an der richtigen Stelle.
+
+**Warum es zurück geht.** Zwei Leben sind nicht immer das Richtige — wer
+angreifen muss, braucht Material, keinen zweiten König. Deshalb tauscht man
+einen von zweien gegen zwei Damen ein. Der Rücktausch ist zugleich die Sperre,
+die den letzten König schützt: Er verlangt, dass **zwei** dastehen.
+
+**Was zu beobachten ist:** Die Kette ist ein deutlicher Machtzuwachs. Wenn sie
+zu stark wird, gilt die Regel von v0.47 — man kürzt die Kette oder nimmt der
+Fähigkeit etwas weg, aber man verschiebt nicht ihre Stufe.
+
+## Warum der Bauernschub sein Pluszeichen verloren hat (v0.56)
+
+Gemeldet vom Nutzer: „zu stark". Der Grund ist die Kombination, nicht die
+Fähigkeit selbst — erst alle acht Bauern vorschieben, dann mit einem davon
+schlagen. Das sind zwei Züge für eine Fähigkeit, und keine andere kann das.
+
+Nach Gruppe 3 der Einpreisungs-Regel (v0.47) hätte er das Plus behalten
+müssen: Er ändert ja nur die Stellung. Der zweite Satz derselben Regel gewinnt
+aber: **Wird eine Fähigkeit zu stark, nimmt man ihr das Pluszeichen — nicht
+ihre Stufe.** Er ist damit der erste dokumentierte Anwendungsfall dieses
+Satzes, und deshalb steht er in der Tabelle als eigene Zeile statt in Gruppe 1.
+
+**Der Ausgleich ist die Umwandlung.** Bis v0.55 wurden geschobene Bauern auf
+der letzten Reihe stillschweigend zu Damen — ein verstecktes Geschenk, das
+niemand angefordert hatte. Jetzt fragt die App einmal für alle, welche Figur
+es sein soll. Einmal, nicht je Bauer: Fünf Rückfragen hintereinander wären
+Bedienlast ohne Entscheidungswert, denn man wählt ohnehin fast immer dasselbe.
+
+## Warum der Vorschau-Kasten angetippt und nicht gezogen wird (v0.57)
+
+Der Wunsch lautete wörtlich: ein grüner Kasten, den man auf die Fläche ZIEHT,
+dann bestätigen. Gebaut ist er zum Antippen. Der Grund liegt am Gerät, auf dem
+gespielt wird:
+
+- **Ziehen kämpft mit dem Scrollen.** Ein Fingerzug über das Brett ist für den
+  Browser erst einmal eine Wischgeste. Um daraus ein Verschieben zu machen,
+  muss man das Scrollen während der Berührung abschalten — und wer dann
+  daneben greift, hat eine Seite, die sich nicht mehr bewegt.
+- **Der Finger verdeckt das Ziel.** Genau das Feld, das man treffen will, liegt
+  unter der Fingerkuppe. Beim Loslassen sitzt der Kasten oft ein Feld daneben,
+  und man merkt es erst danach.
+
+Antippen löst dasselbe Problem — man sieht vor dem Bestätigen, wohin die
+Wirkung geht — und ist auf jedem Gerät gleich zuverlässig. Der ursprüngliche
+Zweck bleibt also erfüllt; nur der Weg dorthin ist ein anderer.
+
+Der gewohnte Doppeltipp geht weiterhin durch: Zweimal auf dasselbe Feld setzt
+sofort ein. Wer die Fähigkeit kennt, wird dadurch nicht ausgebremst.
+
+## Warum eine Leihgabe erst zählt, wenn man wieder am Zug ist (v0.57)
+
+Beim Bau der Staffel „je stärker, desto kürzer" (Dame 2 Halbzüge) kam beim
+Nachmessen heraus, dass die Dame **nie zum Zug kam**: Der Friedhof gibt den Zug
+ab, danach zieht der Gegner — und beim Hochzählen des Takts war sie schon
+zerfallen. Sie hätte ein Feld blockiert, mehr nicht.
+
+Die Tabelle war richtig, der Nullpunkt nicht. Deshalb steht neben
+`SCHACH.LEIHDAUER` jetzt `LEIHGABE_VORLAUF: 2` — die zwei Halbzüge, die
+zwischen dem Aufstehen und dem ersten eigenen Zug immer liegen. Die Zahlen in
+der Tabelle bedeuten damit das, was sie versprechen: *so viele Halbzüge,
+nachdem du wieder dran bist.*
+
+Wer eine weitere Fähigkeit mit Leihgabe baut, prüft zuerst, ob sie den Zug
+abgibt. Tut sie es nicht, ist der Vorlauf falsch.
+
+## Warum ein Zug unterwegs enden kann (v0.58)
+
+Beim Stellen der Erdbeben-Anleitung stand hier zuerst das Gegenteil: Die Regeln
+brechen einen Zug nicht ab, der Würfel wirkt danach — die Szene wurde
+entsprechend umgeschrieben. Der Nutzer hat widersprochen, und zu Recht:
+
+> Ein Zug soll durch so einen Einsatz abgebrochen werden. Der Würfel erschafft
+> das Loch, sobald er eingesammelt wird, und wenn auf dem weiteren Weg dieses
+> Loch ihm den Weg versperrt, soll der Zug davor abgebrochen werden.
+
+Das ist die konsequente Fortschreibung von **„Berühren heisst Einsammeln"**
+(v0.53): Wenn ein Würfel schon im Vorbeiziehen wirkt, dann wirkt er eben
+mitten im Zug — und ein Loch, das dabei vor der Figur aufgeht, ist ein Loch,
+kein Schönheitsfehler. Ein Turm, der ungerührt darüber hinweggleitet, weil die
+Engine den Zug lieber am Stück abrechnet, ist die schlechtere Regel.
+
+**Was dabei NICHT angefasst wurde: `SCHACH.zuege`.** Als der Zug gewählt wurde,
+war der Weg frei; die Sperre entsteht erst währenddessen. Eine Zugerzeugung,
+die das vorhersagen müsste, müsste den Inhalt jedes Würfels kennen — und der
+entscheidet sich absichtlich erst beim Einsammeln (siehe „Warum sich der
+Würfel-Inhalt erst beim Einsammeln entscheidet"). Der Abbruch ist deshalb eine
+Nachwirkung des Zuges, kein Filter davor.
+
+**Drei Festlegungen halten die Regel zusammen:**
+
+- **Ein Riss zählt erst ab dem Feld des Würfels.** Was hinter der Figur
+  aufgeht, hat sie längst passiert. Ohne diese Einschränkung blieb der Turm im
+  ersten Bauversuch auf seinem Startfeld stehen — das Erdbeben hatte zufällig
+  auch ein Feld hinter ihm erwischt.
+- **Der Schlag fällt mit aus.** Sonst wäre der Abbruch ein Angriff aus der
+  Ferne: Die Figur bliebe unterwegs stehen, und der Gegner hätte trotzdem eine
+  Figur verloren.
+- **Die Figur endet nie AUF einem Riss.** Gesucht wird rückwärts das letzte
+  freie Feld; findet sich keines, bleibt der Zug lieber, wie er war. Eine Figur
+  ohne Feld wäre schlimmer als ein Zug zu viel.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

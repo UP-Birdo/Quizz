@@ -917,8 +917,13 @@ const SCHACH_RUNDE = {
      *
      * `zielFeld` wird nur von Fähigkeiten der Art "ziel" gebraucht; die
      * übrigen bekommen -1 oder gar nichts.
+     *
+     * `umwandlung` (seit v0.56) braucht bisher nur der Bauernschub: Erreichen
+     * Bauern durch ihn die letzte Reihe, sagt sie, was aus ihnen wird. Sie
+     * steht als LETZTER Parameter und ist wahlfrei — jeder Aufruf von vorher
+     * bleibt damit gültig und bekommt wie bisher Damen.
      */
-    faehigkeitEinsetzen(runde, spielerId, art, zielFeld, wer, zeitpunkt) {
+    faehigkeitEinsetzen(runde, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
 
@@ -954,13 +959,19 @@ const SCHACH_RUNDE = {
             neu.stand.extraZug = farbe;
 
         } else if (beschreibung.art === "sofort") {
-            const wirkung = SCHACH.bauernschub(neu.stand, farbe);
+            const wirkung = SCHACH.bauernschub(neu.stand, farbe, umwandlung);
             if (!wirkung) {
                 return null;
             }
             neu.stand = wirkung.stand;
             betroffen = wirkung.felder;
             wege = wirkung.wege || [];
+
+            /* Umgewandelte Bauern gehören in den Verlaufstext: Sie sind das,
+               was man an der Stellung am wenigsten erwartet. */
+            if (wirkung.umgewandelt && wirkung.umgewandelt.length > 0) {
+                zusatzText = ": " + wirkung.umgewandelt.length + " mal umgewandelt";
+            }
 
         } else if (beschreibung.art === "ziel") {
             const wirkung = SCHACH_RUNDE._zielWirkung(neu, art, farbe, ziel);
@@ -1116,7 +1127,7 @@ const SCHACH_RUNDE = {
      * Nummerierung, und ein Unglückswürfel kann das Brett vergrössern.
      */
     _bonusEinsammeln(runde, altStand, von, nach, farbe, wer) {
-        SCHACH_RUNDE._bonusEinsammelnAufFeldern(runde,
+        return SCHACH_RUNDE._bonusEinsammelnAufFeldern(runde,
             SCHACH.betreteneFelder(altStand, von, nach), farbe, wer,
             { vonZug: true, von: von, nach: nach, altStand: altStand });
     },
@@ -1209,10 +1220,15 @@ const SCHACH_RUNDE = {
             SCHACH_RUNDE._verlaufKuerzen(runde);
         }
 
+        /* Die Felder, auf denen ein UNGLÜCKSwürfel lag — der Aufrufer braucht
+           sie, um den Zug am Riss abbrechen zu können (seit v0.58). */
+        const pechFelder = [];
+
         for (const bonus of eingesammelt) {
             if (!bonus.pech) {
                 continue;
             }
+            pechFelder.push(bonus.feld);
 
             /*
              * Hat ein früherer Unglückswürfel das Brett schon verändert, sind
@@ -1236,22 +1252,46 @@ const SCHACH_RUNDE = {
                 continue;
             }
 
-            SCHACH_RUNDE._pechAusloesen(runde, bonus.art, farbe, bonus.feld, wer, von);
+            /*
+             * WO STEHT DIE FIGUR, DIE IHN EINGESAMMELT HAT? (seit v0.58)
+             *
+             * Bis v0.57 bekam `_pechAusloesen` immer das Feld des WÜRFELS —
+             * mit der Begründung „dort steht jetzt die einsammelnde Figur".
+             * Das stimmte bis v0.52. Seit „Berühren heisst Einsammeln" (v0.53)
+             * sammelt ein Turm auch im Vorbeiziehen ein und steht danach ganz
+             * woanders. Der Stolperstein suchte dann auf einem leeren Feld
+             * nach einer Figur und verpuffte still — jedes Mal, wenn man über
+             * ihn hinwegzog statt auf ihm zu landen.
+             *
+             * Bei einem Zug ist der Träger das ZIELFELD, sonst weiterhin das
+             * Würfelfeld (dort hat eine Fähigkeit die Figur hingestellt).
+             */
+            const traeger = (woher.vonZug && Number.isInteger(nach) && nach >= 0)
+                ? nach
+                : bonus.feld;
+
+            SCHACH_RUNDE._pechAusloesen(runde, bonus.art, farbe, bonus.feld, wer,
+                von, traeger);
         }
+
+        return pechFelder;
     },
 
     /*
      * Lässt einen Unglückswürfel sofort wirken. Ändert die übergebene Runde.
      *
-     * `feld` ist das Feld, auf dem er lag (dort steht jetzt die einsammelnde
-     * Figur), `farbe` die Seite, die ihn erwischt hat.
+     * `feld` ist das Feld, auf dem er LAG, `farbe` die Seite, die ihn erwischt
+     * hat. `traeger` ist das Feld, auf dem die einsammelnde Figur jetzt steht
+     * (seit v0.58) — beim Vorbeiziehen ist das nicht dasselbe. Fehlt es, gilt
+     * wie früher das Würfelfeld.
      */
-    _pechAusloesen(runde, art, farbe, feld, wer, herkunft) {
+    _pechAusloesen(runde, art, farbe, feld, wer, herkunft, traeger) {
         const basis = (runde.id || "partie") + "|" + runde.zugZaehler + "|pech";
+        const wo = Number.isInteger(traeger) ? traeger : feld;
         let wirkung = null;
 
         if (art === "stolperstein") {
-            wirkung = SCHACH.stolperstein(runde.stand, farbe, feld);
+            wirkung = SCHACH.stolperstein(runde.stand, farbe, wo);
 
         } else if (art === "ausdehnung") {
             /*
@@ -1387,14 +1427,83 @@ const SCHACH_RUNDE = {
         return liste;
     },
 
+    /*
+     * WELCHE FELDER DIE WIRKUNG BERÜHREN WÜRDE (seit v0.57).
+     *
+     * Das ist die Auskunft für den Vorschau-Kasten: Der Bildschirm zeigt den
+     * Umriss der echten Wirkung, BEVOR man sie einsetzt — drei Felder bei der
+     * Mauer, ein 2×2 beim Frost und beim Friedhof, eine Spalte beim Nudelholz.
+     *
+     * Gefragt wird `_zielWirkung`, also genau die Rechnung, die hinterher auch
+     * läuft. Eine zweite Liste von „was passiert wo" wäre eine zweite
+     * Wahrheit, und sie veraltete beim ersten Umbau einer Fähigkeit — dieselbe
+     * Überlegung wie bei `zielFelder`.
+     *
+     * Liefert eine leere Liste, wenn die Wirkung dort nicht zustande kommt.
+     */
+    zielUmriss(runde, spielerId, art, feld) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+        const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+        const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+
+        if (!farbe || !beschreibung || beschreibung.art !== "ziel") {
+            return [];
+        }
+
+        const wirkung = SCHACH_RUNDE._zielWirkung(
+            SCHACH_RUNDE.kopieren(alt), art, farbe, feld);
+
+        return (wirkung && Array.isArray(wirkung.felder)) ? wirkung.felder.slice() : [];
+    },
+
+    /*
+     * WIE VIELE BAUERN DER SCHUB UMWANDELN WÜRDE (seit v0.56).
+     *
+     * Der Bildschirm fragt danach, bevor er den Bauernschub einsetzt: Nur wenn
+     * die Antwort grösser als 0 ist, lohnt die Rückfrage nach der Figur.
+     *
+     * Warum das hier steht und nicht im Bildschirm: Welche Bauern vorrücken
+     * und welche dabei die letzte Reihe erreichen, ist eine Regelfrage — sie
+     * hängt an freien Feldern, an der Zugrichtung und am Brettmass. Gerechnet
+     * wird sie deshalb mit derselben Funktion, die es hinterher wirklich tut.
+     */
+    schubWandeltUm(runde, spielerId) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+        const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+
+        if (!farbe) {
+            return 0;
+        }
+
+        const wirkung = SCHACH.bauernschub(alt.stand, farbe);
+        return (wirkung && wirkung.umgewandelt) ? wirkung.umgewandelt.length : 0;
+    },
+
     /* Die Fähigkeiten, die ein angetipptes Feld brauchen. */
     _zielWirkung(runde, art, farbe, feld) {
         if (feld < 0 || feld >= SCHACH.felderVon(runde.stand)) {
             return null;
         }
 
+        /*
+         * DIE AUFWERTUNG WÜRFELT NICHT, SIE RECHNET (seit v0.56).
+         *
+         * Beim Springer gibt es zwei Ergebnisse (Läufer oder Turm), und die
+         * Entscheidung muss auf jedem Gerät gleich ausfallen — sonst sieht
+         * einer einen Läufer und der andere einen Turm, und der erste
+         * Schreibvorgang gewinnt. Dieselbe Falle wie in v0.8.
+         *
+         * Das FELD steht vorn in der Saat: `_zufallsWert` ist FNV-1a, und ein
+         * Unterschied im letzten Zeichen verschiebt das Ergebnis nur um
+         * Bruchteile. Stünde das Feld hinten, bekämen ganze Feldblöcke
+         * dieselbe Figur (siehe die Merksätze in `CLAUDE.md`).
+         */
         if (art === "verstaerkung") {
-            return SCHACH.verstaerkung(runde.stand, farbe, feld);
+            const saat = feld + "|aufwertung|" + (runde.id || "partie")
+                + "|" + runde.zugZaehler;
+
+            return SCHACH.verstaerkung(runde.stand, farbe, feld,
+                SCHACH_RUNDE._zufallsWert(saat));
         }
 
         /* Das Erdbeben ist seit v0.54 ein Unglückswürfel und braucht kein
@@ -1495,25 +1604,53 @@ const SCHACH_RUNDE = {
             }
             const stand = Object.assign({}, runde.stand, {
                 fesselFeld: feld,
-                fesselFarbe: gegner
+                fesselFarbe: gegner,
+
+                /* Seit v0.56 hält sie mehrere Züge — gemessen am Takt, der
+                   einzigen Uhr, die nicht zurückspringt. */
+                fesselBis: runde.stand.takt + SCHACH.FESSEL_HALBZUEGE
             });
             return { stand: stand, felder: [feld], text: SCHACH.artName(SCHACH.artVon(figur)) };
         }
 
+        /*
+         * DER FROST SPERRT SEIT v0.56 EINEN 2×2-BLOCK.
+         *
+         * Angetippt wird die linke obere Ecke — dieselbe Lesart wie beim
+         * Friedhof. Angeboten wird ein Block nur, wenn wenigstens eine
+         * GEGNERISCHE Figur darin steht, die sich einfrieren lässt: Sonst
+         * stünden auf einem leeren Brett hunderte gültiger Ziele, und die
+         * Fähigkeit könnte man wirkungslos verbrauchen.
+         *
+         * Eingefroren wird dann alles im Block, auch eigene Figuren
+         * (Nutzer-Entscheidung 08.08.). Könige bleiben verschont — das
+         * entscheidet `SCHACH.eingefroren`, nicht die Auswahl hier.
+         */
         if (art === "frost") {
-            const figur = SCHACH.figurAuf(runde.stand, feld);
             const gegner = SCHACH.gegner(farbe);
+            const block = SCHACH.frostBlock(runde.stand, feld);
 
-            /* Wie bei der Fessel: nicht auf den König. */
-            if (SCHACH.farbeVon(figur) !== gegner || SCHACH.artVon(figur) === "K") {
+            if (!block) {
                 return null;
             }
+
+            const trifft = block.filter((platz) => {
+                const figur = SCHACH.figurAuf(runde.stand, platz);
+                return SCHACH.farbeVon(figur) === gegner && SCHACH.artVon(figur) !== "K";
+            });
+
+            if (trifft.length === 0) {
+                return null;
+            }
+
             const stand = Object.assign({}, runde.stand, {
-                frostFeld: feld,
+                frostFeld: block[0],
+                frostFelder: block.slice(),
                 frostFarbe: gegner
             });
-            return { stand: stand, felder: [feld], wege: [],
-                text: SCHACH.artName(SCHACH.artVon(figur)) };
+
+            return { stand: stand, felder: block.slice(), wege: [],
+                text: trifft.length + (trifft.length === 1 ? " Figur" : " Figuren") };
         }
 
         if (art === "spiegel") {
@@ -1646,10 +1783,28 @@ const SCHACH_RUNDE = {
          * von der gegnerischen Grundreihe entfernt stehen. Das ist die Wahl,
          * die man ohnehin fast immer treffen würde, und sie ist vorhersagbar.
          */
-        const gibtFelder = SCHACH_RUNDE._hintersteFiguren(
-            stand, farbe, angebot.gibt.art, angebot.gibt.anzahl);
+        /*
+         * Seit v0.58 kann eine Seite MEHRERE Figurenarten tragen („Dame und
+         * Bauer gegen einen König"). Gesammelt wird je Art getrennt; fehlt an
+         * einer Stelle etwas, kommt der Handel nicht zustande.
+         */
+        const gibtTeile = SCHACH_VARIANTEN.handelSeite(angebot.gibt);
+        const gibtAnzahl = SCHACH_VARIANTEN.handelAnzahl(angebot.gibt);
+        const gibtFelder = [];
 
-        if (gibtFelder.length < angebot.gibt.anzahl) {
+        for (const teil of gibtTeile) {
+            const felder = SCHACH_RUNDE._hintersteFiguren(
+                stand, farbe, teil.art, teil.anzahl);
+
+            if (felder.length < teil.anzahl) {
+                return null;
+            }
+            for (const feld of felder) {
+                gibtFelder.push(feld);
+            }
+        }
+
+        if (gibtFelder.length < gibtAnzahl) {
             return null;
         }
 
@@ -1659,10 +1814,11 @@ const SCHACH_RUNDE = {
          * der Handel dort, wo die abgegebenen Figuren standen — und nicht
          * plötzlich in der gegnerischen Hälfte.
          */
+        const bekommtAnzahl = SCHACH_VARIANTEN.handelAnzahl(angebot.bekommt);
         const bekommtFelder = SCHACH_RUNDE._handelsPlaetze(
-            stand, farbe, gibtFelder, angebot.bekommt.anzahl);
+            stand, farbe, gibtFelder, bekommtAnzahl);
 
-        if (bekommtFelder.length < angebot.bekommt.anzahl) {
+        if (bekommtFelder.length < bekommtAnzahl) {
             return null;
         }
 
@@ -1682,10 +1838,13 @@ const SCHACH_RUNDE = {
         T: "Türme", D: "Damen", K: "Könige"
     },
 
+    /* „3 Bauern" — und seit v0.58 auch „1 Dame und 1 Bauer". */
     _handelsText(seite) {
-        return seite.anzahl + " " + ((seite.anzahl === 1)
-            ? SCHACH.artName(seite.art)
-            : (SCHACH_RUNDE.FIGUR_MEHRZAHL[seite.art] || SCHACH.artName(seite.art)));
+        return SCHACH_VARIANTEN.handelSeite(seite)
+            .map((teil) => teil.anzahl + " " + ((teil.anzahl === 1)
+                ? SCHACH.artName(teil.art)
+                : (SCHACH_RUNDE.FIGUR_MEHRZAHL[teil.art] || SCHACH.artName(teil.art))))
+            .join(" und ");
     },
 
     /*
@@ -1740,18 +1899,40 @@ const SCHACH_RUNDE = {
             brett = SCHACH._brettMit(brett, feld, ".");
         }
 
-        const figur = (farbe === "weiss")
-            ? angebot.bekommt.art
-            : angebot.bekommt.art.toLowerCase();
+        /* Die Plätze werden der Reihe nach vergeben — erst die erste
+           Figurenart, dann die nächste (seit v0.58 können es mehrere sein). */
+        let stelle = 0;
+        let bringtKoenig = false;
 
-        for (const feld of angebot.bekommtFelder) {
-            brett = SCHACH._brettMit(brett, feld, figur);
+        for (const teil of SCHACH_VARIANTEN.handelSeite(angebot.bekommt)) {
+            const figur = (farbe === "weiss") ? teil.art : teil.art.toLowerCase();
+
+            if (teil.art === "K") {
+                bringtKoenig = true;
+            }
+
+            for (let nummer = 0; nummer < teil.anzahl; nummer++) {
+                brett = SCHACH._brettMit(brett, angebot.bekommtFelder[stelle], figur);
+                stelle++;
+            }
+        }
+
+        const stand = Object.assign({}, runde.stand, { brett: brett, enPassant: "" });
+
+        /*
+         * Ein erhandelter König ist ein zweites LEBEN, kein unschlagbarer
+         * Klotz — derselbe Schalter wie bei der Verstärkung (siehe
+         * `SCHACH.koenigSchlagbarFuer`). Ohne ihn wäre „Schachmatt" nicht mehr
+         * eindeutig.
+         */
+        if (bringtKoenig) {
+            stand.koenigeAlsLeben = true;
         }
 
         return {
-            stand: Object.assign({}, runde.stand, { brett: brett, enPassant: "" }),
+            stand: stand,
             felder: angebot.gibtFelder.concat(angebot.bekommtFelder)
-                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle),
+                .filter((feld, stelle2, alle) => alle.indexOf(feld) === stelle2),
             text: angebot.text
         };
     },
@@ -1892,6 +2073,25 @@ const SCHACH_RUNDE = {
         if (!beschreibung) {
             return false;
         }
+
+        /*
+         * NUR IM GEGENZUG (seit v0.58) — bisher nur das Ausweichen.
+         *
+         * Es ist die Notbremse: eine Figur weicht aus, während der Gegner
+         * zuschlägt. Bis v0.57 durfte man es AUCH im eigenen Zug einsetzen und
+         * behielt dabei seinen Zug — damit war es ein geschenktes Extra-Feld
+         * für jede Figur, jederzeit. Als Notbremse gedacht, als Gratis-Zug
+         * benutzt.
+         *
+         * Der Schalter steht vor der Zug-Prüfung, denn er DREHT sie um: Wer am
+         * Zug ist, darf gerade NICHT.
+         */
+        if (beschreibung.nurImGegenzug) {
+            return stand.laeuft && !stand.ergebnis
+                && !!SCHACH_RUNDE.teamVon(stand, spielerId)
+                && stand.stand.amZug !== SCHACH_RUNDE.teamVon(stand, spielerId);
+        }
+
         if (SCHACH_RUNDE.darfZiehen(stand, spielerId)) {
             return true;
         }
@@ -1939,6 +2139,15 @@ const SCHACH_RUNDE = {
          * nicht stehen.
          */
         if (beschreibung.istDerZug) {
+            return false;
+        }
+
+        /*
+         * `nurImGegenzug` (seit v0.58): Wer am Zug ist, darf sie gar nicht
+         * einsetzen — dann gibt es auch nichts zu behalten. Deshalb fällt das
+         * Pluszeichen von selbst weg, ohne dass jemand es wegnehmen musste.
+         */
+        if (beschreibung.nurImGegenzug) {
             return false;
         }
         if (!beschreibung.beendetZug) {
@@ -2024,18 +2233,34 @@ const SCHACH_RUNDE = {
             wege.push({ von: ergebnis.zug.turmVon, nach: ergebnis.zug.turmNach });
         }
 
-        neu.verlauf.push({
+        /*
+         * Der Eintrag wird als OBJEKT gemerkt, nicht über seine Stelle: Ein
+         * Riss kann den Zug gleich noch verkürzen (siehe unten), und dann muss
+         * genau dieser Eintrag nachgeführt werden. Die Stelle verschiebt sich
+         * beim Kürzen des Verlaufs.
+         */
+        const zugEintrag = {
             text: ergebnis.text,
             wer: wer || "",
             farbe: farbe,
             von: von,
             nach: nach,
             wege: wege
-        });
+        };
+
+        neu.verlauf.push(zugEintrag);
         SCHACH_RUNDE._verlaufKuerzen(neu);
 
         /* Würfel einsammeln — auf dem ganzen Weg, nicht nur auf dem Zielfeld. */
-        SCHACH_RUNDE._bonusEinsammeln(neu, alt.stand, von, nach, farbe, wer);
+        const pechFelder = SCHACH_RUNDE._bonusEinsammeln(
+            neu, alt.stand, von, nach, farbe, wer);
+
+        /*
+         * Hat der eingesammelte Würfel den weiteren Weg gesperrt, endet der Zug
+         * vor dem Hindernis (seit v0.58).
+         */
+        SCHACH_RUNDE._zugAmRissAbbrechen(neu, alt.stand, von, nach, farbe,
+            geschlagen, ergebnis.zug, zugEintrag, pechFelder);
 
         /* Und alle paar Züge erscheint ein neuer Würfel. */
         SCHACH_RUNDE._bonusNachziehen(neu);
@@ -2052,6 +2277,176 @@ const SCHACH_RUNDE = {
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
+    },
+
+    /*
+     * DER ZUG BRICHT AM RISS AB (seit v0.58).
+     *
+     * Ein Unglückswürfel „Erdbeben" reisst den Boden auf, sobald er
+     * eingesammelt wird — und eingesammelt wird er seit v0.53 auch im
+     * VORBEIZIEHEN. Wer also mit dem Turm über ihn hinweggleitet, öffnet die
+     * Löcher mitten in seinem eigenen Weg. Liegt eines davon noch vor ihm,
+     * kommt er nicht mehr daran vorbei: Der Zug endet auf dem letzten freien
+     * Feld davor.
+     *
+     * WARUM DAS HIER STEHT UND NICHT IN `SCHACH.zuege`: Es ist keine Frage der
+     * Zugerzeugung. Als der Zug gewählt wurde, war der Weg frei — die Sperre
+     * entsteht erst währenddessen. `zuege` bleibt damit unverändert; die
+     * Anzeige der möglichen Züge lügt nicht, sie kann es nur nicht wissen.
+     *
+     * DER SCHLAG FÄLLT MIT AUS. Wer sein Ziel nicht erreicht, schlägt dort auch
+     * nichts — die geschlagene Figur kommt zurück aufs Brett und aus den
+     * Verlustlisten heraus. Alles andere wäre ein Angriff aus der Ferne.
+     *
+     * Ausgeschlossen sind drei Fälle:
+     *   - Sprünge und Ein-Feld-Züge: Dort gibt es keinen Weg zum Abbrechen.
+     *   - die Rochade: Dabei bewegen sich zwei Figuren, und der König geht
+     *     nie über einen Würfel (dazwischen darf nichts stehen).
+     *   - ein Würfel, der die Brettgrösse geändert hat (Ausdehnung, Einsturz):
+     *     Danach zeigen alle gemerkten Feldnummern woanders hin.
+     */
+    _zugAmRissAbbrechen(runde, altStand, von, nach, farbe, geschlagen, zug,
+        zugEintrag, pechFelder) {
+
+        if (zug && zug.rochade) {
+            return false;
+        }
+        if (SCHACH.felderVon(runde.stand) !== SCHACH.felderVon(altStand)) {
+            return false;
+        }
+        if (!Array.isArray(pechFelder) || pechFelder.length === 0) {
+            return false;
+        }
+
+        const weg = SCHACH.betreteneFelder(altStand, von, nach);
+        if (weg.length < 2) {
+            return false;
+        }
+
+        /*
+         * AB WO ZÄHLT EINE SPERRE? Erst ab dem Feld, auf dem der Würfel lag.
+         *
+         * Vorher war die Figur schon vorbei — ein Riss, der HINTER ihr
+         * aufgeht, hält sie nicht auf. Genau das ist beim Bauen zuerst
+         * passiert: Der Turm blieb auf seinem Startfeld stehen, weil das
+         * Erdbeben zufällig auch ein Feld hinter ihm erwischt hatte.
+         */
+        let ab = -1;
+        for (const feld of pechFelder) {
+            const stelle = weg.indexOf(feld);
+            if (stelle !== -1 && (ab === -1 || stelle < ab)) {
+                ab = stelle;
+            }
+        }
+        if (ab === -1) {
+            return false;
+        }
+
+        /* Das erste gesperrte Feld HINTER dem Würfel. */
+        let sperre = -1;
+        for (let stelle = ab + 1; stelle < weg.length; stelle++) {
+            if (SCHACH.gesperrt(runde.stand, weg[stelle])) {
+                sperre = stelle;
+                break;
+            }
+        }
+        if (sperre === -1) {
+            return false;
+        }
+
+        /*
+         * Wo bleibt die Figur stehen? Auf dem letzten freien Feld davor —
+         * notfalls auf ihrem Startfeld. Rückwärts gesucht, weil der Riss auch
+         * mehrere Felder hintereinander treffen kann und die Figur nie AUF
+         * einem Riss enden darf.
+         */
+        let halt = -1;
+        for (let stelle = sperre - 1; stelle >= 0 && halt === -1; stelle--) {
+            if (!SCHACH.gesperrt(runde.stand, weg[stelle])) {
+                halt = weg[stelle];
+            }
+        }
+        if (halt === -1 && !SCHACH.gesperrt(runde.stand, von)) {
+            halt = von;
+        }
+        if (halt === -1 || halt === nach) {
+            /* Nirgends Platz: Dann bleibt der Zug lieber, wie er war — eine
+               Figur ohne Feld wäre schlimmer als ein Zug zu viel. */
+            return false;
+        }
+
+        /*
+         * Zurückgesetzt wird auf die URSPRÜNGLICHE Figur: Ein Bauer, der sein
+         * Umwandlungsfeld nicht erreicht, bleibt ein Bauer.
+         */
+        const urspruenglich = SCHACH.figurAuf(altStand, von);
+        let brett = SCHACH._brettMit(runde.stand.brett, nach, ".");
+        brett = SCHACH._brettMit(brett, halt, urspruenglich);
+
+        if (geschlagen) {
+            const zurueck = (farbe === SCHACH.WEISS)
+                ? geschlagen.toLowerCase()
+                : geschlagen;
+
+            brett = SCHACH._brettMit(brett, nach, zurueck);
+            SCHACH_RUNDE._verlustZuruecknehmen(runde, SCHACH.gegner(farbe),
+                geschlagen, nach);
+        }
+
+        runde.stand = Object.assign({}, runde.stand, {
+            brett: brett,
+            enPassant: "",
+
+            /* Eine geliehene Figur nimmt ihren Eintrag mit — auch auf dem
+               verkürzten Weg (siehe `_geliehenNachfuehren`). */
+            geliehen: SCHACH.geliehene(runde.stand).map((eintrag) =>
+                (eintrag.feld === nach) ? { feld: halt, bis: eintrag.bis } : eintrag)
+        });
+
+        /* Der Zug im Verlauf endet jetzt woanders — sonst wandert die Figur am
+           Bildschirm auf ein Feld, auf dem sie gar nicht steht. */
+        const breite = SCHACH.breiteVon(runde.stand);
+        const hoehe = SCHACH.hoeheVon(runde.stand);
+
+        zugEintrag.nach = halt;
+        zugEintrag.wege = [{ von: von, nach: halt }];
+        zugEintrag.text += ", abgebrochen auf " + SCHACH.feldName(halt, breite, hoehe);
+
+        /* Und der Unglückswürfel erklärt, warum: Sein Eintrag steht am Ende
+           des Verlaufs und bekommt das Haltefeld dazu. */
+        const letzter = runde.verlauf[runde.verlauf.length - 1];
+        if (letzter && letzter.wirkung === "pech") {
+            letzter.text += " — der Zug bricht davor ab";
+
+            if (letzter.felder.indexOf(halt) === -1) {
+                letzter.felder.push(halt);
+            }
+        }
+
+        return true;
+    },
+
+    /*
+     * Nimmt einen Verlust zurück, wenn der Schlag doch nicht stattgefunden hat
+     * (Zugabbruch am Riss). Entfernt je einen Eintrag aus beiden Listen —
+     * `gefallen` über das Feld, `verloren` über die Art.
+     */
+    _verlustZuruecknehmen(runde, farbe, art, feld) {
+        const gefallen = runde.gefallen[farbe] || [];
+
+        for (let stelle = gefallen.length - 1; stelle >= 0; stelle--) {
+            if (gefallen[stelle].feld === feld && gefallen[stelle].art === art) {
+                gefallen.splice(stelle, 1);
+                break;
+            }
+        }
+
+        const verloren = runde.verloren[farbe] || [];
+        const stelle = verloren.lastIndexOf(art);
+
+        if (stelle !== -1) {
+            verloren.splice(stelle, 1);
+        }
     },
 
     /* ---------------------------------------------------------------- *
@@ -2145,7 +2540,7 @@ const SCHACH_RUNDE = {
      * Schlägt den Einsatz einer Fähigkeit vor. Wie beim Zug: allein im Team
      * wird sofort eingesetzt, sonst wird abgestimmt.
      */
-    faehigkeitVorschlagen(runde, spielerId, art, zielFeld, wer, zeitpunkt) {
+    faehigkeitVorschlagen(runde, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
 
         if (!SCHACH_RUNDE.darfEinsetzen(alt, spielerId, art)) {
@@ -2166,11 +2561,12 @@ const SCHACH_RUNDE = {
         if (!SCHACH_RUNDE.brauchtEinigkeit(alt) || alt.teams[farbe].length <= 1
             || beschreibung.imGegenzug) {
             return SCHACH_RUNDE.faehigkeitEinsetzen(
-                alt, spielerId, art, zielFeld, wer, zeitpunkt);
+                alt, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung);
         }
 
         /* Erst prüfen, ob sie überhaupt einsetzbar wäre. */
-        if (!SCHACH_RUNDE.faehigkeitEinsetzen(alt, spielerId, art, zielFeld, wer, zeitpunkt)) {
+        if (!SCHACH_RUNDE.faehigkeitEinsetzen(alt, spielerId, art, zielFeld, wer,
+            zeitpunkt, umwandlung)) {
             return null;
         }
 
@@ -2183,7 +2579,12 @@ const SCHACH_RUNDE = {
             zielFeld: Number.isInteger(zielFeld) ? zielFeld : -1,
             von: -1,
             nach: -1,
-            umwandlung: "D",
+
+            /* Auch die Wahl beim Bauernschub gehört in den Vorschlag: Das Team
+               stimmt über die fertige Handlung ab, nicht über die halbe. */
+            umwandlung: (SCHACH.UMWANDLUNGEN.indexOf(umwandlung) !== -1)
+                ? umwandlung : "D",
+
             wer: spielerId,
             name: wer || "",
             zugZaehler: alt.zugZaehler,
@@ -2270,7 +2671,7 @@ const SCHACH_RUNDE = {
 
         const ergebnis = (vorschlag.art === "faehigkeit")
             ? SCHACH_RUNDE.faehigkeitEinsetzen(runde, vorschlag.wer, vorschlag.faehigkeit,
-                vorschlag.zielFeld, vorschlag.name, zeitpunkt)
+                vorschlag.zielFeld, vorschlag.name, zeitpunkt, vorschlag.umwandlung)
             : SCHACH_RUNDE.ziehen(runde, vorschlag.wer, vorschlag.von, vorschlag.nach,
                 vorschlag.umwandlung, vorschlag.name, zeitpunkt);
 

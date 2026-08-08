@@ -355,6 +355,47 @@ Lesen zusätzlich `.Trim()`, damit ältere oder von Hand erzeugte Ablagen weiter
 funktionieren. Dieselbe Falle ist im Haus schon einmal beim Schreiben von
 LF-Dateien aufgetreten.
 
+## Der Stolperstein verpuffte im Vorbeiziehen (v0.53, gefunden v0.58)
+
+**Der Fehler:** Wer mit dem Turm über einen Stolperstein hinwegzog, sammelte
+ihn ein — und nichts passierte. Landete man dagegen genau auf ihm, wirkte er.
+Von aussen sah das nach Zufall aus.
+
+**Die Ursache** ist eine Annahme, die drei Versionen lang stimmte und dann
+nicht mehr. `_bonusEinsammelnAufFeldern` rief `_pechAusloesen` immer mit dem
+Feld des WÜRFELS auf, und im Kommentar stand die Begründung dazu: „dort steht
+jetzt die einsammelnde Figur". Bis v0.52 war das wahr — man sammelte nur ein,
+indem man das Zielfeld betrat. Seit **v0.53 gilt „Berühren heisst
+Einsammeln"**: Ein Turm nimmt einen Würfel auch im Vorbeiziehen mit und steht
+danach zwei Felder weiter. `SCHACH.stolperstein` suchte auf dem Würfelfeld nach
+einer Figur, fand nichts und lieferte `null` — die Wirkung wurde als „ohne
+Wirkung" verbucht.
+
+**Warum kein Test es fand:** Alle Stolperstein-Tests liessen die Figur auf dem
+Würfel LANDEN. Kein einziger zog über einen hinweg. Der eine Fall, den v0.53
+neu geschaffen hatte, war genau der ungeprüfte.
+
+**Die Lehre:** Wer eine Regel verallgemeinert („nicht nur das Zielfeld, jedes
+betretene Feld"), sucht alle Stellen, die sich auf den alten Spezialfall
+verlassen — und besonders die, in deren KOMMENTAR die alte Annahme steht. Ein
+Kommentar, der eine Voraussetzung nennt, ist eine Fundstelle. Gefunden wurde es
+übrigens nicht im Spiel, sondern beim Stellen einer Beispielszene, die genau
+diesen Ablauf zeigen sollte.
+
+## Eine Beispielszene ohne Figuren beendet die Partie (v0.58)
+
+**Der Fehler:** Die neue Anleitung zur Wiedergeburt lieferte gar keine Bilder.
+
+**Die Ursache:** Die Szene beginnt damit, dass der Gegner die eigene Dame
+schlägt — und sie war die einzige weisse Figur. `SCHACH_RUNDE.ziehen` rechnet
+nach jedem Zug die Lage nach, erkennt Patt und setzt ein Ergebnis. Danach
+weist `darfEinsetzen` jede Fähigkeit ab, und `bilder()` liefert `null`.
+
+**Die Lehre:** Beispielstellungen werden mit den echten Regeln gerechnet — also
+gelten für sie auch die echten Abbruchbedingungen. Auf jedem Beispielbrett
+braucht jede Seite mindestens eine Figur, die ziehen kann. Ein Test in
+`tests\test-schach-vorschau.js` hält das jetzt fest.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

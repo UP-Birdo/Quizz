@@ -167,7 +167,9 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Der Boden reisst auf: Drei freie Felder brechen weg und "
                 + "sind ab sofort gesperrt — niemand zieht hindurch, nur Springer "
                 + "setzen darüber hinweg. Anders als eine Mauer bleiben die Risse "
-                + "die ganze Partie."
+                + "die ganze Partie. Und sie reissen SOFORT auf: Wer den Würfel im "
+                + "Vorbeiziehen mitnimmt und danach vor einem Loch steht, bleibt "
+                + "davor stehen — der Zug endet dort."
         },
         vollesGlas: {
             titel: "Volles Glas",
@@ -421,10 +423,15 @@ const SCHACH_VARIANTEN = {
      *      geschenkter Springerzug obendrauf wäre zu viel. Bezahlt wird er
      *      deshalb mit dem eigenen Zug — nur eben sofort, nicht erst nach dem
      *      Gegner (bis v0.47 hatten sie `beendetZug`).
-     *   3. Nur die Stellung verändert (Bauernschub, Erdbeben, Nudelholz,
-     *      Mauer, Schutzschild, Fessel, Frost) oder gar keine Figur berührt
-     *      (Ausweichen: zieht nur auf FREIE Felder und schlägt nie) → das
-     *      Pluszeichen bleibt.
+     *   3. Nur die Stellung verändert (Nudelholz, Mauer, Schutzschild, Fessel,
+     *      Frost) oder gar keine Figur berührt (Ausweichen: zieht nur auf
+     *      FREIE Felder und schlägt nie) → das Pluszeichen bleibt.
+     *
+     * DER BAUERNSCHUB STAND BIS v0.55 IN GRUPPE 3 und hat seither trotzdem
+     * `beendetZug`. Das ist kein Bruch der Regel, sondern ihr zweiter Teil:
+     * Wird eine Fähigkeit zu stark, nimmt man ihr das Pluszeichen. Er
+     * verschiebt bis zu acht Figuren, und mit dem Zug obendrauf waren das zwei
+     * Züge für eine Fähigkeit. Die Begründung steht bei ihm selbst.
      *
      * Der Doppelzug ist die eine Ausnahme: Sein Pluszeichen IST seine Wirkung,
      * nicht sein Preis.
@@ -450,17 +457,31 @@ const SCHACH_VARIANTEN = {
                 + "IST dein Zug; etwas anderes kannst du in diesem Zug nicht mehr "
                 + "machen, und danach ist der Gegner dran."
         },
+        /*
+         * AUSWEICHEN GEHT SEIT v0.58 NUR NOCH IM GEGENZUG.
+         *
+         * Es ist die Notbremse: Eine Figur weicht aus, WÄHREND der Gegner
+         * zuschlägt. Bis v0.57 durfte man es auch im eigenen Zug einsetzen und
+         * behielt dabei seinen Zug — damit war es ein geschenktes Extra-Feld
+         * für jede Figur, jederzeit. Als Notbremse gedacht, als Gratis-Zug
+         * benutzt (Nutzer-Meldung 08.08.).
+         *
+         * Das Pluszeichen fällt dadurch von selbst weg: Wer am Zug ist, darf
+         * sie gar nicht erst einsetzen — es gibt also keinen Zug zu behalten.
+         * Der Blitz bleibt und ist jetzt das EINZIGE Zeichen an ihr.
+         */
         ausweichen: {
             titel: "Ausweichen",
             stufe: "gruen",
             art: "zugmuster",
             muster: "ausweichen",
             imGegenzug: true,
-            beschreibung: "Eine Figur deiner Wahl darf bei deinem nächsten Zug "
-                + "auch ein Feld in jede Richtung gehen — auf ein FREIES Feld, "
-                + "geschlagen wird dabei nicht. Du darfst sie auch einsetzen, "
-                + "während der Gegner am Zug ist; sie kostet dich keinen Zug. "
-                + "Wer zuerst drückt, war zuerst."
+            nurImGegenzug: true,
+            beschreibung: "Die Notbremse: Du setzt sie ein, WÄHREND der Gegner am "
+                + "Zug ist — im eigenen Zug geht sie nicht. Danach darf eine Figur "
+                + "deiner Wahl bei deinem nächsten Zug auch ein Feld in jede "
+                + "Richtung gehen, auf ein FREIES Feld; geschlagen wird dabei "
+                + "nicht. Wer zuerst drückt, war zuerst."
         },
         teleport: {
             titel: "Teleport",
@@ -477,12 +498,30 @@ const SCHACH_VARIANTEN = {
         /* ---- Ungewöhnlich: verändert die Stellung ----
            Spürbar, aber zweischneidig: Sie kosten den Gegner kein Material. */
 
+        /*
+         * DER BAUERNSCHUB HAT SEIT v0.56 KEIN PLUSZEICHEN MEHR.
+         *
+         * Er verschiebt zwar nur die Stellung und fiele damit unter Gruppe 3 —
+         * aber er verschiebt bis zu acht Figuren auf einmal, und mit dem Zug
+         * obendrauf konnte man erst die ganze Reihe vorrücken und dann mit
+         * einem der geschobenen Bauern schlagen. Das sind zwei Züge für eine
+         * Fähigkeit; gemeldet als „zu stark". Nach der Regel von v0.47 nimmt
+         * man einer zu starken Fähigkeit das Pluszeichen, statt ihre Stufe zu
+         * verschieben — genau das ist hier passiert.
+         *
+         * Der Ausgleich steht im zweiten Satz: Erreichen Bauern durch den
+         * Schub die letzte Reihe, wandeln sie ALLE um, und man wählt die Figur.
+         * Bis v0.55 wurden sie stillschweigend zu Damen.
+         */
         bauernschub: {
             titel: "Bauernschub",
             stufe: "blau",
             art: "sofort",
+            beendetZug: true,
             beschreibung: "Alle eigenen Bauern rücken sofort ein Feld vor, soweit "
-                + "das Feld davor frei ist. Geschlagen wird dabei nicht."
+                + "das Feld davor frei ist. Geschlagen wird dabei nicht. Erreichen "
+                + "dabei Bauern die letzte Reihe, wandeln sie alle um — du wählst, "
+                + "in welche Figur. Danach ist der Gegner am Zug."
         },
         schutzschild: {
             titel: "Schutzschild",
@@ -518,30 +557,62 @@ const SCHACH_VARIANTEN = {
         /* ---- Episch: kostet den Gegner wirklich etwas ----
            Sie verschieben das Kräfteverhältnis, ohne die Partie zu entscheiden. */
 
+        /*
+         * FROST SPERRT SEIT v0.56 EINE FLÄCHE, KEINE FIGUR.
+         *
+         * Angetippt wird die linke obere Ecke eines 2×2-Blocks; alles darin
+         * friert ein — auch eigene Figuren. Das ist die Entscheidung des
+         * Nutzers vom 08.08. und zugleich das, was die Fähigkeit interessant
+         * macht: Sie ist stark, aber man muss den Block sauber setzen.
+         *
+         * Damit trennen sich Frost und Fessel endlich sauber: Frost sperrt
+         * eine FLÄCHE für einen Zug und macht unantastbar, die Fessel hält
+         * EINE Figur über mehrere Züge fest und lässt sie schlagbar. Vorher
+         * taten beide fast dasselbe.
+         */
         frost: {
             titel: "Frost",
             stufe: "lila",
             art: "ziel",
-            zielArt: "gegnerFigur",
-            beschreibung: "Friert eine gegnerische Figur für einen Zug ein — sie darf "
-                + "nicht ziehen und kann in dieser Zeit auch nicht geschlagen werden."
+            zielArt: "frostblock",
+            beschreibung: "Friert ein 2-mal-2-Feld für einen Zug ein: Was darin "
+                + "steht, zieht nicht und lässt sich in dieser Zeit auch nicht "
+                + "schlagen — eigene Figuren eingeschlossen. Könige bleiben "
+                + "verschont. Angetippt wird die linke obere Ecke des Blocks."
         },
+        /*
+         * VERSTÄRKUNG IST SEIT v0.56 EINE AUFWERTUNGSKETTE.
+         *
+         * Bis v0.55 machte sie aus einem Bauern einen Springer, sonst nichts.
+         * Jetzt steigt JEDE eigene Figur eine Stufe (`SCHACH.AUFWERTUNG`).
+         * Deshalb ist `zielArt` von `eigenerBauer` auf `eigeneFigur` gewechselt.
+         *
+         * Am oberen Ende steht der König, und der ist keine Zierde: Ein
+         * zweiter König sind ZWEI LEBEN — dieselbe Regel wie bei der
+         * Zufallsarmee, `koenigeAlsLeben` im Stand. Und weil zwei Leben nicht
+         * für jeden das Richtige sind, geht der Weg zurück: Wer zwei Könige
+         * hat, tippt einen an und bekommt zwei Damen.
+         */
         verstaerkung: {
             titel: "Verstärkung",
             stufe: "lila",
             art: "ziel",
-            zielArt: "eigenerBauer",
+            zielArt: "eigeneFigur",
             beendetZug: true,
-            beschreibung: "Ein eigener Bauer wird sofort zum Springer — ein "
-                + "Materialgewinn aus dem Nichts. Danach ist der Gegner am Zug."
+            beschreibung: "Eine eigene Figur steigt eine Stufe auf: Bauer wird "
+                + "Springer, Springer wird Läufer oder Turm, Läufer und Turm werden "
+                + "Dame, Dame wird König — und ein zweiter König sind zwei Leben. "
+                + "Hast du zwei Könige, wird einer davon zu zwei Damen. Danach ist "
+                + "der Gegner am Zug."
         },
         fessel: {
             titel: "Fessel",
             stufe: "lila",
             art: "ziel",
             zielArt: "gegnerFigur",
-            beschreibung: "Eine gegnerische Figur darf beim nächsten Zug des "
-                + "Gegners nicht ziehen."
+            beschreibung: "Eine gegnerische Figur bleibt mehrere Züge lang stehen "
+                + "— sie darf nicht ziehen, ist dabei aber ganz normal zu schlagen. "
+                + "Wie lange, steht als Zahl an ihrem Feld."
         },
 
         /* ---- Legendär: entscheidet Partien ----
@@ -656,8 +727,10 @@ const SCHACH_VARIANTEN = {
             beendetZug: true,
             beschreibung: "Bis zu vier gefallene GEGNER stehen auf einem freien "
                 + "2×2-Feld wieder auf — in deiner Farbe, und du ziehst mit ihnen "
-                + "wie mit eigenen. Nach 8 Halbzügen — also je vier Zügen für dich "
-                + "und den Gegner — zerfallen sie. Danach ist der Gegner am Zug."
+                + "wie mit eigenen. Wie lange sie bleiben, hängt von der Figur ab: "
+                + "je stärker, desto kürzer. Ein Bauer hält 8 Halbzüge durch, eine "
+                + "Dame nur 2 — sie zieht also genau einmal. Die Restzeit steht an "
+                + "ihrem Feld. Danach ist der Gegner am Zug."
         }
     },
 
@@ -678,6 +751,22 @@ const SCHACH_VARIANTEN = {
      * Richtungen weglassen, die sich nicht gut spielen.
      * ---------------------------------------------------------------- */
 
+    /*
+     * EINE SEITE DARF MEHRERE FIGURENARTEN TRAGEN (seit v0.58).
+     *
+     * Bis v0.57 war `gibt` und `bekommt` je EIN Eintrag — für „drei Bauern
+     * gegen einen Springer" reicht das. Für „Dame und Bauer gegen einen
+     * König" nicht: Dort stehen links zwei verschiedene Arten. Deshalb darf
+     * eine Seite jetzt auch eine LISTE sein.
+     *
+     * Die alten Zeilen bleiben unverändert stehen — `handelSeite` macht aus
+     * beidem eine Liste. Das ist billiger und lesbarer, als zehn Zeilen in
+     * Klammern zu setzen, nur damit die elfte hineinpasst.
+     *
+     * `gewicht` (wahlfrei, Vorgabe 1) sagt, wie oft ein Angebot gezogen wird.
+     * Gebraucht wird es genau einmal: Der König ist ein zweites LEBEN und
+     * gehört damit nicht in die normale Rotation.
+     */
     HANDEL: [
         { gibt: { art: "B", anzahl: 3 }, bekommt: { art: "S", anzahl: 1 } },
         { gibt: { art: "B", anzahl: 3 }, bekommt: { art: "L", anzahl: 1 } },
@@ -688,15 +777,55 @@ const SCHACH_VARIANTEN = {
         { gibt: { art: "S", anzahl: 1 }, bekommt: { art: "L", anzahl: 1 } },
         { gibt: { art: "L", anzahl: 1 }, bekommt: { art: "S", anzahl: 1 } },
         { gibt: { art: "T", anzahl: 2 }, bekommt: { art: "D", anzahl: 1 } },
-        { gibt: { art: "D", anzahl: 1 }, bekommt: { art: "T", anzahl: 2 } }
+        { gibt: { art: "D", anzahl: 1 }, bekommt: { art: "T", anzahl: 2 } },
+
+        /*
+         * DAS SELTENE ANGEBOT: ein zweites Leben.
+         *
+         * Zehn Punkte Material gegen einen zweiten König — nach den üblichen
+         * Figurenwerten ein schlechtes Geschäft, nach der Regel „zwei Könige
+         * sind zwei Leben" (siehe `SCHACH.koenigSchlagbarFuer`) ein sehr
+         * gutes: Solange zwei stehen, kennt diese Seite kein Matt. Deshalb
+         * kostet es die Dame UND einen Bauern, und deshalb kommt es mit
+         * einem Zehntel des Gewichts der übrigen.
+         */
+        {
+            gibt: [{ art: "D", anzahl: 1 }, { art: "B", anzahl: 1 }],
+            bekommt: { art: "K", anzahl: 1 },
+            gewicht: 0.1
+        }
     ],
 
-    /* Zieht ein Angebot aus der Tabelle. `wert` ist eine Zahl von 0 bis 1. */
-    handelZiehen(wert) {
-        const sauber = Math.min(Math.max(wert, 0), 0.999999);
-        const stelle = Math.floor(sauber * SCHACH_VARIANTEN.HANDEL.length);
+    /* Eine Seite eines Angebots als Liste — einzelner Eintrag oder mehrere. */
+    handelSeite(seite) {
+        return Array.isArray(seite) ? seite : [seite];
+    },
 
-        return SCHACH_VARIANTEN.HANDEL[stelle] || SCHACH_VARIANTEN.HANDEL[0];
+    /* Wie viele Figuren eine Seite umfasst. */
+    handelAnzahl(seite) {
+        return SCHACH_VARIANTEN.handelSeite(seite)
+            .reduce((summe, teil) => summe + teil.anzahl, 0);
+    },
+
+    /*
+     * Zieht ein Angebot aus der Tabelle. `wert` ist eine Zahl von 0 bis 1.
+     * Gewichtet, damit ein einzelnes Angebot selten sein kann.
+     */
+    handelZiehen(wert) {
+        const gewichte = SCHACH_VARIANTEN.HANDEL.map(
+            (eintrag) => (typeof eintrag.gewicht === "number") ? eintrag.gewicht : 1);
+        const summe = gewichte.reduce((teil, einzeln) => teil + einzeln, 0);
+
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * summe;
+
+        for (let stelle = 0; stelle < SCHACH_VARIANTEN.HANDEL.length; stelle++) {
+            if (rest < gewichte[stelle]) {
+                return SCHACH_VARIANTEN.HANDEL[stelle];
+            }
+            rest -= gewichte[stelle];
+        }
+
+        return SCHACH_VARIANTEN.HANDEL[0];
     },
 
     liste: [
@@ -1033,6 +1162,31 @@ const SCHACH_VARIANTEN = {
     faehigkeitBeschreibung(art) {
         const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
         return eintrag ? eintrag.beschreibung : "";
+    },
+
+    /*
+     * TRÄGT DIESE FÄHIGKEIT DAS PLUSZEICHEN? (seit v0.58 an einer Stelle)
+     *
+     * Das Zeichen sagt: „Danach bleibt dir dein normaler Zug." Drei Schalter
+     * nehmen es weg, und alle drei aus demselben Grund — es bliebe kein Zug:
+     *
+     *     beendetZug      danach ist der Gegner dran
+     *     istDerZug       die Fähigkeit IST der Zug (Sprung, Teleport)
+     *     nurImGegenzug   man ist gar nicht am Zug (Ausweichen, seit v0.58)
+     *
+     * Gefragt wird die FÄHIGKEIT, nicht der Spielstand (seit v0.48) — das
+     * Zeichen soll ein Merkmal sein, an dem man sie wiedererkennt, und nichts,
+     * was flackert. Was gerade wirklich geht, sagt `SCHACH_RUNDE.behaeltZug`.
+     *
+     * Die Frage stand bis v0.57 an zwei Stellen im Bildschirm-Code (Vorrat und
+     * Bibliothek) und wäre beim nächsten Schalter an einer davon vergessen
+     * worden.
+     */
+    zeigtPlus(art) {
+        const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+
+        return !!eintrag && !eintrag.beendetZug && !eintrag.istDerZug
+            && !eintrag.nurImGegenzug;
     },
 
     /*
