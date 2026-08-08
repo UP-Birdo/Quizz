@@ -3,6 +3,38 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.54.0 — 2026-08-08
+
+Die letzten drei Punkte aus dem Eingangskorb — alle drei Eingriffe ins
+Regelwerk.
+
+- **Der Friedhof weckt, wer GENAU DORT gefallen ist.** Bis v0.53 nahm er die
+  vier zuletzt gefallenen Gegner und stellte sie auf ein beliebiges freies
+  2×2-Feld. Jetzt zeigt das Brett beim Einsetzen **blass**, wo die Gefallenen
+  liegen; du wählst ein 2×2-Feld, und genau die, die dort fielen, stehen dort
+  wieder auf — jeder auf seinem eigenen Feld. Damit ist die Fähigkeit
+  ortsgebunden: stark, wo viel gestorben ist, und nutzlos auf einem leeren
+  Flügel. Blöcke ohne Gefallene stehen gar nicht erst zur Wahl.
+
+- **Das Erdbeben ist ein Unglückswürfel und reisst Risse.** Es verschiebt keine
+  Reihen mehr: Drei freie Felder brechen weg und sind **ab sofort gesperrt** —
+  niemand zieht hindurch, nur Springer setzen darüber hinweg. Anders als eine
+  Mauer bleiben die Risse die **ganze Partie**; eine Gegen-Fähigkeit, die sie
+  schliesst, ist vorgesehen, gibt es aber noch nicht. Aufgerissen wird nur, wo
+  nichts steht. Wer „Erdbeben" noch im Vorrat hatte, verliert es beim nächsten
+  Laden — eine Fähigkeit, die sich nicht mehr einsetzen lässt, wäre schlimmer.
+
+- **Neuer Unglückswürfel „Einsturz": Das Brett wird kleiner.** Das Gegenstück
+  zur Ausdehnung. Eine zufällige Seite bricht weg, aber **nie eine, auf der ein
+  König steht** — steht ein König unten rechts, sind „unten" und „rechts"
+  gesperrt und nur die anderen beiden möglich. Was auf der Linie steht, stürzt
+  mit: Figuren wie Würfel.
+
+  Beim Bauen kam ein **Altfehler** heraus: Die Ausdehnung rechnete nur vier von
+  sieben gemerkten Feldangaben um. Mauern, geliehene Figuren und die liegenden
+  Würfel behielten ihre alten Nummern und lagen danach woanders. Beides läuft
+  jetzt über eine Stelle, die alle sieben bedient — und die Würfel wandern mit.
+
 ## v0.53.0 — 2026-08-08
 
 Vier Punkte aus dem Eingangskorb — Restzeit, Regen, Einsammeln und die Punkte.

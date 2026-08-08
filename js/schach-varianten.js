@@ -142,6 +142,33 @@ const SCHACH_VARIANTEN = {
                 + "unten, links oder rechts, jede Seite mit derselben Chance von "
                 + "einem Viertel. Alle Wege werden länger."
         },
+
+        /*
+         * Das Gegenstück zur Ausdehnung (seit v0.54). Eine Seite mit König
+         * fällt nie weg — sonst nähme der Würfel einen König vom Brett und
+         * beendete die Partie, ohne dass jemand etwas dafür konnte.
+         */
+        schrumpfung: {
+            titel: "Einsturz",
+            stufe: "blau",
+            beschreibung: "Eine ganze Reihe oder Spalte bricht weg — zufällig eine "
+                + "der vier Seiten, aber nie eine, auf der ein König steht. Was "
+                + "dort steht, stürzt mit: Figuren wie Würfel."
+        },
+
+        /*
+         * Das Erdbeben — seit v0.54 hier statt bei den Fähigkeiten, und mit
+         * neuer Wirkung. Vorher schob es drei Reihen zur Seite; jetzt bricht
+         * der Boden auf.
+         */
+        erdbeben: {
+            titel: "Erdbeben",
+            stufe: "lila",
+            beschreibung: "Der Boden reisst auf: Drei freie Felder brechen weg und "
+                + "sind ab sofort gesperrt — niemand zieht hindurch, nur Springer "
+                + "setzen darüber hinweg. Anders als eine Mauer bleiben die Risse "
+                + "die ganze Partie."
+        },
         vollesGlas: {
             titel: "Volles Glas",
             stufe: "gruen",
@@ -466,18 +493,16 @@ const SCHACH_VARIANTEN = {
                 + "Schlag verpufft, der Angreifer bleibt stehen. Auf den König "
                 + "wirkt das Schild nicht."
         },
-        erdbeben: {
-            titel: "Erdbeben",
-            stufe: "blau",
-            art: "ziel",
-            zielArt: "beliebig",
-            beschreibung: "Drei Reihen rutschen um ein Feld zur Seite — die "
-                + "angetippte und je eine darüber und darunter. Tippst du links "
-                + "auf das Brett, geht es nach links, tippst du rechts, nach "
-                + "rechts. Wer am Rand steht oder ansteht, bleibt; alle anderen "
-                + "rücken nacheinander auf. Könige bleiben stehen. Wirkt auf "
-                + "beide Seiten."
-        },
+        /*
+         * DAS ERDBEBEN IST SEIT v0.54 KEINE FÄHIGKEIT MEHR.
+         *
+         * Es steht jetzt bei den Unglückswürfeln (`PECH`) und reisst Risse in
+         * den Boden, statt Reihen zu verschieben — auf Nutzer-Ansage. Wer es
+         * noch im Vorrat hatte, verliert es beim nächsten Laden:
+         * `SCHACH_RUNDE.normalisieren` wirft Fähigkeiten weg, die es nicht mehr
+         * gibt. Das ist gewollt — eine Fähigkeit, die sich nicht mehr einsetzen
+         * lässt, wäre schlimmer.
+         */
 
         nudelholz: {
             titel: "Nudelholz",

@@ -1955,6 +1955,32 @@ body {
 }
 
 /*
+ * Ein Riss im Boden (seit v0.54, Unglückswürfel „Erdbeben").
+ *
+ * Er trägt die Hintergrundfarbe der Seite statt einer Feldfarbe — das Feld
+ * sieht aus, als wäre es weggebrochen. Anders als die Mauer bekommt er keine
+ * Ränder: Eine Mauer ist ein Riegel und gehört zusammen, Risse sind einzelne
+ * Löcher.
+ */
+.feld-riss {
+    background: var(--hintergrund) !important;
+    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.55);
+    cursor: default;
+}
+
+/*
+ * Ein gefallener Gegner, blass gezeigt (seit v0.54).
+ *
+ * Nur solange der Friedhof auf sein Zielfeld wartet: Dann sieht man, WO
+ * jemand gefallen ist, und weiss, welchen 2×2-Block man antippen will.
+ */
+.figur-schemen {
+    opacity: 0.3;
+    filter: grayscale(0.6);
+    pointer-events: none;
+}
+
+/*
  * Die Aufschlüsselung im Abschluss-Bildschirm (seit v0.53): links wofür,
  * rechts wie viel. Die grosse Summe steht darüber.
  */

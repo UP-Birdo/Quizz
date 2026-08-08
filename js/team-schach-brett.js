@@ -169,6 +169,16 @@ Object.assign(TEAM_SCHACH, {
                     SCHACH.feldName(feld, breite, hoehe) + ", Mauer");
             }
 
+            /* Ein Riss im Boden (seit v0.54): gesperrt wie eine Mauer, aber
+               dauerhaft — und deshalb anders gezeichnet. */
+            if (SCHACH.rissAuf(stand, feld)) {
+                zelle.classList.add("feld-riss");
+                zelle.title = "Riss im Boden: dauerhaft gesperrt, nur Springer "
+                    + "setzen darüber";
+                zelle.setAttribute("aria-label",
+                    SCHACH.feldName(feld, breite, hoehe) + ", Riss");
+            }
+
             /*
              * Wirkende Fähigkeiten am Brett zeigen: Ohne sie muss man sich
              * merken, welche Figur geschützt ist und welche festhängt — und
@@ -203,6 +213,29 @@ Object.assign(TEAM_SCHACH, {
             if (restzeit > 0) {
                 zelle.appendChild(TEAM_SCHACH._element("span", "feld-restzeit",
                     String(restzeit)));
+            }
+
+            /*
+             * DIE GEFALLENEN BLASS ZEIGEN, SOLANGE DER FRIEDHOF WARTET
+             * (seit v0.54).
+             *
+             * Seit die Fähigkeit weckt, wer GENAU DORT gefallen ist, muss man
+             * sehen, wo das war — sonst tippt man ins Blaue. Gezeigt wird nur,
+             * was auch aufstehen könnte: gefallene GEGNER auf einem Feld, das
+             * jetzt frei ist. Liegen auf einem Feld mehrere, steht der zuletzt
+             * gefallene oben — genau der, den die Regel weckt.
+             */
+            if (TEAM_SCHACH.zielFaehigkeit === "friedhof" && figur === ".") {
+                const grab = TEAM_SCHACH._grabAuf(partie, meinTeam, feld);
+
+                if (grab) {
+                    const schemen = TEAM_SCHACH._element("span",
+                        "figur figur-schemen "
+                        + ((meinTeam === "weiss") ? "figur-weiss" : "figur-schwarz"),
+                        TEAM_SCHACH._figurZeichen(
+                            (meinTeam === "weiss") ? grab : grab.toLowerCase()));
+                    zelle.appendChild(schemen);
+                }
             }
 
             /* Wartet die Fähigkeit auf ein Ziel? Dann sind die möglichen
@@ -690,6 +723,30 @@ Object.assign(TEAM_SCHACH, {
      * Teams gleich, und über die Partie hinweg stabil: Dieselbe Figur sieht
      * immer gleich falsch aus, sonst wäre es Flackern statt Täuschung.
      */
+    /*
+     * Welcher gefallene GEGNER liegt auf diesem Feld? (seit v0.54)
+     *
+     * Liefert die Figurenart oder "". Gefragt wird die Grabliste der Runde —
+     * dieselbe, aus der `_zielWirkung` den Friedhof bedient, damit das blasse
+     * Bild und die Regel nicht auseinanderlaufen. Der ZULETZT Gefallene
+     * gewinnt: Genau den weckt die Fähigkeit.
+     */
+    _grabAuf(partie, meinTeam, feld) {
+        if (!meinTeam) {
+            return "";
+        }
+
+        const gefallene = partie.gefallen[SCHACH.gegner(meinTeam)] || [];
+
+        for (let stelle = gefallene.length - 1; stelle >= 0; stelle--) {
+            if (gefallene[stelle].feld === feld) {
+                return gefallene[stelle].art;
+            }
+        }
+
+        return "";
+    },
+
     _glasZeichen(partie, feld, figur) {
         const arten = ["B", "S", "L", "T", "D"];
 

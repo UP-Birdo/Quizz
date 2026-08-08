@@ -325,6 +325,13 @@ const SCHACH = {
             mauern: [],
 
             /*
+             * Risse im Boden (seit v0.54, Unglückswürfel „Erdbeben"): einfach
+             * eine Liste von Feldnummern. Sie sperren wie eine Mauer, laufen
+             * aber NICHT ab — deshalb brauchen sie auch kein `bis`.
+             */
+            risse: [],
+
+            /*
              * Geliehene Figuren (seit v3.3, Fähigkeit „Friedhof"):
              * [{ feld, bis }]. Sie stehen in der Farbe dessen auf dem Brett,
              * der sie geholt hat, und ziehen wie seine eigenen — aber nur bis
@@ -508,6 +515,13 @@ const SCHACH = {
                 .filter((eintrag) => eintrag.felder.length > 0);
         }
 
+        /* Risse: nur Feldnummern, jede höchstens einmal, keine mit Ablauf. */
+        if (Array.isArray(roh.risse)) {
+            stand.risse = roh.risse
+                .filter((feld) => Number.isInteger(feld) && feld >= 0 && feld < felder)
+                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle);
+        }
+
         if (Array.isArray(roh.geliehen)) {
             stand.geliehen = roh.geliehen
                 .filter((eintrag) => eintrag
@@ -543,10 +557,49 @@ const SCHACH = {
         return stand.mauern.filter((eintrag) => eintrag.bis > stand.takt);
     },
 
-    /* Liegt auf diesem Feld eine Mauer? */
+    /*
+     * Liegt auf diesem Feld eine Mauer?
+     *
+     * SEIT v0.54 IST DAS NUR DIE HÄLFTE DER FRAGE. Ein Feld kann auch durch
+     * einen RISS gesperrt sein (Unglückswürfel „Erdbeben"). Wer wissen will,
+     * ob man hier durchkommt, fragt `SCHACH.gesperrt` — diese Funktion hier
+     * beantwortet nur, ob es eine MAUER ist, und dafür gibt es genau einen
+     * Grund: Der Bildschirm zeichnet beide verschieden.
+     */
     mauerAuf(stand, feld) {
         return SCHACH.mauern(stand)
             .some((eintrag) => eintrag.felder.indexOf(feld) !== -1);
+    },
+
+    /*
+     * DIE RISSE IM BODEN (seit v0.54, Unglückswürfel „Erdbeben").
+     *
+     * Anders als eine Mauer laufen sie NICHT ab: Ein Riss bleibt die ganze
+     * Partie. Eine Gegen-Fähigkeit, die ihn wieder schliesst, gibt es noch
+     * nicht — sie ist ausdrücklich vorgesehen (siehe `ROADMAP.md`). Wer sie
+     * baut, nimmt hier Felder aus der Liste heraus.
+     */
+    risse(stand) {
+        if (!Array.isArray(stand.risse)) {
+            return [];
+        }
+        return stand.risse;
+    },
+
+    rissAuf(stand, feld) {
+        return SCHACH.risse(stand).indexOf(feld) !== -1;
+    },
+
+    /*
+     * Ist dieses Feld gesperrt — durch eine Mauer oder einen Riss?
+     *
+     * Das ist die Frage, die die REGELN stellen; alle Stellen, die früher
+     * `mauerAuf` fragten, fragen jetzt hier. Springer setzen über beides
+     * hinweg — das ergibt sich von selbst, weil sie nie nach den Feldern
+     * dazwischen fragen.
+     */
+    gesperrt(stand, feld) {
+        return SCHACH.mauerAuf(stand, feld) || SCHACH.rissAuf(stand, feld);
     },
 
     /*
@@ -586,7 +639,7 @@ const SCHACH = {
             const ziel = SCHACH._feld(stand, reihe, links + schritt);
 
             /* Frei heisst: keine Figur UND keine andere Mauer. */
-            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.mauerAuf(stand, ziel)) {
+            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.gesperrt(stand, ziel)) {
                 return null;
             }
             felder.push(ziel);
@@ -795,7 +848,7 @@ const SCHACH = {
          * deshalb nur noch das Zielfeld zu sperren — eine einzige Regel für
          * alle Figuren statt einer Sonderbehandlung je Gangart.
          */
-        roh = roh.filter((zug) => !SCHACH.mauerAuf(stand, zug.nach));
+        roh = roh.filter((zug) => !SCHACH.gesperrt(stand, zug.nach));
 
         /* Fähigkeit Schutzschild: Die geschützte Figur lässt sich nicht
            schlagen — der Gegner kann es gar nicht erst versuchen. */
@@ -1032,7 +1085,7 @@ const SCHACH = {
 
                 /* Eine Mauer stoppt den Strahl wie eine Figur — nur lässt sie
                    sich nicht schlagen, der Zug endet also davor. */
-                if (SCHACH.mauerAuf(stand, ziel)) {
+                if (SCHACH.gesperrt(stand, ziel)) {
                     break;
                 }
 
@@ -1195,13 +1248,13 @@ const SCHACH = {
              */
             let mauerImWeg = false;
             for (let lauf = spalte + richtung; lauf !== turmSpalte; lauf += richtung) {
-                if (SCHACH.mauerAuf(stand, SCHACH._feld(stand, reihe, lauf))) {
+                if (SCHACH.gesperrt(stand, SCHACH._feld(stand, reihe, lauf))) {
                     mauerImWeg = true;
                     break;
                 }
             }
-            if (mauerImWeg || SCHACH.mauerAuf(stand, weg.zielFeld)
-                || SCHACH.mauerAuf(stand, weg.turmZiel)) {
+            if (mauerImWeg || SCHACH.gesperrt(stand, weg.zielFeld)
+                || SCHACH.gesperrt(stand, weg.turmZiel)) {
                 weg.grund = "Eine Mauer steht im Weg.";
                 wege.push(weg);
                 continue;
@@ -1346,7 +1399,7 @@ const SCHACH = {
         if (SCHACH._imBrett(stand, reihe + richtung, spalte)) {
             const einsVor = SCHACH._feld(stand, reihe + richtung, spalte);
 
-            if (SCHACH.figurAuf(stand, einsVor) === "." && !SCHACH.mauerAuf(stand, einsVor)) {
+            if (SCHACH.figurAuf(stand, einsVor) === "." && !SCHACH.gesperrt(stand, einsVor)) {
                 anhaengen(SCHACH._zug(stand, von, einsVor));
 
                 /* Zwei Felder aus der Grundstellung. */
@@ -1668,6 +1721,9 @@ const SCHACH = {
             /* Abgelaufene Mauern verschwinden hier — sonst wüchse die Liste
                über die ganze Partie, obwohl längst nichts mehr steht. */
             mauern: SCHACH.mauern(stand),
+
+            /* Risse laufen nicht ab: Sie wandern unverändert mit. */
+            risse: SCHACH.risse(stand),
 
             /* Geliehene Figuren wandern mit ihrem Zug mit; eine geschlagene
                verliert ihren Eintrag. */
@@ -1995,7 +2051,7 @@ const SCHACH = {
                 const ziel = SCHACH._feld(stand, r, zielS);
 
                 /* Besetzt oder vermauert: Diese Figur bleibt, wo sie ist. */
-                if (brett[ziel] !== "." || SCHACH.mauerAuf(stand, ziel)) {
+                if (brett[ziel] !== "." || SCHACH.gesperrt(stand, ziel)) {
                     continue;
                 }
 
@@ -2251,37 +2307,55 @@ const SCHACH = {
     },
 
     /*
-     * Den Friedhof öffnen: `arten` sind die Figuren, die aufstehen sollen,
-     * `feld` ist die obere linke Ecke des 2×2-Blocks.
+     * Die vier Felder eines Friedhofs-Blocks, oder null.
      *
-     * Alle vier Felder müssen frei sein — auch wenn weniger Figuren aufstehen.
-     * Das ist Absicht: So sieht man am angebotenen Zielfeld sofort, wo Platz
+     * `feld` ist die obere linke Ecke. Alle vier müssen im Brett liegen, frei
+     * und ungesperrt sein — auch wenn weniger Figuren aufstehen. Das ist
+     * Absicht: So sieht man am angebotenen Zielfeld sofort, wo überhaupt Platz
      * ist, ohne die Zahl der Gefallenen im Kopf zu haben.
      */
-    friedhof(stand, farbe, feld, arten) {
+    friedhofsFelder(stand, feld) {
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
         const reihe = SCHACH.reiheVon(feld, breite);
         const spalte = SCHACH.spalteVon(feld, breite);
         const kante = SCHACH.FRIEDHOF_KANTE;
 
-        if (!arten || arten.length === 0) {
-            return null;
-        }
-        if (reihe + kante > hoehe || spalte + kante > breite) {
+        if (feld < 0 || reihe + kante > hoehe || spalte + kante > breite) {
             return null;
         }
 
         const plaetze = [];
+
         for (let dr = 0; dr < kante; dr++) {
             for (let ds = 0; ds < kante; ds++) {
                 const ziel = SCHACH._feld(stand, reihe + dr, spalte + ds);
 
-                if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.mauerAuf(stand, ziel)) {
+                if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.gesperrt(stand, ziel)) {
                     return null;
                 }
                 plaetze.push(ziel);
             }
+        }
+
+        return plaetze;
+    },
+
+    /*
+     * Den Friedhof öffnen: `gefallene` sind [{ art, feld }] — WELCHE Figur an
+     * WELCHER Stelle wieder aufsteht. `feld` ist die obere linke Ecke des
+     * 2×2-Blocks.
+     *
+     * SEIT v0.54 STEHT JEDE AUF IHREM EIGENEN FELD AUF (vorher wurden sie der
+     * Reihe nach auf die vier Plätze verteilt). Damit zeigt das Brett vorher
+     * genau das, was nachher passiert — man sieht die Gefallenen liegen und
+     * wählt den Block, in dem sie liegen.
+     */
+    friedhof(stand, farbe, feld, gefallene) {
+        const plaetze = SCHACH.friedhofsFelder(stand, feld);
+
+        if (!plaetze || !gefallene || gefallene.length === 0) {
+            return null;
         }
 
         let brett = stand.brett;
@@ -2289,19 +2363,23 @@ const SCHACH = {
         const felder = [];
         const bis = stand.takt + SCHACH.FRIEDHOF_HALBZUEGE;
 
-        for (let nummer = 0; nummer < arten.length && nummer < plaetze.length; nummer++) {
-            const art = arten[nummer];
+        for (const eintrag of gefallene) {
+            const art = eintrag.art;
+            const platz = eintrag.feld;
 
             /* Könige stehen nie auf — sonst gäbe es zwei auf einer Seite, und
                „Schachmatt" wäre nicht mehr eindeutig. */
             if (art === "K" || SCHACH.artName(art) === "") {
                 continue;
             }
+            if (plaetze.indexOf(platz) === -1 || felder.indexOf(platz) !== -1) {
+                continue;
+            }
 
             const figur = (farbe === SCHACH.WEISS) ? art : art.toLowerCase();
-            brett = SCHACH._brettMit(brett, plaetze[nummer], figur);
-            geliehen.push({ feld: plaetze[nummer], bis: bis });
-            felder.push(plaetze[nummer]);
+            brett = SCHACH._brettMit(brett, platz, figur);
+            geliehen.push({ feld: platz, bis: bis });
+            felder.push(platz);
         }
 
         if (felder.length === 0) {
@@ -2419,17 +2497,11 @@ const SCHACH = {
             felder[umrechnen(feld)] = stand.brett[feld];
         }
 
-        const neu = Object.assign({}, stand, {
+        const neu = SCHACH._feldnummernUmrechnen(stand, {
             breite: neuBreite,
             hoehe: neuHoehe,
-            brett: felder.join(""),
-            enPassant: "",
-            rochadeFelder: stand.rochadeFelder.map(umrechnen),
-            rochadeKoenige: stand.rochadeKoenige.map(umrechnen),
-            schildFeld: (stand.schildFeld >= 0) ? umrechnen(stand.schildFeld) : -1,
-            fesselFeld: (stand.fesselFeld >= 0) ? umrechnen(stand.fesselFeld) : -1,
-            frostFeld: (stand.frostFeld >= 0) ? umrechnen(stand.frostFeld) : -1
-        });
+            brett: felder.join("")
+        }, umrechnen);
 
         const namen = { oben: "oben", unten: "unten", links: "links", rechts: "rechts" };
 
@@ -2437,7 +2509,201 @@ const SCHACH = {
             stand: neu,
             felder: [],
             wege: [],
+            umrechnen: umrechnen,
             text: "Das Feld wächst " + (namen[seite] || seite)
+        };
+    },
+
+    /*
+     * RECHNET ALLE GEMERKTEN FELDNUMMERN EINES STANDES UM (seit v0.54).
+     *
+     * Ändert sich die Brettgrösse, verschiebt sich JEDE Feldnummer — und der
+     * Stand merkt sich an sieben Stellen welche. Wer eine vergisst, hat ein
+     * Schild auf dem falschen Feld oder eine Mauer, die plötzlich woanders
+     * steht. Bis v0.53 rechnete die Ausdehnung nur vier davon um; `mauern`,
+     * `geliehen` und die Risse fehlten. Deshalb steht das jetzt an EINER Stelle,
+     * die beide Richtungen bedient — Wachsen wie Schrumpfen.
+     *
+     * `umrechnen` liefert -1 für ein Feld, das es danach nicht mehr gibt; was
+     * darauf lag, fällt weg.
+     */
+    _feldnummernUmrechnen(stand, masse, umrechnen) {
+        const gueltig = (feld) => Number.isInteger(feld) && feld >= 0;
+        const liste = (felder) => (felder || []).map(umrechnen).filter(gueltig);
+
+        return Object.assign({}, stand, masse, {
+            enPassant: "",
+            rochadeFelder: liste(stand.rochadeFelder),
+            rochadeKoenige: liste(stand.rochadeKoenige),
+
+            schildFeld: (stand.schildFeld >= 0) ? umrechnen(stand.schildFeld) : -1,
+            fesselFeld: (stand.fesselFeld >= 0) ? umrechnen(stand.fesselFeld) : -1,
+            frostFeld: (stand.frostFeld >= 0) ? umrechnen(stand.frostFeld) : -1,
+
+            /* Eine Mauer, von der nichts mehr übrig ist, verschwindet ganz. */
+            mauern: SCHACH.mauern(stand)
+                .map((eintrag) => ({ felder: liste(eintrag.felder), bis: eintrag.bis }))
+                .filter((eintrag) => eintrag.felder.length > 0),
+
+            geliehen: SCHACH.geliehene(stand)
+                .map((eintrag) => ({ feld: umrechnen(eintrag.feld), bis: eintrag.bis }))
+                .filter((eintrag) => gueltig(eintrag.feld)),
+
+            risse: liste(SCHACH.risse(stand))
+        });
+    },
+
+    /*
+     * SCHRUMPFUNG: Das Brett verliert eine Reihe oder Spalte (seit v0.54).
+     *
+     * Das Gegenstück zur Ausdehnung, und die härtere Hälfte: Was auf der
+     * wegfallenden Linie steht, ist weg — Figuren wie Würfel.
+     *
+     * EINE SEITE MIT KÖNIG FÄLLT NIE WEG. Das ist die Entscheidung des Nutzers
+     * und zugleich das, was die Regel zusammenhält: Ohne sie könnte ein Würfel
+     * einen König vom Brett nehmen und die Partie beenden, ohne dass jemand
+     * etwas dafür konnte. Steht ein König unten rechts, sind also „unten" und
+     * „rechts" gesperrt — die anderen beiden gehen, solange dort keiner steht.
+     */
+    schrumpfung(stand, seite) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const senkrecht = (seite === "links" || seite === "rechts");
+
+        /* Unter diese Maße geht es nicht — ein Brett braucht Platz für zwei
+           Könige und einen Zug dazwischen. */
+        if (senkrecht && breite <= 4) {
+            return null;
+        }
+        if (!senkrecht && hoehe <= 4) {
+            return null;
+        }
+
+        /* Welche Linie fällt weg? */
+        const istBetroffen = (reihe, spalte) => {
+            if (seite === "links") { return spalte === 0; }
+            if (seite === "rechts") { return spalte === breite - 1; }
+            if (seite === "oben") { return reihe === 0; }
+            return reihe === hoehe - 1;
+        };
+
+        for (let feld = 0; feld < breite * hoehe; feld++) {
+            if (!istBetroffen(Math.floor(feld / breite), feld % breite)) {
+                continue;
+            }
+            if (SCHACH.artVon(SCHACH.figurAuf(stand, feld)) === "K") {
+                return null;
+            }
+        }
+
+        const neuBreite = senkrecht ? breite - 1 : breite;
+        const neuHoehe = senkrecht ? hoehe : hoehe - 1;
+
+        /* Rutscht der Rest zusammen? Nur, wenn vorne etwas wegfällt. */
+        const dSpalte = (seite === "links") ? -1 : 0;
+        const dReihe = (seite === "oben") ? -1 : 0;
+
+        const umrechnen = (feld) => {
+            if (!Number.isInteger(feld) || feld < 0) {
+                return -1;
+            }
+            const reihe = Math.floor(feld / breite);
+            const spalte = feld % breite;
+
+            if (istBetroffen(reihe, spalte)) {
+                return -1;
+            }
+            return (reihe + dReihe) * neuBreite + (spalte + dSpalte);
+        };
+
+        const felder = new Array(neuBreite * neuHoehe).fill(".");
+        const verloren = [];
+
+        for (let feld = 0; feld < breite * hoehe; feld++) {
+            const ziel = umrechnen(feld);
+
+            if (ziel < 0) {
+                if (SCHACH.figurAuf(stand, feld) !== ".") {
+                    verloren.push(feld);
+                }
+                continue;
+            }
+            felder[ziel] = stand.brett[feld];
+        }
+
+        const namen = { oben: "oben", unten: "unten", links: "links", rechts: "rechts" };
+
+        return {
+            stand: SCHACH._feldnummernUmrechnen(stand, {
+                breite: neuBreite,
+                hoehe: neuHoehe,
+                brett: felder.join("")
+            }, umrechnen),
+            felder: [],
+            wege: [],
+            umrechnen: umrechnen,
+            text: "Das Feld bricht " + (namen[seite] || seite) + " weg"
+                + (verloren.length > 0
+                    ? " — " + verloren.length + " Figur"
+                        + (verloren.length === 1 ? "" : "en") + " stürzen mit"
+                    : "")
+        };
+    },
+
+    /*
+     * ERDBEBEN: Risse reissen den Boden auf (seit v0.54).
+     *
+     * Bis v0.53 war das eine FÄHIGKEIT, die drei Reihen zur Seite schob. Auf
+     * Nutzer-Ansage ist daraus ein Unglückswürfel mit anderer Wirkung geworden:
+     * Es werden keine Figuren mehr verschoben, sondern einzelne Felder brechen
+     * weg. Sie sind danach unpassierbar — nur ein Springer setzt darüber
+     * hinweg —, und anders als eine Mauer bleiben sie die ganze Partie.
+     *
+     * Aufgerissen wird nur, wo NICHTS steht: Ein Riss unter einer Figur würde
+     * sie entweder töten (dann wäre es eine Meuterei) oder auf einem gesperrten
+     * Feld stehen lassen (dann käme sie nie wieder weg).
+     */
+    ERDBEBEN_RISSE: 3,
+
+    erdbebenRisse(stand, wert) {
+        const frei = [];
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            if (SCHACH.figurAuf(stand, feld) === "." && !SCHACH.gesperrt(stand, feld)) {
+                frei.push(feld);
+            }
+        }
+
+        if (frei.length === 0) {
+            return null;
+        }
+
+        const neue = [];
+        const anzahl = Math.min(SCHACH.ERDBEBEN_RISSE, frei.length);
+
+        /*
+         * Gestreut wird aus EINEM Wert: Jeder Riss verschiebt die Stelle um
+         * einen ungeraden Schritt durch die Liste, damit die drei nicht
+         * nebeneinander landen und trotzdem alles gerechnet bleibt.
+         */
+        const start = Math.floor(Math.min(Math.max(wert, 0), 0.999999) * frei.length);
+        const schritt = 1 + Math.floor(frei.length / (anzahl + 1));
+
+        for (let nummer = 0; nummer < anzahl; nummer++) {
+            const feld = frei[(start + nummer * schritt) % frei.length];
+            if (neue.indexOf(feld) === -1) {
+                neue.push(feld);
+            }
+        }
+
+        return {
+            stand: Object.assign({}, stand, {
+                risse: SCHACH.risse(stand).concat(neue)
+            }),
+            felder: neue,
+            wege: [],
+            text: neue.length + " Feld" + (neue.length === 1 ? "" : "er")
+                + " bricht auf und bleibt gesperrt"
         };
     },
 

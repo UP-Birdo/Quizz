@@ -651,7 +651,9 @@ pruefe("Eine Partie mit Wuerfel und eingesammelter Faehigkeit zeichnet", () => {
 
     /* Ein Würfel auf c4, ein zweiter bleibt liegen — beides muss gezeichnet
        werden: der eingesammelte im Vorrat, der liegende auf dem Brett. */
-    partie.bonus.push({ feld: SCHACH.feldNummer("c4"), art: "erdbeben" });
+    /* „erdbeben" ist seit v0.54 ein UNGLUECKSwuerfel — als Faehigkeit auf dem
+       Brett wuerde er sofort wirken statt eingesammelt zu werden. */
+    partie.bonus.push({ feld: SCHACH.feldNummer("c4"), art: "nudelholz" });
     partie.bonus.push({ feld: SCHACH.feldNummer("e5"), art: "sprung" });
 
     partie = SCHACH_RUNDE.ziehen(partie, "id-anna",
@@ -803,7 +805,7 @@ pruefe("Beendete Partien stehen nicht mehr zwischen den offenen", () => {
 pruefe("Ein Wuerfel auf dem Brett wird gezeichnet", () => {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
     partie = SCHACH_RUNDE.kopieren(partie);
-    partie.bonus.push({ feld: SCHACH.feldNummer("d5"), art: "erdbeben" });
+    partie.bonus.push({ feld: SCHACH.feldNummer("d5"), art: "nudelholz" });
 
     TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
         TEAM_SCHACH.abgleich.daten, partie, 3150);

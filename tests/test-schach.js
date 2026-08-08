@@ -842,8 +842,12 @@ pruefe("Mauern ueberleben das Speichern", () => {
 
 pruefe("Der Friedhof stellt gefallene Gegner in einem 2x2-Feld auf", () => {
     const stand = standAus({ "a1": "K", "a8": "k" });
-    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"),
-        ["D", "T", "S", "B"]);
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [
+            { art: "D", feld: SCHACH.feldNummer("d5") },
+            { art: "T", feld: SCHACH.feldNummer("e5") },
+            { art: "S", feld: SCHACH.feldNummer("d4") },
+            { art: "B", feld: SCHACH.feldNummer("e4") }
+        ]);
 
     wahr(wirkung !== null, "es wirkt");
     gleich(wirkung.felder.length, 4, "vier Figuren");
@@ -858,22 +862,22 @@ pruefe("Der Friedhof stellt gefallene Gegner in einem 2x2-Feld auf", () => {
 pruefe("Der Friedhof braucht vier freie Felder", () => {
     const stand = standAus({ "a1": "K", "a8": "k", "e5": "B" });
 
-    gleich(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]), null,
+    gleich(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [{ art: "T", feld: SCHACH.feldNummer("d5") }]), null,
         "e5 ist besetzt");
-    wahr(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("f5"), ["T"]) !== null,
+    wahr(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("f5"), [{ art: "T", feld: SCHACH.feldNummer("f5") }]) !== null,
         "daneben ist Platz");
 });
 
 pruefe("Der Friedhof laesst keinen Koenig aufstehen", () => {
     const stand = standAus({ "a1": "K", "a8": "k" });
 
-    gleich(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["K"]), null,
+    gleich(SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [{ art: "K", feld: SCHACH.feldNummer("d5") }]), null,
         "ein Koenig steht nicht auf");
 });
 
 pruefe("Eine geliehene Figur zieht wie eine eigene", () => {
     const stand = standAus({ "a1": "K", "a8": "k" });
-    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]);
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [{ art: "T", feld: SCHACH.feldNummer("d5") }]);
 
     const felder = ziele(wirkung.stand, "d5").split(",");
     wahr(felder.length > 3, "der geliehene Turm hat Zuege: " + felder.length);
@@ -881,7 +885,7 @@ pruefe("Eine geliehene Figur zieht wie eine eigene", () => {
 
 pruefe("Der Eintrag wandert mit der Figur mit", () => {
     const stand = standAus({ "a1": "K", "a8": "k" });
-    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]);
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [{ art: "T", feld: SCHACH.feldNummer("d5") }]);
 
     gleich(SCHACH.istGeliehen(wirkung.stand, SCHACH.feldNummer("d5")), true, "steht auf d5");
 
@@ -901,7 +905,7 @@ pruefe("Geliehene Figuren zerfallen nach ihrer Zeit", () => {
      * mehr ziehen. Der Test soll den Zerfall pruefen, nicht die Schachregel.
      */
     let stand = standAus({ "a1": "K", "a8": "k", "h1": "T", "h8": "t" });
-    stand = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["S"]).stand;
+    stand = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [{ art: "S", feld: SCHACH.feldNummer("d5") }]).stand;
 
     gleich(SCHACH.figurAuf(stand, SCHACH.feldNummer("d5")), "S", "der Springer steht da");
 
@@ -939,7 +943,7 @@ pruefe("Der Takt laeuft weiter, auch wenn halbzuege zurueckspringt", () => {
 
 pruefe("Geliehene Figuren ueberleben das Speichern", () => {
     const stand = standAus({ "a1": "K", "a8": "k" });
-    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), ["T"]);
+    const wirkung = SCHACH.friedhof(stand, "weiss", SCHACH.feldNummer("d5"), [{ art: "T", feld: SCHACH.feldNummer("d5") }]);
     const zurueck = SCHACH.standNormalisieren(JSON.parse(JSON.stringify(wirkung.stand)));
 
     gleich(SCHACH.istGeliehen(zurueck, SCHACH.feldNummer("d5")), true, "noch geliehen");

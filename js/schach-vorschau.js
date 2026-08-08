@@ -176,22 +176,8 @@ const SCHACH_VORSCHAU = {
             nachher: "Mit dem Schild überlebt sie den Schlag: Er verpufft, der "
                 + "Angreifer bleibt stehen."
         },
-        erdbeben: {
-            brett: [
-                "k.....",
-                "..s.l.",
-                "..T.B.",
-                "...s..",
-                "......",
-                "K....."
-            ],
-            figur: -1,
-            ziel: 16,
-            vorher: "Angetippt wird ein Feld auf der rechten Seite — dorthin "
-                + "rutscht es.",
-            nachher: "Drei Reihen rücken um ein Feld zur Seite. Könige bleiben "
-                + "stehen, und es wirkt auf beide Seiten."
-        },
+        /* Das Erdbeben ist seit v0.54 ein Unglückswürfel — sein Beispiel steht
+           weiter unten bei `PECH_BEISPIELE`. */
         nudelholz: {
             brett: [
                 "k.....",
@@ -351,16 +337,23 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: 14,
+            /*
+             * SEIT v0.54 MÜSSEN DIE GEFALLENEN IM BLOCK LIEGEN. Die Fähigkeit
+             * weckt, wer GENAU DORT fiel — also stehen sie hier auf den vier
+             * Feldern des 2×2-Blocks, dessen linke obere Ecke `ziel` ist
+             * (14, 15, 20, 21). Lägen sie woanders, zeigte die Anleitung eine
+             * Wirkung, die es nicht gibt.
+             */
             beute: [
-                { art: "B", feld: 8 },
-                { art: "L", feld: 9 },
-                { art: "S", feld: 10 },
-                { art: "T", feld: 11 }
+                { art: "B", feld: 14 },
+                { art: "L", feld: 15 },
+                { art: "S", feld: 20 },
+                { art: "T", feld: 21 }
             ],
-            vorher: "Vier geschlagene GEGNER warten darauf, für dich zu kämpfen. "
-                + "Angetippt wird die linke obere Ecke eines freien 2-mal-2-Feldes.",
-            nachher: "Sie stehen in DEINER Farbe wieder auf und ziehen wie eigene — "
-                + "bis sie nach 8 Halbzügen zerfallen."
+            vorher: "Hier sind vier GEGNER gefallen — blass siehst du, wo. Angetippt "
+                + "wird die linke obere Ecke des 2-mal-2-Feldes.",
+            nachher: "Genau die, die dort fielen, stehen in DEINER Farbe wieder auf "
+                + "— jeder auf seinem Feld, bis sie nach 8 Halbzügen zerfallen."
         },
         /*
          * Der Händler zieht sein Angebot aus dem Spielstand — WELCHES es ist,
@@ -448,6 +441,46 @@ const SCHACH_VORSCHAU = {
             vorher: "Zwei Felder noch, dann hat der Turm den Bauern.",
             nachher: "Das Brett wächst an einer zufälligen Seite: Plötzlich ist "
                 + "alles weiter weg als eben noch."
+        },
+        schrumpfung: {
+            /*
+             * Der weisse König steht auf d1, NICHT auf a1: Ein schwarzer Bauer
+             * auf b2 würde a1 angreifen, und dann wäre Weiss im Schach — der
+             * Zug im Beispiel liesse sich gar nicht ausführen, und die ganze
+             * Anleitung fiele weg. Beim Schreiben eines Beispiels also immer
+             * mitdenken, wen die eigenen Figuren gerade bedrohen.
+             */
+            brett: [
+                "k.....",
+                "......",
+                "..T...",
+                "......",
+                ".b...b",
+                "...K.."
+            ],
+            figur: 20,
+            wuerfel: 20,
+            zug: [14, 20],
+            vorher: "Ein Brett mit sechs mal sechs Feldern, und zwei gegnerische "
+                + "Bauern stehen am Rand.",
+            nachher: "Eine ganze Reihe oder Spalte bricht weg — was dort stand, "
+                + "stürzt mit. Nur Seiten mit einem König bleiben verschont."
+        },
+        erdbeben: {
+            brett: [
+                "k.....",
+                "......",
+                "..T...",
+                "......",
+                "......",
+                "K....."
+            ],
+            figur: 20,
+            wuerfel: 20,
+            zug: [14, 20],
+            vorher: "Der Turm zieht vor — auf dem Feld liegt ein Würfel.",
+            nachher: "Der Boden reisst auf: Diese Felder sind ab sofort gesperrt, "
+                + "und zwar für den Rest der Partie. Nur Springer setzen darüber."
         },
         erdrutsch: {
             brett: [

@@ -1274,6 +1274,23 @@ const SCHACH_RUNDE = {
                     seiten[(erste + schritt) % seiten.length]);
             }
 
+        } else if (art === "schrumpfung") {
+            /* Wie die Ausdehnung: gleichverteilt gezogen, und wenn die
+               gezogene Seite nicht kann (König darauf, Brett zu klein), kommt
+               die nächste dran. */
+            const seiten = ["oben", "unten", "links", "rechts"];
+            const wahl = SCHACH_RUNDE._zufallsWert(basis + "|seite");
+            const erste = Math.floor(wahl * seiten.length) % seiten.length;
+
+            for (let schritt = 0; schritt < seiten.length && !wirkung; schritt++) {
+                wirkung = SCHACH.schrumpfung(runde.stand,
+                    seiten[(erste + schritt) % seiten.length]);
+            }
+
+        } else if (art === "erdbeben") {
+            wirkung = SCHACH.erdbebenRisse(runde.stand,
+                SCHACH_RUNDE._zufallsWert(basis + "|risse"));
+
         } else if (art === "meuterei") {
             wirkung = SCHACH.meuterei(runde.stand, farbe,
                 SCHACH_RUNDE._zufallsWert(basis + "|figur"));
@@ -1302,6 +1319,27 @@ const SCHACH_RUNDE = {
         if (wirkung) {
             runde.stand = wirkung.stand;
             text += " — " + wirkung.text;
+
+            /*
+             * ÄNDERT SICH DIE BRETTGRÖSSE, WANDERN DIE LIEGENDEN WÜRFEL MIT
+             * (seit v0.54).
+             *
+             * Der Stand rechnet seine gemerkten Felder selbst um; die Würfel
+             * liegen aber in der RUNDE, davon weiss `schach.js` nichts. Bis
+             * v0.53 blieben sie nach einer Ausdehnung auf ihren alten Nummern
+             * stehen und lagen damit plötzlich woanders — bei der Schrumpfung
+             * wären sie sogar ausserhalb des Bretts gelandet.
+             *
+             * Was auf einer weggebrochenen Linie lag, fällt mit weg: Genau das
+             * ist beim Einsturz gewollt.
+             */
+            if (typeof wirkung.umrechnen === "function") {
+                runde.bonus = runde.bonus
+                    .map((eintrag) => Object.assign({}, eintrag, {
+                        feld: wirkung.umrechnen(eintrag.feld)
+                    }))
+                    .filter((eintrag) => eintrag.feld >= 0);
+            }
         } else {
             /* Auch ein wirkungsloser Unglückswürfel wird festgehalten: Sonst
                stünde im Verlauf ein Einsammeln ohne Folge, und niemand wüsste,
@@ -1359,19 +1397,28 @@ const SCHACH_RUNDE = {
             return SCHACH.verstaerkung(runde.stand, farbe, feld);
         }
 
-        if (art === "erdbeben") {
-            return SCHACH.erdbeben(runde.stand, feld);
-        }
+        /* Das Erdbeben ist seit v0.54 ein Unglückswürfel und braucht kein
+           Zielfeld mehr — es steht in `_pechAusloesen`. */
 
         if (art === "mauer") {
             return SCHACH.mauerLegen(runde.stand, feld);
         }
 
         /*
-         * Friedhof: Es stehen die zuletzt gefallenen GEGNER auf — die jüngsten
-         * zuerst, weil sie am ehesten noch zur Stellung passen. Sie werden aus
-         * der Grabliste verbraucht; `verloren` bleibt unangetastet, damit die
-         * Bilanz weiter zählt, was wirklich geschlagen wurde.
+         * DER FRIEDHOF WECKT, WER GENAU DORT GEFALLEN IST (seit v0.54).
+         *
+         * Die Geweckten werden aus der Grabliste verbraucht; `verloren` bleibt
+         * unangetastet, damit die Bilanz weiter zählt, was wirklich geschlagen
+         * wurde.
+         *
+         * Bis v0.53 nahm er die vier ZULETZT gefallenen Gegner und stellte sie
+         * auf ein beliebiges freies 2×2-Feld. Auf Nutzer-Ansage ist daraus eine
+         * andere Regel geworden: Man sieht auf dem Brett, WO die Gefallenen
+         * liegen, wählt ein 2×2-Feld — und genau die, die dort fielen, stehen
+         * dort wieder auf, jeder auf seinem eigenen Feld.
+         *
+         * Das macht die Fähigkeit ortsgebunden statt beliebig: Sie ist stark,
+         * wo viel gestorben ist, und nutzlos auf einem leeren Flügel.
          */
         if (art === "friedhof") {
             const gegner = SCHACH.gegner(farbe);
@@ -1381,18 +1428,45 @@ const SCHACH_RUNDE = {
                 return null;
             }
 
-            const arten = gefallene
-                .slice(-(SCHACH.FRIEDHOF_KANTE * SCHACH.FRIEDHOF_KANTE))
-                .reverse()
-                .map((eintrag) => eintrag.art);
+            const block = SCHACH.friedhofsFelder(runde.stand, feld);
+            if (!block) {
+                return null;
+            }
 
-            const wirkung = SCHACH.friedhof(runde.stand, farbe, feld, arten);
+            /* Wer liegt in diesem Block? Je Feld höchstens einer — fielen dort
+               mehrere, steht der zuletzt gefallene auf. */
+            const dort = [];
+            const benutzt = [];
+
+            for (let stelle = gefallene.length - 1; stelle >= 0; stelle--) {
+                const eintrag = gefallene[stelle];
+
+                if (block.indexOf(eintrag.feld) === -1
+                    || benutzt.indexOf(eintrag.feld) !== -1) {
+                    continue;
+                }
+                benutzt.push(eintrag.feld);
+                dort.push({ stelle: stelle, art: eintrag.art, feld: eintrag.feld });
+            }
+
+            if (dort.length === 0) {
+                return null;
+            }
+
+            const wirkung = SCHACH.friedhof(runde.stand, farbe, feld,
+                dort.map((eintrag) => ({ art: eintrag.art, feld: eintrag.feld })));
+
             if (!wirkung) {
                 return null;
             }
 
-            runde.gefallen[gegner] = gefallene.slice(0,
-                Math.max(0, gefallene.length - wirkung.felder.length));
+            /* Nur die verbraucht, die wirklich aufgestanden sind. */
+            const geweckt = dort
+                .filter((eintrag) => wirkung.felder.indexOf(eintrag.feld) !== -1)
+                .map((eintrag) => eintrag.stelle);
+
+            runde.gefallen[gegner] = gefallene.filter(
+                (eintrag, stelle) => geweckt.indexOf(stelle) === -1);
 
             return wirkung;
         }
