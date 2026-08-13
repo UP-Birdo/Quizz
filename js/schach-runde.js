@@ -298,58 +298,65 @@ const SCHACH_RUNDE = {
 
         const kante = variante.breite;
         const rand = SCHACH_VARIANTEN.KREUZ.rand;
-        const saat = (runde.id || "partie") + (saatZusatz || "") + "|kreuz|fluegel";
+        const mitte = kante - 2 * rand;
+        const saat = (runde.id || "partie") + (saatZusatz || "") + "|kreuz|seiten";
 
-        /* Unter 0,5 behält die Vorlage ihre Seiten, darüber werden sie
-           getauscht. Die Kennung steht VORNE in der Saat — siehe die eiserne
-           Regel zu `_zufallsWert`. */
-        const getauscht = SCHACH_RUNDE._zufallsWert(saat) >= 0.5;
+        /*
+         * WER BEKOMMT WELCHES PAAR? Die Teams stehen sich gegenüber: ein Team
+         * oben und unten, das andere links und rechts. Gewürfelt wird nicht —
+         * gerechnet, aus der Partie-Kennung (eiserne Regel: `Math.random()`
+         * hat im Modell nichts zu suchen). Jedes Gerät kommt damit auf
+         * dasselbe Brett, und ein Test kann es nachrechnen.
+         *
+         * Die Kennung steht VORNE in der Saat, siehe die Regel zu
+         * `_zufallsWert`.
+         */
+        const senkrechtIstWeiss = SCHACH_RUNDE._zufallsWert(saat) < 0.5;
 
-        let brett = variante.aufstellung;
+        const weisseSeiten = senkrechtIstWeiss
+            ? ["oben", "unten"]
+            : ["links", "rechts"];
 
-        if (getauscht) {
-            /*
-             * GETAUSCHT WIRD DIE FARBE, NICHT DER PLATZ.
-             *
-             * Beide Flügel tragen dieselbe Figurenfolge (`kreuzFluegelFigur`
-             * kennt nur die Stelle, nicht die Seite) — sie sind spiegelgleich
-             * besetzt. Ein Platztausch samt Farbwechsel hätte sich deshalb
-             * gegenseitig aufgehoben und immer wieder dieselbe Aufstellung
-             * ergeben; genau so ist es beim Bauen von v0.63 zuerst passiert.
-             * Der Farbwechsel an Ort und Stelle ist das, was die Frage
-             * beantwortet: Wem gehört dieser Flügel?
-             */
-            const zeichen = brett.split("");
-
-            for (let reihe = rand; reihe < kante - rand; reihe++) {
-                for (let spalte = 0; spalte < rand; spalte++) {
-                    const links = reihe * kante + spalte;
-                    const rechts = reihe * kante + (kante - 1 - spalte);
-
-                    zeichen[links] = SCHACH_RUNDE._farbeTauschen(zeichen[links]);
-                    zeichen[rechts] = SCHACH_RUNDE._farbeTauschen(zeichen[rechts]);
-                }
-            }
-
-            brett = zeichen.join("");
+        const zeichen = [];
+        for (let feld = 0; feld < kante * kante; feld++) {
+            zeichen.push(".");
         }
 
+        /*
+         * VIER VOLLE ARMEEN (seit v0.65). Jede der vier Seiten bekommt
+         * Grundreihe plus Bauernreihe — beim 12er-Kreuz je 16 Einheiten.
+         * Jeder Bauer merkt sich dabei, von WELCHER Seite er kommt; daran
+         * hängt, wohin er läuft (`SCHACH.bauernSeite`).
+         */
+        const bauernSeiten = [];
+
+        for (const eintrag of SCHACH_VARIANTEN.kreuzFelder(mitte)) {
+            const istWeiss = (weisseSeiten.indexOf(eintrag.seite) !== -1);
+
+            zeichen[eintrag.feld] = istWeiss
+                ? eintrag.figur
+                : eintrag.figur.toLowerCase();
+
+            if (eintrag.istBauer) {
+                bauernSeiten.push({ feld: eintrag.feld, seite: eintrag.seite });
+            }
+        }
+
+        /*
+         * ZWEI ARMEEN JE TEAM HEISST ZWEI KÖNIGE JE TEAM — und damit zwei
+         * Leben, dieselbe Regel wie bei der Zufallsarmee und beim Doppelbrett.
+         * Den ersten König schlägt der Gegner wie jede Figur, beim letzten
+         * gelten wieder Schach und Matt. Ohne diesen Schalter wäre Schachmatt
+         * mit zwei Königen gar nicht eindeutig (eiserne Regel).
+         */
         runde.stand = Object.assign({}, runde.stand, {
-            brett: brett,
+            brett: zeichen.join(""),
+            bauernSeiten: bauernSeiten,
+            koenigeAlsLeben: true,
             risse: SCHACH_VARIANTEN.kreuzEcken(variante)
         });
 
         return runde;
-    },
-
-    /* Aus einer weissen Figur eine schwarze machen und umgekehrt. */
-    _farbeTauschen(zeichen) {
-        if (zeichen === ".") {
-            return ".";
-        }
-        return (zeichen === zeichen.toUpperCase())
-            ? zeichen.toLowerCase()
-            : zeichen.toUpperCase();
     },
 
     /* ---------------------------------------------------------------- *
@@ -1191,6 +1198,21 @@ const SCHACH_RUNDE = {
         } else {
             return null;
         }
+
+        /*
+         * GESCHOBENE BAUERN NEHMEN IHRE STARTSEITE MIT (seit v0.65).
+         *
+         * Mehrere Fähigkeiten bewegen Figuren, ohne dass ein Zug stattfindet:
+         * Nudelholz, Bauernschub, Erdbeben, Spiegel. Ihr `wege` sagt, was von
+         * wo nach wo ging — genau daran wandern die Einträge entlang. Ohne das
+         * bliebe der Eintrag auf dem alten Feld liegen, und der geschobene
+         * Bauer fiele auf die Farbregel zurück: Auf dem Kreuz liefe er danach
+         * in die falsche Richtung.
+         *
+         * Für jedes andere Brett ist der Aufruf wirkungslos — dort ist die
+         * Liste leer.
+         */
+        neu.stand = SCHACH.bauernSeitenVerschieben(neu.stand, wege);
 
         neu.faehigkeiten[farbe].splice(stelle, 1);
         neu.zugZaehler = alt.zugZaehler + 1;

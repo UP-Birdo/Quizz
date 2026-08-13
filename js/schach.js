@@ -247,6 +247,11 @@ const SCHACH = {
                gekommen ist. */
             rochadeKoenige: SCHACH._koenigStartfelder(variante),
             enPassant: "",
+
+            /* Wo der Bauer steht, der den Doppelschritt gemacht hat (seit
+               v0.65). Bis dahin liess sich das aus dem Zielfeld zurückrechnen —
+               das ging nur, solange alle Bauern senkrecht ziehen. */
+            enPassantOpfer: -1,
             halbzuege: 0,
 
             /*
@@ -368,7 +373,29 @@ const SCHACH = {
              * Verfolgt wird das FELD, nicht die Figur: Zieht eine geliehene
              * Figur, wandert ihr Eintrag mit (siehe `_geliehenNachfuehren`).
              */
-            geliehen: []
+            geliehen: [],
+
+            /*
+             * DIE STARTSEITE EINZELNER BAUERN (seit v0.65): [{ feld, seite }],
+             * `seite` ist "oben", "unten", "links" oder "rechts".
+             *
+             * WOZU. Ein Bauer zieht von seiner Startseite geradewegs zur
+             * gegenüberliegenden — dort wandelt er um. Bis v0.64 folgte diese
+             * Richtung der FARBE (Weiss hoch, Schwarz runter), und damit
+             * konnte eine Armee nur oben oder unten stehen. Auf dem Kreuz
+             * stehen Armeen auch links und rechts.
+             *
+             * ADDITIV UND RÜCKFALLSICHER: Steht ein Bauer nicht in dieser
+             * Liste, gilt weiter die Farbregel (`SCHACH.bauernSeite`). Jedes
+             * Brett von vorher und jede laufende Partie rechnet deshalb
+             * unverändert weiter — die Liste ist auf allen bisherigen Brettern
+             * schlicht leer.
+             *
+             * Verfolgt wird auch hier das FELD: Zieht der Bauer, wandert sein
+             * Eintrag mit (`_bauernSeitenNachfuehren`). Wandelt er um, fällt
+             * der Eintrag weg — er ist dann kein Bauer mehr.
+             */
+            bauernSeiten: []
         };
     },
 
@@ -588,7 +615,218 @@ const SCHACH = {
                 .map((eintrag) => ({ feld: eintrag.feld, bis: eintrag.bis }));
         }
 
+        /* Die Startseiten einzelner Bauern (seit v0.65). Unbekannte Seiten
+           fallen weg — dann gilt für den Bauern wieder die Farbregel. */
+        if (Array.isArray(roh.bauernSeiten)) {
+            stand.bauernSeiten = roh.bauernSeiten
+                .filter((eintrag) => eintrag
+                    && Number.isInteger(eintrag.feld) && eintrag.feld >= 0
+                    && eintrag.feld < felder
+                    && SCHACH.SEITEN[eintrag.seite])
+                .map((eintrag) => ({ feld: eintrag.feld, seite: eintrag.seite }))
+                .filter((eintrag, stelle, alle) =>
+                    alle.findIndex((anderer) => anderer.feld === eintrag.feld) === stelle);
+        }
+
+        /* Das Opfer eines Doppelschritts (seit v0.65) — siehe `_ausfuehren`. */
+        if (Number.isInteger(roh.enPassantOpfer) && roh.enPassantOpfer >= 0
+            && roh.enPassantOpfer < felder) {
+            stand.enPassantOpfer = roh.enPassantOpfer;
+        }
+
         return stand;
+    },
+
+    /* ---------------------------------------------------------------- *
+     * WOHIN EIN BAUER ZIEHT (seit v0.65)
+     *
+     * Die Regel in einem Satz, so wie der Nutzer sie beschrieben hat: Ein
+     * Bauer schaut, welche Seite seine STARTSEITE ist, und läuft von dort
+     * geradewegs auf die gegenüberliegende zu — die ist sein Ziel, dort
+     * wandelt er um. Geschlagen wird schräg nach vorn: Läuft er von rechts
+     * nach links, schlägt er vor sich oben und unten.
+     *
+     * Bis v0.64 hing das an der FARBE (Weiss hoch, Schwarz runter). Das war
+     * dieselbe Regel — nur konnte eine Armee damit ausschliesslich oben oder
+     * unten stehen. Auf dem Kreuz stehen Armeen auch links und rechts.
+     *
+     * ALLES AN EINER STELLE: Zugerzeugung, Bedrohungsprüfung, Doppelschritt
+     * und Umwandlung fragen nur noch die vier Funktionen hier. Wer eine
+     * fünfte Richtung erfände, änderte genau diese Tabelle.
+     * ---------------------------------------------------------------- */
+
+    /*
+     * Die vier Startseiten und was aus ihnen folgt:
+     *   dr, ds   Laufrichtung (Reihe, Spalte)
+     *   gegen    die gegenüberliegende Seite — dort wandelt der Bauer um
+     */
+    SEITEN: {
+        unten:  { dr: -1, ds: 0, gegen: "oben" },
+        oben:   { dr: 1, ds: 0, gegen: "unten" },
+        links:  { dr: 0, ds: 1, gegen: "rechts" },
+        rechts: { dr: 0, ds: -1, gegen: "links" }
+    },
+
+    /*
+     * Von welcher Seite kam dieser Bauer?
+     *
+     * Steht er nicht in `bauernSeiten`, gilt die Farbregel von früher: Weiss
+     * startet unten, Schwarz oben. Genau dieser Rückfall hält jedes bisherige
+     * Brett und jede laufende Partie unverändert am Laufen.
+     */
+    bauernSeite(stand, feld, farbe) {
+        const liste = Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [];
+        const eintrag = liste.find((einer) => einer.feld === feld);
+
+        if (eintrag && SCHACH.SEITEN[eintrag.seite]) {
+            return eintrag.seite;
+        }
+        return (farbe === SCHACH.WEISS) ? "unten" : "oben";
+    },
+
+    /* Die Laufrichtung dieses Bauern als { dr, ds }. */
+    bauernRichtung(stand, feld, farbe) {
+        const seite = SCHACH.bauernSeite(stand, feld, farbe);
+        return { dr: SCHACH.SEITEN[seite].dr, ds: SCHACH.SEITEN[seite].ds };
+    },
+
+    /*
+     * Die beiden Felder, die ein Bauer von hier aus SCHLAGEN kann — schräg
+     * nach vorn. Senkrechte Läufer schlagen links und rechts vor sich,
+     * waagerechte oben und unten vor sich. Gerechnet wird es aus der
+     * Laufrichtung, nicht aufgezählt: Der Seitwärtsschritt steht immer quer
+     * dazu (`{ dr: ds, ds: dr }`).
+     */
+    bauernSchlagfelder(stand, feld, farbe) {
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+        const richtung = SCHACH.bauernRichtung(stand, feld, farbe);
+
+        const felder = [];
+        for (const quer of [1, -1]) {
+            const r = reihe + richtung.dr + quer * richtung.ds;
+            const s = spalte + richtung.ds + quer * richtung.dr;
+
+            if (SCHACH._imBrett(stand, r, s)) {
+                felder.push(SCHACH._feld(stand, r, s));
+            }
+        }
+        return felder;
+    },
+
+    /*
+     * Ist dieses Feld das ZIEL des Bauern — also der Brettrand auf der
+     * gegenüberliegenden Seite? Dann wandelt er dort um.
+     */
+    bauernAmZiel(stand, feld, farbe, vonFeld) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+
+        /* Gefragt wird nach der Seite, von der der Bauer LOSGEZOGEN ist —
+           auf dem Zielfeld steht sein Eintrag ja noch nicht. */
+        const seite = SCHACH.bauernSeite(stand,
+            Number.isInteger(vonFeld) ? vonFeld : feld, farbe);
+
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        if (seite === "unten") {
+            return reihe === 0;
+        }
+        if (seite === "oben") {
+            return reihe === hoehe - 1;
+        }
+        if (seite === "links") {
+            return spalte === breite - 1;
+        }
+        return spalte === 0;
+    },
+
+    /*
+     * Die zwei Reihen (oder Spalten) an der Startseite, aus denen ein Bauer
+     * den Doppelschritt hat. Geliefert wird eine Prüfung auf ein Feld.
+     */
+    bauernDarfDoppelt(stand, feld, farbe) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const seite = SCHACH.bauernSeite(stand, feld, farbe);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        if (seite === "unten") {
+            return reihe === hoehe - 1 || reihe === hoehe - 2;
+        }
+        if (seite === "oben") {
+            return reihe === 0 || reihe === 1;
+        }
+        if (seite === "links") {
+            return spalte === 0 || spalte === 1;
+        }
+        return spalte === breite - 1 || spalte === breite - 2;
+    },
+
+    /*
+     * Führt die Startseiten über einen Zug nach: Der Eintrag wandert mit der
+     * Figur, ein geschlagener verschwindet. Dasselbe Muster wie bei den
+     * geliehenen Figuren.
+     *
+     * `entfernen` nimmt zusätzliche Felder heraus — gebraucht für das Opfer
+     * eines En-passant-Schlags, das nicht auf dem Zielfeld steht.
+     */
+    _bauernSeitenNachfuehren(stand, von, nach, wandeltUm, entfernen) {
+        const liste = Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [];
+        const weg = Array.isArray(entfernen) ? entfernen : [];
+
+        const neu = [];
+        for (const eintrag of liste) {
+            if (eintrag.feld === nach || weg.indexOf(eintrag.feld) !== -1) {
+                /* Dort stand jemand, der gerade geschlagen wurde. */
+                continue;
+            }
+            if (eintrag.feld === von) {
+                /* Wer umwandelt, ist kein Bauer mehr und braucht keine
+                   Richtung. */
+                if (!wandeltUm) {
+                    neu.push({ feld: nach, seite: eintrag.seite });
+                }
+                continue;
+            }
+            neu.push(eintrag);
+        }
+        return neu;
+    },
+
+    /*
+     * Verschiebt Startseiten entlang beliebiger Wege — für die Fähigkeiten,
+     * die Figuren bewegen, ohne dass ein Zug stattfindet (Nudelholz,
+     * Bauernschub, Erdbeben, Erdrutsch). Ohne das bliebe der Eintrag auf dem
+     * alten Feld liegen, und der geschobene Bauer fiele auf die Farbregel
+     * zurück — auf dem Kreuz liefe er danach in die falsche Richtung.
+     */
+    bauernSeitenVerschieben(stand, wege) {
+        const liste = Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [];
+        if (!Array.isArray(wege) || wege.length === 0 || liste.length === 0) {
+            return stand;
+        }
+
+        /* Erst alle Umzüge sammeln, dann anwenden: Zwei Figuren können in
+           einem Zug die Plätze tauschen. */
+        const umzug = {};
+        for (const weg of wege) {
+            if (weg && Number.isInteger(weg.von) && Number.isInteger(weg.nach)) {
+                umzug[weg.von] = weg.nach;
+            }
+        }
+
+        const neu = liste
+            .map((eintrag) => (Number.isInteger(umzug[eintrag.feld])
+                ? { feld: umzug[eintrag.feld], seite: eintrag.seite }
+                : eintrag))
+            /* Wo jetzt kein Bauer mehr steht, braucht es keinen Eintrag. */
+            .filter((eintrag) => SCHACH.artVon(SCHACH.figurAuf(stand, eintrag.feld)) === "B");
+
+        return Object.assign({}, stand, { bauernSeiten: neu });
     },
 
     /* ---------------------------------------------------------------- *
@@ -1489,6 +1727,10 @@ const SCHACH = {
 
     /*
      * Die letzte Reihe für diese Farbe — dort wandelt ein Bauer um.
+     *
+     * Gilt für senkrecht ziehende Bauern, also für jedes Brett ausser dem
+     * Kreuz. Wer wissen will, ob ein bestimmter Bauer am Ziel ist, fragt seit
+     * v0.65 `SCHACH.bauernAmZiel` — das kennt auch die waagerechten.
      */
     letzteReiheVon(stand, farbe) {
         return (farbe === SCHACH.WEISS) ? 0 : SCHACH.hoeheVon(stand) - 1;
@@ -1509,8 +1751,9 @@ const SCHACH = {
         if (SCHACH.artVon(SCHACH.figurAuf(stand, zug.von)) !== "B") {
             return [zug];
         }
-        if (SCHACH.reiheVon(zug.nach, SCHACH.breiteVon(stand))
-            !== SCHACH.letzteReiheVon(stand, farbe)) {
+        /* Am Ziel ist der Bauer auf der Seite GEGENÜBER seiner Startseite —
+           seit v0.65 auch dann, wenn er waagerecht zieht. */
+        if (!SCHACH.bauernAmZiel(stand, zug.nach, farbe, zug.von)) {
             return [zug];
         }
 
@@ -1522,9 +1765,13 @@ const SCHACH = {
         const liste = [];
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
-        const richtung = (farbe === SCHACH.WEISS) ? -1 : 1;
         const reihe = SCHACH.reiheVon(von, breite);
         const spalte = SCHACH.spalteVon(von, breite);
+
+        /* SEIT v0.65 FRAGT DER BAUER SEINE STARTSEITE, nicht seine Farbe —
+           siehe „Wohin ein Bauer zieht". Für jedes Brett von früher liefert
+           das exakt dasselbe wie die alte Farbregel. */
+        const richtung = SCHACH.bauernRichtung(stand, von, farbe);
         /*
          * VON WO DARF EIN BAUER ZWEI FELDER? (seit v0.52)
          *
@@ -1539,9 +1786,10 @@ const SCHACH = {
          * Die Regel bleibt für den Spieler also überall dieselbe: Beim ersten
          * Zug zwei Felder, danach eines.
          */
-        const grundreihen = (farbe === SCHACH.WEISS)
-            ? [hoehe - 1, hoehe - 2] : [0, 1];
-        const darfDoppelt = grundreihen.indexOf(reihe) !== -1;
+        /* Seit v0.65 sind es die beiden Reihen (oder Spalten) an der
+           STARTSEITE — für Weiss unten und Schwarz oben ist das genau die
+           Regel von vorher. */
+        const darfDoppelt = SCHACH.bauernDarfDoppelt(stand, von, farbe);
 
         const anhaengen = (zug) => {
             for (const einzeln of SCHACH._mitUmwandlung(stand, zug, farbe)) {
@@ -1557,15 +1805,19 @@ const SCHACH = {
          * dahinter. Ohne diese Prüfung setzte ein Bauer über eine Mauer hinweg
          * — das darf nur der Springer.
          */
-        if (SCHACH._imBrett(stand, reihe + richtung, spalte)) {
-            const einsVor = SCHACH._feld(stand, reihe + richtung, spalte);
+        if (SCHACH._imBrett(stand, reihe + richtung.dr, spalte + richtung.ds)) {
+            const einsVor = SCHACH._feld(stand, reihe + richtung.dr, spalte + richtung.ds);
 
             if (SCHACH.figurAuf(stand, einsVor) === "." && !SCHACH.gesperrt(stand, einsVor)) {
                 anhaengen(SCHACH._zug(stand, von, einsVor));
 
                 /* Zwei Felder aus der Grundstellung. */
-                if (darfDoppelt && SCHACH._imBrett(stand, reihe + 2 * richtung, spalte)) {
-                    const zweiVor = SCHACH._feld(stand, reihe + 2 * richtung, spalte);
+                if (darfDoppelt && SCHACH._imBrett(stand,
+                    reihe + 2 * richtung.dr, spalte + 2 * richtung.ds)) {
+
+                    const zweiVor = SCHACH._feld(stand,
+                        reihe + 2 * richtung.dr, spalte + 2 * richtung.ds);
+
                     if (SCHACH.figurAuf(stand, zweiVor) === ".") {
                         liste.push(SCHACH._zug(stand, von, zweiVor));
                     }
@@ -1573,18 +1825,14 @@ const SCHACH = {
             }
         }
 
-        /* Schlagen, schräg. */
-        for (const ds of [-1, 1]) {
-            const r = reihe + richtung;
-            const s = spalte + ds;
-            if (!SCHACH._imBrett(stand, r, s)) {
-                continue;
-            }
-            const ziel = SCHACH._feld(stand, r, s);
+        /* Schlagen, schräg nach vorn — welche zwei Felder das sind, rechnet
+           `bauernSchlagfelder` aus der Laufrichtung. */
+        for (const ziel of SCHACH.bauernSchlagfelder(stand, von, farbe)) {
             const dort = SCHACH.figurAuf(stand, ziel);
 
             if (dort !== "." && SCHACH.farbeVon(dort) !== farbe) {
                 anhaengen(SCHACH._zug(stand, von, ziel));
+
             } else if (dort === "." && stand.enPassant
                 && SCHACH.feldNummer(stand.enPassant, breite, hoehe) === ziel) {
                 /*
@@ -1592,11 +1840,25 @@ const SCHACH = {
                  * `enPassantFeld` ist das Feld, auf dem er WIRKLICH steht — es
                  * ist nicht das Zielfeld. Wer sich merken will, wo eine Figur
                  * fiel (Fähigkeit „Wiederbelebung"), braucht genau dieses.
+                 *
+                 * SEIT v0.65 STEHT ES IM STAND (`enPassantOpfer`). Bis dahin
+                 * wurde es aus dem Zielfeld zurückgerechnet — das ging nur,
+                 * solange BEIDE Bauern senkrecht ziehen. Auf dem Kreuz kann
+                 * der Doppelschritt waagerecht gewesen sein, und dann liegt
+                 * das Opfer woanders. Fehlt der Eintrag (Partien von früher),
+                 * gilt die alte Rechnung.
                  */
+                const opfer = Number.isInteger(stand.enPassantOpfer)
+                    && stand.enPassantOpfer >= 0
+                    ? stand.enPassantOpfer
+                    : SCHACH._feld(stand,
+                        SCHACH.reiheVon(ziel, breite) - richtung.dr,
+                        SCHACH.spalteVon(ziel, breite) - richtung.ds);
+
                 liste.push(SCHACH._zug(stand, von, ziel, {
                     enPassant: true,
                     schlaegt: true,
-                    enPassantFeld: SCHACH._feld(stand, reihe, s)
+                    enPassantFeld: opfer
                 }));
             }
         }
@@ -1618,14 +1880,34 @@ const SCHACH = {
         const reihe = SCHACH.reiheVon(feld, breite);
         const spalte = SCHACH.spalteVon(feld, breite);
 
-        /* Bauern. */
-        const bauernRichtung = (farbe === SCHACH.WEISS) ? 1 : -1;
-        for (const ds of [-1, 1]) {
-            const r = reihe + bauernRichtung;
-            const s = spalte + ds;
-            if (SCHACH._imBrett(stand, r, s)) {
-                const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
-                if (SCHACH.artVon(dort) === "B" && SCHACH.farbeVon(dort) === farbe) {
+        /*
+         * BAUERN — SEIT v0.65 WIRD JEDER EINZELN GEFRAGT.
+         *
+         * Bis v0.64 stand hier die Umkehrung der Farbregel: Ein weisser Bauer
+         * greift von schräg unten an, ein schwarzer von schräg oben. Mit
+         * waagerecht ziehenden Bauern (Kreuz) stimmt das nicht mehr.
+         *
+         * Ein angreifender Bauer steht in jedem Fall auf einem der vier
+         * DIAGONALEN Nachbarfelder — gleich, in welche Richtung er zieht.
+         * Also werden die vier durchgegangen, und für jeden Bauern dort wird
+         * seine EIGENE Schlagreichweite gefragt. Das ist exakt statt geraten
+         * und kostet dieselben vier Prüfungen wie vorher zwei.
+         */
+        for (const dr of [-1, 1]) {
+            for (const ds of [-1, 1]) {
+                const r = reihe + dr;
+                const s = spalte + ds;
+                if (!SCHACH._imBrett(stand, r, s)) {
+                    continue;
+                }
+
+                const nachbar = SCHACH._feld(stand, r, s);
+                const dort = SCHACH.figurAuf(stand, nachbar);
+
+                if (SCHACH.artVon(dort) !== "B" || SCHACH.farbeVon(dort) !== farbe) {
+                    continue;
+                }
+                if (SCHACH.bauernSchlagfelder(stand, nachbar, farbe).indexOf(feld) !== -1) {
                     return true;
                 }
             }
@@ -1926,7 +2208,15 @@ const SCHACH = {
 
             /* Geliehene Figuren wandern mit ihrem Zug mit; eine geschlagene
                verliert ihren Eintrag. */
-            geliehen: SCHACH._geliehenNachfuehren(stand, zug.von, zug.nach)
+            geliehen: SCHACH._geliehenNachfuehren(stand, zug.von, zug.nach),
+
+            /* Wird weiter unten nachgeführt, sobald feststeht, ob der Bauer
+               umgewandelt oder en passant geschlagen hat. */
+            bauernSeiten: [],
+
+            /* En passant gilt genau einen Halbzug — beides wird unten neu
+               gesetzt, wenn dieser Zug ein Doppelschritt war. */
+            enPassantOpfer: -1
         };
 
         if (stand.schildFeld >= 0 && stand.schildFarbe === stand.amZug
@@ -2011,13 +2301,36 @@ const SCHACH = {
             neu.rochade = rechte;
         }
 
-        /* Doppelschritt eines Bauern eröffnet en passant. */
-        if (art === "B"
-            && Math.abs(SCHACH.reiheVon(zug.nach, breite) - SCHACH.reiheVon(zug.von, breite)) === 2) {
-            const zwischen = (SCHACH.reiheVon(zug.von, breite) + SCHACH.reiheVon(zug.nach, breite))
-                / 2 * breite + SCHACH.spalteVon(zug.von, breite);
+        /*
+         * Doppelschritt eines Bauern eröffnet en passant.
+         *
+         * SEIT v0.65 GILT DAS IN BEIDEN ACHSEN: Auf dem Kreuz zieht ein Bauer
+         * auch waagerecht, und dann liegt das übersprungene Feld eine SPALTE
+         * daneben statt eine Reihe. Gerechnet wird deshalb aus der Mitte
+         * zwischen Start und Ziel — das stimmt für beide Achsen. Dazu wird
+         * gemerkt, WO der Bauer danach steht (`enPassantOpfer`): Der Schlagende
+         * kann aus einer anderen Richtung kommen und es sonst nicht ausrechnen.
+         */
+        const dReihe = SCHACH.reiheVon(zug.nach, breite) - SCHACH.reiheVon(zug.von, breite);
+        const dSpalte = SCHACH.spalteVon(zug.nach, breite) - SCHACH.spalteVon(zug.von, breite);
+
+        if (art === "B" && (Math.abs(dReihe) === 2 || Math.abs(dSpalte) === 2)) {
+            const zwischen = SCHACH._feld(stand,
+                SCHACH.reiheVon(zug.von, breite) + dReihe / 2,
+                SCHACH.spalteVon(zug.von, breite) + dSpalte / 2);
+
             neu.enPassant = SCHACH.feldName(zwischen, breite, SCHACH.hoeheVon(stand));
+            neu.enPassantOpfer = zug.nach;
         }
+
+        /*
+         * Die Startseiten wandern mit (seit v0.65): Der Eintrag des ziehenden
+         * Bauern zieht auf sein Zielfeld, der eines geschlagenen fällt weg, und
+         * wer umwandelt, braucht keinen mehr — er ist kein Bauer mehr.
+         */
+        neu.bauernSeiten = SCHACH._bauernSeitenNachfuehren(
+            stand, zug.von, zug.nach, !!zug.umwandlung,
+            zug.enPassant ? [zug.enPassantFeld] : []);
 
         /*
          * Zähler für die Fünfzig-Züge-Regel. ACHTUNG: Er springt hier auf 0
@@ -2989,6 +3302,12 @@ const SCHACH = {
 
             geliehen: SCHACH.geliehene(stand)
                 .map((eintrag) => ({ feld: umrechnen(eintrag.feld), bis: eintrag.bis }))
+                .filter((eintrag) => gueltig(eintrag.feld)),
+
+            /* Die achte Stelle (seit v0.65): die Startseiten der Bauern. Wer
+               vom Brett fällt, verliert seinen Eintrag mit. */
+            bauernSeiten: (Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [])
+                .map((eintrag) => ({ feld: umrechnen(eintrag.feld), seite: eintrag.seite }))
                 .filter((eintrag) => gueltig(eintrag.feld)),
 
             risse: liste(SCHACH.risse(stand))

@@ -983,23 +983,23 @@ const SCHACH_VARIANTEN = {
         rand: 2,
 
         /*
-         * Die Offiziere eines Flügels, von aussen nach innen gezählt. Genau
-         * EINE Dame — mit zweien wäre der Flügel stärker als die Front, und
-         * die Partie liefe über die Ränder statt durch die Mitte. Ab der
-         * fünften Stelle wiederholt sich das Muster.
+         * VIER VOLLE ARMEEN (seit v0.65, Ansage vom 13.08.).
+         *
+         * Bis v0.64 hatten die seitlichen Streifen nur Offiziere in der
+         * äusseren Spalte — weil ein Bauer damals in Richtung seiner FARBE zog
+         * und am Rand deshalb falsch gelaufen wäre. Seit v0.65 merkt sich
+         * jeder Bauer seine STARTSEITE (das Feld `bauernSeiten` im Stand,
+         * gefragt wird es über `SCHACH.bauernSeite`), und damit
+         * bekommt jede der vier Seiten dieselbe volle Armee:
+         *
+         *     aussen   die Grundreihe (Türme, Springer, Läufer, Dame, König)
+         *     innen    eine ganze Reihe Bauern
+         *
+         * Beim 12-mal-12-Kreuz ist der Streifen 2 mal 8 Felder gross — das
+         * sind genau die 16 Einheiten einer gewohnten Armee. Die anderen
+         * Grössen skalieren mit: 12 beim kleinen, 20 beim grossen Kreuz.
          */
-        fluegel: ["T", "S", "L", "D"],
-        fluegelWeiter: ["L", "S", "T"]
-    },
-
-    /* Welche Figur an dieser Stelle des Flügels steht. */
-    kreuzFluegelFigur(stelle) {
-        const anfang = SCHACH_VARIANTEN.KREUZ.fluegel;
-        if (stelle < anfang.length) {
-            return anfang[stelle];
-        }
-        const weiter = SCHACH_VARIANTEN.KREUZ.fluegelWeiter;
-        return weiter[(stelle - anfang.length) % weiter.length];
+        seiten: ["oben", "unten", "links", "rechts"]
     },
 
     /*
@@ -1012,41 +1012,74 @@ const SCHACH_VARIANTEN = {
      * ist, entscheidet die Partie-Kennung.
      */
     kreuzAufstellung(mitte) {
-        const rand = SCHACH_VARIANTEN.KREUZ.rand;
-        const kante = mitte + 2 * rand;
+        const felder = SCHACH_VARIANTEN.kreuzFelder(mitte);
+        const kante = mitte + 2 * SCHACH_VARIANTEN.KREUZ.rand;
         const zeichen = [];
 
         for (let feld = 0; feld < kante * kante; feld++) {
             zeichen.push(".");
         }
 
-        const setzen = (reihe, spalte, figur) => {
-            zeichen[reihe * kante + spalte] = figur;
-        };
+        /* Die Vorlage: oben und links Schwarz, unten und rechts Weiss. Welche
+           Seiten eine Partie wirklich bekommt, entscheidet
+           `SCHACH_RUNDE.kreuzAufstellen` — hier steht nur EIN gültiger Fall,
+           an dem sich alles Weitere ausrichtet. */
+        const weiss = ["unten", "rechts"];
 
-        /* Die Front-Armeen: gewohnte Grundreihe plus eine Reihe Bauern. */
-        const grundreihe = SCHACH_VARIANTEN._grundreiheFuer(mitte);
-
-        for (let stelle = 0; stelle < mitte; stelle++) {
-            const spalte = rand + stelle;
-
-            setzen(0, spalte, grundreihe[stelle].toLowerCase());
-            setzen(1, spalte, "b");
-            setzen(kante - 2, spalte, "B");
-            setzen(kante - 1, spalte, grundreihe[stelle]);
-        }
-
-        /* Die Flügel: nur die äussere Spalte, nur Offiziere. Links Weiss,
-           rechts Schwarz — die Vorlage, siehe oben. */
-        for (let stelle = 0; stelle < mitte; stelle++) {
-            const reihe = rand + stelle;
-            const figur = SCHACH_VARIANTEN.kreuzFluegelFigur(stelle);
-
-            setzen(reihe, 0, figur);
-            setzen(reihe, kante - 1, figur.toLowerCase());
+        for (const eintrag of felder) {
+            zeichen[eintrag.feld] = (weiss.indexOf(eintrag.seite) !== -1)
+                ? eintrag.figur
+                : eintrag.figur.toLowerCase();
         }
 
         return zeichen.join("");
+    },
+
+    /*
+     * WO AUF DEM KREUZ WELCHE FIGUR STEHT — als Liste, nicht als Zeichenkette.
+     *
+     * Jeder Eintrag sagt: { feld, seite, figur, istBauer }. `seite` ist die
+     * Startseite dieser Armee; genau daraus entstehen später die Einträge in
+     * `bauernSeiten` im Stand, und daran hängt, wohin die Bauern laufen.
+     *
+     * Die Liste ist die EINE Wahrheit über den Aufbau: Sowohl die Aufstellung
+     * als Zeichenkette als auch die Startseiten werden daraus gebaut. Zwei
+     * getrennte Rechnungen liefen früher oder später auseinander.
+     */
+    kreuzFelder(mitte) {
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const kante = mitte + 2 * rand;
+        const grundreihe = SCHACH_VARIANTEN._grundreiheFuer(mitte);
+        const liste = [];
+
+        const eintragen = (reihe, spalte, seite, figur) => {
+            liste.push({
+                feld: reihe * kante + spalte,
+                seite: seite,
+                figur: figur,
+                istBauer: (figur === "B")
+            });
+        };
+
+        for (let stelle = 0; stelle < mitte; stelle++) {
+            const quer = rand + stelle;
+            const offizier = grundreihe[stelle];
+
+            /* Oben und unten: die Grundreihe ganz aussen, die Bauern davor. */
+            eintragen(0, quer, "oben", offizier);
+            eintragen(1, quer, "oben", "B");
+            eintragen(kante - 2, quer, "unten", "B");
+            eintragen(kante - 1, quer, "unten", offizier);
+
+            /* Links und rechts: dasselbe um eine Vierteldrehung gekippt —
+               die Grundreihe steht in der äusseren SPALTE. */
+            eintragen(quer, 0, "links", offizier);
+            eintragen(quer, 1, "links", "B");
+            eintragen(quer, kante - 2, "rechts", "B");
+            eintragen(quer, kante - 1, "rechts", offizier);
+        }
+
+        return liste;
     },
 
     /*

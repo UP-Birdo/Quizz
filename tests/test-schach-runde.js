@@ -1670,75 +1670,120 @@ pruefe("Die vier Ecken des Kreuzes sind von Anfang an gesperrt (v0.63)", () => {
     }
 });
 
-pruefe("Jede Seite hat genau einen Koenig und vier Armeen stehen (v0.63)", () => {
-    const runde = kreuzPartie();
+pruefe("Alle vier Seiten tragen eine volle Armee (v0.65)", () => {
+    for (const id of ["kreuzKlein", "kreuz", "kreuzGross"]) {
+        const runde = kreuzPartie(id, "p-voll-" + id);
+        const kante = SCHACH.breiteVon(runde.stand);
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const mitte = kante - 2 * rand;
 
-    gleich(SCHACH.koenigFelder(runde.stand, SCHACH.WEISS).length, 1, "ein weisser Koenig");
-    gleich(SCHACH.koenigFelder(runde.stand, SCHACH.SCHWARZ).length, 1, "ein schwarzer Koenig");
+        /* Zwei Armeen je Team, also zwei Koenige je Farbe — und damit zwei
+           Leben, wie bei der Zufallsarmee. */
+        gleich(SCHACH.koenigFelder(runde.stand, SCHACH.WEISS).length, 2,
+            id + ": zwei weisse Koenige");
+        gleich(SCHACH.koenigFelder(runde.stand, SCHACH.SCHWARZ).length, 2,
+            id + ": zwei schwarze Koenige");
+        gleich(runde.stand.koenigeAlsLeben, true, id + ": zwei Leben je Seite");
 
-    const kante = SCHACH.breiteVon(runde.stand);
-    const rand = SCHACH_VARIANTEN.KREUZ.rand;
-
-    /* Oben und unten: die Front mit Bauern. Links und rechts: Offiziere,
-       KEINE Bauern — ein Bauer zoege dort in die falsche Richtung. */
-    let bauernInFluegeln = 0;
-    let figurenInFluegeln = 0;
-
-    for (let reihe = rand; reihe < kante - rand; reihe++) {
-        for (const spalte of [0, kante - 1]) {
-            const figur = SCHACH.figurAuf(runde.stand, reihe * kante + spalte);
+        /* Je Seite eine Grundreihe und eine Bauernreihe: 2 mal `mitte`. */
+        let figuren = 0;
+        let bauern = 0;
+        for (let feld = 0; feld < kante * kante; feld++) {
+            const figur = SCHACH.figurAuf(runde.stand, feld);
             if (figur === ".") {
                 continue;
             }
-            figurenInFluegeln++;
+            figuren++;
             if (SCHACH.artVon(figur) === "B") {
-                bauernInFluegeln++;
+                bauern++;
             }
         }
+
+        gleich(figuren, 4 * 2 * mitte, id + ": vier volle Armeen");
+        gleich(bauern, 4 * mitte, id + ": je Armee eine Reihe Bauern");
+
+        /* Und jeder Bauer weiss, von welcher Seite er kommt. */
+        gleich(runde.stand.bauernSeiten.length, bauern,
+            id + ": jeder Bauer hat seine Startseite");
+
+        wahr(SCHACH.alleZuege(runde.stand).length > 0, id + ": es laesst sich ziehen");
     }
-
-    gleich(bauernInFluegeln, 0, "kein Bauer in den Fluegeln");
-    gleich(figurenInFluegeln, 2 * (kante - 2 * rand), "beide Fluegel voll besetzt");
-
-    /* Und die Partie ist spielbar: Weiss hat Zuege. */
-    wahr(SCHACH.alleZuege(runde.stand).length > 0, "Weiss kann ziehen");
 });
 
-pruefe("Welches Team welchen Fluegel bekommt, wird gerechnet (v0.63)", () => {
+pruefe("Die Teams stehen sich gegenueber, das Paar wird gerechnet (v0.65)", () => {
     /*
-     * Gewuerfelt wird nicht — gerechnet, aus der Partie-Kennung. Zwei Partien
-     * mit derselben Kennung ergeben dasselbe Brett, ueber viele Kennungen
-     * kommen beide Verteilungen vor.
+     * Ein Team bekommt oben+unten, das andere links+rechts. Gewuerfelt wird
+     * nicht — gerechnet, aus der Partie-Kennung.
      */
-    const fluegelFarbe = (runde) => {
+    const seitenFarben = (runde) => {
         const kante = SCHACH.breiteVon(runde.stand);
-        const feld = SCHACH_VARIANTEN.KREUZ.rand * kante;
-        return SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, feld));
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const quer = rand;
+
+        return {
+            oben: SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, quer)),
+            unten: SCHACH.farbeVon(
+                SCHACH.figurAuf(runde.stand, (kante - 1) * kante + quer)),
+            links: SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, quer * kante)),
+            rechts: SCHACH.farbeVon(
+                SCHACH.figurAuf(runde.stand, quer * kante + kante - 1))
+        };
     };
 
-    gleich(fluegelFarbe(kreuzPartie("kreuz", "p-gleich")),
-        fluegelFarbe(kreuzPartie("kreuz", "p-gleich")),
-        "dieselbe Kennung ergibt dasselbe Brett");
+    /* Dieselbe Kennung ergibt dasselbe Brett. */
+    gleich(JSON.stringify(seitenFarben(kreuzPartie("kreuz", "p-gleich"))),
+        JSON.stringify(seitenFarben(kreuzPartie("kreuz", "p-gleich"))),
+        "dieselbe Kennung, dasselbe Brett");
 
-    const farben = new Set();
+    const verteilungen = new Set();
+
     for (let nummer = 0; nummer < 40; nummer++) {
-        farben.add(fluegelFarbe(kreuzPartie("kreuz", "p-kreuz-" + nummer)));
+        const farben = seitenFarben(kreuzPartie("kreuz", "p-kreuz-" + nummer));
+
+        /* Gegenueberliegende Seiten gehoeren IMMER demselben Team. */
+        gleich(farben.oben, farben.unten, "oben und unten sind ein Team");
+        gleich(farben.links, farben.rechts, "links und rechts sind ein Team");
+        wahr(farben.oben !== farben.links, "die beiden Paare sind Gegner");
+
+        verteilungen.add(farben.oben);
     }
 
-    gleich(farben.size, 2, "ueber viele Partien kommen beide Verteilungen vor");
+    gleich(verteilungen.size, 2, "ueber viele Partien kommen beide Verteilungen vor");
+});
 
-    /* Getauscht wird immer BEIDES — sonst haette eine Seite zwei Fluegel. */
-    for (let nummer = 0; nummer < 10; nummer++) {
-        const runde = kreuzPartie("kreuz", "p-paar-" + nummer);
-        const kante = SCHACH.breiteVon(runde.stand);
-        const reihe = SCHACH_VARIANTEN.KREUZ.rand;
+pruefe("Ein Bauer laeuft von seiner Startseite zur gegenueberliegenden (v0.65)", () => {
+    const runde = kreuzPartie("kreuz", "p-lauf");
+    const kante = SCHACH.breiteVon(runde.stand);
+    const rand = SCHACH_VARIANTEN.KREUZ.rand;
 
-        const links = SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, reihe * kante));
-        const rechts = SCHACH.farbeVon(
-            SCHACH.figurAuf(runde.stand, reihe * kante + kante - 1));
+    /* Der Bauer des LINKEN Fluegels steht in Spalte 1 und muss nach RECHTS
+       ziehen — nicht nach oben, wie es die Farbregel von frueher sagen wuerde. */
+    const linkerBauer = rand * kante + 1;
+    gleich(SCHACH.artVon(SCHACH.figurAuf(runde.stand, linkerBauer)), "B",
+        "auf Spalte 1 steht ein Bauer");
+    gleich(SCHACH.bauernSeite(runde.stand, linkerBauer,
+        SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, linkerBauer))), "links",
+    "und er kommt von links");
 
-        wahr(links !== rechts, "die beiden Fluegel gehoeren verschiedenen Seiten");
-    }
+    const richtung = SCHACH.bauernRichtung(runde.stand, linkerBauer,
+        SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, linkerBauer)));
+    gleich(richtung.dr + "," + richtung.ds, "0,1", "er laeuft nach rechts");
+
+    /* Geschlagen wird schraeg nach vorn — bei einem Rechtslaeufer also oben
+       und unten vor ihm, genau wie der Nutzer es beschrieben hat. */
+    const schlag = SCHACH.bauernSchlagfelder(runde.stand, linkerBauer,
+        SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, linkerBauer)))
+        .map((feld) => SCHACH.reiheVon(feld, kante) - rand).sort();
+
+    gleich(schlag.join(","), "-1,1", "er schlaegt vor sich oben und unten");
+
+    /* Und die Farbregel gilt weiter, wo nichts eingetragen ist. */
+    const klassisch = laufendePartie();
+    const weisserBauer = SCHACH.feldNummer("e2");
+    gleich(SCHACH.bauernSeite(klassisch.stand, weisserBauer, "weiss"), "unten",
+        "auf dem gewohnten Brett startet Weiss unten");
+    gleich(SCHACH.bauernSeite(klassisch.stand, SCHACH.feldNummer("e7"), "schwarz"), "oben",
+        "und Schwarz oben");
 });
 
 pruefe("Auf dem Kreuz laesst sich ziehen, ohne durch die Ecken zu kommen (v0.63)", () => {

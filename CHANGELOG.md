@@ -3,6 +3,31 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.65.0 — 2026-08-13
+
+**Vier volle Armeen auf dem Kreuz.** Jede der vier Seiten hat jetzt eine
+komplette Armee — Grundreihe plus eine Reihe Bauern. Beim mittleren Kreuz sind
+das je **16 Einheiten**, beim kleinen 12, beim grossen 20.
+
+- **Die Teams stehen sich gegenüber:** Ein Team bekommt oben und unten, das
+  andere links und rechts. Welches welches, entscheidet sich beim Anlegen.
+- **Zwei Armeen heissen zwei Könige — und damit zwei Leben.** Den ersten
+  schlägt der Gegner wie jede andere Figur, beim letzten gelten wieder Schach
+  und Matt. Dieselbe Regel wie bei der Zufallsarmee und beim Doppelbrett.
+- **Ein Bauer schaut jetzt auf seine Startseite**, nicht mehr auf seine Farbe.
+  Von dort läuft er geradewegs auf die gegenüberliegende Seite zu — das ist
+  sein Ziel, dort wandelt er um. Geschlagen wird schräg nach vorn: Läuft er von
+  rechts nach links, schlägt er vor sich oben und unten. Der Doppelschritt gilt
+  aus den beiden Reihen an seiner Startseite, und en passant funktioniert in
+  beiden Achsen.
+
+  **Für jedes andere Brett ändert sich dadurch nichts.** Wo keine Startseite
+  eingetragen ist — also auf jedem gewohnten Brett und in jeder laufenden
+  Partie —, gilt weiterhin die alte Regel: Weiss startet unten, Schwarz oben.
+
+  Auch geschobene Bauern nehmen ihre Richtung mit: Wer mit dem Nudelholz oder
+  dem Bauernschub verschoben wird, läuft danach weiter dorthin, wo er hinwollte.
+
 ## v0.64.0 — 2026-08-13
 
 - **Die Rückschau zeigt jetzt die Schlussstellung.** Links steht das Brett, so
