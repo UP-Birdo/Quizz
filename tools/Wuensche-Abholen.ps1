@@ -171,10 +171,30 @@ if ($anfragen.Count -eq 0) {
 $todoText = [System.IO.File]::ReadAllText($todoDatei)
 $neue = @()
 
+# STILLE FALLE NUMMER ZWEI (gefunden am 2026-08-13, Eintrag #12 lag drei Tage
+# unbemerkt auf GitHub):
+#
+#     if ($todoText.Contains($marke)) { continue }      # FALSCH
+#
+# Die Marke wurde IRGENDWO in der Datei gesucht - auch im Erklaertext. In der
+# TODO.md steht aber seit jeher der Satz "erkennbar an [#12]" als BEISPIEL.
+# Sobald es auf GitHub wirklich einen Eintrag #12 gab, hielt das Skript ihn
+# fuer laengst eingetragen und uebersprang ihn stillschweigend.
+#
+# Gesucht wird deshalb nur noch am ANFANG einer Listenzeile - also genau in der
+# Form, in der dieses Skript seine Eintraege selbst schreibt ("- [#12] ...").
+# Ein Beispiel im Fliesstext kann damit nie wieder einen echten Wunsch
+# verschlucken.
+function Steht-Schon-Drin {
+    param([string] $Text, [int] $Nummer)
+
+    return $Text -match ("(?m)^\s*-\s*\[#" + $Nummer + "\]")
+}
+
 foreach ($anfrage in $anfragen) {
     $marke = "[#$($anfrage.number)]"
 
-    if ($todoText.Contains($marke)) {
+    if (Steht-Schon-Drin -Text $todoText -Nummer $anfrage.number) {
         continue
     }
 

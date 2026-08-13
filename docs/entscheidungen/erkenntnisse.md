@@ -451,6 +451,32 @@ Farbwechsel an Ort und Stelle. Und: Ein Test auf „es gibt einen Unterschied"
 muss über VIELE Saaten zählen, nicht eine einzelne Aufstellung prüfen — sonst
 bestätigt er eine Streuung, die es nicht gibt (dieselbe Lehre wie in v0.49.1).
 
+## Das Beispiel im Erklärtext verschluckte einen echten Wunsch (v0.63)
+
+**Der Fehler:** Der GitHub-Eintrag **#12** lag drei Tage unbemerkt da.
+`Wuensche-Abholen.ps1` meldete brav „nichts Neues", obwohl er offen war — und
+zwar bei JEDEM Lauf, auch bei dem, mit dem am 13.08. die ganze Staffel #5 bis
+#22 abgeholt wurde. Aufgefallen ist es erst, als nach dem Schliessen aller
+siebzehn Wünsche noch genau einer offen blieb.
+
+**Die Ursache:** Die Doppelten-Prüfung suchte die Marke `[#12]` IRGENDWO in der
+`TODO.md`:
+
+    if ($todoText.Contains($marke)) { continue }
+
+In der `TODO.md` steht aber seit jeher der erklärende Satz „erkennbar an
+`[#12]`" — als Beispiel. Solange es auf GitHub keinen Eintrag mit der Nummer 12
+gab, fiel das nicht auf. Der erste echte #12 galt damit als längst eingetragen.
+
+**Die Lehre:** Eine Marke, die als Beispiel im Fliesstext steht, ist irgendwann
+auch eine echte. Gesucht wird deshalb nur noch am ANFANG einer Listenzeile —
+also genau in der Form, in der das Skript seine Einträge selbst schreibt
+(`^\s*-\s*\[#12\]`). Allgemeiner: Wer Vorhandenes an einer Zeichenkette
+erkennt, muss die STELLE mitprüfen, an der sie stehen darf. Das ist im Haus
+schon die zweite stille Falle in genau diesem Skript — die erste war die
+Pipeline, die ein JSON-Array als ein einziges Objekt weiterreichte (siehe den
+Kommentar dort).
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

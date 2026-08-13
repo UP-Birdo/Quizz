@@ -180,6 +180,32 @@ pruefe("Hinter einem Loch gibt ein Turm kein Schach", () => {
         "der Turm endet vor dem Loch");
 });
 
+/*
+ * DASSELBE MIT EINER MAUER — genau der gemeldete Fall (Wunsch #12, v0.58):
+ * „Durch die Mauer soll man nicht ziehen können. Auch wenn ein Turm auf der
+ * anderen Seite steht, soll mein König auf die Linie ziehen können; ohne
+ * Mauer stünde er im Schach, mit der Mauer kann das nicht passieren."
+ *
+ * Behoben mit v0.60 (die Bedrohungsprüfung kannte die Sperre nicht). Der Test
+ * hält den Fall in der Sprache der Meldung fest.
+ */
+pruefe("Der Koenig darf hinter eine Mauer ziehen, obwohl dahinter ein Turm steht", () => {
+    const mauerFeld = SCHACH.feldNummer("a3");
+
+    /* Ohne Mauer ist a4 für den König verboten — der Turm auf a1 deckt die
+       ganze Spalte. */
+    const ohne = standAus({ "a1": "t", "b5": "K", "h8": "k" });
+    wahr(ziele(ohne, "b5").indexOf("a4") === -1, "ohne Mauer ist a4 gesperrt");
+
+    /* Mit Mauer auf a3 endet der Strahl davor, und a4 ist frei. */
+    const mit = standAus({ "a1": "t", "b5": "K", "h8": "k" }, SCHACH.WEISS,
+        { mauern: [{ felder: [mauerFeld], bis: 99 }] });
+
+    wahr(SCHACH.gesperrt(mit, mauerFeld), "die Mauer steht");
+    wahr(ziele(mit, "b5").indexOf("a4") !== -1,
+        "mit Mauer darf der Koenig auf die Linie");
+});
+
 pruefe("Der König zieht ein Feld weit", () => {
     const stand = standAus({ "e4": "K", "e8": "k" });
     gleich(ziele(stand, "e4"), "d3,d4,d5,e3,e5,f3,f4,f5", "König in der Mitte");

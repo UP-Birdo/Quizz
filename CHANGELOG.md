@@ -30,6 +30,12 @@ Der letzte offene Wunsch — und der grösste.
   nebeneinander; mit den drei neuen wären es sieben ohne erkennbare Ordnung
   gewesen.
 
+**Nachtrag zu einem gemeldeten Fehler:** „Durch die Mauer soll man nicht ziehen
+können — auch wenn dahinter ein Turm steht, soll mein König auf die Linie
+ziehen dürfen." Das ist mit **v0.60.0** behoben und war derselbe Fehler, der
+Türme durch Löcher hindurch Schach geben liess. Ein Test hält den Fall jetzt in
+genau dieser Formulierung fest.
+
 ## v0.62.0 — 2026-08-13
 
 - **Eine Rückschau vor dem Ergebnis.** Wenn eine Partie endet, kommt jetzt
