@@ -396,6 +396,61 @@ gelten für sie auch die echten Abbruchbedingungen. Auf jedem Beispielbrett
 braucht jede Seite mindestens eine Figur, die ziehen kann. Ein Test in
 `tests\test-schach-vorschau.js` hält das jetzt fest.
 
+## Ein Angreifer hinter einer Sperre gab trotzdem Schach (v3.3, gefunden v0.60)
+
+**Der Fehler:** Ein Turm oder Läufer, zwischen dem und dem König eine Mauer
+oder ein Loch lag, setzte Schach — obwohl er dort gar nicht hinziehen konnte.
+Im schlimmsten Fall endete die Partie durch ein Schachmatt, aus dem der König
+in Wahrheit gar nicht hätte fliehen müssen.
+
+**Die Ursache: zwei Strahlen, nur einer kannte die Sperre.** `schach.js` läuft
+an zwei Stellen eine Linie entlang:
+
+- `_strahl` erzeugt die ZÜGE. Als die Mauer in v3.3 dazukam, bekam sie dort
+  ihr `if (SCHACH.gesperrt(...)) break;`.
+- `_feldBedroht` beantwortet, ob ein Feld ANGEGRIFFEN ist. Diese Schleife blieb
+  unverändert und brach nur an Figuren ab.
+
+Zugerzeugung und Bedrohungsprüfung sagten damit zwei verschiedene Dinge über
+dieselbe Linie. Beim Riss (v0.54) fiel es nicht auf, weil er dieselbe schon
+falsche Stelle benutzte.
+
+**Warum kein Test es fand:** Alle Mauer- und Riss-Tests prüften Züge — ob eine
+Figur durchkommt. Kein einziger fragte, ob sie durch die Sperre hindurch DROHT.
+Gefunden wurde es erst, weil zu Wunsch #20 ein Test geschrieben wurde, der
+belegen sollte, dass die Regel längst gilt. Sie galt nicht.
+
+**Die Lehre:** Wo zwei Funktionen dieselbe geometrische Frage beantworten
+(„was liegt auf dieser Linie"), muss jede neue Sperre in BEIDE. Der sicherste
+Test dafür ist nicht der Zug, sondern die Drohung: Ein Zug, der nicht
+stattfindet, fällt auf; eine Drohung, die es nicht gibt, wirkt still.
+
+## Der gewürfelte Seitentausch hob sich selbst auf (v0.63)
+
+**Der Fehler:** Auf dem Kreuz-Brett sollte sich je Partie entscheiden, welches
+Team den linken und welches den rechten Flügel bekommt. Über vierzig gerechnete
+Partien kam immer dieselbe Verteilung heraus — obwohl der gerechnete Zufallswert
+nachweislich sauber zwischen 0 und 1 streute.
+
+**Die Ursache** war keine im Zufall, sondern in der Geometrie. Der Tausch war
+als „Platztausch samt Farbwechsel" gebaut: Was links stand, kam nach rechts und
+wechselte dabei die Seite. Beide Flügel tragen aber **dieselbe Figurenfolge** —
+`kreuzFluegelFigur` kennt nur die Stelle im Streifen, nicht die Seite. Links
+stand also ein weisser Turm, rechts ein schwarzer, und beide Schritte zusammen
+ergaben wieder genau das: Turm nach Turm, Farbe zurückgedreht. Die Rechnung
+lief, das Ergebnis war jedes Mal die Ausgangsstellung.
+
+**Warum kein Test es zuerst fand:** Der erste Test prüfte nur, ob die beiden
+Flügel *verschiedenen* Seiten gehören — das stimmte immer. Erst der zweite,
+der über viele Partie-Kennungen zählte, wie viele **verschiedene** Verteilungen
+vorkommen, machte es sichtbar.
+
+**Die Lehre:** Bei einer symmetrischen Aufstellung ist ein Platztausch keine
+Änderung. Was die Frage „wem gehört diese Seite" wirklich beantwortet, ist der
+Farbwechsel an Ort und Stelle. Und: Ein Test auf „es gibt einen Unterschied"
+muss über VIELE Saaten zählen, nicht eine einzelne Aufstellung prüfen — sonst
+bestätigt er eine Streuung, die es nicht gibt (dieselbe Lehre wie in v0.49.1).
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

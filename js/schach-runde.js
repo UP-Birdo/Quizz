@@ -174,6 +174,15 @@ const SCHACH_RUNDE = {
                 regen: false,
 
                 /*
+                 * Wie steil der Regen ansteigt: 1 bis 5 (seit v0.59). 5 ist
+                 * der Verlauf von v0.53 und die Vorgabe, 1 lässt es lange
+                 * fast gar nicht regnen und dann umso heftiger. Das Ende ist
+                 * bei jeder Stufe dasselbe — Zahlen und Begründung in
+                 * `SCHACH_VARIANTEN.REGEN.STUFEN`.
+                 */
+                regenStufe: 5,
+
+                /*
                  * Zufallsarmee (seit v0.51 ein Haken, vorher eine eigene
                  * Spielart): Beide Seiten bekommen gewürfelt die halbe Armee,
                  * und selten sind zwei Könige darunter — zwei Leben.
@@ -219,7 +228,7 @@ const SCHACH_RUNDE = {
          * steht erst nach `SCHACH_TAFEL.partieAnlegen` fest, das ruft
          * `armeeAufstellen` deshalb noch einmal (seit v0.51).
          */
-        return SCHACH_RUNDE.armeeAufstellen(runde);
+        return SCHACH_RUNDE.armeeAufstellen(SCHACH_RUNDE.kreuzAufstellen(runde));
     },
 
     /*
@@ -252,6 +261,95 @@ const SCHACH_RUNDE = {
             runde.regeln.armeeUnterschiedlich === true);
 
         return runde;
+    },
+
+    /*
+     * DAS KREUZ-BRETT HERRICHTEN (seit v0.63, Wunsch #22).
+     *
+     * Zwei Dinge, die keine Zeichenkette ausdrücken kann:
+     *
+     *   1. DIE TOTEN ECKEN. Vier 2-mal-2-Blöcke gehören nicht zum Brett. Sie
+     *      werden als RISSE in den Stand geschrieben — dieselbe Sperre, die
+     *      das Erdbeben seit v0.54 erzeugt. Damit gilt sie überall, ohne dass
+     *      irgendeine Regel etwas von „Kreuz" wissen muss: `SCHACH.gesperrt`
+     *      beantwortet die Frage seit jeher an einer Stelle.
+     *
+     *   2. WER WELCHEN FLÜGEL BEKOMMT. Gewürfelt wird es nicht — gerechnet,
+     *      aus der Partie-Kennung (eiserne Regel: `Math.random()` hat im
+     *      Modell nichts zu suchen). Jedes Gerät kommt damit auf dasselbe
+     *      Brett, und ein Test kann es nachrechnen.
+     *
+     * WARUM NUR DIE FLÜGEL GETAUSCHT WERDEN und nicht auch oben und unten:
+     * Ein Bauer zieht in Richtung seiner FARBE. Stünde Weiss oben, marschierten
+     * seine Bauern vom Gegner weg. Front und Farbe hängen also zusammen; frei
+     * ist allein die Frage, wer links und wer rechts steht. Steht sie im
+     * Kommentar der Spielart ebenfalls (`SCHACH_VARIANTEN.KREUZ`).
+     *
+     * Der Aufruf steht neben `armeeAufstellen` und läuft VOR ihm: Ist der
+     * Haken Zufallsarmee gesetzt, würfelt sie die Figuren anschliessend neu —
+     * auf denselben Feldern, und die Risse bleiben stehen.
+     */
+    kreuzAufstellen(runde, saatZusatz) {
+        const variante = SCHACH_VARIANTEN.holen(runde.variante);
+
+        if (!variante.kreuz) {
+            return runde;
+        }
+
+        const kante = variante.breite;
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const saat = (runde.id || "partie") + (saatZusatz || "") + "|kreuz|fluegel";
+
+        /* Unter 0,5 behält die Vorlage ihre Seiten, darüber werden sie
+           getauscht. Die Kennung steht VORNE in der Saat — siehe die eiserne
+           Regel zu `_zufallsWert`. */
+        const getauscht = SCHACH_RUNDE._zufallsWert(saat) >= 0.5;
+
+        let brett = variante.aufstellung;
+
+        if (getauscht) {
+            /*
+             * GETAUSCHT WIRD DIE FARBE, NICHT DER PLATZ.
+             *
+             * Beide Flügel tragen dieselbe Figurenfolge (`kreuzFluegelFigur`
+             * kennt nur die Stelle, nicht die Seite) — sie sind spiegelgleich
+             * besetzt. Ein Platztausch samt Farbwechsel hätte sich deshalb
+             * gegenseitig aufgehoben und immer wieder dieselbe Aufstellung
+             * ergeben; genau so ist es beim Bauen von v0.63 zuerst passiert.
+             * Der Farbwechsel an Ort und Stelle ist das, was die Frage
+             * beantwortet: Wem gehört dieser Flügel?
+             */
+            const zeichen = brett.split("");
+
+            for (let reihe = rand; reihe < kante - rand; reihe++) {
+                for (let spalte = 0; spalte < rand; spalte++) {
+                    const links = reihe * kante + spalte;
+                    const rechts = reihe * kante + (kante - 1 - spalte);
+
+                    zeichen[links] = SCHACH_RUNDE._farbeTauschen(zeichen[links]);
+                    zeichen[rechts] = SCHACH_RUNDE._farbeTauschen(zeichen[rechts]);
+                }
+            }
+
+            brett = zeichen.join("");
+        }
+
+        runde.stand = Object.assign({}, runde.stand, {
+            brett: brett,
+            risse: SCHACH_VARIANTEN.kreuzEcken(variante)
+        });
+
+        return runde;
+    },
+
+    /* Aus einer weissen Figur eine schwarze machen und umgekehrt. */
+    _farbeTauschen(zeichen) {
+        if (zeichen === ".") {
+            return ".";
+        }
+        return (zeichen === zeichen.toUpperCase())
+            ? zeichen.toLowerCase()
+            : zeichen.toUpperCase();
     },
 
     /* ---------------------------------------------------------------- *
@@ -506,6 +604,16 @@ const SCHACH_RUNDE = {
                das ist gewollt, es ist reine Anzeige und ändert keine Regel. */
             runde.regeln.pechZeigen = (roh.regeln.pechZeigen === true);
             runde.regeln.regen = (roh.regeln.regen === true);
+
+            /* Wie steil der Regen ansteigt (seit v0.59). Alles ausserhalb von
+               1 bis 5 — und jede Partie von vorher — fällt auf die Vorgabe
+               zurück und spielt damit genau wie bisher. */
+            runde.regeln.regenStufe =
+                (Number.isInteger(roh.regeln.regenStufe)
+                    && roh.regeln.regenStufe >= 1 && roh.regeln.regenStufe <= 5)
+                    ? roh.regeln.regenStufe
+                    : SCHACH_VARIANTEN.REGEN.STUFE_VORGABE;
+
             runde.regeln.zufallsArmee = (roh.regeln.zufallsArmee === true);
             runde.regeln.armeeUnterschiedlich = (roh.regeln.armeeUnterschiedlich === true);
 
@@ -675,6 +783,81 @@ const SCHACH_RUNDE = {
         };
     },
 
+    /* Wie viele Wendepunkte die Rückschau höchstens zeigt (seit v0.61). */
+    RUECKSCHAU_HOECHSTENS: 6,
+
+    /*
+     * DIE RÜCKSCHAU (seit v0.61, Wunsch #7: „Recap einbauen vor dem Gewinnen
+     * oder Verlieren, dass man sieht, warum man verloren hat").
+     *
+     * Sie beantwortet drei Fragen, und zwar HIER im Modell — der Bildschirm
+     * zeigt nur an. Wer entscheidet, was ein Wendepunkt war, entscheidet über
+     * die Erzählung der Partie, und das ist eine Regel wie jede andere.
+     *
+     *   1. WIE ging es aus? Nicht aus einem gemerkten Vermerk, sondern aus der
+     *      Schlussstellung: `SCHACH.lage` sagt Matt oder Patt. Sagt sie nichts
+     *      davon, obwohl ein Ergebnis feststeht, hat jemand aufgegeben.
+     *   2. WAS hat es gekostet? Der Figurenwert dessen, was jede Seite verloren
+     *      hat — dieselbe Rechnung wie bei der Beute (`FIGUR_WERT`).
+     *   3. WAS gab den Ausschlag? Die Einträge des Verlaufs, die etwas
+     *      Aussergewöhnliches waren: eingesetzte Fähigkeiten und
+     *      Unglückswürfel. Gewöhnliche Züge stehen nicht darin — sie sind der
+     *      Verlauf, nicht die Wendung.
+     *
+     * Warum nur die LETZTEN paar: Der Verlauf ist ohnehin gekürzt
+     * (`VERLAUF_LAENGE`), und was am Ende passierte, hat die Partie
+     * entschieden. Ausgegeben wird trotzdem in der Reihenfolge, in der es
+     * geschah — eine Rückschau, die rückwärts erzählt, versteht niemand.
+     */
+    rueckschau(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const lage = SCHACH.lage(stand.stand);
+
+        const ausgang = (!stand.ergebnis)
+            ? "offen"
+            : ((stand.ergebnis === "remis")
+                ? "remis"
+                : ((stand.ergebnis === farbe) ? "sieg" : "niederlage"));
+
+        let ende = "Die Partie läuft noch.";
+        if (lage.art === "matt") {
+            ende = "Schachmatt — der König konnte dem Angriff nicht mehr entkommen.";
+        } else if (lage.art === "patt") {
+            ende = "Patt — die Seite am Zug hatte keinen einzigen erlaubten Zug mehr.";
+        } else if (lage.art === "remis") {
+            ende = lage.text || "Unentschieden.";
+        } else if (stand.ergebnis) {
+            ende = "Aufgegeben — die Partie wurde vorzeitig beendet.";
+        }
+
+        const wendepunkte = stand.verlauf
+            .filter((eintrag) => eintrag.wirkung && eintrag.wirkung !== "eingesammelt")
+            .slice(-SCHACH_RUNDE.RUECKSCHAU_HOECHSTENS)
+            .map((eintrag) => ({
+                farbe: eintrag.farbe,
+                eigen: (eintrag.farbe === farbe),
+                unglueck: (eintrag.wirkung === "pech"),
+                text: eintrag.text
+            }));
+
+        return {
+            ausgang: ausgang,
+            ende: ende,
+            verloren: {
+                eigen: (stand.verloren[farbe] || []).slice(),
+                gegner: (stand.verloren[SCHACH.gegner(farbe)] || []).slice()
+            },
+            wert: {
+                /* Was die eigene Seite an Material eingebüsst hat — und was
+                   der Gegner. `beuteWert` zählt aus der Sicht dessen, der
+                   geschlagen HAT, deshalb hier über Kreuz. */
+                eigen: SCHACH_RUNDE.beuteWert(stand, SCHACH.gegner(farbe)),
+                gegner: SCHACH_RUNDE.beuteWert(stand, farbe)
+            },
+            wendepunkte: wendepunkte
+        };
+    },
+
     /* Der Figurenwert dessen, was eine Seite geschlagen hat. */
     beuteWert(runde, farbe) {
         const stand = SCHACH_RUNDE.normalisieren(runde);
@@ -761,6 +944,11 @@ const SCHACH_RUNDE = {
         return stand.regeln.regen === true && SCHACH_RUNDE.faehigkeitenAn(stand);
     },
 
+    /* Wie steil der Regen in dieser Partie ansteigt (1 bis 5, seit v0.59). */
+    regenStufe(runde) {
+        return SCHACH_RUNDE.normalisieren(runde).regeln.regenStufe;
+    },
+
     /*
      * Wie schwer jede Stufe im Moment wiegt — die Abklingzeit in Zahlen.
      *
@@ -812,8 +1000,10 @@ const SCHACH_RUNDE = {
         const wuerfelt = SCHACH_RUNDE._zufallsWert(
             (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
 
+        const stufe = SCHACH_RUNDE.regenStufe(runde);
+
         const grenze = regen
-            ? SCHACH_VARIANTEN.regenChance(freie.length, alleFelder)
+            ? SCHACH_VARIANTEN.regenChance(freie.length, alleFelder, stufe)
             : SCHACH_VARIANTEN.BONUS_CHANCE;
 
         if (wuerfelt >= grenze) {
@@ -829,7 +1019,7 @@ const SCHACH_RUNDE = {
          * seit v3.3 die einzige harte Grenze.
          */
         const gewuenscht = regen
-            ? SCHACH_VARIANTEN.regenAnzahl(freie.length, alleFelder)
+            ? SCHACH_VARIANTEN.regenAnzahl(freie.length, alleFelder, stufe)
             : SCHACH_VARIANTEN.anzahlZiehen(
                 SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
         const moeglich = Math.min(gewuenscht, freie.length);
@@ -1076,7 +1266,38 @@ const SCHACH_RUNDE = {
          * diese Felder — dieselbe Liste, die auch das Aufleuchten am Brett
          * steuert.
          */
+        const felderVorEinsammeln = SCHACH.felderVon(neu.stand);
         SCHACH_RUNDE._bonusEinsammelnAufFeldern(neu, betroffen, farbe, wer);
+
+        /*
+         * AUCH EINE GESCHOBENE GEGNERISCHE FIGUR SAMMELT EIN (seit v0.59,
+         * Wunsch #6).
+         *
+         * Bis v0.58 zählten nur Felder, auf denen danach eine EIGENE Figur
+         * stand. Wer mit dem Nudelholz eine gegnerische Figur über einen Würfel
+         * schob, liess ihn also für immer unter ihr liegen — genau der Fall,
+         * den „Berühren heisst Einsammeln" (v0.53) eigentlich abschaffen
+         * sollte.
+         *
+         * ER GEHT AN DIE SEITE DER GESCHOBENEN FIGUR, nicht an den Einsetzer.
+         * Die Figur betritt das Feld, also gehört ihr der Fund — dieselbe
+         * Regel wie beim Zug. Damit bekommt das Nudelholz einen Preis: Wer
+         * damit gegnerische Figuren schiebt, kann dem Gegner etwas schenken.
+         *
+         * `wer` bleibt leer: Im Verlauf stünde sonst der Name des Einsetzers
+         * neben der Farbe des Gegners, und es sähe aus, als hätte der Gegner
+         * gehandelt.
+         *
+         * HAT DER ERSTE DURCHGANG DAS BRETT VERÄNDERT, entfällt der zweite:
+         * Nach einer Ausdehnung oder einem Einsturz zeigen die gemerkten
+         * Feldnummern in `betroffen` woanders hin. Lieber ein Würfel, der
+         * liegen bleibt, als einer, der auf einem falsch gerechneten Feld
+         * wirkt — dieselbe Überlegung wie beim zweiten Unglückswürfel in
+         * `_bonusEinsammelnAufFeldern`.
+         */
+        if (SCHACH.felderVon(neu.stand) === felderVorEinsammeln) {
+            SCHACH_RUNDE._bonusEinsammelnAufFeldern(neu, betroffen, SCHACH.gegner(farbe), "");
+        }
 
         /*
          * AUCH EIN ABGEGEBENER ZUG IST EIN HALBZUG (seit v0.52).
@@ -1380,6 +1601,21 @@ const SCHACH_RUNDE = {
                     }))
                     .filter((eintrag) => eintrag.feld >= 0);
             }
+
+            /*
+             * WAS AUF EINEM RISS LAG, FÄLLT HINEIN (seit v0.59, Wunsch #20).
+             *
+             * Ein Erdbeben reisst Felder auf, ohne zu fragen, ob dort ein
+             * Würfel liegt — und auf ein gesperrtes Feld kann danach niemand
+             * mehr ziehen. Der Würfel lag damit für den Rest der Partie
+             * unerreichbar im Loch. Jetzt fällt er mit hinein.
+             *
+             * Gefragt wird `rissAuf`, nicht `gesperrt`: Eine MAUER läuft ab,
+             * der Würfel darunter wird danach wieder erreichbar und soll
+             * liegen bleiben. Ein Riss bleibt die ganze Partie.
+             */
+            runde.bonus = runde.bonus.filter(
+                (eintrag) => !SCHACH.rissAuf(runde.stand, eintrag.feld));
         } else {
             /* Auch ein wirkungsloser Unglückswürfel wird festgehalten: Sonst
                stünde im Verlauf ein Einsammeln ohne Folge, und niemand wüsste,
@@ -1718,6 +1954,22 @@ const SCHACH_RUNDE = {
 
             gefallene.splice(stelle, 1);
             return wirkung;
+        }
+
+        /*
+         * Nachschub (seit v0.61): ein NEUER Bauer auf der eigenen Grundreihe.
+         * Kein Vorrat dahinter — anders als Wiedergeburt und Wiederbelebung
+         * verbraucht er nichts, er erschafft. Deshalb steht er auch nicht in
+         * `_gefalleneVorhanden`.
+         */
+        if (art === "nachschub") {
+            /* Dieselbe Rechnung wie bei der Wiedergeburt darunter: die eigene
+               Grundreihe, unten für Weiss und oben für Schwarz. */
+            const grundreihe = (farbe === "weiss") ? SCHACH.hoeheVon(runde.stand) - 1 : 0;
+            if (SCHACH.reiheVon(feld, SCHACH.breiteVon(runde.stand)) !== grundreihe) {
+                return null;
+            }
+            return SCHACH.wiedergeburt(runde.stand, farbe, feld, "B");
         }
 
         if (art === "wiedergeburt") {
@@ -2075,6 +2327,20 @@ const SCHACH_RUNDE = {
         }
 
         /*
+         * EIN LEERER FRIEDHOF GIBT NICHTS HER (seit v0.59, Wunsch #19).
+         *
+         * Drei Fähigkeiten holen Gefallene zurück, und jede verbraucht ihren
+         * Eintrag dabei: Friedhof (gegnerische Gefallene), Wiederbelebung
+         * (eigene, an ihrem Grab) und Wiedergeburt (eigene, auf der
+         * Grundreihe). Ist die Liste leer, kommt nichts mehr — bis v0.58 liess
+         * sich die Fähigkeit trotzdem antippen, das Brett zeigte kein einziges
+         * Zielfeld, und man stand ohne Erklärung da.
+         */
+        if (!SCHACH_RUNDE._gefalleneVorhanden(stand, spielerId, art)) {
+            return false;
+        }
+
+        /*
          * NUR IM GEGENZUG (seit v0.58) — bisher nur das Ausweichen.
          *
          * Es ist die Notbremse: eine Figur weicht aus, während der Gegner
@@ -2102,6 +2368,40 @@ const SCHACH_RUNDE = {
         /* Im Gegenzug genügt: Die Partie läuft und man ist in einem Team. */
         return stand.laeuft && !stand.ergebnis
             && !!SCHACH_RUNDE.teamVon(stand, spielerId);
+    },
+
+    /*
+     * Hat diese Fähigkeit überhaupt noch jemanden zum Zurückholen? (seit v0.59)
+     *
+     * Die Frage steht hier im Modell, weil sie eine Regel ist — der Bildschirm
+     * fragt nur. Sie ist bewusst BILLIG gerechnet: eine Listenlänge, keine
+     * Feld-für-Feld-Probe wie `zielFelder`. `darfEinsetzen` läuft bei jedem
+     * Neuzeichnen für jede Fähigkeit im Vorrat; auf dem Doppelbrett wären das
+     * sonst mehrere hundert Probeläufe je Bild.
+     *
+     * Für alle anderen Fähigkeiten liefert sie `true` — sie hängen an keinem
+     * Vorrat.
+     */
+    _gefalleneVorhanden(runde, spielerId, art) {
+        if (art !== "friedhof" && art !== "wiederbelebung" && art !== "wiedergeburt") {
+            return true;
+        }
+
+        /* Erst hier normalisieren: Für alle anderen Fähigkeiten wäre es
+           verschenkte Arbeit, und die Frage kommt bei jedem Neuzeichnen. */
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const farbe = SCHACH_RUNDE.teamVon(stand, spielerId);
+        if (!farbe) {
+            return true;
+        }
+
+        if (art === "friedhof") {
+            return (stand.gefallen[SCHACH.gegner(farbe)] || []).length > 0;
+        }
+        if (art === "wiederbelebung") {
+            return (stand.gefallen[farbe] || []).length > 0;
+        }
+        return (stand.verloren[farbe] || []).length > 0;
     },
 
     /*
@@ -2713,6 +3013,7 @@ const SCHACH_RUNDE = {
            Zeitpunkt in die Rechnung ein. Das Brett steht danach im gemeinsamen
            Stand; nachgerechnet wird es nirgends mehr, es kann also gar nicht
            auseinanderlaufen. */
+        SCHACH_RUNDE.kreuzAufstellen(neu, "|neu|" + wann);
         SCHACH_RUNDE.armeeAufstellen(neu, "|neu|" + wann);
 
         neu.zugZaehler = 0;

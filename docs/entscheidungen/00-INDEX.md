@@ -23,6 +23,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Der hinterlegte Zugriffsschlüssel ließ sich nicht mehr lesen (v0.8)
     - Der Stolperstein verpuffte im Vorbeiziehen (v0.53, gefunden v0.58)
     - Eine Beispielszene ohne Figuren beendet die Partie (v0.58)
+    - Ein Angreifer hinter einer Sperre gab trotzdem Schach (v3.3, gefunden v0.60)
+    - Der gewuerfelte Seitentausch hob sich selbst auf (v0.63)
 
 ## entschieden.md - Entschieden - und warum
 

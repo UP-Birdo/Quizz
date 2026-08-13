@@ -35,12 +35,17 @@ const WUNSCH = {
     },
 
     async oeffnen() {
+        /* Mehrzeilig (seit v0.59): Hier schreibt man Sätze. Bis dahin lief ein
+           längerer Wunsch in eine einzige Zeile, von der man immer nur das Ende
+           sah. */
         const text = await DIALOG.eingabe(
             "Wunsch oder Fehler",
-            "Was fehlt dir, was stört dich? Ein Satz genügt. Der Text landet als "
-                + "Eintrag auf GitHub — von dort wandert er in die Aufgabenliste.",
+            "Was fehlt dir, was stört dich? Schreib so viel, wie du willst — das "
+                + "Feld wächst mit. Der Text landet als Eintrag auf GitHub, von "
+                + "dort wandert er in die Aufgabenliste.",
             "",
             "Weiter",
+            true,
             true
         );
 

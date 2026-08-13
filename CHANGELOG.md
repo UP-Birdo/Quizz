@@ -3,6 +3,141 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.63.0 — 2026-08-13
+
+Der letzte offene Wunsch — und der grösste.
+
+- **Drei neue Bretter in Kreuzform.** Ein Feld in der Mitte, an jeder der vier
+  Seiten ein Streifen mit einer Armee; die vier Ecken gehören nicht zum Brett
+  und sind gesperrt. Es gibt sie in drei Grössen: **Kleines Kreuz** (10 mal 10,
+  6er-Mitte), **Kreuz** (12 mal 12, gewohnte 8er-Mitte) und **Großes Kreuz**
+  (14 mal 14, 10er-Mitte — das grösste Brett im Spiel).
+
+  Gespielt wird weiter **zwei gegen zwei Armeen**: Oben und unten steht die
+  Front mit Bauern, links und rechts je ein Flügel aus Offizieren. **Wer
+  welchen Flügel bekommt, entscheidet sich beim Anlegen** — gerechnet aus der
+  Partie-Kennung, also auf jedem Gerät gleich.
+
+  **Warum die Flügel keine Bauern haben:** Ein Bauer zieht in Richtung seiner
+  Farbe, Weiss nach oben und Schwarz nach unten. Ein weisser Bauer am linken
+  Rand marschierte deshalb nicht zur Mitte, sondern den Streifen hinauf und
+  stünde nach wenigen Zügen als Dame in der Ecke. Offiziere haben das Problem
+  nicht. Aus demselben Grund steht Weiss weiterhin immer unten.
+
+- **Die Brettform wird jetzt zuerst gewählt.** Über den Kacheln stehen drei
+  Knöpfe — **Quadratisch**, **Rechteckig**, **Kreuz** —, und darunter erscheinen
+  nur die Grössen dieser Form. Vorher lagen alle Spielarten als eine Reihe
+  nebeneinander; mit den drei neuen wären es sieben ohne erkennbare Ordnung
+  gewesen.
+
+## v0.62.0 — 2026-08-13
+
+- **Eine Rückschau vor dem Ergebnis.** Wenn eine Partie endet, kommt jetzt
+  zuerst ein Bildschirm „Wie es dazu kam", und erst danach „Gewonnen" oder
+  „Verloren". Er sagt drei Dinge: **wie** es endete (Schachmatt, Patt oder
+  aufgegeben — abgelesen an der Schlussstellung, nicht behauptet), **was es
+  gekostet hat** (der Figurenwert, den jede Seite gelassen hat, samt Vorsprung
+  oder Rückstand) und **was den Ausschlag gab** (die eingesetzten Fähigkeiten
+  und die Unglückswürfel, in der Reihenfolge, in der sie passiert sind;
+  Unglückswürfel stehen rot).
+
+  Gewöhnliche Züge stehen bewusst nicht darin — die sind der Verlauf, nicht die
+  Wendung. Wer eine beendete Partie später noch einmal öffnet („Ergebnis
+  ansehen"), bekommt die Rückschau ebenfalls zuerst.
+
+## v0.61.0 — 2026-08-13
+
+- **Neue Fähigkeit: Nachschub** (blau, also ungewöhnlich). Ein neuer Bauer
+  tritt an — du setzt ihn selbst auf ein freies Feld deiner eigenen
+  Grundreihe. Danach ist der Gegner am Zug. Steht dort nichts mehr frei, lässt
+  sie sich nicht einsetzen.
+- **Das Würfel Quizz hat keinen Tab mehr.** Die Leiste zeigt jetzt Team
+  Schach, Imposter und Rangliste. Alles andere bleibt: Die **Anmeldung läuft
+  weiter darüber** (sie gilt für die ganze Seite), und in der Rangliste stehen
+  die Würfel-Punkte unverändert — niemand verliert rückwirkend etwas.
+- **Eine zurückkehrende Figur landet nicht mehr in einem Loch.** Wiedergeburt
+  und Wiederbelebung haben bisher nur geprüft, ob das Feld leer ist, nicht ob
+  es gesperrt ist. (Der Friedhof hat es immer richtig gemacht.)
+
+## v0.60.0 — 2026-08-13
+
+Die zweite Hälfte der GitHub-Wünsche: sechs Änderungen an den Regeln des Team
+Schachs. **Laufende Partien laufen weiter** — aber zwei Regeln gelten ab sofort
+auch dort (siehe Doppelbrett und Nudelholz).
+
+- **Das Doppelbrett hat jetzt zwei Leben statt gar keinem Schach.** Bisher gab
+  es dort weder Schach noch Matt: Beide Könige wurden geschlagen wie jede
+  andere Figur, auch der letzte. Jetzt gilt dieselbe Regel wie bei der
+  Zufallsarmee — der erste König fällt normal, beim letzten kommen Schach und
+  Matt zurück. Das gilt für jede Seite getrennt: Wer schon einen König verloren
+  hat, kann ins Schach kommen, während der Gegner mit zweien noch keines kennt.
+- **Das Nudelholz sammelt unterwegs ein — auch für den Gegner.** Wird eine
+  gegnerische Figur über einen Würfel geschoben, bekommt ihn **ihre** Seite.
+  Bisher blieb er einfach liegen und war für den Rest der Partie unerreichbar.
+  Das Nudelholz hat damit einen Preis: Wer damit fremde Figuren schiebt, kann
+  dem Gegner etwas schenken.
+- **Das Nudelholz schiebt niemanden mehr in eine Mauer oder in ein Loch.** Es
+  hat bisher nur gefragt, ob das Zielfeld leer ist — Figuren landeten dadurch
+  auf Feldern, die es für die Regeln gar nicht mehr gibt. (Beim Erdbeben war
+  das seit v0.54 richtig.)
+- **Ein Würfel, der in ein Loch fällt, ist weg.** Reisst ein Erdbeben genau
+  dort auf, wo ein Würfel lag, verschwindet er mit — vorher lag er für immer
+  unerreichbar im Loch, weil niemand mehr auf ein gesperrtes Feld ziehen kann.
+  Unter einer **Mauer** bleibt er dagegen liegen: Die läuft ab.
+- **Friedhof, Wiederbelebung und Wiedergeburt lassen sich nicht mehr einsetzen,
+  wenn niemand mehr da ist**, den sie zurückholen könnten. Wer sie trotzdem
+  antippt, bekommt den Grund gesagt.
+- **Ein Schieberegler beim Anlegen sagt, wie früh es Würfel regnet** (1 bis 5,
+  nur mit dem Haken „Glücksboxen-Regen"). 5 ist der gewohnte Verlauf und bleibt
+  die Vorgabe; bei 1 passiert lange fast nichts und dann umso mehr. Das **Ende
+  ist bei jeder Stufe dasselbe**: Stehen nur noch die Könige, bekommt jedes
+  freie Feld einen Würfel.
+- **Die Anleitung zum Nudelholz zeigt jetzt die ganze Spalte.** In der alten
+  Szene stand der Springer neben den gerollten Spalten — daher die Frage, warum
+  er sich nicht bewegt. Jetzt steht in beiden Spalten etwas, oben wie unten,
+  und alles rückt sichtbar vor.
+
+- **Ein Turm oder Läufer hinter einem Loch gibt kein Schach mehr — und hinter
+  einer Mauer auch nicht.** Das war ein alter Fehler, der erst beim Nachmessen
+  zu diesem Wunsch herauskam: Ziehen konnte die Figur schon seit v3.3 nicht
+  durch eine Sperre hindurch, **drohen** aber sehr wohl. Man stand also im
+  Schach vor einem Angreifer, der gar nicht herankam — und im schlimmsten Fall
+  endete die Partie durch ein Schachmatt, das keines war.
+
+## v0.59.0 — 2026-08-13
+
+Die erste Hälfte der siebzehn Wünsche, die seit Anfang August auf GitHub lagen:
+alles, was man SIEHT — an den Regeln ändert sich in dieser Fassung nichts.
+
+- **Der Zurück-Knopf im Fähigkeiten-Fenster schwebt jetzt mit.** Er hängt unten
+  links am Bildschirmrand und ist damit auch dann noch da, wenn man sich durch
+  alle fünf Stufen nach unten gelesen hat. Der Knopf oben bleibt, wo er war.
+- **Das Wunsch-Feld wächst mit.** Bisher lief ein längerer Wunsch in eine
+  einzige, endlose Zeile, von der man immer nur das Ende sah. Jetzt ist es ein
+  Feld, das mit dem Text nach unten wächst — die Eingabetaste macht dort einen
+  Zeilenumbruch, bestätigt wird über den Knopf.
+- **Die Unterpunkte beim Anlegen sind eingerückt.** „Seltenheit anzeigen",
+  „Unglückswürfel anzeigen" und „Glücksboxen-Regen" gehören zum Haken
+  „Zufalls-Würfel" darüber; am Notebook stand das bisher alles auf einer Höhe.
+  Eine feine Linie zeigt jetzt, was zu was gehört — auf jedem Gerät.
+- **Die Liste der beendeten Partien zeigt nur noch deine eigenen.** Wo du nicht
+  mitgespielt hast, gibt es für dich auch nichts mehr nachzusehen. Die Partien
+  selbst bleiben unverändert stehen, und die Rangliste zählt weiter alles.
+- **Und sie sagt, wer gewonnen hat.** Oben steht „Gewonnen", „Verloren" oder
+  „Unentschieden", und bei den Namen steht, welche Seite Sieger und welche
+  Verlierer war.
+- **Ein eingesammelter Unglückswürfel wird angesagt.** Über dem Brett erscheint
+  ein roter Streifen mit dem, was passiert ist — bisher musste man sich das aus
+  dem Zugverlauf weit unter dem Brett zusammensuchen. Er verschwindet von
+  selbst, sobald der nächste Zug kommt.
+
+**Zwei gemeldete Punkte gab es nicht zu bauen** (nachgemessen am 13.08.):
+Der **Springer** sammelt schon seit v3.6 nur auf seinem Zielfeld ein — er
+springt über die Felder dazwischen hinweg, und ein Test hält das jetzt fest.
+Und das **Nudelholz** läuft längst über die ganze Höhe des Bretts; dass sich in
+der Anleitung „das Pferd nicht bewegt", liegt daran, dass es gar nicht in den
+gerollten Spalten steht. Die Szene wird in der nächsten Fassung geändert.
+
 ## v0.58.0 — 2026-08-08
 
 Die Bildanleitungen aus drei offenen Bündeln (F, G und H) auf einmal, dazu die

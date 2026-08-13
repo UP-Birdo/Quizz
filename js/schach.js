@@ -1685,6 +1685,27 @@ const SCHACH = {
                 let s = spalte + richtung[1];
 
                 while (SCHACH._imBrett(stand, r, s)) {
+                    /*
+                     * EINE SPERRE HÄLT DEN STRAHL AUF (seit v0.60, Wunsch #20).
+                     *
+                     * Bis v0.59 fragte diese Schleife nur nach Figuren — eine
+                     * Mauer oder ein Loch stand ihr nicht im Weg. Ein Turm gab
+                     * dadurch quer durch ein Loch hindurch Schach, obwohl er
+                     * dort gar nicht hinziehen kann: `_strahl` (die
+                     * Zugerzeugung) bricht an derselben Stelle seit v3.3 ab.
+                     * Anzeige und Regel liefen also auseinander, und im
+                     * schlimmsten Fall stand ein Schachmatt auf dem Brett, das
+                     * keines war.
+                     *
+                     * Nur die STRAHLEN betrifft es: Springer springen ohnehin
+                     * darüber hinweg, und Bauern wie Könige greifen ein
+                     * Nachbarfeld an — auf einem gesperrten Feld steht nie eine
+                     * Figur, also gibt es dort nichts zu prüfen.
+                     */
+                    if (SCHACH.gesperrt(stand, SCHACH._feld(stand, r, s))) {
+                        break;
+                    }
+
                     const dort = SCHACH.figurAuf(stand, SCHACH._feld(stand, r, s));
                     if (dort !== ".") {
                         if (SCHACH.farbeVon(dort) === farbe
@@ -2462,8 +2483,16 @@ const SCHACH = {
                     continue;
                 }
 
+                /*
+                 * Frei heisst LEER UND NICHT GESPERRT (seit v0.59 auch das
+                 * Zweite). Bis dahin fragte das Nudelholz nur, ob dort eine
+                 * Figur steht — es schob Figuren also auf Mauern und in Risse
+                 * hinein, wo sie danach auf einem Feld standen, das es für die
+                 * Regeln gar nicht mehr gibt. Das Erdbeben fragt an derselben
+                 * Stelle seit v0.54 richtig; das Nudelholz war übersehen worden.
+                 */
                 const ziel = SCHACH._feld(stand, reihe + richtung, lauf);
-                if (brett[ziel] !== ".") {
+                if (brett[ziel] !== "." || SCHACH.gesperrt(stand, ziel)) {
                     continue;
                 }
 
@@ -2794,9 +2823,18 @@ const SCHACH = {
         };
     },
 
-    /* Eine verlorene Figur kehrt auf ein freies Feld zurück. */
+    /*
+     * Eine verlorene Figur kehrt auf ein freies Feld zurück — und seit v0.61
+     * auch der neue Bauer der Fähigkeit „Nachschub".
+     *
+     * FREI HEISST LEER UND NICHT GESPERRT. Bis v0.60 fragte diese Stelle nur
+     * nach einer Figur; eine zurückkehrende Figur konnte deshalb in einem Riss
+     * oder auf einer Mauer landen, also auf einem Feld, das es für die Regeln
+     * gar nicht gibt. Der Friedhof prüft es seit jeher mit
+     * (`friedhofsFelder`) — Wiederbelebung und Wiedergeburt nicht.
+     */
     wiedergeburt(stand, farbe, feld, figurArt) {
-        if (SCHACH.figurAuf(stand, feld) !== ".") {
+        if (SCHACH.figurAuf(stand, feld) !== "." || SCHACH.gesperrt(stand, feld)) {
             return null;
         }
         if (!figurArt || SCHACH.artName(figurArt) === "") {

@@ -249,10 +249,18 @@ Object.assign(TEAM_SCHACH, {
                dauerhaft — und deshalb anders gezeichnet. */
             if (SCHACH.rissAuf(stand, feld)) {
                 zelle.classList.add("feld-riss");
-                zelle.title = "Riss im Boden: dauerhaft gesperrt, nur Springer "
-                    + "setzen darüber";
+
+                /* Auf dem Kreuz-Brett sind die vier Ecken von Anfang an
+                   gesperrt (seit v0.63) — sie sind kein Unglück, sondern die
+                   Form des Bretts. Gezeichnet gleich, benannt anders. */
+                const kreuzEcke = !!SCHACH_VARIANTEN.holen(stand.variante).kreuz;
+
+                zelle.title = kreuzEcke
+                    ? "Gehört nicht zum Brett"
+                    : "Riss im Boden: dauerhaft gesperrt, nur Springer setzen darüber";
                 zelle.setAttribute("aria-label",
-                    SCHACH.feldName(feld, breite, hoehe) + ", Riss");
+                    SCHACH.feldName(feld, breite, hoehe)
+                        + (kreuzEcke ? ", ausserhalb des Bretts" : ", Riss"));
             }
 
             /*

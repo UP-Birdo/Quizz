@@ -234,24 +234,64 @@ const SCHACH_VORSCHAU = {
         },
         /* Das Erdbeben ist seit v0.54 ein Unglückswürfel — sein Beispiel steht
            weiter unten bei `PECH_BEISPIELE`. */
+        /*
+         * DIE SZENE ZEIGT DIE GANZE SPALTE (seit v0.59, Wunsch #16 / I3).
+         *
+         * Gemeldet als „warum bewegt sich das Pferd nicht?" — in der Szene von
+         * v0.58 stand der Springer in Spalte b, gerollt wurden c und d. Er
+         * gehörte also gar nicht dazu, und das Bild sah aus, als wirke das
+         * Nudelholz willkürlich.
+         *
+         * Jetzt steht in beiden gerollten Spalten je etwas, oben wie unten,
+         * und alles davon rückt vor: Der Springer bewegt sich mit, und man
+         * sieht zugleich, dass NUR diese zwei Spalten betroffen sind.
+         */
         nudelholz: {
             brett: [
                 "......",
-                ".s....",
-                "......",
-                "..Bb..",
-                "......",
+                "..s...",
+                "...b..",
+                "..B...",
+                "...L..",
                 "......"
             ],
             figur: -1,
             ziel: 32,
-            nachspiel: [14, 7],
+            nachspiel: [14, 9],
             vorher: "Angetippt wird ein Feld deiner eigenen Grundreihe — unten am "
-                + "Brett. Gerollt werden die beiden Spalten darüber.",
-            nachher: "Alle Figuren in diesen beiden Spalten rücken ein Feld nach "
-                + "vorn, von dir weg — die eigenen wie die fremden.",
+                + "Brett. Gerollt werden die beiden Spalten darüber, über die "
+                + "ganze Höhe.",
+            nachher: "Jede Figur in diesen beiden Spalten rückt ein Feld nach "
+                + "vorn, von dir weg — die eigenen wie die fremden, vom "
+                + "untersten bis zum obersten Feld.",
             nachsatz: "Das Nudelholz kostet dich keinen Zug: Der geschobene Bauer "
-                + "schlägt gleich noch den Springer."
+                + "schlägt gleich noch den gegnerischen Bauern."
+        },
+
+        /*
+         * NACHSCHUB (seit v0.61). Die Szene beantwortet „wozu ein einzelner
+         * Bauer ganz hinten?" — er DECKT. Der Läufer steht auf der langen
+         * Diagonale und nimmt sich sonst den ungedeckten Turm; der neue Bauer
+         * auf b1 deckt a2 und macht den Schlag zum Verlustgeschäft.
+         *
+         * Kein `nachspiel`: Die Fähigkeit beendet den Zug, danach ist der
+         * Gegner dran — ein weiteres Bild würde etwas zeigen, das es nicht gibt.
+         */
+        nachschub: {
+            brett: [
+                "......",
+                "...l..",
+                "......",
+                "......",
+                "T.....",
+                "......"
+            ],
+            figur: -1,
+            ziel: 31,
+            vorher: "Der schwarze Läufer steht auf der langen Diagonale und zielt auf "
+                + "deinen Turm. Gedeckt ist der von niemandem.",
+            nachher: "Der neue Bauer tritt auf deiner Grundreihe an und deckt genau "
+                + "dieses Feld. Jetzt kostet der Schlag den Läufer."
         },
         mauer: {
             brett: [

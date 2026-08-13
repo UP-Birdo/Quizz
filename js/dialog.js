@@ -64,14 +64,21 @@ const DIALOG = {
      * Liefert den eingegebenen Text oder null bei Abbruch.
      * Mit `abbrechbar = false` gibt es keinen Abbrechen-Knopf — für die Frage
      * beim ersten Besuch, ohne die es nicht weitergeht.
+     *
+     * `mehrzeilig` (seit v0.59) macht daraus ein Feld, das mit dem Text nach
+     * unten WÄCHST statt in eine endlose Zeile zu laufen. Gebraucht wird es
+     * beim Wunsch-Knopf: Dort schreibt man Sätze, keinen Namen. Ein Zeilenumbruch
+     * ist dann ein Zeilenumbruch — bestätigt wird über den Knopf, nicht über die
+     * Eingabetaste (siehe `_zeigen`).
      */
-    eingabe(titel, text, vorgabe, bestaetigenText, abbrechbar) {
+    eingabe(titel, text, vorgabe, bestaetigenText, abbrechbar, mehrzeilig) {
         return DIALOG._zeigen({
             titel: titel,
             text: text,
             eingabe: {
                 wert: vorgabe || "",
-                platzhalter: "Name"
+                platzhalter: mehrzeilig ? "" : "Name",
+                mehrzeilig: !!mehrzeilig
             },
             knoepfe: (abbrechbar === false)
                 ? [{ beschriftung: bestaetigenText || "Weiter", wert: true, stil: "knopf-haupt" }]
@@ -170,13 +177,34 @@ const DIALOG = {
             /* Optionales Eingabefeld. */
             let feld = null;
             if (vorgabe.eingabe) {
-                feld = document.createElement("input");
-                feld.className = "dialog-feld";
+                const langerText = !!vorgabe.eingabe.mehrzeilig;
+
+                feld = document.createElement(langerText ? "textarea" : "input");
+                feld.className = "dialog-feld" + (langerText ? " dialog-feld-lang" : "");
                 feld.value = vorgabe.eingabe.wert;
                 feld.placeholder = vorgabe.eingabe.platzhalter || "";
                 feld.setAttribute("aria-label", vorgabe.titel);
 
-                if (vorgabe.eingabe.nurZiffern) {
+                if (langerText) {
+                    /*
+                     * Es wächst mit — bis zu einer Höhe, ab der der Dialog
+                     * selbst scrollt (die Grenze steht in der Stildatei). Ein
+                     * `textarea` hat von sich aus eine feste Zeilenzahl; ohne
+                     * das Nachmessen bekäme man wieder ein Kästchen, in dem
+                     * man nach vier Zeilen blind schreibt.
+                     */
+                    feld.rows = 4;
+                    const mitwachsen = () => {
+                        if (typeof feld.scrollHeight !== "number") {
+                            return;
+                        }
+                        feld.style.height = "auto";
+                        feld.style.height = feld.scrollHeight + "px";
+                    };
+                    feld.addEventListener("input", mitwachsen);
+                    mitwachsen();
+
+                } else if (vorgabe.eingabe.nurZiffern) {
                     /* Auf dem Handy soll der Zahlenblock erscheinen, und es
                        sollen nur Ziffern hineinkommen. */
                     feld.type = "text";
@@ -260,6 +288,11 @@ const DIALOG = {
 
                 feld.addEventListener("input", knopfPruefen);
                 feld.addEventListener("keydown", (ereignis) => {
+                    /* Im mehrzeiligen Feld ist die Eingabetaste ein
+                       Zeilenumbruch — bestätigt wird dort über den Knopf. */
+                    if (vorgabe.eingabe.mehrzeilig) {
+                        return;
+                    }
                     if (ereignis.key === "Enter" && vollstaendig()) {
                         schliessen(true);
                     }

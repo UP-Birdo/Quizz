@@ -121,12 +121,63 @@ pruefe("Der Springer springt über Figuren", () => {
     gleich(ziele(stand, "g1"), "e2,f3,h3", "Springer aus der Ecke");
 });
 
+/*
+ * WER SPRINGT, BETRITT NUR SEIN ZIELFELD (Wunsch #14, festgehalten in v0.59).
+ *
+ * Daran hängt, was unterwegs eingesammelt wird: Der Turm nimmt jeden Würfel
+ * mit, über den er zieht, der Springer nur den auf seinem Zielfeld. Das galt
+ * seit v3.6 schon — geprüft wurde es aber nur mittelbar über das Einsammeln.
+ * Nach der Meldung steht es hier direkt, damit niemand `betreteneFelder`
+ * „vereinfacht" und das Einsammeln damit still verändert.
+ */
+pruefe("Der Springer betritt nur sein Zielfeld, der Turm jedes Feld dazwischen", () => {
+    const stand = standAus({ "g1": "S", "a1": "T", "e1": "K", "e8": "k" });
+
+    const felder = (vonName, nachName) => SCHACH
+        .betreteneFelder(stand, SCHACH.feldNummer(vonName), SCHACH.feldNummer(nachName))
+        .map((feld) => SCHACH.feldName(feld))
+        .join(",");
+
+    gleich(felder("g1", "f3"), "f3", "Springer g1 nach f3");
+    gleich(felder("a1", "d1"), "b1,c1,d1", "Turm a1 nach d1");
+
+    /* Der Weg, den man ZEICHNET, ist beim Springer trotzdem das L — sonst
+       sähe man eine Bewegung, die es so nicht gibt. */
+    gleich(SCHACH.wegFelder(stand, SCHACH.feldNummer("g1"), SCHACH.feldNummer("f3"))
+        .map((feld) => SCHACH.feldName(feld)).join(","),
+    "g1,g2,g3,f3", "gezeichneter Weg des Springers");
+});
+
 pruefe("Turm, Läufer und Dame ziehen bis zum Hindernis", () => {
     const turm = standAus({ "a1": "T", "a4": "B", "e1": "K", "e8": "k" });
     gleich(ziele(turm, "a1"), "a2,a3,b1,c1,d1", "Turm bis vor den eigenen Bauern");
 
     const laeufer = standAus({ "c1": "L", "e3": "b", "e1": "K", "e8": "k" });
     gleich(ziele(laeufer, "c1"), "a3,b2,d2,e3", "Läufer schlägt auf e3");
+});
+
+/*
+ * EIN LOCH SPERRT DIE SICHTLINIE WIE EINE MAUER (Wunsch #20, erster Teil).
+ *
+ * BEIM MESSEN AM 13.08. ALS FEHLER HERAUSGEKOMMEN: Die Zugerzeugung brach am
+ * gesperrten Feld ab (seit v3.3), die BEDROHUNGSPRÜFUNG aber nicht. Ein Turm
+ * gab dadurch quer durch ein Loch Schach, obwohl er dort nicht hinziehen kann —
+ * Anzeige und Regel liefen auseinander. Seit v0.60 fragen beide dasselbe.
+ */
+pruefe("Hinter einem Loch gibt ein Turm kein Schach", () => {
+    /* Ein schwarzer Turm zielt auf den weissen König — einmal frei, einmal
+       mit einem Loch dazwischen. */
+    const frei = standAus({ "a1": "t", "a5": "K", "h8": "k" }, SCHACH.SCHWARZ);
+    wahr(SCHACH.imSchach(frei, SCHACH.WEISS), "ohne Loch steht der Koenig im Schach");
+
+    const mitLoch = standAus({ "a1": "t", "a5": "K", "h8": "k" }, SCHACH.SCHWARZ,
+        { risse: [SCHACH.feldNummer("a3")] });
+    wahr(!SCHACH.imSchach(mitLoch, SCHACH.WEISS),
+        "mit einem Loch dazwischen nicht mehr");
+
+    /* Und der Turm kommt auch nicht daran vorbei. */
+    gleich(ziele(mitLoch, "a1"), "a2,b1,c1,d1,e1,f1,g1,h1",
+        "der Turm endet vor dem Loch");
 });
 
 pruefe("Der König zieht ein Feld weit", () => {
@@ -596,18 +647,52 @@ pruefe("Auf dem Doppelbrett gibt es kein Schach, aber schlagbare Koenige", () =>
     gleich(SCHACH.lage(stand).art, "laeuft", "die Partie laeuft");
 });
 
-pruefe("Auf dem Doppelbrett gewinnt, wer beide Koenige uebrig behaelt", () => {
-    /* Schwarz hat nur noch einen Koenig (Feld 0), und der wird geschlagen. */
+/*
+ * DAS DOPPELBRETT HAT SEIT v0.59 ZWEI LEBEN STATT GAR KEINEM SCHACH
+ * (Wunsch #17). Vorher galt dort `koenigSchlagbar`: Könige waren IMMER
+ * gewöhnliche Figuren, auch der letzte. Jetzt gilt dieselbe Regel wie bei der
+ * Zufallsarmee — der erste König fällt wie jede Figur, beim letzten kommen
+ * Schach und Matt zurück.
+ */
+pruefe("Auf dem Doppelbrett faellt der erste Koenig wie jede Figur", () => {
+    /* Schwarz hat noch beide Könige (Feld 0 und 1). */
+    const stand = SCHACH.standNormalisieren({
+        variante: "doppelbrett",
+        brett: brettDer("doppelbrett", { 0: "k", 1: "k", 16: "D", 127: "K" }),
+        amZug: "weiss"
+    });
+
+    wahr(SCHACH.koenigSchlagbarFuer(stand, SCHACH.SCHWARZ),
+        "mit zwei Koenigen sind sie gewoehnliche Figuren");
+
+    const ergebnis = SCHACH.ziehen(stand, 16, 0);
+    wahr(ergebnis !== null, "die Dame darf den ersten Koenig schlagen");
+
+    /* Danach steht nur noch einer — ab jetzt gilt wieder Schach. */
+    wahr(!SCHACH.koenigSchlagbarFuer(ergebnis.stand, SCHACH.SCHWARZ),
+        "der letzte Koenig ist wieder unantastbar");
+});
+
+pruefe("Auf dem Doppelbrett ist der LETZTE Koenig unantastbar und wird matt gesetzt", () => {
     const stand = SCHACH.standNormalisieren({
         variante: "doppelbrett",
         brett: brettDer("doppelbrett", { 0: "k", 16: "D", 127: "K" }),
         amZug: "weiss"
     });
 
-    const ergebnis = SCHACH.ziehen(stand, 16, 0);
-    wahr(ergebnis !== null, "die Dame darf den Koenig schlagen");
-    gleich(SCHACH.lage(ergebnis.stand).art, "matt", "Partie vorbei");
-    gleich(SCHACH.lage(ergebnis.stand).sieger, SCHACH.WEISS, "Weiss gewinnt");
+    gleich(SCHACH.ziehen(stand, 16, 0), null, "die Dame darf ihn NICHT schlagen");
+
+    /* Und so endet die Partie stattdessen: durch Matt. Die Dame auf b8 steht
+       am Koenig, der weisse Koenig auf c8 deckt sie — a7 und b7 sind mit
+       gedeckt, also bleibt Schwarz kein Feld. */
+    const gesetzt = SCHACH.standNormalisieren({
+        variante: "doppelbrett",
+        brett: brettDer("doppelbrett", { 0: "k", 1: "D", 2: "K" }),
+        amZug: "schwarz"
+    });
+
+    gleich(SCHACH.lage(gesetzt).art, "matt", "Partie vorbei");
+    gleich(SCHACH.lage(gesetzt).sieger, SCHACH.WEISS, "Weiss gewinnt");
 });
 
 /* ------------------------------------------------------------------ *

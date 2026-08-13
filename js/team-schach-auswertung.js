@@ -10,11 +10,21 @@
 
 Object.assign(TEAM_SCHACH, {
     /* ---------------------------------------------------------------- *
-     * Abschluss: Sieg, Niederlage, Punktestand
+     * Abschluss: Rückschau, Sieg/Niederlage, Punktestand
      *
-     * Zwei Schritte, die den ganzen Bereich einnehmen. Der erste sagt, wie es
-     * ausgegangen ist, der zweite zeigt den Punktestand — danach geht es zurück
-     * in die Übersicht, und die Partie gilt für dieses Gerät als abgeschlossen.
+     * DREI Schritte seit v0.61, die den ganzen Bereich einnehmen:
+     *
+     *   0  die Rückschau — WARUM es so ausging (Wunsch #7)
+     *   1  Sieg oder Niederlage samt Punkten dieser Partie
+     *   2  der Punktestand aller Mitspieler
+     *
+     * Danach geht es zurück in die Übersicht, und die Partie gilt für dieses
+     * Gerät als abgeschlossen.
+     *
+     * WARUM DIE RÜCKSCHAU VORNE STEHT: Sobald „Gewonnen" oder „Verloren" auf
+     * dem Schirm steht, ist die Frage beantwortet und niemand liest mehr nach,
+     * wie es dazu kam. Genau so war der Wunsch formuliert — „vor dem Gewinnen
+     * oder Verlieren".
      *
      * Warum das keine Dialog-Box ist: Das Ende einer Partie, an der man tagelang
      * gespielt hat, ist der Moment, auf den alles zulief. Eine Meldung mit
@@ -24,6 +34,10 @@ Object.assign(TEAM_SCHACH, {
     _abschlussZeichnen(wurzel, partie, person) {
         if (TEAM_SCHACH.abschluss.schritt === 2) {
             TEAM_SCHACH._punktestandZeichnen(wurzel, partie, person);
+            return;
+        }
+        if (TEAM_SCHACH.abschluss.schritt === 0) {
+            TEAM_SCHACH._rueckschauZeichnen(wurzel, partie, person);
             return;
         }
 
@@ -85,6 +99,85 @@ Object.assign(TEAM_SCHACH, {
         leiste.appendChild(TEAM_SCHACH._knopf("Punktestand ansehen", "knopf-haupt",
             () => {
                 TEAM_SCHACH.abschluss.schritt = 2;
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            }));
+        flaeche.appendChild(leiste);
+
+        wurzel.appendChild(flaeche);
+    },
+
+    /*
+     * DIE RÜCKSCHAU (seit v0.61, Wunsch #7).
+     *
+     * Sie zeigt in dieser Reihenfolge: wie es endete, was es an Figuren
+     * gekostet hat, und welche Fähigkeiten und Unglückswürfel dazwischen
+     * lagen. Was ein Wendepunkt ist, entscheidet das Modell
+     * (`SCHACH_RUNDE.rueckschau`) — hier wird nur gezeichnet.
+     *
+     * Sie ist bewusst NEUTRAL gehalten: kein Grün, kein Rot. Ob es ein Sieg
+     * war, sagt das nächste Bild; hier geht es um den Hergang.
+     */
+    _rueckschauZeichnen(wurzel, partie, person) {
+        const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
+        const schau = SCHACH_RUNDE.rueckschau(partie, meinTeam);
+
+        const flaeche = TEAM_SCHACH._element("div", "abschluss abschluss-rueckschau");
+
+        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-marke", partie.titel));
+        flaeche.appendChild(TEAM_SCHACH._element("h2", "abschluss-titel", "Wie es dazu kam"));
+        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-text", schau.ende));
+
+        /* Was jede Seite an Material gelassen hat. */
+        const bilanz = TEAM_SCHACH._element("div", "abschluss-aufschluesselung");
+        const zeile = (was, wert) => {
+            const eintrag = TEAM_SCHACH._element("div", "abschluss-posten");
+            eintrag.appendChild(TEAM_SCHACH._element("span", "abschluss-posten-was", was));
+            eintrag.appendChild(TEAM_SCHACH._element("span", "abschluss-posten-wert",
+                String(wert)));
+            bilanz.appendChild(eintrag);
+        };
+
+        zeile("Dein Team hat verloren (Figurenwert)", schau.wert.eigen);
+        zeile("Der Gegner hat verloren (Figurenwert)", schau.wert.gegner);
+        flaeche.appendChild(bilanz);
+
+        const abstand = schau.wert.gegner - schau.wert.eigen;
+        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-grund",
+            (abstand === 0)
+                ? "Am Material lag es nicht — beide Seiten haben gleich viel gelassen."
+                : ((abstand > 0)
+                    ? "Beim Material lagt ihr vorn, um " + abstand + "."
+                    : "Beim Material lagt ihr hinten, um " + (-abstand) + ".")));
+
+        /* Die Wendepunkte — Fähigkeiten und Unglückswürfel, in der Reihenfolge,
+           in der sie geschahen. */
+        const liste = TEAM_SCHACH._element("div", "zug-liste rueckschau-liste");
+
+        if (schau.wendepunkte.length === 0) {
+            liste.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+                "Keine Fähigkeit und kein Unglückswürfel — diese Partie wurde "
+                + "allein mit Zügen entschieden."));
+        }
+
+        for (const punkt of schau.wendepunkte) {
+            const eintrag = TEAM_SCHACH._element("div",
+                "zug-zeile" + (punkt.unglueck ? " rueckschau-unglueck" : ""));
+
+            eintrag.appendChild(TEAM_SCHACH._element(
+                "span",
+                "zug-farbe " + ((punkt.farbe === "weiss") ? "zug-weiss" : "zug-schwarz"),
+                punkt.eigen ? "Ihr" : "Gegner"
+            ));
+            eintrag.appendChild(TEAM_SCHACH._element("span", "zug-text", punkt.text));
+            liste.appendChild(eintrag);
+        }
+
+        flaeche.appendChild(liste);
+
+        const leiste = TEAM_SCHACH._element("div", "abschluss-leiste");
+        leiste.appendChild(TEAM_SCHACH._knopf("Weiter zum Ergebnis", "knopf-haupt",
+            () => {
+                TEAM_SCHACH.abschluss.schritt = 1;
                 TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             }));
         flaeche.appendChild(leiste);
@@ -233,9 +326,10 @@ Object.assign(TEAM_SCHACH, {
         wurzel.appendChild(flaeche);
     },
 
-    /* Den Abschluss einer beendeten Partie noch einmal ansehen. */
+    /* Den Abschluss einer beendeten Partie noch einmal ansehen — auch hier
+       von vorn, also mit der Rückschau (seit v0.61). */
     abschlussZeigen(id) {
-        TEAM_SCHACH.abschluss = { id: id, schritt: 1 };
+        TEAM_SCHACH.abschluss = { id: id, schritt: 0 };
         TEAM_SCHACH.offeneId = "";
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
@@ -362,12 +456,26 @@ Object.assign(TEAM_SCHACH, {
         const stufe = SCHACH_VARIANTEN.stufeVon(art);
         const darf = meineFarbe && SCHACH_RUNDE.darfEinsetzen(partie, person.id, art);
 
+        /*
+         * WARUM SIE NICHT GEHT, wenn es an einem leeren Vorrat liegt (seit
+         * v0.59, Wunsch #19). Alle anderen Gründe („der Gegner ist dran")
+         * sieht man am Brett; ein leerer Friedhof ist dagegen nicht sichtbar,
+         * und ohne den Satz bliebe die Marke unerklärlich stumm.
+         */
+        const leererVorrat = meineFarbe
+            && !SCHACH_RUNDE._gefalleneVorhanden(partie, person.id, art);
+
+        const grund = leererVorrat
+            ? "Gerade nicht möglich: Es ist niemand mehr da, den sie zurückholen "
+                + "könnte. Sobald wieder eine Figur fällt, geht sie."
+            : "";
+
         const marke = TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
             "knopf-still knopf-klein faehigkeit-knopf"
                 + (darf ? "" : " faehigkeit-knopf-fremd"),
             () => (darf
                 ? TEAM_SCHACH.faehigkeitEinsetzen(partie, art)
-                : TEAM_SCHACH.faehigkeitAnsehen(art)));
+                : TEAM_SCHACH.faehigkeitAnsehen(art, grund)));
 
         if (SCHACH_VARIANTEN.zeigtPlus(art)) {
             const plus = TEAM_SCHACH._element("span", "faehigkeit-zeichen", "+");
@@ -490,6 +598,21 @@ Object.assign(TEAM_SCHACH, {
             () => TEAM_SCHACH.infoSchliessen()));
         kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Fähigkeiten"));
         wurzel.appendChild(kopf);
+
+        /*
+         * DER ZURÜCK-KNOPF SCHWEBT MIT (seit v0.59, Wunsch #5).
+         *
+         * Die Bibliothek ist die längste Ansicht der App: fünf Stufen, 23
+         * Einträge, und ein aufgeklappter Eintrag spielt seine Anleitung ab.
+         * Wer unten steht, hat den Knopf im Kopf längst aus dem Bild
+         * gescrollt und kommt nur durch Zurückwischen wieder heraus.
+         *
+         * Der schwebende Knopf hängt deshalb am Bildschirmrand statt am Text
+         * (`position: fixed` in der Stildatei) und tut dasselbe wie der oben —
+         * es bleibt bei EINER Aktion, nur an zwei Orten erreichbar.
+         */
+        wurzel.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still schwebe-zurueck",
+            () => TEAM_SCHACH.infoSchliessen()));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             "Auf freien Feldern erscheinen Würfel. Wer mit einer Figur darüber oder "

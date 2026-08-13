@@ -79,10 +79,23 @@ const TEAM_SCHACH = {
         seltenheitZeigen: false,
         pechZeigen: false,
         regen: false,
+
+        /* Wie steil der Regen ansteigt (1 bis 5, seit v0.59). 5 ist die
+           Vorgabe und der Verlauf, den es seit v0.53 gibt. */
+        regenStufe: 5,
+
         zufallsArmee: false,
         armeeUnterschiedlich: false,
         einigkeit: false
     },
+
+    /*
+     * Welche Brettform in der Spielart-Auswahl gerade offen ist (seit v0.63).
+     * Reine Anzeige — sie steht in keiner Partie, gespeichert wird nur die
+     * gewählte Spielart. Vorgabe ist die quadratische Form: Dort liegt das
+     * gewohnte Brett.
+     */
+    gewaehlteForm: "klassisch",
 
     /* Gerade angetipptes Feld (Feldnummer) oder -1. */
     gewaehltesFeld: -1,
@@ -331,7 +344,10 @@ const TEAM_SCHACH = {
                 && SCHACH_RUNDE.teamVon(partie, person.id));
 
             if (fertig) {
-                TEAM_SCHACH.abschluss = { id: fertig.id, schritt: 1 };
+                /* Schritt 0 ist die Rückschau (seit v0.61): Sie kommt VOR
+                   „Gewonnen"/„Verloren" — danach liest niemand mehr nach, wie
+                   es dazu kam. */
+                TEAM_SCHACH.abschluss = { id: fertig.id, schritt: 0 };
             }
         }
 
@@ -369,6 +385,12 @@ const TEAM_SCHACH = {
 
         wurzel.appendChild(TEAM_SCHACH._partieKopfBauen(partie));
         wurzel.appendChild(TEAM_SCHACH._standLeisteBauen(partie, person));
+
+        const unglueck = TEAM_SCHACH._unglueckMeldungBauen(partie);
+        if (unglueck) {
+            wurzel.appendChild(unglueck);
+        }
+
         wurzel.appendChild(TEAM_SCHACH._teamsBauen(partie, person));
 
         const halter = TEAM_SCHACH._brettBauen(partie, person);
@@ -421,6 +443,49 @@ const TEAM_SCHACH = {
             window.setTimeout(() => zelle.classList.remove(klasse),
                 TEAM_SCHACH.WIRKUNG_MS + 60);
         }
+    },
+
+    /*
+     * DER STREIFEN NACH EINEM UNGLÜCKSWÜRFEL (seit v0.59, Wunsch #13).
+     *
+     * Gemeldet als: „Es muss eine Information erscheinen, ob ein negatives Item
+     * eingesammelt wurde." Bis dahin sah man nur die Folgen — Felder leuchteten
+     * rot auf, eine Figur stand plötzlich woanders — und musste sich den Grund
+     * aus dem Zugverlauf zusammensuchen, der weit unter dem Brett steht.
+     *
+     * Drei Entscheidungen dahinter:
+     *
+     *   - Er steht DIREKT UNTER der Stand-Leiste, über dem Brett: Dort schaut
+     *     man ohnehin hin, und er schiebt das Brett nicht aus dem Bild.
+     *   - Er wird aus dem VERLAUF gelesen, nicht aus einem gemerkten Zustand.
+     *     Damit sieht ihn JEDES Gerät (auch der Gegner, der wissen muss, warum
+     *     das Brett sich verändert hat), und er überlebt jedes Neuzeichnen.
+     *   - Er verschwindet von selbst, sobald irgendetwas anderes passiert —
+     *     wegklicken muss ihn niemand.
+     *
+     * Kein Bruch der eisernen Regel „die Oberfläche verrät nie, was in einem
+     * Würfel steckt": Hier ist er bereits eingesammelt und hat gewirkt.
+     */
+    _unglueckMeldungBauen(partie) {
+        const letzter = partie.verlauf[partie.verlauf.length - 1];
+
+        if (!letzter || letzter.wirkung !== "pech") {
+            return null;
+        }
+
+        const streifen = TEAM_SCHACH._element("div", "meldung meldung-fehler unglueck-meldung");
+
+        /* Seite und Text getrennt — genau wie im Zugverlauf. Der Satz gehört
+           dem Modell (`_pechAusloesen` schreibt ihn), die Seite steht im
+           Eintrag daneben; zusammengesetzt stünde sie zweimal da. */
+        streifen.appendChild(TEAM_SCHACH._element(
+            "span",
+            "zug-farbe " + ((letzter.farbe === "weiss") ? "zug-weiss" : "zug-schwarz"),
+            (letzter.farbe === "weiss") ? "Weiss" : "Schwarz"
+        ));
+        streifen.appendChild(TEAM_SCHACH._element("span", "unglueck-text", letzter.text));
+
+        return streifen;
     },
 
     _partieKopfBauen(partie) {
@@ -983,6 +1048,7 @@ const TEAM_SCHACH = {
             seltenheitZeigen: false,
             pechZeigen: false,
             regen: false,
+            regenStufe: SCHACH_VARIANTEN.REGEN.STUFE_VORGABE,
             zufallsArmee: false,
             armeeUnterschiedlich: false,
             einigkeit: false
@@ -1038,6 +1104,7 @@ const TEAM_SCHACH = {
             seltenheitZeigen: TEAM_SCHACH.neueRegeln.seltenheitZeigen,
             pechZeigen: TEAM_SCHACH.neueRegeln.pechZeigen,
             regen: TEAM_SCHACH.neueRegeln.regen,
+            regenStufe: TEAM_SCHACH.neueRegeln.regenStufe,
             zufallsArmee: TEAM_SCHACH.neueRegeln.zufallsArmee,
             armeeUnterschiedlich: TEAM_SCHACH.neueRegeln.armeeUnterschiedlich,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
@@ -1204,7 +1271,13 @@ const TEAM_SCHACH = {
      * dahintersteckt, musste in der Bibliothek danach suchen. Dieselben Bilder
      * wie beim Einsetzen — es gibt nur eine Anleitung je Fähigkeit.
      */
-    async faehigkeitAnsehen(art) {
+    /*
+     * `grund` (seit v0.59) ist wahlfrei: ein Satz, WARUM sie sich gerade nicht
+     * einsetzen lässt. Ohne ihn bleibt es beim Ansehen wie bisher — man tippt
+     * ja auch die Fähigkeiten des Gegners an, und dort gibt es keinen Grund zu
+     * nennen.
+     */
+    async faehigkeitAnsehen(art, grund) {
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
         if (!beschreibung) {
             return;
@@ -1216,7 +1289,8 @@ const TEAM_SCHACH = {
                 + "\n\n" + TEAM_SCHACH._kostenSatz(beschreibung)
                 + (beschreibung.imGegenzug
                     ? "\n\nBlitz: Sie geht auch, während der Gegner am Zug ist."
-                    : ""),
+                    : "")
+                + (grund ? "\n\n" + grund : ""),
             TEAM_SCHACH._anleitungBauen(art)
         );
     },

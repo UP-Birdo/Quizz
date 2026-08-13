@@ -116,10 +116,26 @@ const APP = {
          * Die Reihenfolge der Registrierung ist die Reihenfolge in der Leiste:
          * erst das Spiel, an dem am meisten gespielt wird, zuletzt die
          * Auswertung.
+         *
+         * DAS WÜRFEL QUIZZ HAT SEIT v0.61 KEINEN TAB MEHR (Wunsch #10, „das
+         * Fenster Würfel Quizz raus"). Ausgebaut ist NUR die Registrierung —
+         * das Modul selbst läuft weiter, und das muss es auch:
+         *
+         *   - `WUERFEL_QUIZZ.anmelden()` ist die Anmeldung der GANZEN App.
+         *     Team Schach und Imposter holen sich ihre Person von dort
+         *     (`ICH.person()`); ohne sie käme man in kein Team.
+         *   - Sein Abgleich hält die Spielerliste aktuell, aus der beide
+         *     anderen Spiele die Anzeigenamen lesen.
+         *   - Die Rangliste wertet die Würfel-Punkte weiter aus. Sie zu
+         *     streichen hiesse, allen rückwirkend Punkte zu nehmen — siehe die
+         *     eiserne Regel „Ein Ergebnis wird festgeschrieben".
+         *
+         * `WUERFEL_QUIZZ.zeichnen` prüft von sich aus, ob es einen Bereich
+         * gibt, und tut ohne ihn nichts. Wer den Tab zurückholen will, setzt
+         * genau diese eine Zeile wieder ein.
          */
         TABS.registrieren(TEAM_SCHACH);
         TABS.registrieren(IMPOSTER);
-        TABS.registrieren(WUERFEL_QUIZZ);
         TABS.registrieren(RANGLISTE);
         TABS.starten(
             document.getElementById("tab-leiste"),

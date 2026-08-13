@@ -462,23 +462,51 @@ pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
     if (auswahl.length >= SCHACH_VARIANTEN.liste.length) {
         throw new Error("keine Spielart ist versteckt — Test veraltet?");
     }
-    if (feld.kinder.length !== auswahl.length) {
-        throw new Error("erwartet " + auswahl.length
-            + " Kacheln, waren " + feld.kinder.length);
-    }
 
-    /* Jedes Vorschaubild hat so viele Felder wie das Brett der Spielart. */
-    for (let stelle = 0; stelle < auswahl.length; stelle++) {
-        const variante = auswahl[stelle];
-        const vorschau = feld.kinder[stelle].kinder[0];
-        const erwartet = variante.breite * variante.hoehe;
+    /*
+     * SEIT v0.63 ZEIGT DAS FELD NUR DIE SPIELARTEN EINER FORM (Wunsch #22).
+     * Geprueft wird deshalb Form fuer Form — und am Ende, dass die drei
+     * zusammen jede sichtbare Spielart abdecken. Sonst koennte eine neue
+     * Spielart ohne Form in keiner Liste landen und waere unerreichbar.
+     */
+    let gesehen = 0;
 
-        if (vorschau.kinder.length !== erwartet) {
-            throw new Error(variante.id + ": Vorschau mit " + vorschau.kinder.length
-                + " statt " + erwartet + " Feldern");
+    for (const form of SCHACH_VARIANTEN.FORMEN) {
+        TEAM_SCHACH.gewaehlteForm = form.id;
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+        const dieses = TEAM_SCHACH.wurzelEl.kinder.find(
+            (kind) => kind.className === "spielart-feld");
+        const erwartete = SCHACH_VARIANTEN.zurAuswahlNachForm(form.id);
+
+        if (dieses.kinder.length !== erwartete.length) {
+            throw new Error(form.id + ": erwartet " + erwartete.length
+                + " Kacheln, waren " + dieses.kinder.length);
+        }
+        if (erwartete.length === 0) {
+            throw new Error(form.id + ": keine einzige Spielart");
+        }
+        gesehen += erwartete.length;
+
+        /* Jedes Vorschaubild hat so viele Felder wie das Brett der Spielart. */
+        for (let stelle = 0; stelle < erwartete.length; stelle++) {
+            const variante = erwartete[stelle];
+            const vorschau = dieses.kinder[stelle].kinder[0];
+            const erwartet = variante.breite * variante.hoehe;
+
+            if (vorschau.kinder.length !== erwartet) {
+                throw new Error(variante.id + ": Vorschau mit " + vorschau.kinder.length
+                    + " statt " + erwartet + " Feldern");
+            }
         }
     }
 
+    if (gesehen !== auswahl.length) {
+        throw new Error("die Formen zeigen " + gesehen + " von " + auswahl.length
+            + " Spielarten — eine hat keine passende Form");
+    }
+
+    TEAM_SCHACH.gewaehlteForm = "klassisch";
     TEAM_SCHACH.auswahlSchliessen();
     if (TEAM_SCHACH.auswahlOffen) {
         throw new Error("Auswahl nicht geschlossen");
@@ -799,10 +827,22 @@ pruefe("Wer verliert, bekommt den Abschluss-Bildschirm", () => {
     TEAM_SCHACH.abgleich.daten = neueTafel;
     TEAM_SCHACH.partieOeffnen(kennungen.klein);
 
-    /* Anna spielt Weiss und hat aufgegeben — sie sieht den Verlierer-Schirm. */
-    if (!TEAM_SCHACH.abschluss || TEAM_SCHACH.abschluss.schritt !== 1) {
+    /*
+     * SEIT v0.61 KOMMT DIE RÜCKSCHAU ZUERST (Schritt 0, Wunsch #7): erst
+     * WARUM es so ausging, dann Gewonnen/Verloren, dann der Punktestand.
+     */
+    if (!TEAM_SCHACH.abschluss || TEAM_SCHACH.abschluss.schritt !== 0) {
         throw new Error("kein Abschluss-Bildschirm");
     }
+
+    if (!TEAM_SCHACH.wurzelEl.kinder[0].classList.contains("abschluss-rueckschau")) {
+        throw new Error("die Rueckschau fehlt");
+    }
+
+    /* Erster Schritt weiter: Anna spielt Weiss und hat aufgegeben — sie sieht
+       den Verlierer-Schirm. */
+    TEAM_SCHACH.abschluss.schritt = 1;
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
 
     const flaeche = TEAM_SCHACH.wurzelEl.kinder[0];
     if (!flaeche.classList.contains("abschluss-niederlage")) {
@@ -840,9 +880,62 @@ pruefe("Beendete Partien stehen nicht mehr zwischen den offenen", () => {
         throw new Error("kein Kasten fuer beendete Partien");
     }
     const beschriftung = String(kasten.kinder[0].textContent || "");
-    if (beschriftung.indexOf("Beendet") === -1) {
+    if (beschriftung.indexOf("beendeten Partien") === -1) {
         throw new Error("Kasten falsch beschriftet: " + beschriftung);
     }
+});
+
+/*
+ * NUR DIE EIGENE HISTORIE (v0.59, Wunsch #8) — und mit Sieger und Verlierer
+ * beschriftet (Wunsch #18).
+ *
+ * Anna spielt in jeder Partie mit; die beendete kleine Partie steht also in
+ * ihrem Kasten. Wird sie aus beiden Teams entfernt, verschwindet der Kasten
+ * ganz — die Partie selbst bleibt dabei in der Tafel stehen.
+ */
+pruefe("Die Historie zeigt nur eigene Partien, mit Sieger und Verlierer (v0.59)", () => {
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    const kastenSuchen = () => TEAM_SCHACH.wurzelEl.kinder
+        .find((kind) => kind.tagName === "details");
+
+    const kasten = kastenSuchen();
+    if (!kasten) {
+        throw new Error("kein Kasten fuer beendete Partien");
+    }
+
+    /* Irgendwo im Kasten steht, wer Sieger und wer Verlierer war. */
+    let gefunden = "";
+    const durchsuchen = (element) => {
+        if (String(element.className || "").indexOf("team-namen") !== -1) {
+            gefunden += String(element.textContent || "");
+        }
+        for (const kind of element.kinder || []) {
+            durchsuchen(kind);
+        }
+    };
+    durchsuchen(kasten);
+
+    if (gefunden.indexOf("Sieger") === -1 || gefunden.indexOf("Verlierer") === -1) {
+        throw new Error("Sieger/Verlierer fehlen: " + gefunden);
+    }
+
+    /* Ohne Anna in den Teams ist es nicht mehr ihre Partie. */
+    const vorher = TEAM_SCHACH.abgleich.daten;
+    let partie = SCHACH_RUNDE.kopieren(SCHACH_TAFEL.partie(vorher, kennungen.klein));
+    partie.teams.weiss = [];
+    partie.teams.schwarz = [];
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(vorher, partie, 3210);
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    if (kastenSuchen()) {
+        throw new Error("fremde beendete Partie steht in der eigenen Historie");
+    }
+
+    /* Ausgangslage wiederherstellen — die folgenden Tests rechnen damit. */
+    TEAM_SCHACH.abgleich.daten = vorher;
+    TEAM_SCHACH.zeichnen(vorher);
 });
 
 pruefe("Ein Wuerfel auf dem Brett wird gezeichnet", () => {
@@ -1063,6 +1156,29 @@ pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () =
     }
 });
 
+/*
+ * Der schwebende Zurück-Knopf (v0.59, Wunsch #5). Er hängt am Bildschirm statt
+ * am Text — deshalb steht er als eigenes Kind unter der Wurzel und nicht im
+ * Kopf. Wer ihn wegnimmt, macht die längste Ansicht der App wieder zur
+ * Sackgasse für alle, die unten stehen.
+ */
+pruefe("Die Bibliothek hat einen schwebenden Zurueck-Knopf (v0.59)", () => {
+    TEAM_SCHACH.faehigkeitenOeffnen();
+
+    const schwebend = TEAM_SCHACH.wurzelEl.kinder.find(
+        (kind) => String(kind.className || "").indexOf("schwebe-zurueck") !== -1);
+
+    if (!schwebend) {
+        throw new Error("kein schwebender Zurueck-Knopf");
+    }
+
+    /* Und er tut dasselbe wie der Knopf im Kopf. */
+    schwebend.ausloesen("click");
+    if (TEAM_SCHACH.infoOffen) {
+        throw new Error("der schwebende Knopf schliesst die Bibliothek nicht");
+    }
+});
+
 /* Der erste Eintrag der ersten Stufenkarte in der offenen Bibliothek. */
 function ersterBibliothekEintrag() {
     const karte = TEAM_SCHACH.wurzelEl.kinder.find(
@@ -1269,6 +1385,69 @@ pruefe("Ohne Haken ist ein Unglueckswuerfel nicht zu erkennen (v0.49)", () => {
     if (String(zelle.title).indexOf("Unglück") !== -1) {
         throw new Error("der Titel verraet das Unglueck");
     }
+});
+
+/*
+ * DER STREIFEN NACH EINEM UNGLÜCKSWÜRFEL (v0.59, Wunsch #13).
+ *
+ * Er wird aus dem letzten Verlaufseintrag gelesen. Gebaut wird der Fall hier
+ * über einen echten Zug auf einen Unglückswürfel — dann steht der Eintrag im
+ * Verlauf, so wie er im Spiel entsteht.
+ */
+pruefe("Ein eingesammelter Unglueckswuerfel wird angesagt (v0.59)", () => {
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Unglueck", 5700);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 5700);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 5700);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 5700);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 5700);
+
+    /* Ein Unglückswürfel genau dort, wohin der Bauer zieht. */
+    partie = SCHACH_RUNDE.kopieren(partie);
+    partie.regeln.faehigkeiten = true;
+    partie.bonus.push({ feld: SCHACH.feldNummer("a3"), art: "erdrutsch", pech: true });
+
+    partie = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("a2"), SCHACH.feldNummer("a3"), "D", "Anna", 5710);
+
+    const vorher = TEAM_SCHACH.abgleich.daten;
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        angelegt.tafel, partie, 5710);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const letzter = partie.verlauf[partie.verlauf.length - 1];
+    if (!letzter || letzter.wirkung !== "pech") {
+        throw new Error("der Zug hat gar keinen Unglueckswuerfel ausgeloest");
+    }
+
+    const streifen = TEAM_SCHACH.wurzelEl.kinder.find(
+        (kind) => String(kind.className || "").indexOf("unglueck-meldung") !== -1);
+
+    if (!streifen) {
+        throw new Error("kein Streifen nach dem Unglueckswuerfel");
+    }
+
+    /* Er steht ueber dem Brett, nicht darunter: direkt hinter der Standleiste. */
+    const stelle = TEAM_SCHACH.wurzelEl.kinder.indexOf(streifen);
+    if (stelle !== 2) {
+        throw new Error("der Streifen steht an Stelle " + stelle + " statt ueber dem Brett");
+    }
+
+    /* Und nach einem gewoehnlichen Zug ist er wieder weg. */
+    partie = SCHACH_RUNDE.ziehen(partie, "id-bert",
+        SCHACH.feldNummer("h7"), SCHACH.feldNummer("h6"), "D", "Bert", 5720);
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        TEAM_SCHACH.abgleich.daten, partie, 5720);
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+    if (TEAM_SCHACH.wurzelEl.kinder.some(
+        (kind) => String(kind.className || "").indexOf("unglueck-meldung") !== -1)) {
+        throw new Error("der Streifen bleibt nach dem naechsten Zug stehen");
+    }
+
+    TEAM_SCHACH.offeneId = "";
+    TEAM_SCHACH.abgleich.daten = vorher;
 });
 
 pruefe("Wer nicht am Zug ist, kann das Brett nicht bedienen", () => {

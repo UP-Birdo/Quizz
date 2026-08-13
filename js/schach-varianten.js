@@ -320,7 +320,47 @@ const SCHACH_VARIANTEN = {
          * wirklich 1, und nur dann greift die Zusage: „Wenn nur noch die beiden
          * Könige da sind, bekommt jedes freie Feld einen Würfel."
          */
-        bleibenStehen: 2
+        bleibenStehen: 2,
+
+        /* ------------------------------------------------------------ *
+         * FÜNF STUFEN STATT EINER KURVE (seit v0.59, Wunsch #11)
+         *
+         * Der Nutzer stellt beim Anlegen ein, WIE SPÄT der Regen einsetzt:
+         *
+         *   Stufe 5   der Verlauf von v0.53 — unverändert die Vorgabe
+         *   Stufe 1   viel steiler: lange fast nichts, dann schlagartig
+         *
+         * DAS ENDE IST BEI JEDER STUFE DASSELBE. Beide Zahlen sind Exponenten
+         * auf einen Anteil zwischen 0 und 1, und `Math.pow(1, n)` ist immer 1
+         * — stehen nur noch die beiden Könige, bekommt also weiterhin jedes
+         * freie Feld einen Würfel, egal welche Stufe. Nur der Weg dorthin ist
+         * unterschiedlich steil. Genau so war es gewünscht: „das Ende soll
+         * gleich sein, nur davor die Kurve viel steiler."
+         *
+         * Warum eine Tabelle und keine Rechnung aus der Stufennummer: Man
+         * sieht so auf einen Blick, was jede Stellung bedeutet, und kann eine
+         * einzelne nachjustieren, ohne die anderen zu verschieben.
+         * ------------------------------------------------------------ */
+        STUFEN: {
+            1: { kurve: 9, chanceKurve: 6 },
+            2: { kurve: 7, chanceKurve: 5 },
+            3: { kurve: 5, chanceKurve: 4 },
+            4: { kurve: 4, chanceKurve: 3 },
+            5: { kurve: 3, chanceKurve: 2 }
+        },
+
+        /* Die Vorgabe, wenn eine Partie keine Stufe nennt (alle Partien vor
+           v0.59) — dieselbe Kurve wie seit v0.53. */
+        STUFE_VORGABE: 5
+    },
+
+    /*
+     * Die Exponenten zu einer Stufe. Unbekanntes fällt auf die Vorgabe zurück:
+     * Eine Partie aus der Zeit vor v0.59 spielt damit genau weiter wie bisher.
+     */
+    regenKurve(stufe) {
+        return SCHACH_VARIANTEN.REGEN.STUFEN[stufe]
+            || SCHACH_VARIANTEN.REGEN.STUFEN[SCHACH_VARIANTEN.REGEN.STUFE_VORGABE];
     },
 
     /*
@@ -332,18 +372,20 @@ const SCHACH_VARIANTEN = {
         return Math.min(1, Math.max(0, freieFelder / moeglich));
     },
 
-    /* Wie viele Würfel der Regen auswirft. Bei ganz leerem Brett: alle. */
-    regenAnzahl(freieFelder, alleFelder) {
+    /* Wie viele Würfel der Regen auswirft. Bei ganz leerem Brett: alle.
+       `stufe` ist wahlfrei — ohne Angabe gilt die Vorgabe (siehe regenKurve). */
+    regenAnzahl(freieFelder, alleFelder, stufe) {
         const anteil = SCHACH_VARIANTEN.regenAnteil(freieFelder, alleFelder);
-        const gewuenscht = freieFelder * Math.pow(anteil, SCHACH_VARIANTEN.REGEN.kurve);
+        const gewuenscht = freieFelder
+            * Math.pow(anteil, SCHACH_VARIANTEN.regenKurve(stufe).kurve);
 
         return Math.max(1, Math.min(freieFelder, Math.ceil(gewuenscht)));
     },
 
     /* Mit welcher Chance (Prozent) der Regen bei diesem Füllstand einsetzt. */
-    regenChance(freieFelder, alleFelder) {
+    regenChance(freieFelder, alleFelder, stufe) {
         const anteil = SCHACH_VARIANTEN.regenAnteil(freieFelder, alleFelder);
-        return 100 * Math.pow(anteil, SCHACH_VARIANTEN.REGEN.chanceKurve);
+        return 100 * Math.pow(anteil, SCHACH_VARIANTEN.regenKurve(stufe).chanceKurve);
     },
 
     /* Wie viele Würfel erscheinen bei diesem Zufallswert? */
@@ -552,6 +594,35 @@ const SCHACH_VARIANTEN = {
                 + "Feld nach vorn — von dir weg. Angetippt wird ein Feld deiner eigenen "
                 + "Grundreihe, also unten am Brett. Wo kein Platz ist, bleibt die Figur "
                 + "stehen; Könige bleiben immer stehen."
+        },
+
+        /*
+         * NACHSCHUB (seit v0.61, Wunsch #15) — „ein blaues Item, das einen
+         * Bauern erschafft; danach soll man nicht ziehen können, und der Bauer
+         * muss in der untersten Linie erscheinen."
+         *
+         * Zwei Entscheidungen dazu:
+         *
+         * `beendetZug` folgt der Hausregel seit v0.47: Wer MATERIAL geschenkt
+         * bekommt, gibt den Zug ab. Der Nutzer hat es ohnehin so gewünscht;
+         * hier fällt beides zusammen.
+         *
+         * DAS FELD WIRD GEWÄHLT, NICHT GEWÜRFELT (die Wahl war freigestellt).
+         * Seit v0.57 wird jede Fähigkeit mit Zielfeld platziert — ein
+         * gewürfeltes Feld wäre der einzige Ausreisser, und man müsste den
+         * Vorschau-Kasten für genau diese eine Fähigkeit abschalten. Fair ist
+         * es trotzdem: Die Grundreihe ist die eigene, und je voller sie steht,
+         * desto weniger Auswahl bleibt.
+         */
+        nachschub: {
+            titel: "Nachschub",
+            stufe: "blau",
+            art: "ziel",
+            zielArt: "eigeneGrundreihe",
+            beendetZug: true,
+            beschreibung: "Ein neuer Bauer tritt an: Du setzt ihn auf ein freies Feld "
+                + "deiner eigenen Grundreihe, also ganz unten bei dir. Ist dort kein "
+                + "Feld mehr frei, geht es nicht. Danach ist der Gegner am Zug."
         },
 
         /* ---- Episch: kostet den Gegner wirklich etwas ----
@@ -828,10 +899,195 @@ const SCHACH_VARIANTEN = {
         return SCHACH_VARIANTEN.HANDEL[0];
     },
 
+    /* ---------------------------------------------------------------- *
+     * DIE BRETTFORM (seit v0.63, Wunsch #22)
+     *
+     * Bis v0.62 war die Liste der Spielarten flach und mischte zwei Fragen:
+     * WELCHE FORM hat das Brett, und WIE GROSS ist es. Mit dem Kreuz kamen
+     * drei weitere Grössen dazu — als eine Liste wären das neun Kacheln
+     * nebeneinander gewesen, ohne erkennbare Ordnung.
+     *
+     * Seither wählt man erst die Form, dann darunter die Grösse. Die Form ist
+     * ein MERKMAL am Eintrag, keine Umsortierung: Die Reihenfolge in `liste`
+     * bleibt unangetastet (eiserne Regel — die Partie-Kennungen der Tests
+     * entstehen aus ihr).
+     * ---------------------------------------------------------------- */
+
+    FORMEN: [
+        {
+            id: "klassisch",
+            titel: "Quadratisch",
+            beschreibung: "Gleich breit wie hoch — das gewohnte Schachbrett in "
+                + "drei Grössen."
+        },
+        {
+            id: "rechteckig",
+            titel: "Rechteckig",
+            beschreibung: "Breiter als hoch. Mehr Platz zur Seite, längere "
+                + "Diagonalen, mehr Figuren."
+        },
+        {
+            id: "kreuz",
+            titel: "Kreuz",
+            beschreibung: "Ein Feld in der Mitte, an allen vier Seiten ein "
+                + "Streifen mit einer Armee. Die Ecken gehören nicht zum Brett."
+        }
+    ],
+
+    /* Die Form einer Spielart; ohne Angabe gilt „quadratisch". */
+    formVon(variante) {
+        return (variante && variante.form) ? variante.form : "klassisch";
+    },
+
+    /* Die Spielarten einer Form, in der Reihenfolge der Liste. */
+    zurAuswahlNachForm(formId) {
+        return SCHACH_VARIANTEN.zurAuswahl().filter(
+            (eintrag) => SCHACH_VARIANTEN.formVon(eintrag) === formId);
+    },
+
+    /* ---------------------------------------------------------------- *
+     * DAS KREUZ-BRETT (seit v0.63)
+     *
+     * Aufbau bei `mitte` = 8 und `rand` = 2 (also 12 mal 12):
+     *
+     *       ..TTTTTTTT..      Die vier 2-mal-2-Ecken sind KEIN Brett — sie
+     *       ..pppppppp..      liegen als Risse im Stand und sind damit für
+     *       T...........T     die Regeln gesperrt (dieselbe Sperre, die das
+     *       S...........S     Erdbeben seit v0.54 erzeugt).
+     *       L...........L
+     *       D...........D     Oben und unten steht die FRONT-Armee mit
+     *       L...........L     Bauern, links und rechts die FLÜGEL-Armee aus
+     *       S...........S     Offizieren.
+     *       T...........T
+     *       ..PPPPPPPP..
+     *       ..TTTTTTTT..
+     *
+     * WARUM DIE FLÜGEL KEINE BAUERN HABEN. Ein Bauer zieht in Richtung seiner
+     * FARBE — Weiss nach oben, Schwarz nach unten. Das steckt tief im
+     * Regelwerk und hängt nicht daran, wo die Figur steht. Ein weisser Bauer
+     * am linken Rand marschierte also nicht zur Mitte, sondern den Streifen
+     * hinauf und stünde nach sechs Zügen als Dame in der gegnerischen Ecke.
+     * Offiziere haben dieses Problem nicht: Sie ziehen in jede Richtung
+     * gleich.
+     *
+     * WARUM WEISS TROTZDEM IMMER UNTEN STEHT. Aus demselben Grund. Gewürfelt
+     * wird deshalb das, wo es wirklich etwas zu entscheiden gibt: WELCHES
+     * TEAM DEN LINKEN UND WELCHES DEN RECHTEN FLÜGEL BEKOMMT
+     * (`SCHACH_RUNDE.kreuzAufstellen`).
+     * ---------------------------------------------------------------- */
+
+    KREUZ: {
+        /* Wie breit die Streifen an den vier Seiten sind. Zwei — dieselbe Zahl
+           wie der freie Rand der Zufallsarmee, und damit dieselbe 2-mal-2-Ecke,
+           die diese Bretter erkennbar macht. */
+        rand: 2,
+
+        /*
+         * Die Offiziere eines Flügels, von aussen nach innen gezählt. Genau
+         * EINE Dame — mit zweien wäre der Flügel stärker als die Front, und
+         * die Partie liefe über die Ränder statt durch die Mitte. Ab der
+         * fünften Stelle wiederholt sich das Muster.
+         */
+        fluegel: ["T", "S", "L", "D"],
+        fluegelWeiter: ["L", "S", "T"]
+    },
+
+    /* Welche Figur an dieser Stelle des Flügels steht. */
+    kreuzFluegelFigur(stelle) {
+        const anfang = SCHACH_VARIANTEN.KREUZ.fluegel;
+        if (stelle < anfang.length) {
+            return anfang[stelle];
+        }
+        const weiter = SCHACH_VARIANTEN.KREUZ.fluegelWeiter;
+        return weiter[(stelle - anfang.length) % weiter.length];
+    },
+
+    /*
+     * Die Aufstellung eines Kreuz-Bretts als Zeichenkette — dieselbe Form, in
+     * der auch jede andere Spielart ihre `aufstellung` trägt.
+     *
+     * Sie ist die VORLAGE: Das echte Brett entsteht daraus in
+     * `SCHACH_RUNDE.kreuzAufstellen`, das nur noch die Flügelfarben tauschen
+     * kann. Hier steht Weiss links — welche Seite es in einer Partie wirklich
+     * ist, entscheidet die Partie-Kennung.
+     */
+    kreuzAufstellung(mitte) {
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const kante = mitte + 2 * rand;
+        const zeichen = [];
+
+        for (let feld = 0; feld < kante * kante; feld++) {
+            zeichen.push(".");
+        }
+
+        const setzen = (reihe, spalte, figur) => {
+            zeichen[reihe * kante + spalte] = figur;
+        };
+
+        /* Die Front-Armeen: gewohnte Grundreihe plus eine Reihe Bauern. */
+        const grundreihe = SCHACH_VARIANTEN._grundreiheFuer(mitte);
+
+        for (let stelle = 0; stelle < mitte; stelle++) {
+            const spalte = rand + stelle;
+
+            setzen(0, spalte, grundreihe[stelle].toLowerCase());
+            setzen(1, spalte, "b");
+            setzen(kante - 2, spalte, "B");
+            setzen(kante - 1, spalte, grundreihe[stelle]);
+        }
+
+        /* Die Flügel: nur die äussere Spalte, nur Offiziere. Links Weiss,
+           rechts Schwarz — die Vorlage, siehe oben. */
+        for (let stelle = 0; stelle < mitte; stelle++) {
+            const reihe = rand + stelle;
+            const figur = SCHACH_VARIANTEN.kreuzFluegelFigur(stelle);
+
+            setzen(reihe, 0, figur);
+            setzen(reihe, kante - 1, figur.toLowerCase());
+        }
+
+        return zeichen.join("");
+    },
+
+    /*
+     * Die Grundreihe für eine Front dieser Breite: von aussen nach innen
+     * T S L … und in der Mitte D K. Bei geraden Breiten geht das genau auf.
+     */
+    _grundreiheFuer(breite) {
+        const halb = Math.floor(breite / 2);
+        const links = [];
+
+        for (let stelle = 0; stelle < halb - 1; stelle++) {
+            links.push(["T", "S", "L"][Math.min(stelle, 2)]);
+        }
+
+        const rechts = links.slice().reverse();
+        return links.concat(["D", "K"]).concat(rechts).join("").substring(0, breite);
+    },
+
+    /* Die Feldnummern der vier toten Ecken eines Kreuz-Bretts. */
+    kreuzEcken(variante) {
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const kante = variante.breite;
+        const felder = [];
+
+        for (let reihe = 0; reihe < rand; reihe++) {
+            for (let spalte = 0; spalte < rand; spalte++) {
+                felder.push(reihe * kante + spalte);
+                felder.push(reihe * kante + (kante - 1 - spalte));
+                felder.push((kante - 1 - reihe) * kante + spalte);
+                felder.push((kante - 1 - reihe) * kante + (kante - 1 - spalte));
+            }
+        }
+
+        return felder.sort((einer, anderer) => einer - anderer);
+    },
+
     liste: [
         {
             id: "standard",
             titel: "Klassisch",
+            form: "klassisch",
             beschreibung: "Das gewohnte Brett mit 8 mal 8 Feldern und allen Regeln.",
             breite: 8,
             hoehe: 8,
@@ -851,6 +1107,7 @@ const SCHACH_VARIANTEN = {
         {
             id: "klein",
             titel: "Kleines Brett",
+            form: "klassisch",
             beschreibung: "6 mal 6 Felder, ohne Läufer — kurze, scharfe Partien.",
             breite: 6,
             hoehe: 6,
@@ -868,6 +1125,7 @@ const SCHACH_VARIANTEN = {
         {
             id: "gross",
             titel: "Großes Brett",
+            form: "rechteckig",
             beschreibung: "10 mal 8 Felder mit je zwei Läuferpaaren — mehr Platz, "
                 + "längere Partien, lange Diagonalen.",
             breite: 10,
@@ -888,9 +1146,11 @@ const SCHACH_VARIANTEN = {
         {
             id: "doppelbrett",
             titel: "Doppelbrett",
+            form: "rechteckig",
             beschreibung: "Zwei Bretter nebeneinander (16 mal 8), zwei Armeen je Seite. "
-                + "Die Figuren dürfen überall hinziehen. Kein Schach und kein Matt: "
-                + "Wer zuerst beide Könige verliert, verliert die Partie.",
+                + "Die Figuren dürfen überall hinziehen. Zwei Könige sind zwei "
+                + "Leben: Den ersten schlägt der Gegner wie jede andere Figur, "
+                + "beim letzten gelten wieder Schach und Matt.",
             breite: 16,
             hoehe: 8,
             aufstellung:
@@ -903,7 +1163,27 @@ const SCHACH_VARIANTEN = {
                 + "BBBBBBBBBBBBBBBB"
                 + "TSLDKLSTTSLDKLST",
             rochade: true,
-            koenigSchlagbar: true,
+
+            /*
+             * ZWEI LEBEN STATT „GAR KEIN SCHACH" (seit v0.59, Wunsch #17).
+             *
+             * Bis v0.58 stand hier `koenigSchlagbar: true`: Auf dem
+             * Doppelbrett gab es überhaupt kein Schach und kein Matt, auch
+             * dann nicht, wenn nur noch ein König stand. Gemeldet wurde genau
+             * das — der erste König soll normal fallen, danach soll wieder die
+             * gewohnte Regel gelten, „so wie bei der Zufallsarmee".
+             *
+             * Genau das ist `koenigeAlsLeben` (seit v0.49): Solange eine Seite
+             * mehr als einen König hat, sind ihre Könige gewöhnliche Figuren;
+             * beim letzten kippt es zurück zu Schach und Matt. Die Maschinerie
+             * war also schon da — das Doppelbrett benutzte sie nur nicht.
+             *
+             * Es gilt JE FARBE: Wer seinen ersten König verloren hat, kann ins
+             * Schach kommen, während der Gegner mit zwei Königen noch keines
+             * kennt.
+             */
+            koenigSchlagbar: false,
+            koenigeAlsLeben: true,
             bonusFelder: []
         },
         {
@@ -1019,6 +1299,61 @@ const SCHACH_VARIANTEN = {
             koenigeAlsLeben: true,
             zufallsArmee: true,
 
+            bonusFelder: []
+        },
+
+        /*
+         * DIE DREI KREUZ-BRETTER (seit v0.63, Wunsch #22).
+         *
+         * Ihre `aufstellung` wird gerechnet statt getippt — bei 14 mal 14 wären
+         * das 196 Zeichen von Hand, und der erste Tippfehler fiele erst im
+         * Spiel auf. Wie sie aufgebaut sind, steht bei `kreuzAufstellung`.
+         *
+         * `kreuz: true` ist der Schalter, an dem `SCHACH_RUNDE.kreuzAufstellen`
+         * erkennt, dass es die toten Ecken setzen und die Flügel verteilen
+         * muss — dieselbe Bauart wie `zufallsArmee`.
+         */
+        {
+            id: "kreuzKlein",
+            titel: "Kleines Kreuz",
+            form: "kreuz",
+            beschreibung: "10 mal 10 mit einem 6er-Feld in der Mitte. Vier Armeen "
+                + "auf engem Raum — die Flügel sind sofort im Spiel.",
+            breite: 10,
+            hoehe: 10,
+            kreuz: true,
+            aufstellung: null,
+            rochade: true,
+            koenigSchlagbar: false,
+            bonusFelder: []
+        },
+        {
+            id: "kreuz",
+            titel: "Kreuz",
+            form: "kreuz",
+            beschreibung: "12 mal 12 mit dem gewohnten 8er-Feld in der Mitte. An "
+                + "jeder Seite eine Armee: oben und unten die Front mit Bauern, "
+                + "links und rechts ein Flügel aus Offizieren.",
+            breite: 12,
+            hoehe: 12,
+            kreuz: true,
+            aufstellung: null,
+            rochade: true,
+            koenigSchlagbar: false,
+            bonusFelder: []
+        },
+        {
+            id: "kreuzGross",
+            titel: "Großes Kreuz",
+            form: "kreuz",
+            beschreibung: "14 mal 14 mit einem 10er-Feld in der Mitte. Das grösste "
+                + "Brett im Spiel — lange Wege, lange Partien.",
+            breite: 14,
+            hoehe: 14,
+            kreuz: true,
+            aufstellung: null,
+            rochade: true,
+            koenigSchlagbar: false,
             bonusFelder: []
         }
     ],
@@ -1410,6 +1745,25 @@ const SCHACH_VARIANTEN = {
         return text;
     }
 };
+
+/*
+ * DIE AUFSTELLUNG DER KREUZ-BRETTER WIRD HIER NACHGETRAGEN (seit v0.63).
+ *
+ * Sie steht in der Tabelle oben als `null`, weil eine Methode desselben
+ * Objekts sie rechnet — innerhalb der geschweiften Klammern gibt es
+ * `SCHACH_VARIANTEN` noch nicht. Von aussen ist es ein Zweizeiler, und die
+ * Tabelle bleibt lesbar: 196 Zeichen von Hand getippt hätte niemand geprüft.
+ *
+ * Nach dieser Zeile trägt jede Spielart eine `aufstellung` wie eh und je —
+ * alles, was sie liest (Vorschaubild, `armeeAnzahl`, `SCHACH.neuerStand`),
+ * merkt keinen Unterschied.
+ */
+for (const variante of SCHACH_VARIANTEN.liste) {
+    if (variante.kreuz && !variante.aufstellung) {
+        variante.aufstellung = SCHACH_VARIANTEN.kreuzAufstellung(
+            variante.breite - 2 * SCHACH_VARIANTEN.KREUZ.rand);
+    }
+}
 
 /* Damit die Regressionstests die Datei außerhalb des Browsers laden können. */
 if (typeof module !== "undefined" && module.exports) {

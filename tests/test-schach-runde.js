@@ -1634,6 +1634,263 @@ pruefe("Der Friedhof weckt, wer GENAU DORT gefallen ist (v0.54)", () => {
         "und traegt eine Restzeit");
 });
 
+/* ------------------------------------------------------------------ *
+ * Das Kreuz-Brett (seit v0.63, Wunsch #22)
+ * ------------------------------------------------------------------ */
+
+/* Eine Partie auf einem Kreuz-Brett, mit fester Kennung fuers Nachrechnen. */
+function kreuzPartie(varianteId, kennung) {
+    const runde = SCHACH_RUNDE.leereRunde(1000, varianteId || "kreuz",
+        kennung || "p-kreuz", "Kreuz");
+
+    return SCHACH_RUNDE.kreuzAufstellen(runde);
+}
+
+pruefe("Die vier Ecken des Kreuzes sind von Anfang an gesperrt (v0.63)", () => {
+    for (const id of ["kreuzKlein", "kreuz", "kreuzGross"]) {
+        const variante = SCHACH_VARIANTEN.holen(id);
+        const runde = kreuzPartie(id, "p-" + id);
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const kante = variante.breite;
+
+        gleich(variante.breite, variante.hoehe, id + ": quadratisch");
+        gleich(SCHACH.risse(runde.stand).length, 4 * rand * rand,
+            id + ": vier 2-mal-2-Ecken");
+
+        /* Die Ecken selbst — und nur sie. */
+        for (const feld of SCHACH_VARIANTEN.kreuzEcken(variante)) {
+            wahr(SCHACH.gesperrt(runde.stand, feld), id + ": Ecke " + feld + " gesperrt");
+            gleich(SCHACH.figurAuf(runde.stand, feld), ".",
+                id + ": auf der Ecke steht nichts");
+        }
+
+        /* Die Mitte ist frei begehbar. */
+        const mitte = rand * kante + rand;
+        wahr(!SCHACH.gesperrt(runde.stand, mitte), id + ": die Mitte ist offen");
+    }
+});
+
+pruefe("Jede Seite hat genau einen Koenig und vier Armeen stehen (v0.63)", () => {
+    const runde = kreuzPartie();
+
+    gleich(SCHACH.koenigFelder(runde.stand, SCHACH.WEISS).length, 1, "ein weisser Koenig");
+    gleich(SCHACH.koenigFelder(runde.stand, SCHACH.SCHWARZ).length, 1, "ein schwarzer Koenig");
+
+    const kante = SCHACH.breiteVon(runde.stand);
+    const rand = SCHACH_VARIANTEN.KREUZ.rand;
+
+    /* Oben und unten: die Front mit Bauern. Links und rechts: Offiziere,
+       KEINE Bauern — ein Bauer zoege dort in die falsche Richtung. */
+    let bauernInFluegeln = 0;
+    let figurenInFluegeln = 0;
+
+    for (let reihe = rand; reihe < kante - rand; reihe++) {
+        for (const spalte of [0, kante - 1]) {
+            const figur = SCHACH.figurAuf(runde.stand, reihe * kante + spalte);
+            if (figur === ".") {
+                continue;
+            }
+            figurenInFluegeln++;
+            if (SCHACH.artVon(figur) === "B") {
+                bauernInFluegeln++;
+            }
+        }
+    }
+
+    gleich(bauernInFluegeln, 0, "kein Bauer in den Fluegeln");
+    gleich(figurenInFluegeln, 2 * (kante - 2 * rand), "beide Fluegel voll besetzt");
+
+    /* Und die Partie ist spielbar: Weiss hat Zuege. */
+    wahr(SCHACH.alleZuege(runde.stand).length > 0, "Weiss kann ziehen");
+});
+
+pruefe("Welches Team welchen Fluegel bekommt, wird gerechnet (v0.63)", () => {
+    /*
+     * Gewuerfelt wird nicht — gerechnet, aus der Partie-Kennung. Zwei Partien
+     * mit derselben Kennung ergeben dasselbe Brett, ueber viele Kennungen
+     * kommen beide Verteilungen vor.
+     */
+    const fluegelFarbe = (runde) => {
+        const kante = SCHACH.breiteVon(runde.stand);
+        const feld = SCHACH_VARIANTEN.KREUZ.rand * kante;
+        return SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, feld));
+    };
+
+    gleich(fluegelFarbe(kreuzPartie("kreuz", "p-gleich")),
+        fluegelFarbe(kreuzPartie("kreuz", "p-gleich")),
+        "dieselbe Kennung ergibt dasselbe Brett");
+
+    const farben = new Set();
+    for (let nummer = 0; nummer < 40; nummer++) {
+        farben.add(fluegelFarbe(kreuzPartie("kreuz", "p-kreuz-" + nummer)));
+    }
+
+    gleich(farben.size, 2, "ueber viele Partien kommen beide Verteilungen vor");
+
+    /* Getauscht wird immer BEIDES — sonst haette eine Seite zwei Fluegel. */
+    for (let nummer = 0; nummer < 10; nummer++) {
+        const runde = kreuzPartie("kreuz", "p-paar-" + nummer);
+        const kante = SCHACH.breiteVon(runde.stand);
+        const reihe = SCHACH_VARIANTEN.KREUZ.rand;
+
+        const links = SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, reihe * kante));
+        const rechts = SCHACH.farbeVon(
+            SCHACH.figurAuf(runde.stand, reihe * kante + kante - 1));
+
+        wahr(links !== rechts, "die beiden Fluegel gehoeren verschiedenen Seiten");
+    }
+});
+
+pruefe("Auf dem Kreuz laesst sich ziehen, ohne durch die Ecken zu kommen (v0.63)", () => {
+    const runde = kreuzPartie();
+    const kante = SCHACH.breiteVon(runde.stand);
+    const rand = SCHACH_VARIANTEN.KREUZ.rand;
+
+    /* Kein einziger erlaubter Zug endet in einer Ecke. */
+    const ecken = SCHACH_VARIANTEN.kreuzEcken(SCHACH_VARIANTEN.holen("kreuz"));
+
+    for (const zug of SCHACH.alleZuege(runde.stand)) {
+        wahr(ecken.indexOf(zug.nach) === -1,
+            "kein Zug fuehrt auf Feld " + zug.nach);
+    }
+
+    /* Der aeussere Turm des Fluegels kommt in die Mitte hinein. */
+    const turmFeld = rand * kante;
+    wahr(SCHACH.figurAuf(runde.stand, turmFeld) !== ".", "auf dem Fluegel steht etwas");
+});
+
+pruefe("Die Rueckschau erzaehlt, wie es ausging (v0.62, Wunsch #7)", () => {
+    /*
+     * Sie liest die Schlussstellung, nicht einen gemerkten Vermerk: `lage`
+     * sagt Matt oder Patt, und sagt sie nichts davon, obwohl ein Ergebnis
+     * feststeht, hat jemand aufgegeben.
+     */
+    const laufend = laufendePartie();
+    gleich(SCHACH_RUNDE.rueckschau(laufend, "weiss").ausgang, "offen",
+        "eine laufende Partie hat keinen Ausgang");
+
+    /* Aufgeben: kein Matt auf dem Brett, trotzdem ein Ergebnis. */
+    const aufgegeben = SCHACH_RUNDE.aufgeben(laufend, "weiss", 4000);
+    const ausSichtWeiss = SCHACH_RUNDE.rueckschau(aufgegeben, "weiss");
+
+    gleich(ausSichtWeiss.ausgang, "niederlage", "wer aufgibt, verliert");
+    wahr(ausSichtWeiss.ende.indexOf("Aufgegeben") === 0, "und die Rueckschau sagt es");
+    gleich(SCHACH_RUNDE.rueckschau(aufgegeben, "schwarz").ausgang, "sieg",
+        "aus der anderen Sicht ein Sieg");
+
+    /* Wendepunkte sind Faehigkeiten und Unglueckswuerfel — keine gewoehnlichen
+       Zuege. */
+    let mitWirkung = einsetzen(faehigkeitenPartie(), "mauer", SCHACH.feldNummer("d4"));
+    wahr(mitWirkung !== null, "Mauer eingesetzt");
+    mitWirkung = SCHACH_RUNDE.ziehen(mitWirkung, "id-anna",
+        SCHACH.feldNummer("a2"), SCHACH.feldNummer("a3"), "D", "Anna", 4100);
+
+    const schau = SCHACH_RUNDE.rueckschau(mitWirkung, "weiss");
+    gleich(schau.wendepunkte.length, 1, "genau ein Wendepunkt");
+    wahr(schau.wendepunkte[0].text.indexOf("Mauer") !== -1, "und zwar die Mauer");
+    gleich(schau.wendepunkte[0].eigen, true, "sie war die eigene");
+    gleich(schau.wendepunkte[0].unglueck, false, "und kein Unglueck");
+
+    /* Ein Unglueckswuerfel wird als solcher gekennzeichnet. */
+    const mitPech = pechEinsammeln(faehigkeitenPartie(), "erdrutsch", "e2", "e4");
+    const pechSchau = SCHACH_RUNDE.rueckschau(mitPech, "weiss");
+    wahr(pechSchau.wendepunkte.some((punkt) => punkt.unglueck),
+        "der Unglueckswuerfel steht drin");
+
+    /* Und nie mehr als die Hoechstzahl. */
+    let viele = faehigkeitenPartie();
+    for (let nummer = 0; nummer < SCHACH_RUNDE.RUECKSCHAU_HOECHSTENS + 3; nummer++) {
+        viele.verlauf.push({
+            text: "Faehigkeit " + nummer, wer: "", farbe: "weiss",
+            von: -1, nach: -1, wirkung: "mauer", felder: [], wege: []
+        });
+    }
+    gleich(SCHACH_RUNDE.rueckschau(viele, "weiss").wendepunkte.length,
+        SCHACH_RUNDE.RUECKSCHAU_HOECHSTENS, "hoechstens die vorgesehene Zahl");
+});
+
+pruefe("Die Rueckschau zaehlt das Material beider Seiten (v0.62)", () => {
+    let runde = faehigkeitenPartie();
+
+    /* Schwarz schlaegt nichts, Weiss verliert einen Springer. */
+    runde = SCHACH_RUNDE.kopieren(runde);
+    runde.verloren.weiss.push("S");
+
+    const schau = SCHACH_RUNDE.rueckschau(runde, "weiss");
+
+    gleich(schau.verloren.eigen.join(","), "S", "der eigene Verlust steht da");
+    gleich(schau.wert.eigen, SCHACH_RUNDE.FIGUR_WERT.S, "mit seinem Figurenwert");
+    gleich(schau.wert.gegner, 0, "der Gegner hat nichts gelassen");
+});
+
+pruefe("Nachschub setzt einen Bauern auf die eigene Grundreihe (v0.61, Wunsch #15)", () => {
+    const runde = faehigkeitenPartie();
+
+    /* Die Grundstellung ist voll — ohne freies Feld gibt es kein Ziel. */
+    gleich(SCHACH_RUNDE.zielFelder(runde, "id-anna", "nachschub").length, 0,
+        "auf einer vollen Grundreihe geht es nicht");
+
+    /* b1 raeumen: genau dieses eine Feld steht dann zur Wahl. */
+    const b1 = SCHACH.feldNummer("b1");
+    const frei = SCHACH_RUNDE.kopieren(runde);
+    frei.stand.brett = SCHACH._brettMit(frei.stand.brett, b1, ".");
+
+    const felder = SCHACH_RUNDE.zielFelder(frei, "id-anna", "nachschub");
+    gleich(felder.join(","), String(b1), "nur das freie Feld der eigenen Grundreihe");
+
+    /* Ein freies Feld MITTEN auf dem Brett zaehlt nicht — es geht um die
+       Grundreihe, nicht um irgendein leeres Feld. */
+    const mitte = SCHACH_RUNDE.kopieren(frei);
+    mitte.stand.brett = SCHACH._brettMit(mitte.stand.brett, SCHACH.feldNummer("d4"), ".");
+    gleich(SCHACH_RUNDE.zielFelder(mitte, "id-anna", "nachschub").join(","), String(b1),
+        "die Brettmitte steht nicht zur Wahl");
+
+    const nachher = einsetzen(frei, "nachschub", b1);
+    wahr(nachher !== null, "eingesetzt");
+    gleich(SCHACH.figurAuf(nachher.stand, b1), "B", "ein weisser Bauer steht dort");
+    gleich(nachher.stand.amZug, "schwarz", "und der Zug ist abgegeben");
+
+    /* Fuer Schwarz ist die eigene Grundreihe die OBERE. */
+    const schwarzDran = SCHACH_RUNDE.kopieren(runde);
+    schwarzDran.stand.amZug = "schwarz";
+    schwarzDran.stand.brett = SCHACH._brettMit(schwarzDran.stand.brett,
+        SCHACH.feldNummer("b8"), ".");
+
+    gleich(SCHACH_RUNDE.zielFelder(schwarzDran, "id-bert", "nachschub").join(","),
+        String(SCHACH.feldNummer("b8")), "Schwarz bekommt seine eigene Grundreihe");
+});
+
+pruefe("Ohne Gefallene laesst sich gar nicht erst einsetzen (v0.59, Wunsch #19)", () => {
+    /*
+     * Drei Faehigkeiten holen Gefallene zurueck und VERBRAUCHEN dabei ihren
+     * Eintrag. Ist die Liste leer, kommt nichts mehr — bis v0.58 liess sich
+     * die Faehigkeit trotzdem antippen, das Brett zeigte kein einziges
+     * Zielfeld, und man stand ohne Erklaerung da.
+     */
+    const leer = faehigkeitenPartie();
+    leer.faehigkeiten.weiss.push("friedhof", "wiederbelebung", "wiedergeburt");
+
+    gleich(SCHACH_RUNDE.darfEinsetzen(leer, "id-anna", "friedhof"), false,
+        "Friedhof: kein gefallener Gegner");
+    gleich(SCHACH_RUNDE.darfEinsetzen(leer, "id-anna", "wiederbelebung"), false,
+        "Wiederbelebung: keine eigenen Gefallenen");
+    gleich(SCHACH_RUNDE.darfEinsetzen(leer, "id-anna", "wiedergeburt"), false,
+        "Wiedergeburt: nichts verloren");
+
+    /* Alle anderen haengen an keinem Vorrat und bleiben unberuehrt. */
+    gleich(SCHACH_RUNDE.darfEinsetzen(leer, "id-anna", "mauer"), true,
+        "die Mauer geht weiterhin");
+
+    /* Sobald etwas faellt, geht es wieder — und nur die passende Faehigkeit. */
+    const mitGefallenem = SCHACH_RUNDE.kopieren(leer);
+    mitGefallenem.gefallen.schwarz.push({ art: "T", feld: SCHACH.feldNummer("a5") });
+
+    gleich(SCHACH_RUNDE.darfEinsetzen(mitGefallenem, "id-anna", "friedhof"), true,
+        "jetzt gibt der Friedhof etwas her");
+    gleich(SCHACH_RUNDE.darfEinsetzen(mitGefallenem, "id-anna", "wiederbelebung"), false,
+        "die eigenen Gefallenen sind davon unberuehrt");
+});
+
 pruefe("Ein Block ohne Gefallene steht nicht zur Wahl", () => {
     /*
      * Weil `zielFelder` jedes Feld durchprobiert, folgt das von selbst aus der
@@ -1765,8 +2022,11 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
      * und mit dem Zug obendrauf konnte man erst schieben und dann mit einem
      * der geschobenen Bauern schlagen.
      */
+    /* `nachschub` (v0.61) steht hier, weil er MATERIAL schenkt — einen neuen
+       Bauern. Der Nutzer hat es ohnehin so gewuenscht; hier faellt beides
+       zusammen. */
     const kostetDenZug = ["bauernschub", "verstaerkung", "spiegel",
-        "wiedergeburt", "wiederbelebung", "friedhof", "haendler"];
+        "wiedergeburt", "wiederbelebung", "friedhof", "haendler", "nachschub"];
     /* Das Erdbeben steht seit v0.54 bei den Unglueckswuerfeln. */
     const behaeltDenZug = ["ausweichen", "schutzschild",
         "nudelholz", "mauer", "fessel", "frost", "doppelzug"];
@@ -2841,6 +3101,58 @@ pruefe("Der Regen steigert sich exponentiell (v0.53)", () => {
     wahr(SCHACH_VARIANTEN.regenAnzahl(10, 64) <= 10, "und nie mehr als freie Felder");
 });
 
+pruefe("Fuenf Stufen aendern die Kurve, nicht ihr Ende (v0.59, Wunsch #11)", () => {
+    /*
+     * DER PUNKT AUS DEM EINGANGSKORB: „das Ende soll gleich sein, nur davor
+     * die Kurve viel steiler." Stufe 5 ist der Verlauf von v0.53 und die
+     * Vorgabe; 1 laesst es lange fast gar nicht regnen.
+     */
+    const stufen = [1, 2, 3, 4, 5];
+
+    /* Der Grenzfall ist bei JEDER Stufe derselbe. */
+    for (const stufe of stufen) {
+        gleich(SCHACH_VARIANTEN.regenAnzahl(62, 64, stufe), 62,
+            "Stufe " + stufe + ": nur noch die Koenige, jedes Feld bekommt einen");
+        gleich(SCHACH_VARIANTEN.regenChance(62, 64, stufe), 100,
+            "Stufe " + stufe + ": und es regnet sicher");
+        gleich(SCHACH_VARIANTEN.regenChance(0, 64, stufe), 0,
+            "Stufe " + stufe + ": auf vollem Brett gar nicht");
+    }
+
+    /* Davor liegt Stufe 1 unter jeder hoeheren — sie steigt spaeter an. */
+    for (let stufe = 1; stufe < 5; stufe++) {
+        wahr(SCHACH_VARIANTEN.regenChance(32, 64, stufe)
+            < SCHACH_VARIANTEN.regenChance(32, 64, stufe + 1),
+        "Stufe " + stufe + " regnet auf halbem Brett seltener als Stufe " + (stufe + 1));
+    }
+
+    /* Ohne Angabe gilt die Vorgabe — jede Partie von vor v0.59 rechnet
+       damit genau weiter wie bisher. */
+    gleich(SCHACH_VARIANTEN.regenChance(32, 64),
+        SCHACH_VARIANTEN.regenChance(32, 64, SCHACH_VARIANTEN.REGEN.STUFE_VORGABE),
+        "ohne Stufe gilt die Vorgabe");
+    gleich(SCHACH_VARIANTEN.regenChance(32, 64, 99),
+        SCHACH_VARIANTEN.regenChance(32, 64, SCHACH_VARIANTEN.REGEN.STUFE_VORGABE),
+        "und eine unbekannte Stufe faellt darauf zurueck");
+});
+
+pruefe("Die Stufe gehoert zur Partie und ueberlebt das Normalisieren (v0.59)", () => {
+    const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-stufe", "R");
+    gleich(runde.regeln.regenStufe, SCHACH_VARIANTEN.REGEN.STUFE_VORGABE,
+        "eine neue Partie faengt mit der Vorgabe an");
+
+    const gesetzt = SCHACH_RUNDE.kopieren(runde);
+    gesetzt.regeln.regenStufe = 2;
+    gleich(SCHACH_RUNDE.regenStufe(SCHACH_RUNDE.kopieren(gesetzt)), 2,
+        "eine gesetzte Stufe bleibt stehen");
+
+    const unsinn = SCHACH_RUNDE.kopieren(runde);
+    unsinn.regeln.regenStufe = 42;
+    gleich(SCHACH_RUNDE.regenStufe(SCHACH_RUNDE.kopieren(unsinn)),
+        SCHACH_VARIANTEN.REGEN.STUFE_VORGABE,
+        "Unsinn faellt auf die Vorgabe zurueck");
+});
+
 pruefe("Der Regen braucht den Wuerfel-Haken", () => {
     /* Ein Regen ohne Wuerfel waere keiner — deshalb fragt `regenAn` beides. */
     const ohne = SCHACH_RUNDE.leereRunde(1000, "standard", "p-regen", "R");
@@ -2916,27 +3228,46 @@ pruefe("Eine Faehigkeit sammelt Wuerfel ein, die sie beruehrt (v0.53)", () => {
         "und die Faehigkeit ist gutgeschrieben");
 });
 
-pruefe("Ein Feld ohne eigene Figur sammelt nichts ein", () => {
+pruefe("Der Wuerfel geht an die Seite der geschobenen Figur (v0.59, Wunsch #6)", () => {
     /*
-     * Das Erdbeben verschiebt BEIDE Seiten. Auf einem Feld, auf dem danach eine
-     * gegnerische Figur steht, darf nichts eingesammelt werden — sonst bekaeme
-     * man Wuerfel fuer Felder, die man nie betreten hat.
+     * BIS v0.58 ZAEHLTEN NUR EIGENE FIGUREN. Schob eine Faehigkeit eine
+     * GEGNERISCHE Figur ueber einen Wuerfel, bekam ihn niemand — er lag unter
+     * ihr und war fuer immer unerreichbar, genau der Fall, den „Beruehren
+     * heisst Einsammeln" (v0.53) abschaffen sollte.
+     *
+     * Seit v0.59 sammelt die Seite ein, DEREN Figur auf dem Feld landet. Wer
+     * mit dem Nudelholz gegnerische Figuren schiebt, kann dem Gegner also
+     * etwas schenken — das ist der Preis der Faehigkeit, nicht ein Fehler.
      */
     let runde = faehigkeitenPartie();
 
-    /* Ein Wuerfel mitten im Nichts, den das Erdbeben zwar beruehrt, auf dem
-       aber keine weisse Figur landet. */
+    /* Ein Wuerfel mitten im Nichts, den das Erdbeben beruehrt. */
     const feld = SCHACH.feldNummer("d7");
     runde.bonus = [{ feld: feld, art: "", stufe: "gruen" }];
 
-    const vorher = runde.faehigkeiten.weiss.length;
+    const vorherWeiss = runde.faehigkeiten.weiss.length;
+    const vorherSchwarz = runde.faehigkeiten.schwarz.length;
     const nachher = einsetzen(runde, "erdbeben", feld);
 
     if (nachher) {
-        const eigene = SCHACH.farbeVon(SCHACH.figurAuf(nachher.stand, feld)) === "weiss";
-        if (!eigene) {
-            gleich(nachher.faehigkeiten.weiss.length, vorher,
-                "ohne eigene Figur auf dem Feld gibt es nichts");
+        const farbe = SCHACH.farbeVon(SCHACH.figurAuf(nachher.stand, feld));
+
+        if (farbe === "schwarz") {
+            gleich(nachher.bonus.length, 0, "der Wuerfel bleibt nicht liegen");
+            gleich(nachher.faehigkeiten.schwarz.length, vorherSchwarz + 1,
+                "die geschobene gegnerische Figur sammelt ihn fuer SCHWARZ ein");
+            gleich(nachher.faehigkeiten.weiss.length, vorherWeiss,
+                "und Weiss bekommt nichts dafuer");
+
+        } else if (farbe === "weiss") {
+            gleich(nachher.faehigkeiten.weiss.length, vorherWeiss + 1,
+                "die eigene Figur sammelt fuer Weiss ein");
+
+        } else {
+            gleich(nachher.faehigkeiten.weiss.length, vorherWeiss,
+                "auf einem leeren Feld sammelt niemand ein");
+            gleich(nachher.faehigkeiten.schwarz.length, vorherSchwarz,
+                "auch der Gegner nicht");
         }
     }
 });
@@ -3459,6 +3790,33 @@ pruefe("Wer sein Ziel nicht erreicht, schlaegt dort auch nichts (v0.58)", () => 
         "auch nicht als gefallen");
 });
 
+pruefe("Ein Wuerfel, der in einen Riss faellt, ist weg (v0.59, Wunsch #20)", () => {
+    /*
+     * Auf ein gesperrtes Feld kann niemand mehr ziehen — ein Würfel, der
+     * darunter liegen bliebe, wäre für den Rest der Partie unerreichbar.
+     * Gebaut wird der Fall über ein Erdbeben, das drei Felder aufreisst,
+     * während auf dem Brett noch weitere Würfel liegen.
+     */
+    const runde = rissPartie();
+
+    /* Zusätzliche Würfel auf jedes noch freie Feld der Spalte c — eines davon
+       trifft das Erdbeben mit Sicherheit. */
+    for (const name of ["c3", "c4", "c5", "c6", "c7", "c8"]) {
+        runde.bonus.push({ feld: SCHACH.feldNummer(name), art: "sprung" });
+    }
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("c1"), SCHACH.feldNummer("c2"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Zug ist erlaubt");
+    wahr(SCHACH.risse(gezogen.stand).length > 0, "es sind Risse entstanden");
+
+    for (const eintrag of gezogen.bonus) {
+        wahr(!SCHACH.rissAuf(gezogen.stand, eintrag.feld),
+            "kein Wuerfel liegt auf einem Riss (Feld " + eintrag.feld + ")");
+    }
+});
+
 pruefe("Ohne Riss auf dem weiteren Weg bleibt der Zug, wie er war (v0.58)", () => {
     /*
      * DIE GRENZE DER REGEL. Ein Riss HINTER der Figur haelt sie nicht auf —
@@ -3490,6 +3848,43 @@ pruefe("Ohne Riss auf dem weiteren Weg bleibt der Zug, wie er war (v0.58)", () =
     wahr(gezogen !== null, "der Springer zieht");
     gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("c3")), "S",
         "und steht auf seinem Zielfeld");
+});
+
+pruefe("Nudelholz schiebt niemanden auf ein gesperrtes Feld (v0.59)", () => {
+    /*
+     * GEFUNDEN AM 13.08. beim Einordnen von Wunsch #16: `SCHACH.nudelholz`
+     * fragte nur, ob das Zielfeld LEER ist — nicht, ob es gesperrt ist. Eine
+     * Figur landete dadurch auf einer Mauer oder in einem Riss, also auf einem
+     * Feld, das es fuer die Regeln gar nicht mehr gibt. Das Erdbeben fragt an
+     * derselben Stelle seit v0.54 richtig.
+     */
+    const runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "B......."
+            + "....K...",
+        amZug: "weiss",
+        rochade: "",
+        /* Genau vor dem Bauern auf a2 klafft ein Loch. */
+        risse: [SCHACH.feldNummer("a3")]
+    });
+
+    const wirkung = SCHACH.nudelholz(runde.stand, 0, -1);
+    const bauerSteht = (stand, name) =>
+        SCHACH.figurAuf(stand, SCHACH.feldNummer(name));
+
+    if (wirkung) {
+        gleich(bauerSteht(wirkung.stand, "a3"), ".", "im Riss steht niemand");
+        gleich(bauerSteht(wirkung.stand, "a2"), "B", "der Bauer bleibt davor stehen");
+    } else {
+        gleich(bauerSteht(runde.stand, "a2"), "B", "der Bauer bleibt davor stehen");
+    }
 });
 
 pruefe("Nudelholz: auch das aeusserste Feld der Grundreihe geht", () => {
@@ -3822,7 +4217,10 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         /* Ein Bauer hat als Einziger ein freies Nachbarfeld. */
         spiegel: "a2",
         /* Angetippt wird die EIGENE Grundreihe; gerollt wird von dort weg. */
-        nudelholz: "a1"
+        nudelholz: "a1",
+        /* Der neue Bauer braucht ein FREIES Feld der eigenen Grundreihe —
+           in der Grundstellung ist keines frei, der Test raeumt b1. */
+        nachschub: "b1"
     };
 
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
@@ -3832,8 +4230,10 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         if (ziele[art]) {
             feld = SCHACH.feldNummer(ziele[art]);
         }
-        if (art === "wiedergeburt") {
+        if (art === "wiedergeburt" || art === "nachschub") {
             runde.stand.brett = SCHACH._brettMit(runde.stand.brett, feld, ".");
+        }
+        if (art === "wiedergeburt") {
             runde.verloren.weiss.push("S");
         }
         if (art === "wiederbelebung") {

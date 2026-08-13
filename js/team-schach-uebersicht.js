@@ -39,14 +39,59 @@ Object.assign(TEAM_SCHACH, {
 
         wurzel.appendChild(kopf);
         wurzel.appendChild(TEAM_SCHACH._regelSchalterBauen());
+        wurzel.appendChild(TEAM_SCHACH._formLeisteBauen());
 
         const feld = TEAM_SCHACH._element("div", "spielart-feld");
 
-        for (const variante of SCHACH_VARIANTEN.zurAuswahl()) {
+        for (const variante of SCHACH_VARIANTEN.zurAuswahlNachForm(TEAM_SCHACH.gewaehlteForm)) {
             feld.appendChild(TEAM_SCHACH._spielartKachelBauen(variante));
         }
 
         wurzel.appendChild(feld);
+    },
+
+    /*
+     * DIE BRETTFORM STEHT VOR DER SPIELART (seit v0.63, Wunsch #22).
+     *
+     * Bis v0.62 lagen alle Spielarten als eine flache Reihe Kacheln da und
+     * mischten zwei Fragen: welche FORM und welche GRÖSSE. Mit den drei
+     * Kreuz-Brettern wären das sieben Kacheln ohne erkennbare Ordnung gewesen.
+     *
+     * Jetzt wählt man erst die Form — Quadratisch, Rechteckig, Kreuz — und
+     * sieht darunter nur deren Grössen. Die Form ist reine Anzeige: Sie steht
+     * nicht in der Partie, sondern nur in diesem Bildschirm. Was gespeichert
+     * wird, ist wie immer die eine gewählte Spielart.
+     */
+    _formLeisteBauen() {
+        const karte = TEAM_SCHACH._element("section", "karte");
+        karte.appendChild(TEAM_SCHACH._element("h3", "", "Welche Brettform?"));
+
+        const leiste = TEAM_SCHACH._element("div", "form-leiste");
+
+        for (const form of SCHACH_VARIANTEN.FORMEN) {
+            const aktiv = (form.id === TEAM_SCHACH.gewaehlteForm);
+
+            const knopf = TEAM_SCHACH._knopf(form.titel,
+                "knopf-klein form-knopf" + (aktiv ? " form-knopf-aktiv" : " knopf-still"),
+                () => {
+                    TEAM_SCHACH.gewaehlteForm = form.id;
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                });
+
+            knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+            leiste.appendChild(knopf);
+        }
+
+        karte.appendChild(leiste);
+
+        const gewaehlt = SCHACH_VARIANTEN.FORMEN.find(
+            (form) => form.id === TEAM_SCHACH.gewaehlteForm);
+
+        if (gewaehlt) {
+            karte.appendChild(TEAM_SCHACH._element("p", "erklaerung", gewaehlt.beschreibung));
+        }
+
+        return karte;
     },
 
     /*
@@ -195,9 +240,65 @@ Object.assign(TEAM_SCHACH, {
             }
 
             karte.appendChild(halter);
+
+            /* Der Regen hat als einziger Haken noch eine Zahl dahinter. */
+            if (eintrag.schluessel === "regen" && TEAM_SCHACH.neueRegeln.regen) {
+                karte.appendChild(TEAM_SCHACH._regenReglerBauen());
+            }
         }
 
         return karte;
+    },
+
+    /*
+     * DER SCHIEBEREGLER FÜR DEN REGEN (seit v0.59, Wunsch #11).
+     *
+     * Er sagt, WIE SPÄT der Regen einsetzt — nicht, wie stark er am Ende ist:
+     * Bei jeder Stufe bekommt am Schluss jedes freie Feld einen Würfel (die
+     * Rechnung dahinter steht in `SCHACH_VARIANTEN.REGEN.STUFEN`). 5 ist der
+     * Verlauf, den es seit v0.53 gibt, und bleibt die Vorgabe.
+     *
+     * Er erscheint nur, solange der Haken darüber gesetzt ist — wie jeder
+     * andere Unterpunkt auch. Ein Regler zu einem Regen, den es in dieser
+     * Partie nicht gibt, wäre eine Einstellung ohne Gegenstück.
+     */
+    _regenReglerBauen() {
+        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt regler-zeile");
+
+        const beschriftung = TEAM_SCHACH._element("span", "schalter-titel", "Wie früh es regnet");
+        zeile.appendChild(beschriftung);
+
+        const regler = document.createElement("input");
+        regler.type = "range";
+        regler.className = "regler";
+        regler.min = "1";
+        regler.max = "5";
+        regler.step = "1";
+        regler.value = String(TEAM_SCHACH.neueRegeln.regenStufe);
+        regler.setAttribute("aria-label", "Wie früh es regnet, 1 bis 5");
+
+        const wert = TEAM_SCHACH._element("span", "regler-wert", "");
+
+        const beschriften = () => {
+            const stufe = TEAM_SCHACH.neueRegeln.regenStufe;
+            wert.textContent = stufe + " von 5 — " + ((stufe === 5)
+                ? "wie gewohnt"
+                : ((stufe === 1) ? "sehr spät, dafür heftig" : "später als gewohnt"));
+        };
+
+        regler.addEventListener("input", () => {
+            const gewaehlt = parseInt(regler.value, 10);
+            TEAM_SCHACH.neueRegeln.regenStufe = (gewaehlt >= 1 && gewaehlt <= 5)
+                ? gewaehlt
+                : SCHACH_VARIANTEN.REGEN.STUFE_VORGABE;
+            beschriften();
+        });
+
+        beschriften();
+        zeile.appendChild(regler);
+        zeile.appendChild(wert);
+
+        return zeile;
     },
 
     /*
@@ -258,12 +359,20 @@ Object.assign(TEAM_SCHACH, {
 
         const felder = variante.breite * variante.hoehe;
 
+        /* Die toten Ecken eines Kreuz-Bretts gehören ins Vorschaubild — sonst
+           sähe die Kachel aus wie ein gewöhnliches Quadrat (seit v0.63). */
+        const ecken = variante.kreuz ? SCHACH_VARIANTEN.kreuzEcken(variante) : [];
+
         for (let feld = 0; feld < felder; feld++) {
             const reihe = Math.floor(feld / variante.breite);
             const spalte = feld % variante.breite;
 
             const zelle = TEAM_SCHACH._element("div",
                 "vorschau-feld " + (((reihe + spalte) % 2 === 0) ? "feld-hell" : "feld-dunkel"));
+
+            if (ecken.indexOf(feld) !== -1) {
+                zelle.classList.add("feld-riss");
+            }
 
             const figur = variante.aufstellung[feld];
             if (figur !== ".") {
@@ -301,7 +410,22 @@ Object.assign(TEAM_SCHACH, {
          * einmal nachsehen will.
          */
         const offene = alle.filter((partie) => !partie.ergebnis);
-        const beendete = alle.filter((partie) => partie.ergebnis);
+
+        /*
+         * NUR DIE EIGENE HISTORIE (seit v0.59, Wunsch #8).
+         *
+         * Offene Partien sieht weiterhin jeder — man muss ja beitreten können.
+         * Beendete sind dagegen abgeschlossen: Wer nicht mitgespielt hat, kann
+         * dort nichts mehr tun, und die Liste wuchs mit jeder fremden Partie.
+         * Gefiltert wird über `SCHACH_RUNDE.teamVon` — dieselbe Frage, die auch
+         * über den Knopf „Ergebnis ansehen" entscheidet.
+         *
+         * Die Partien selbst bleiben unangetastet: Sie stehen weiter im
+         * gemeinsamen Stand, und ihre Punkte stehen in der Chronik. Hier wird
+         * nur ANGEZEIGT — die Rangliste zählt unverändert alles.
+         */
+        const beendete = alle.filter((partie) => partie.ergebnis
+            && SCHACH_RUNDE.teamVon(partie, person.id));
 
         const kopf = TEAM_SCHACH._element("div", "phasen-leiste");
         kopf.appendChild(TEAM_SCHACH._element("span", "phasen-text",
@@ -324,7 +448,7 @@ Object.assign(TEAM_SCHACH, {
 
             const titel = document.createElement("summary");
             titel.className = "verlauf-titel";
-            titel.textContent = "Beendet (" + beendete.length + ")";
+            titel.textContent = "Deine beendeten Partien (" + beendete.length + ")";
             kasten.appendChild(titel);
 
             for (const partie of beendete) {
@@ -363,8 +487,32 @@ Object.assign(TEAM_SCHACH, {
             kopf.appendChild(TEAM_SCHACH._element("span", "chip chip-fertig",
                 (meinTeam === "weiss") ? "Du: Weiss" : "Du: Schwarz"));
         }
+        /*
+         * WER HAT GEWONNEN, WER VERLOREN (seit v0.59, Wunsch #18).
+         *
+         * Bis dahin stand hier nur „beendet", und wer gewonnen hatte, ging
+         * allein aus dem Satz darunter hervor („Weiss hat gewonnen") — die
+         * NAMEN dazu standen wieder zwei Zeilen tiefer, unsortiert. Jetzt sagt
+         * der Kopf das Ergebnis, und die Namenszeile sagt, wer auf welcher
+         * Seite stand.
+         *
+         * Das eigene Ergebnis steht dabei vorn: Wer mitgespielt hat, will
+         * zuerst wissen, ob ER gewonnen hat.
+         */
         if (partie.ergebnis) {
-            kopf.appendChild(TEAM_SCHACH._element("span", "chip chip-offen", "beendet"));
+            if (meinTeam) {
+                const gewonnen = (partie.ergebnis === meinTeam);
+                const remis = (partie.ergebnis === "remis");
+
+                kopf.appendChild(TEAM_SCHACH._element("span",
+                    "chip " + (remis ? "chip-offen" : (gewonnen ? "chip-fertig" : "chip-fehler")),
+                    remis ? "Unentschieden" : (gewonnen ? "Gewonnen" : "Verloren")));
+            } else {
+                kopf.appendChild(TEAM_SCHACH._element("span", "chip chip-offen",
+                    (partie.ergebnis === "remis")
+                        ? "Unentschieden"
+                        : ((partie.ergebnis === "weiss") ? "Weiss gewinnt" : "Schwarz gewinnt")));
+            }
         } else if (partie.laeuft) {
             kopf.appendChild(TEAM_SCHACH._element("span", "chip chip-laeuft", "läuft"));
         }
@@ -376,9 +524,25 @@ Object.assign(TEAM_SCHACH, {
 
         const weiss = partie.teams.weiss.map((id) => TEAM_SCHACH._nameVon(id));
         const schwarz = partie.teams.schwarz.map((id) => TEAM_SCHACH._nameVon(id));
+
+        /* Bei einer beendeten Partie trägt jede Seite dazu, wie sie
+           ausgegangen ist — sonst muss man das Ergebnis oben mit den Namen
+           hier unten selbst zusammenrechnen. */
+        const seite = (farbe, namen) => {
+            const kopfText = (farbe === "weiss") ? "Weiss" : "Schwarz";
+            const wer = namen.length ? namen.join(", ") : "niemand";
+
+            if (!partie.ergebnis) {
+                return kopfText + ": " + wer;
+            }
+            if (partie.ergebnis === "remis") {
+                return kopfText + " (unentschieden): " + wer;
+            }
+            return kopfText + ((partie.ergebnis === farbe) ? " (Sieger): " : " (Verlierer): ") + wer;
+        };
+
         karte.appendChild(TEAM_SCHACH._element("p", "team-namen",
-            "Weiss: " + (weiss.length ? weiss.join(", ") : "niemand")
-            + "   |   Schwarz: " + (schwarz.length ? schwarz.join(", ") : "niemand")));
+            seite("weiss", weiss) + "   |   " + seite("schwarz", schwarz)));
 
         const leiste = TEAM_SCHACH._element("div", "karte-fuss");
         leiste.appendChild(TEAM_SCHACH._knopf("Öffnen", "knopf-still knopf-klein",

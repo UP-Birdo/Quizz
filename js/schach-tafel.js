@@ -325,6 +325,7 @@ const SCHACH_TAFEL = {
          * SPIELART tun — die Regeln kommen von aussen und sind dort noch nicht
          * gesetzt. Ohne Haken ändert der Aufruf nichts.
          */
+        SCHACH_RUNDE.kreuzAufstellen(partie);
         SCHACH_RUNDE.armeeAufstellen(partie);
 
         neu.partien[id] = partie;
