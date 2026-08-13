@@ -338,10 +338,38 @@ const TEAM_SCHACH = {
         const spieltNoch = !!(offeneJetzt && !offeneJetzt.ergebnis);
 
         if (!TEAM_SCHACH.abschluss && !spieltNoch) {
-            const fertig = SCHACH_TAFEL.liste(tafel).find((partie) =>
+            /*
+             * NUR DIE ZULETZT BEENDETE (seit v0.69, Wunsch #23).
+             *
+             * Gemeldet als: „Wenn ich auf Schach gehe, bekomme ich erstmal
+             * ALLE Matches, die ich gewonnen oder verloren habe, als Anzeige."
+             * Genau so war es gebaut — gesucht wurde die erste beste Partie,
+             * die dieses Gerät noch nicht abgehakt hatte, und nach dem
+             * Wegklicken kam die nächste. Wer ein paar Tage nicht hineingesehen
+             * hatte, klickte sich durch seine ganze Historie.
+             *
+             * Jetzt kommt nur die JÜNGSTE ungesehene; alle älteren gelten
+             * damit als gesehen. Verloren geht nichts — jede beendete Partie
+             * lässt sich in der Übersicht über „Ergebnis ansehen" wieder
+             * öffnen.
+             */
+            const offeneAbschluesse = SCHACH_TAFEL.liste(tafel).filter((partie) =>
                 partie.ergebnis
                 && !ICH.abschlussGesehen(partie.id)
                 && SCHACH_RUNDE.teamVon(partie, person.id));
+
+            const fertig = offeneAbschluesse
+                .slice()
+                .sort((einer, anderer) =>
+                    (anderer.geaendertAm || 0) - (einer.geaendertAm || 0))[0];
+
+            /* Die älteren gleich mit abhaken, sonst kämen sie beim nächsten
+               Öffnen doch wieder — eine nach der anderen. */
+            for (const aeltere of offeneAbschluesse) {
+                if (!fertig || aeltere.id !== fertig.id) {
+                    ICH.abschlussMerken(aeltere.id);
+                }
+            }
 
             if (fertig) {
                 /* Schritt 0 ist die Rückschau (seit v0.61): Sie kommt VOR
@@ -421,7 +449,13 @@ const TEAM_SCHACH = {
      * Gegner müsste sonst raten, warum plötzlich eine Figur woanders steht.
      */
     _wirkungAnimieren(halter, partie) {
-        const letzter = partie.verlauf[partie.verlauf.length - 1];
+        /*
+         * Auch hier NICHT blind der letzte Eintrag (seit v0.69, Wunsch #30):
+         * Eine neu erschienene Lootbox hängt sich hinten an und hätte das
+         * Aufleuchten der Fähigkeit verschluckt, die einen Zug vorher gewirkt
+         * hat. Dieselbe Suche wie bei Spur und Bewegung.
+         */
+        const letzter = TEAM_SCHACH._letzterBewegungsEintrag(partie);
 
         if (!letzter || !letzter.wirkung || letzter.felder.length === 0) {
             TEAM_SCHACH.wirkungBis[partie.id] = partie.zugZaehler;
@@ -530,6 +564,27 @@ const TEAM_SCHACH = {
 
         if (partie.laeuft && SCHACH.imSchach(partie.stand, partie.stand.amZug)) {
             leiste.appendChild(TEAM_SCHACH._element("span", "chip chip-fehler", "Schach"));
+        }
+
+        /*
+         * WIE LANGE DAS VOLLE GLAS NOCH TRÜBT (seit v0.69, Wunsch #33).
+         *
+         * Jede andere ablaufende Wirkung trägt ihre Restzeit am FELD
+         * (`SCHACH.restzeitAuf`, seit v0.53). Das volle Glas hat kein Feld — es
+         * trübt die Sicht einer ganzen SEITE und hängt an `glasBis`. Deshalb
+         * steht seine Restzeit hier oben in der Leiste, wo auch alles andere
+         * steht, was für die ganze Partie gilt.
+         *
+         * Gezeigt wird sie NUR DEM BETROFFENEN: Der Gegner soll nicht wissen,
+         * wie lange er noch falsch sieht — und schon gar nicht, dass er es tut.
+         */
+        if (partie.laeuft && meinTeam && partie.stand.glasFarbe === meinTeam) {
+            const rest = partie.stand.glasBis - partie.zugZaehler;
+
+            if (rest > 0) {
+                leiste.appendChild(TEAM_SCHACH._element("span", "chip chip-fehler",
+                    "Sicht getrübt: noch " + rest + (rest === 1 ? " Halbzug" : " Halbzüge")));
+            }
         }
 
         /*

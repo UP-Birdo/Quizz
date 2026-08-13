@@ -971,6 +971,59 @@ pruefe("Die Historie zeigt nur eigene Partien, mit Sieger und Verlierer (v0.59)"
     TEAM_SCHACH.zeichnen(vorher);
 });
 
+pruefe("Eine neu erschienene Lootbox verdeckt die Zugspur nicht (v0.69, Wunsch #30)", () => {
+    /*
+     * DER FEHLER: Spur und Bewegung lasen beide den LETZTEN Verlaufseintrag.
+     * Erscheint nach dem Zug eine neue Lootbox, haengt `_bonusNachziehen`
+     * einen Eintrag mit `von: -1, nach: -1` hinten an — und damit fiel beides
+     * heraus. Der Zug war passiert, aber nichts zeigte ihn. Beim Springer fiel
+     * es am meisten auf, weil sein L ohne Spur kaum nachzuvollziehen ist.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Spur", 7000);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 7000);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 7000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 7000);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 7000);
+
+    /* Ein Springerzug — und danach von Hand der Eintrag, den das Erscheinen
+       einer Lootbox schreibt. */
+    partie = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("b1"), SCHACH.feldNummer("c3"), "D", "Anna", 7010);
+
+    partie = SCHACH_RUNDE.kopieren(partie);
+    partie.verlauf.push({
+        text: "Eine Lootbox erscheint auf d5", wer: "", farbe: "schwarz",
+        von: -1, nach: -1, wirkung: "erscheint",
+        felder: [SCHACH.feldNummer("d5")], wege: []
+    });
+
+    const gefunden = TEAM_SCHACH._letzterBewegungsEintrag(partie);
+
+    if (!gefunden || gefunden.von !== SCHACH.feldNummer("b1")) {
+        throw new Error("der Springerzug wird nicht mehr gefunden");
+    }
+
+    /* Und die Spur liegt wirklich auf dem L des Springers. */
+    const spur = TEAM_SCHACH._letzteSpur(partie);
+
+    if (!spur.enden[SCHACH.feldNummer("b1")] || !spur.enden[SCHACH.feldNummer("c3")]) {
+        throw new Error("die Spur nennt Start und Ziel nicht");
+    }
+
+    /* Ein Eintrag, der etwas bewirkt hat, wird dagegen NICHT uebersprungen. */
+    partie.verlauf.push({
+        text: "Fähigkeit Schutzschild eingesetzt", wer: "Anna", farbe: "weiss",
+        von: -1, nach: -1, wirkung: "schutzschild",
+        felder: [SCHACH.feldNummer("e2")], wege: []
+    });
+
+    if (TEAM_SCHACH._letzterBewegungsEintrag(partie).wirkung !== "schutzschild") {
+        throw new Error("eine wirkende Faehigkeit darf nicht uebersprungen werden");
+    }
+});
+
 pruefe("Ein Wuerfel auf dem Brett wird gezeichnet", () => {
     let partie = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.faehigkeiten);
     partie = SCHACH_RUNDE.kopieren(partie);

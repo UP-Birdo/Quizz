@@ -520,6 +520,30 @@ unterscheiden.
 liefert beides: ohne den Schalter öffnen und dem Fenster sofort danach die
 Rückverbindung nehmen (`fenster.opener = null`).
 
+## Die neue Lootbox verdeckte den Zug, der gerade passiert war (v0.69)
+
+**Der Fehler:** „Manche Züge, gerade mit dem Pferd, wurden nicht gezeigt." Mal
+lief die Bewegung und die Spur lag auf dem Brett, mal passierte gar nichts —
+ohne erkennbares Muster.
+
+**Die Ursache:** Sowohl `_letzteSpur` als auch `_zugAnimieren` (und
+`_wirkungAnimieren`) lasen den **letzten** Eintrag des Verlaufs. Nach einem Zug
+ist der aber sehr oft gar nicht der Zug: `_bonusNachziehen` hängt „Eine Lootbox
+erscheint auf …" hinten an, sobald eine neue erscheint — und dieser Eintrag
+trägt `von: -1, nach: -1`. Damit fiel die Bewegungsanimation sofort heraus und
+die Spur blieb leer.
+
+Das Muster war also sehr wohl da, nur nicht am Zug: Es hing daran, ob in
+diesem Halbzug eine Lootbox erschienen ist. Beim **Springer** fiel es am
+meisten auf, weil sein L ohne Spur am schwersten nachzuvollziehen ist — deshalb
+kam die Meldung über ihn.
+
+**Die Lehre:** „Der letzte Eintrag" ist nicht dasselbe wie „das, was gerade
+passiert ist". Sobald ein Verlauf NEBENHER entstandene Einträge kennt
+(Erscheinen, Einsammeln), muss man den letzten Eintrag suchen, der die
+gemeinte ART von Ereignis trägt — hier `_letzterBewegungsEintrag`. Und: Wer
+einen neuen Eintragstyp erfindet, prüft, wer alles „den letzten" liest.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

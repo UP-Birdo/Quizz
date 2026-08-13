@@ -28,6 +28,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Das Beispiel im Erklaertext verschluckte einen echten Wunsch (v0.63)
     - Die Sicherung gegen gleichzeitige Zuege verschluckte das Ausweichen (v0.66)
     - „Fenster blockiert", obwohl das Fenster aufging (v0.66)
+    - Die neue Lootbox verdeckte den Zug, der gerade passiert war (v0.69)
 
 ## entschieden.md - Entschieden - und warum
 

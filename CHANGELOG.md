@@ -3,6 +3,27 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.69.0 — 2026-08-13
+
+- **Züge werden wieder gezeigt — auch mit dem Springer.** Die Spur des letzten
+  Zuges und die gleitende Bewegung lasen beide den letzten Eintrag im
+  Zugverlauf. Erscheint nach dem Zug eine neue Lootbox, steht die dort ganz
+  hinten — und die hat kein Von und kein Nach. Damit fiel beides aus: Der Zug
+  war passiert, aber nichts zeigte ihn. Beim **Springer** fiel es am meisten
+  auf, weil sein L ohne Spur kaum nachzuvollziehen ist. Jetzt wird der letzte
+  Eintrag gesucht, der wirklich eine Bewegung beschreibt.
+- **Beim Öffnen kommt nur noch die zuletzt beendete Partie.** Vorher zeigte die
+  App der Reihe nach jedes Ergebnis, das dieses Gerät noch nicht abgehakt
+  hatte — wer ein paar Tage nicht hineingesehen hatte, klickte sich durch seine
+  ganze Historie. Ältere Partien lassen sich weiterhin über „Ergebnis ansehen"
+  öffnen.
+- **Das Volle Glas sagt, wie lange es noch trübt.** Die Restzeit steht oben in
+  der Leiste — und nur bei dem, den es trifft. Der Gegner soll nicht wissen,
+  dass jemand falsch sieht.
+- **Beim Schutzschild steht jetzt dabei, dass die Figur stehen bleiben muss.**
+  Wer mit ihr zieht, verliert das Schild; das ergab sich bisher erst aus dem
+  Spielverlauf.
+
 ## v0.68.0 — 2026-08-13
 
 - **Aus „Würfel" wird „Lootbox".** Die Boxen, die im Team Schach auf freien

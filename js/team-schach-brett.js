@@ -739,9 +739,53 @@ Object.assign(TEAM_SCHACH, {
      * Figur, die sich bewegt hat, hinterlässt ihre Spur. Ältere Einträge im
      * Verlauf kennen nur `von`/`nach`; die tragen genauso.
      */
+    /*
+     * DER LETZTE EINTRAG, DER EINE BEWEGUNG BESCHREIBT (seit v0.69, Wunsch #30).
+     *
+     * DER FEHLER: „Manche Züge, gerade mit dem Pferd, wurden nicht gezeigt."
+     * Spur und Bewegung lasen beide den LETZTEN Verlaufseintrag — und der ist
+     * nach einem Zug sehr oft gar nicht der Zug. Erscheint danach eine neue
+     * Lootbox (was in einer Partie mit Lootboxen ständig passiert), hängt
+     * `_bonusNachziehen` einen Eintrag „Eine Lootbox erscheint auf …" hinten
+     * an, und der trägt `von: -1, nach: -1`. Damit fiel die Bewegungsanimation
+     * sofort heraus und die Spur blieb leer: Der Zug war passiert, aber nichts
+     * zeigte ihn.
+     *
+     * Beim SPRINGER fällt es am meisten auf — sein L lässt sich ohne Spur am
+     * schwersten nachvollziehen. Deshalb kam die Meldung über ihn.
+     *
+     * Gesucht wird jetzt rückwärts der erste Eintrag, der wirklich eine
+     * Bewegung trägt: entweder `wege` oder ein gültiges Feldpaar. Ohne einen
+     * solchen bleibt es beim letzten Eintrag — dann gibt es eben keine Spur.
+     */
+    _letzterBewegungsEintrag(partie) {
+        for (let stelle = partie.verlauf.length - 1; stelle >= 0; stelle--) {
+            const eintrag = partie.verlauf[stelle];
+
+            if (eintrag.wege && eintrag.wege.length > 0) {
+                return eintrag;
+            }
+            if (Number.isInteger(eintrag.von) && eintrag.von >= 0
+                && Number.isInteger(eintrag.nach) && eintrag.nach >= 0) {
+                return eintrag;
+            }
+
+            /*
+             * Nur über Einträge hinweg, die NEBENHER entstanden sind. Ein
+             * Eintrag mit Wirkung, der nichts bewegt hat (Schutzschild,
+             * Fessel), ist das Letzte, was passiert ist — dahinter wird nicht
+             * weitergesucht, sonst zeigte die Spur einen Zug von vorgestern.
+             */
+            if (eintrag.wirkung !== "erscheint") {
+                return eintrag;
+            }
+        }
+        return null;
+    },
+
     _letzteSpur(partie) {
         const spur = { weg: {}, enden: {}, wirkung: {}, pech: false };
-        const letzter = partie.verlauf[partie.verlauf.length - 1];
+        const letzter = TEAM_SCHACH._letzterBewegungsEintrag(partie);
 
         if (!letzter) {
             return spur;
@@ -985,7 +1029,9 @@ Object.assign(TEAM_SCHACH, {
      * gezeichnet wird oft, gezogen selten.
      */
     _zugAnimieren(halter, partie, person) {
-        const letzter = partie.verlauf[partie.verlauf.length - 1];
+        /* Derselbe Eintrag wie bei der Spur (seit v0.69) — sonst zeigt die eine
+           den Zug und die andere nicht. */
+        const letzter = TEAM_SCHACH._letzterBewegungsEintrag(partie);
 
         if (!letzter || !Number.isInteger(letzter.von) || letzter.von < 0
             || letzter.nach < 0) {

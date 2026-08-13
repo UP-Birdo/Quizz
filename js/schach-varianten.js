@@ -570,9 +570,14 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "ziel",
             zielArt: "eigeneFigur",
+            /* Der zweite Satz seit v0.69 (Wunsch #31): Dass die geschützte
+               Figur stehen bleiben muss, ergab sich bisher nur aus dem
+               Spielverlauf — man hat es gemerkt, nachdem es passiert war. */
             beschreibung: "Eine eigene Figur überlebt den nächsten Angriff: Der "
-                + "Schlag verpufft, der Angreifer bleibt stehen. Auf den König "
-                + "wirkt das Schild nicht."
+                + "Schlag verpufft, der Angreifer bleibt stehen. Achtung: Das "
+                + "Schild bleibt bei der FIGUR, nicht beim Feld — ziehst du mit "
+                + "ihr, ist es weg. Lass sie stehen, bis der Angriff kommt. Auf "
+                + "den König wirkt das Schild nicht."
         },
         /*
          * DAS ERDBEBEN IST SEIT v0.54 KEINE FÄHIGKEIT MEHR.
