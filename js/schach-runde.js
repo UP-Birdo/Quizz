@@ -1095,7 +1095,7 @@ const SCHACH_RUNDE = {
             SCHACH.breiteVon(runde.stand), SCHACH.hoeheVon(runde.stand)));
 
         runde.verlauf.push({
-            text: (neue.length === 1 ? "Ein Würfel erscheint auf " : "Würfel erscheinen auf ")
+            text: (neue.length === 1 ? "Eine Lootbox erscheint auf " : "Lootboxen erscheinen auf ")
                 + namen.join(", "),
             wer: "",
             farbe: runde.stand.amZug,
@@ -1482,7 +1482,7 @@ const SCHACH_RUNDE = {
              */
             if (SCHACH.felderVon(runde.stand) !== SCHACH.felderVon(altStand)) {
                 runde.verlauf.push({
-                    text: "Ein zweiter Unglückswürfel verpufft — das Brett hat sich "
+                    text: "Eine zweite Unglücks-Lootbox verpufft — das Brett hat sich "
                         + "gerade verändert",
                     wer: wer || "",
                     farbe: farbe,
@@ -1596,7 +1596,7 @@ const SCHACH_RUNDE = {
         }
 
         const stufe = SCHACH_VARIANTEN.pechStufeVon(art);
-        let text = "Unglückswürfel: " + SCHACH_VARIANTEN.pechTitel(art)
+        let text = "Unglücks-Lootbox: " + SCHACH_VARIANTEN.pechTitel(art)
             + " (" + stufe.titel + ")";
 
         if (wirkung) {

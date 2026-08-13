@@ -191,7 +191,7 @@ Object.assign(TEAM_SCHACH, {
                 const stufe = SCHACH_RUNDE.bonusStufe(bonusHier);
 
                 zelle.classList.add("feld-bonus");
-                zelle.title = "Würfel"
+                zelle.title = "Lootbox"
                     + (zeigen ? " — " + stufe.titel : "")
                     + (pechZeigen ? (zeigen ? ", Unglück" : " — Unglück") : "");
                 zelle.setAttribute("aria-label",

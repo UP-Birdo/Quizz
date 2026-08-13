@@ -191,7 +191,7 @@ Object.assign(TEAM_SCHACH, {
 
         if (schau.wendepunkte.length === 0) {
             liste.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-                "Keine Fähigkeit und kein Unglückswürfel — diese Partie wurde "
+                "Keine Fähigkeit und keine Unglücks-Lootbox — diese Partie wurde "
                 + "allein mit Zügen entschieden."));
         }
 
@@ -651,13 +651,13 @@ Object.assign(TEAM_SCHACH, {
             () => TEAM_SCHACH.infoSchliessen()));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Auf freien Feldern erscheinen Würfel. Wer mit einer Figur darüber oder "
+            "Auf freien Feldern erscheinen Lootboxen. Wer mit einer Figur darüber oder "
             + "darauf zieht, sammelt ein, was darin steckt — welche Fähigkeit es ist, "
             + "sieht man vorher nie. Nur der Springer sammelt unterwegs nichts ein: "
-            + "Er setzt über die Felder dazwischen hinweg. Manche Würfel bringen "
+            + "Er setzt über die Felder dazwischen hinweg. Manche Lootboxen bringen "
             + "nichts Gutes und wirken sofort. Ob man ihnen das ansieht — dann steht "
             + "ihr Fragezeichen auf dem Kopf —, entscheidet der Haken "
-            + "Unglückswürfel anzeigen beim Anlegen der Partie."));
+            + "Unglücks-Lootboxen anzeigen beim Anlegen der Partie."));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             "Nach jedem Halbzug kann ein neuer dazukommen — solange ein Feld frei "

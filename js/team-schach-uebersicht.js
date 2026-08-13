@@ -113,8 +113,8 @@ Object.assign(TEAM_SCHACH, {
         const schalter = [
             {
                 schluessel: "faehigkeiten",
-                titel: "Zufalls-Würfel",
-                hinweis: "Auf freien Feldern erscheinen Würfel mit Fähigkeiten — "
+                titel: "Lootboxen",
+                hinweis: "Auf freien Feldern erscheinen Lootboxen mit Fähigkeiten — "
                     + "gute wie schlechte.",
 
                 /*
@@ -135,24 +135,24 @@ Object.assign(TEAM_SCHACH, {
             {
                 schluessel: "seltenheitZeigen",
                 titel: "Seltenheit anzeigen",
-                hinweis: "Der Würfel trägt schon auf dem Brett die Farbe seiner Stufe. "
-                    + "Aus heißt: Alle Würfel haben dasselbe Grau, und man weiß erst "
+                hinweis: "Die Lootbox trägt schon auf dem Brett die Farbe ihrer Stufe. "
+                    + "Aus heißt: Alle Lootboxen sehen gleich aus, und man weiß erst "
                     + "beim Einsammeln, wie selten es war.",
                 nurMitWuerfeln: true
             },
             {
                 schluessel: "pechZeigen",
-                titel: "Unglückswürfel anzeigen",
-                hinweis: "Ein schlechter Würfel trägt sein Fragezeichen auf dem Kopf, "
-                    + "man erkennt ihn also von weitem. Aus heißt: Er sieht aus wie "
-                    + "jeder andere — gleiche Farbe, Fragezeichen richtig herum. "
-                    + "Dann ist jeder Würfel ein Wagnis.",
+                titel: "Unglücks-Lootboxen anzeigen",
+                hinweis: "Eine schlechte Lootbox trägt ihr Fragezeichen auf dem Kopf, "
+                    + "man erkennt sie also von weitem. Aus heißt: Sie sieht aus wie "
+                    + "jede andere — gleiche Farbe, Fragezeichen richtig herum. "
+                    + "Dann ist jede Lootbox ein Wagnis.",
                 nurMitWuerfeln: true
             },
             {
                 schluessel: "regen",
-                titel: "Glücksboxen-Regen",
-                hinweis: "Je leerer das Brett, desto mehr Würfel erscheinen — gegen "
+                titel: "Lootbox-Regen",
+                hinweis: "Je leerer das Brett, desto mehr Lootboxen erscheinen — gegen "
                     + "Ende einer Partie regnet es. Aus heißt: Es kommt wie immer "
                     + "meist einer nach, unabhängig davon, wie viel Platz ist.",
                 nurMitWuerfeln: true

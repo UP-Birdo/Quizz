@@ -570,7 +570,7 @@ const SCHACH_VORSCHAU = {
             wuerfel: 20,
             zug: [32, 8],
             vorher: "Der Turm will die ganze Spalte hinauf, um die Dame ins Visier "
-                + "zu nehmen — auf dem Weg liegt ein Würfel.",
+                + "zu nehmen — auf dem Weg liegt eine Lootbox.",
             nachher: "Es war ein schlechter: Unterwegs eingesammelt, und die Figur "
                 + "fliegt ein Feld zurück Richtung eigener Grundreihe. Oben kommt "
                 + "sie nicht an, die Dame bleibt ausser Gefahr."
@@ -594,7 +594,7 @@ const SCHACH_VORSCHAU = {
             wuerfel: 14,
             zug: [20, 14],
             vorher: "Der Turm ist von den eigenen Leuten eingebaut — heraus kommt er "
-                + "nur nach oben, und genau dort liegt ein Würfel.",
+                + "nur nach oben, und genau dort liegt eine Lootbox.",
             nachher: "Es war ein schlechter: Für DICH sehen die gegnerischen Figuren "
                 + "eine Weile falsch aus. Sie ziehen wie immer — der Gegner merkt "
                 + "nichts davon."
@@ -625,7 +625,7 @@ const SCHACH_VORSCHAU = {
             wuerfel: 20,
             zug: [26, 20],
             vorher: "Ein Zug noch, dann wandelt dein Bauer um — und der Turm holt "
-                + "sich vorher noch den Würfel.",
+                + "sich vorher noch die Lootbox.",
             nachher: "Es war ein schlechter: Das Brett wächst an einer zufälligen "
                 + "Seite. Plötzlich ist alles weiter weg, und der Bauer braucht "
                 + "wieder länger."
@@ -649,7 +649,7 @@ const SCHACH_VORSCHAU = {
             wuerfel: 14,
             zug: [20, 14],
             vorher: "Vier eigene Bauern halten die Ränder — und der Turm greift "
-                + "nach dem Würfel.",
+                + "nach der Lootbox.",
             nachher: "Es war ein schlechter: Eine ganze Reihe oder Spalte bricht "
                 + "weg, und was dort stand, stürzt mit. Es trifft die eigenen "
                 + "Leute genauso."
@@ -679,7 +679,7 @@ const SCHACH_VORSCHAU = {
             figur: 32,
             wuerfel: 20,
             zug: [32, 2],
-            vorher: "Der Turm will die ganze Spalte hinauf — und sammelt den Würfel "
+            vorher: "Der Turm will die ganze Spalte hinauf — und sammelt die Lootbox "
                 + "unterwegs ein, ohne auf ihm stehen zu bleiben.",
             nachher: "Es war ein schlechter: Der Boden reisst SOFORT auf, mitten in "
                 + "seinem Weg. Oben kommt er nicht mehr an — der Zug endet vor dem "
@@ -707,7 +707,7 @@ const SCHACH_VORSCHAU = {
             vorher: "Dein Angriff steht: Der Turm rückt vor, und der Bauer nimmt "
                 + "schon den zweiten ins Visier.",
             nachher: "Alle eigenen Figuren rutschen ein Feld zurück — nicht nur die, "
-                + "die den Würfel eingesammelt hat. Beide Angriffe sind dahin."
+                + "die die Lootbox eingesammelt hat. Beide Angriffe sind dahin."
         },
         meuterei: {
             brett: [

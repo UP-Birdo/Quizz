@@ -132,7 +132,7 @@ const SCHACH_VARIANTEN = {
         stolperstein: {
             titel: "Stolperstein",
             stufe: "gruen",
-            beschreibung: "Die Figur, die den Würfel eingesammelt hat, wird ein Feld "
+            beschreibung: "Die Figur, die die Lootbox eingesammelt hat, wird ein Feld "
                 + "zurückgeworfen — zurück in Richtung der eigenen Grundreihe."
         },
         ausdehnung: {
@@ -153,7 +153,7 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             beschreibung: "Eine ganze Reihe oder Spalte bricht weg — zufällig eine "
                 + "der vier Seiten, aber nie eine, auf der ein König steht. Was "
-                + "dort steht, stürzt mit: Figuren wie Würfel."
+                + "dort steht, stürzt mit: Figuren wie Lootboxen."
         },
 
         /*
@@ -167,7 +167,7 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Der Boden reisst auf: Drei freie Felder brechen weg und "
                 + "sind ab sofort gesperrt — niemand zieht hindurch, nur Springer "
                 + "setzen darüber hinweg. Anders als eine Mauer bleiben die Risse "
-                + "die ganze Partie. Und sie reissen SOFORT auf: Wer den Würfel im "
+                + "die ganze Partie. Und sie reissen SOFORT auf: Wer die Lootbox im "
                 + "Vorbeiziehen mitnimmt und danach vor einem Loch steht, bleibt "
                 + "davor stehen — der Zug endet dort."
         },
@@ -1222,9 +1222,9 @@ const SCHACH_VARIANTEN = {
         {
             id: "faehigkeiten",
             titel: "Fähigkeiten sammeln",
-            beschreibung: "Klassisches Brett mit Würfeln. Gibt es seit v2.9 nicht "
+            beschreibung: "Klassisches Brett mit Lootboxen. Gibt es seit v2.9 nicht "
                 + "mehr zur Auswahl — dasselbe erreicht man mit „Klassisch“ und "
-                + "eingeschaltetem Würfel-Haken.",
+                + "eingeschaltetem Lootbox-Haken.",
 
             /*
              * NICHT MEHR ZUR AUSWAHL, aber weiterhin im Katalog.
@@ -1708,7 +1708,7 @@ const SCHACH_VARIANTEN = {
 
         const anteil = Math.round(stufe.abklingen.gewicht * 100);
 
-        return "Diese Stufe hat eine Abklingzeit: Direkt nach einem Würfel "
+        return "Diese Stufe hat eine Abklingzeit: Direkt nach einer Lootbox "
             + "dieser Stufe zählt sie nur noch mit " + anteil + " Prozent ihres "
             + "Gewichts und braucht " + stufe.abklingen.halbzuege + " Halbzüge, "
             + "bis sie wieder voll zählt. So kommen nicht mehrere gleiche "
@@ -1726,17 +1726,17 @@ const SCHACH_VARIANTEN = {
         const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
         const einzeln = SCHACH_VARIANTEN.chanceVon(arten[0] || "").toFixed(1).replace(".", ",");
 
-        return "Von allen Würfeln, die erscheinen, tragen " + stufe.chance
+        return "Von allen Lootboxen, die erscheinen, tragen " + stufe.chance
             + " Prozent eine Fähigkeit dieser Stufe.\n\n"
             + SCHACH_VARIANTEN.abklingenErklaerung(stufe.id)
             + "Innerhalb der Stufe sind alle gleich wahrscheinlich — bei "
             + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
-            + "Nach jedem Halbzug kann ein neuer Würfel erscheinen — mit "
+            + "Nach jedem Halbzug kann eine neue Lootbox erscheinen — mit "
             + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent, also im Schnitt etwa jeden "
             + "sechsten. Meist einer, selten zwei, sehr selten drei. Der Nachschub "
-            + "hört nie auf, solange ein Feld frei ist; liegen gelassene Würfel "
+            + "hört nie auf, solange ein Feld frei ist; liegen gelassene Lootboxen "
             + "bleiben liegen, bis sie jemand einsammelt.\n\n"
-            + "Jeder achte Würfel ist ein Unglückswürfel (" + SCHACH_VARIANTEN.PECH_CHANCE
+            + "Jede achte Lootbox ist eine Unglücks-Lootbox (" + SCHACH_VARIANTEN.PECH_CHANCE
             + " Prozent) — er wirkt sofort gegen den, der ihn einsammelt.\n\n"
             + "Gewürfelt wird dabei nicht: Feld und Inhalt werden aus dem Spielstand "
             + "gerechnet, damit alle Mitspieler dasselbe Brett sehen.";
@@ -1748,7 +1748,7 @@ const SCHACH_VARIANTEN = {
             .join(", ");
 
         let text = "Nach jedem Halbzug erscheint mit "
-            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent ein Würfel auf einem freien "
+            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent eine Lootbox auf einem freien "
             + "Feld — meist einer, manchmal mehr (" + anzahl + "). Das hört nicht "
             + "auf: Solange ein Feld frei ist, kommt Nachschub, und liegen "
             + "gelassene bleiben liegen. Wer mit einer Figur darauf zieht, sammelt "
@@ -1771,7 +1771,7 @@ const SCHACH_VARIANTEN = {
         text += "\nInnerhalb einer Stufe sind alle gleich wahrscheinlich. "
             + "Gewürfelt wird dabei nicht: Feld und Fähigkeit werden aus dem "
             + "Spielstand gerechnet, damit alle Mitspieler dasselbe Brett sehen.\n\n"
-            + "Eine Stufe mit Abklingzeit kommt direkt nach einem Würfel dieser "
+            + "Eine Stufe mit Abklingzeit kommt direkt nach einer Lootbox dieser "
             + "Stufe eine Weile seltener; die übrigen Stufen behalten ihre "
             + "Chance und sind so lange häufiger an der Reihe.";
 

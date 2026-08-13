@@ -292,7 +292,7 @@ const TEAM_SCHACH = {
         const person = TEAM_SCHACH._ich();
         if (!person) {
             wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-                "Melde dich zuerst im Tab Würfel Quizz an — dann bist du auch hier "
+                "Melde dich zuerst mit deinem Namen an — dann bist du auch hier "
                 + "mit deinem Namen dabei."));
             return;
         }

@@ -3,6 +3,19 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.68.0 — 2026-08-13
+
+- **Aus „Würfel" wird „Lootbox".** Die Boxen, die im Team Schach auf freien
+  Feldern erscheinen, heissen jetzt überall so: der Haken beim Anlegen
+  („Lootboxen" statt „Zufalls-Würfel"), der Regen („Lootbox-Regen"), die
+  schlechten („Unglücks-Lootbox") und jeder Satz in der Bibliothek, in den
+  Anleitungen und im Zugverlauf.
+
+  **Die echten Würfel im Würfel Quizz bleiben Würfel** — das sind welche.
+
+- Nebenbei berichtigt: Der Hinweis „Melde dich zuerst im Tab Würfel Quizz an"
+  nannte einen Tab, den es seit v0.61 nicht mehr gibt.
+
 ## v0.67.0 — 2026-08-13
 
 - **Der Knopf zum Wegklicken ist immer da.** Tippt man im Spiel eine Fähigkeit
