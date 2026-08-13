@@ -2719,6 +2719,21 @@ body {
     display: none;
 }
 
+/*
+ * DER KASTEN PASST IMMER AUF DEN SCHIRM (seit v0.67, Wunsch #27).
+ *
+ * Gemeldet als: „Wenn man eine Fähigkeit aus dem Inventar anklickt, kommt eine
+ * Info, und die muss man wegklicken." Genau daran lag es — der Dialog trägt
+ * seit v0.41 die abgespielte Bildanleitung mit Brett und Schrittliste, und mit
+ * sechs Bildern ist er höher als ein Handybildschirm. Der Knopf zum Wegklicken
+ * stand damit UNTER dem Bildrand: Man musste erst im Dialog nach unten
+ * scrollen, um ihn überhaupt zu sehen.
+ *
+ * Jetzt hat der Kasten eine Höchsthöhe und scrollt selbst; die Knopfleiste
+ * klebt unten fest (siehe `.dialog-knopfleiste`). Das gilt für JEDEN Dialog —
+ * ein hoher Dialog ist überall dasselbe Problem, nicht nur bei den
+ * Fähigkeiten.
+ */
 .dialog-kasten {
     background: var(--karte);
     border-radius: var(--radius);
@@ -2726,6 +2741,8 @@ body {
     padding: 20px;
     max-width: 420px;
     width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .dialog-kasten h2 {
@@ -2738,8 +2755,9 @@ body {
     color: var(--schrift-leise);
     /* Zeilenumbrüche im Text zählen — die Punkteregeln kommen mehrzeilig. */
     white-space: pre-line;
-    max-height: 60vh;
-    overflow-y: auto;
+    /* KEIN eigener Scrollbereich mehr (seit v0.67): Der Kasten scrollt jetzt
+       als Ganzes. Zwei Scrollbereiche ineinander sind auf dem Handy kaum zu
+       treffen — man erwischt beim Wischen den falschen. */
 }
 
 .dialog-feld {
@@ -2818,10 +2836,24 @@ body {
     color: var(--schrift-leise);
 }
 
+/*
+ * DIE KNOPFLEISTE KLEBT UNTEN FEST (seit v0.67, Wunsch #27).
+ *
+ * Egal wie hoch der Inhalt ist — „Verstanden", „Abbrechen" und „Einsetzen"
+ * sind immer da, ohne Scrollen. Die negativen Ränder heben das Polster des
+ * Kastens auf, damit die Leiste bis an seine Kanten reicht; sonst bliebe
+ * darunter ein Streifen, durch den der Inhalt hindurchscrollt.
+ */
 .dialog-knopfleiste {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    position: sticky;
+    bottom: -20px;
+    margin: 0 -20px -20px -20px;
+    padding: 12px 20px;
+    background: var(--karte);
+    border-top: 1px solid var(--rahmen);
 }
 
 /* ------------------------------------------------------------------ *

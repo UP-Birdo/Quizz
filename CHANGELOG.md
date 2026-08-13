@@ -3,6 +3,16 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.67.0 — 2026-08-13
+
+- **Der Knopf zum Wegklicken ist immer da.** Tippt man im Spiel eine Fähigkeit
+  an, kommt ein Fenster mit ihrer Erklärung und der abgespielten Anleitung —
+  und das war auf dem Handy höher als der Bildschirm. „Verstanden",
+  „Abbrechen" und „Einsetzen" lagen damit unter dem Rand, man musste erst im
+  Fenster nach unten wischen. Jetzt bleibt das Fenster auf Bildschirmhöhe, sein
+  Inhalt scrollt, und die Knopfleiste klebt unten fest. Gilt für jedes Fenster
+  der App, nicht nur für die Fähigkeiten.
+
 ## v0.66.0 — 2026-08-13
 
 Vier Fehler, die beim Spielen aufgefallen sind.
