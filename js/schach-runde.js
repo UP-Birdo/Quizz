@@ -1768,7 +1768,34 @@ const SCHACH_RUNDE = {
            Zielfeld mehr — es steht in `_pechAusloesen`. */
 
         if (art === "mauer") {
-            return SCHACH.mauerLegen(runde.stand, feld);
+            const wirkung = SCHACH.mauerLegen(runde.stand, feld);
+
+            /*
+             * KEINE MAUER ÜBER EINEN WÜRFEL (seit v0.66, Wunsch #32).
+             *
+             * Gemeldet als „die Items unter der Mauer verschwinden und kommen
+             * nicht wieder". Sie verschwinden nicht wirklich — sie liegen
+             * weiter in `runde.bonus`. Aber das Feld ist gesperrt, solange die
+             * Mauer steht, und auf ein gesperrtes Feld zieht niemand: Der
+             * Würfel ist unerreichbar und am Brett nicht mehr zu sehen. Von
+             * aussen ist das dasselbe wie weg.
+             *
+             * Statt die Würfel wegzuräumen (dann wären sie wirklich weg) oder
+             * sie dem Mauerbauer zu schenken (das wäre eine neue Regel und
+             * eine starke dazu), wird das Feld gar nicht erst angeboten:
+             * `zielFelder` probiert jedes Feld gegen genau diese Rechnung
+             * durch. Wer eine Mauer legen will, sucht sich eine freie Stelle.
+             *
+             * Beim RISS geht das nicht — der entsteht durch ein Unglück und
+             * fragt niemanden. Dort fällt der Würfel deshalb wirklich hinein
+             * (v0.60).
+             */
+            if (wirkung && wirkung.felder.some(
+                (gesperrt) => runde.bonus.some((eintrag) => eintrag.feld === gesperrt))) {
+                return null;
+            }
+
+            return wirkung;
         }
 
         /*

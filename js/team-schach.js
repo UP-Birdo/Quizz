@@ -1030,6 +1030,90 @@ const TEAM_SCHACH = {
         }
     },
 
+    /*
+     * EINE FÄHIGKEIT IM GEGENZUG DARF NICHT AM ZUGZÄHLER SCHEITERN
+     * (seit v0.66, Wunsch #28: „wenn ich Ausweichen einsetze, passiert nichts").
+     *
+     * DER FEHLER. `_sendenMitPruefung` verlangt, dass der Zugzähler auf dem
+     * Server noch der erwartete ist. Diese Prüfung gibt es aus einem guten
+     * Grund: Zwei Leute aus DEMSELBEN Team dürfen nicht gleichzeitig ziehen,
+     * der erste gewinnt. Für eine Fähigkeit mit Blitz ist sie aber genau
+     * falsch — die wird ja absichtlich eingesetzt, WÄHREND der Gegner zieht.
+     * Zieht er in derselben Sekunde, ist der Zähler weitergelaufen, und das
+     * Einsetzen wird als „jemand war schneller" abgewiesen. Von aussen sieht
+     * das aus, als passiere gar nichts: Die Fähigkeit ist wieder im Vorrat,
+     * das Brett unverändert.
+     *
+     * DIE LÖSUNG ist dieselbe wie beim Würfel-Quizz („jeder ist Herr über
+     * seinen eigenen Eintrag"): NICHT prüfen und abweisen, sondern
+     * ZUSAMMENFÜHREN. Der Stand wird frisch vom Server geholt, die Fähigkeit
+     * auf DIESEN Stand angewandt und das Ergebnis geschrieben. Der gegnerische
+     * Zug bleibt damit erhalten, und die Fähigkeit wirkt auf das Brett, wie es
+     * wirklich steht.
+     *
+     * Wird das Einsetzen auf dem frischen Stand abgelehnt (die Regeln sagen
+     * nein — etwa weil der Gegner inzwischen fertig gezogen hat und man selbst
+     * am Zug ist), bleibt die Fähigkeit im Vorrat und es wird gesagt, warum.
+     * Genau das verlangt Wunsch #29: Was nicht gewirkt hat, wird nicht
+     * verbraucht.
+     */
+    async _faehigkeitImGegenzugSenden(partie, art, zielFeld, umwandlung) {
+        const abgleich = TEAM_SCHACH.abgleich;
+        const person = TEAM_SCHACH._ich();
+
+        if (!person) {
+            return;
+        }
+
+        abgleich.eigenerVorgangBeginnt();
+
+        try {
+            /* Im lokalen Betrieb gibt es kein Rennen — dort ist der eigene
+               Stand der einzige. */
+            const tafel = (abgleich.speicher.art === "gemeinsam")
+                ? SCHACH_TAFEL.normalisieren(await abgleich.speicher.laden())
+                : abgleich.daten;
+
+            const frisch = SCHACH_TAFEL.partie(tafel, partie.id);
+
+            if (!frisch) {
+                await DIALOG.hinweis("Partie nicht gefunden",
+                    "Die Partie gibt es nicht mehr.");
+                return;
+            }
+
+            const neu = SCHACH_RUNDE.faehigkeitEinsetzen(
+                frisch, person.id, art, zielFeld, person.name, undefined, umwandlung);
+
+            if (!neu) {
+                await DIALOG.hinweis("Zu spät",
+                    SCHACH_VARIANTEN.faehigkeitTitel(art) + " liess sich gerade nicht "
+                        + "mehr einsetzen — auf dem Brett hat sich inzwischen etwas "
+                        + "geändert. Die Fähigkeit bleibt dir erhalten.");
+
+                abgleich.daten = tafel;
+                TEAM_SCHACH.zeichnen(tafel);
+                return;
+            }
+
+            const geschrieben = SCHACH_TAFEL.partieEinsetzen(tafel, neu);
+
+            if (abgleich.speicher.art === "gemeinsam") {
+                await abgleich.speicher.speichern(geschrieben);
+            }
+
+            abgleich.daten = geschrieben;
+            TEAM_SCHACH.zeichnen(geschrieben);
+
+        } catch (fehler) {
+            await DIALOG.hinweis("Nicht gespeichert",
+                "Die Fähigkeit konnte nicht gesendet werden: " + fehler.message
+                    + "\n\nSie bleibt dir erhalten.");
+        } finally {
+            abgleich.eigenerVorgangEndet();
+        }
+    },
+
     /* ---------------------------------------------------------------- *
      * Aktionen rund um die Partie
      * ---------------------------------------------------------------- */
@@ -1467,6 +1551,26 @@ const TEAM_SCHACH = {
     async faehigkeitAusfuehren(partie, art, zielFeld, umwandlung) {
         const person = TEAM_SCHACH._ich();
         if (!person) {
+            return;
+        }
+
+        /*
+         * FÄHIGKEITEN MIT BLITZ GEHEN EINEN EIGENEN WEG (seit v0.66).
+         *
+         * Sie werden eingesetzt, während der Gegner am Zug ist — die
+         * Zugzähler-Prüfung von `_sendenMitPruefung` würde sie deshalb fast
+         * immer abweisen. Warum das so ist und was stattdessen passiert, steht
+         * bei `_faehigkeitImGegenzugSenden`.
+         *
+         * Nur wenn man WIRKLICH nicht am Zug ist: Wer eine Blitz-Fähigkeit im
+         * eigenen Zug einsetzt (das dürfen alle ausser Ausweichen), soll
+         * weiterhin die gewohnte Prüfung bekommen — dort ist sie richtig.
+         */
+        const beschreibungJetzt = SCHACH_VARIANTEN.FAEHIGKEITEN[art] || {};
+        const meineFarbeJetzt = SCHACH_RUNDE.teamVon(partie, person.id);
+
+        if (beschreibungJetzt.imGegenzug && partie.stand.amZug !== meineFarbeJetzt) {
+            await TEAM_SCHACH._faehigkeitImGegenzugSenden(partie, art, zielFeld, umwandlung);
             return;
         }
 

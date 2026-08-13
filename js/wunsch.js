@@ -59,9 +59,29 @@ const WUNSCH = {
             + "&stelle=" + encodeURIComponent(WUNSCH._stelle())
             + "&fassung=" + encodeURIComponent("v" + KONFIG.APP_VERSION);
 
-        const fenster = window.open(adresse, "_blank", "noopener");
+        /*
+         * KEIN "noopener" IM DRITTEN ARGUMENT (seit v0.66).
+         *
+         * DER FEHLER: Die Meldung „Fenster blockiert" kam JEDES MAL, auch wenn
+         * das Formular sauber aufging und der Wunsch auf GitHub landete.
+         *
+         * DIE URSACHE steht so im Web-Standard: Wird `noopener` angegeben,
+         * liefert `window.open` **immer `null`** zurück — auch bei Erfolg. Das
+         * ist kein Fehlerzeichen, sondern der ganze Sinn des Schalters: Das
+         * neue Fenster soll keinerlei Verbindung zurück haben, also gibt es
+         * auch keine Kennung. Die Prüfung `if (!fenster)` hat damit „geöffnet"
+         * und „blockiert" nicht mehr unterscheiden können.
+         *
+         * Der Schutz bleibt trotzdem: Das Fenster wird ohne den Schalter
+         * geöffnet und ihm sofort danach die Rückverbindung genommen
+         * (`opener = null`). Das ist der übliche Weg und liefert beides —
+         * Sicherheit UND eine ehrliche Antwort auf die Frage, ob es aufging.
+         */
+        const fenster = window.open(adresse, "_blank");
 
-        if (!fenster) {
+        if (fenster) {
+            fenster.opener = null;
+        } else {
             /* Blockiert der Browser das Fenster, bleibt der Text nicht liegen. */
             await DIALOG.hinweis("Fenster blockiert",
                 "Der Browser hat das GitHub-Formular nicht geöffnet. Dein Text:\n\n"

@@ -26,6 +26,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Ein Angreifer hinter einer Sperre gab trotzdem Schach (v3.3, gefunden v0.60)
     - Der gewuerfelte Seitentausch hob sich selbst auf (v0.63)
     - Das Beispiel im Erklaertext verschluckte einen echten Wunsch (v0.63)
+    - Die Sicherung gegen gleichzeitige Zuege verschluckte das Ausweichen (v0.66)
+    - „Fenster blockiert", obwohl das Fenster aufging (v0.66)
 
 ## entschieden.md - Entschieden - und warum
 

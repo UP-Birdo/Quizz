@@ -3,6 +3,30 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.66.0 — 2026-08-13
+
+Vier Fehler, die beim Spielen aufgefallen sind.
+
+- **Ausweichen tut jetzt etwas.** Es liess sich einsetzen, und dann passierte
+  nichts — die Fähigkeit war wieder da, das Brett unverändert. Ursache: Eine
+  Fähigkeit mit Blitz wird eingesetzt, WÄHREND der Gegner am Zug ist. Die
+  Sicherung gegen zwei gleichzeitige Züge aus einem Team hat sie deshalb fast
+  immer als „jemand war schneller" abgewiesen. Jetzt wird nicht mehr abgewiesen,
+  sondern **zusammengeführt**: Der Stand wird frisch geholt, die Fähigkeit
+  darauf angewandt, fertig. Der gegnerische Zug bleibt dabei erhalten.
+- **Eine Fähigkeit, die nicht gewirkt hat, ist nicht verbraucht.** Geht es
+  wirklich nicht mehr (das Brett hat sich zu sehr geändert), bleibt sie im
+  Vorrat, und es steht dabei, warum.
+- **Die Meldung „Fenster blockiert" beim Wunsch-Knopf ist weg.** Sie kam jedes
+  Mal, auch wenn der Wunsch sauber auf GitHub landete. Der Browser liefert beim
+  Öffnen mit Schutzschalter grundsätzlich keine Rückmeldung — das war kein
+  Fehlschlag, sondern normal. Der Schutz bleibt, die falsche Meldung nicht.
+- **Die Mauer verschluckt keine Würfel mehr.** Ein Feld, unter dessen Riegel ein
+  Würfel läge, steht nicht mehr zur Wahl: Solange die Mauer steht, käme dort
+  niemand hin, und der Würfel wäre unsichtbar. (Bei einem **Riss** geht das
+  nicht anders — der entsteht durch ein Unglück und fragt niemanden; dort fällt
+  der Würfel wirklich hinein.)
+
 ## v0.65.0 — 2026-08-13
 
 **Vier volle Armeen auf dem Kreuz.** Jede der vier Seiten hat jetzt eine

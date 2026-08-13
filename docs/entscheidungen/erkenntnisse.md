@@ -477,6 +477,49 @@ schon die zweite stille Falle in genau diesem Skript — die erste war die
 Pipeline, die ein JSON-Array als ein einziges Objekt weiterreichte (siehe den
 Kommentar dort).
 
+## Die Sicherung gegen gleichzeitige Züge verschluckte das Ausweichen (v0.66)
+
+**Der Fehler:** „Wenn ich Ausweichen einsetze, passiert nichts." Die Fähigkeit
+blieb im Vorrat, das Brett unverändert — mal so, mal nicht.
+
+**Die Ursache:** `_sendenMitPruefung` schreibt nur, wenn der Zugzähler auf dem
+Server noch der erwartete ist. Diese Prüfung ist richtig und soll bleiben — sie
+verhindert, dass zwei Leute aus demselben Team gleichzeitig ziehen. Für eine
+Fähigkeit mit **Blitz** ist sie aber genau verkehrt: Die wird absichtlich
+eingesetzt, WÄHREND der Gegner am Zug ist. Zieht er in derselben Sekunde, ist
+der Zähler weitergelaufen, und das Einsetzen gilt als „jemand war schneller".
+Das Ausweichen ist die einzige Fähigkeit, die man NUR im Gegenzug einsetzen
+kann — es traf also fast immer sie.
+
+**Die Lehre:** Wer eine Aktion baut, die absichtlich GLEICHZEITIG mit der des
+Gegners läuft, darf sie nicht mit einer Sperre gegen Gleichzeitigkeit
+absichern. Der richtige Weg ist derselbe wie im Würfel-Quizz: **zusammenführen
+statt abweisen** — frischen Stand holen, die eigene Änderung darauf anwenden,
+schreiben. Die Zugzähler-Prüfung bleibt für Züge, wo sie hingehört.
+
+**Zweite Lehre daraus:** Eine Fähigkeit gilt erst als verbraucht, wenn sie
+gewirkt hat. Das war vorher nicht getrennt — Einsetzen und Verbrauchen hingen
+an derselben Rechnung, und ein abgewiesener Schreibvorgang nahm beides zurück
+oder keines.
+
+## „Fenster blockiert", obwohl das Fenster aufging (v0.66)
+
+**Der Fehler:** Der Wunsch-Knopf meldete JEDES MAL „Der Browser hat das
+GitHub-Formular nicht geöffnet" — und der Wunsch landete trotzdem sauber auf
+GitHub.
+
+**Die Ursache** steht so im Web-Standard: `window.open(adresse, "_blank",
+"noopener")` liefert **immer `null`** zurück, auch bei Erfolg. Das ist kein
+Fehlerzeichen, sondern der Sinn des Schalters — das neue Fenster soll keinerlei
+Verbindung zurück haben, also gibt es auch keine Kennung. Die Prüfung
+`if (!fenster)` konnte „geöffnet" und „blockiert" damit gar nicht
+unterscheiden.
+
+**Die Lehre:** Ein Rückgabewert `null` heisst nicht automatisch „fehlgeschlagen"
+— manchmal heisst er „diese Auskunft gibt es bewusst nicht". Der übliche Weg
+liefert beides: ohne den Schalter öffnen und dem Fenster sofort danach die
+Rückverbindung nehmen (`fenster.opener = null`).
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

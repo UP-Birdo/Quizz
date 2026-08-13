@@ -1905,6 +1905,32 @@ pruefe("Nachschub setzt einen Bauern auf die eigene Grundreihe (v0.61, Wunsch #1
         String(SCHACH.feldNummer("b8")), "Schwarz bekommt seine eigene Grundreihe");
 });
 
+pruefe("Eine Mauer wird nicht ueber einen Wuerfel gelegt (v0.66, Wunsch #32)", () => {
+    /*
+     * Unter der Mauer ist das Feld gesperrt — der Wuerfel darunter waere bis
+     * zum Ablauf unerreichbar und am Brett nicht zu sehen. Gemeldet als „die
+     * Items verschwinden". Deshalb steht so ein Feld gar nicht erst zur Wahl.
+     */
+    const runde = faehigkeitenPartie();
+    const mitte = SCHACH.feldNummer("d4");
+
+    const ohneWuerfel = SCHACH_RUNDE.zielFelder(runde, "id-anna", "mauer");
+    wahr(ohneWuerfel.indexOf(mitte) !== -1, "ohne Wuerfel steht d4 zur Wahl");
+
+    /* Ein Wuerfel auf c4 — er liegt im Riegel um d4 (c4, d4, e4). */
+    const mitWuerfel = SCHACH_RUNDE.kopieren(runde);
+    mitWuerfel.bonus.push({ feld: SCHACH.feldNummer("c4"), art: "sprung" });
+
+    const felder = SCHACH_RUNDE.zielFelder(mitWuerfel, "id-anna", "mauer");
+    wahr(felder.indexOf(mitte) === -1, "mit Wuerfel im Riegel nicht mehr");
+
+    /* Und weiter weg geht es weiterhin. */
+    wahr(felder.length > 0, "anderswo laesst sich die Mauer legen");
+
+    /* Der Wuerfel bleibt liegen, wo er ist. */
+    gleich(mitWuerfel.bonus.length, 1, "der Wuerfel wird nicht weggeraeumt");
+});
+
 pruefe("Ohne Gefallene laesst sich gar nicht erst einsetzen (v0.59, Wunsch #19)", () => {
     /*
      * Drei Faehigkeiten holen Gefallene zurueck und VERBRAUCHEN dabei ihren
