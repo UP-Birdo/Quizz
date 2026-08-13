@@ -1351,6 +1351,37 @@ const SCHACH_VARIANTEN = {
          * erkennt, dass es die toten Ecken setzen und die Flügel verteilen
          * muss — dieselbe Bauart wie `zufallsArmee`.
          */
+        /*
+         * DAS GROSSE QUADRATISCHE BRETT (seit v0.70, Wunsch #24).
+         *
+         * Unter „Quadratisch" standen nur zwei Grössen — das „Große Brett" ist
+         * 10 mal 8 und liegt deshalb bei den rechteckigen. Hier ist die dritte:
+         * dieselbe Grundreihe wie das grosse, aber quadratisch, mit vier leeren
+         * Reihen dazwischen statt vier.
+         */
+        {
+            id: "grossQuadrat",
+            titel: "Großes Brett (quadratisch)",
+            form: "klassisch",
+            beschreibung: "10 mal 10 Felder mit je zwei Läuferpaaren — so viel "
+                + "Platz wie auf dem großen Brett, dazu vier Reihen Anlauf.",
+            breite: 10,
+            hoehe: 10,
+            aufstellung:
+                "tslldkllst"
+                + "bbbbbbbbbb"
+                + ".........."
+                + ".........."
+                + ".........."
+                + ".........."
+                + ".........."
+                + ".........."
+                + "BBBBBBBBBB"
+                + "TSLLDKLLST",
+            rochade: true,
+            koenigSchlagbar: false,
+            bonusFelder: []
+        },
         {
             id: "kreuzKlein",
             titel: "Kleines Kreuz",
@@ -1569,7 +1600,23 @@ const SCHACH_VARIANTEN = {
      * bleibt: Dort wird ohne Kennung gefragt, und der Würfel bekommt ein
      * unauffälliges Grau, das zu keiner Stufe gehört.
      */
-    STUFE_UNBEKANNT: { id: "unbekannt", titel: "Unbekannt", chance: 0, farbe: "#8a919b" },
+    /*
+     * `regenbogen` seit v0.69 (Wunsch #26): Eine Lootbox, deren Seltenheit
+     * verborgen bleibt, war grau und sah damit nach nichts aus. Jetzt schillert
+     * sie — auf Ansage „wie aus Mario Kart".
+     *
+     * WICHTIG: Es ist für JEDE verborgene Lootbox derselbe Verlauf. Ein Zufall
+     * je Box oder gar eine Farbe je Stufe würde genau das verraten, was der
+     * Haken verbergen soll. Das Grau bleibt als Rückfall stehen, falls jemand
+     * die Farbe ohne den Verlauf braucht.
+     */
+    STUFE_UNBEKANNT: {
+        id: "unbekannt",
+        titel: "Unbekannt",
+        chance: 0,
+        farbe: "#8a919b",
+        regenbogen: ["#e04b4b", "#e0a800", "#2e9e52", "#2f7fd0", "#8b46c8"]
+    },
 
     stufeVon(art) {
         const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];

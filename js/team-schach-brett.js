@@ -844,6 +844,45 @@ Object.assign(TEAM_SCHACH, {
      * Die drei Seitenflächen entstehen aus einer Grundfarbe in drei
      * Helligkeiten — deckend, damit auf hellen Feldern nichts durchscheint.
      */
+    /*
+     * Zähler für die Kennungen der Farbverläufe (seit v0.69). Ein `<svg>` kann
+     * seinen Verlauf nur über eine Kennung ansprechen, und die muss in der
+     * ganzen Seite eindeutig sein — auf dem Brett liegen schnell ein Dutzend
+     * Lootboxen nebeneinander.
+     */
+    _verlaufZaehler: 0,
+
+    /* Legt einen Regenbogen-Verlauf in dieses SVG und liefert seine Kennung. */
+    _regenbogenVerlauf(svg) {
+        TEAM_SCHACH._verlaufZaehler++;
+        const kennung = "lootbox-regenbogen-" + TEAM_SCHACH._verlaufZaehler;
+
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        const verlauf = document.createElementNS(
+            "http://www.w3.org/2000/svg", "linearGradient");
+
+        verlauf.setAttribute("id", kennung);
+        /* Schräg über den Würfel, damit alle drei Seiten etwas abbekommen. */
+        verlauf.setAttribute("x1", "0");
+        verlauf.setAttribute("y1", "0");
+        verlauf.setAttribute("x2", "1");
+        verlauf.setAttribute("y2", "1");
+
+        const farben = SCHACH_VARIANTEN.STUFE_UNBEKANNT.regenbogen;
+
+        for (let stelle = 0; stelle < farben.length; stelle++) {
+            const halt = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            halt.setAttribute("offset",
+                Math.round(stelle / (farben.length - 1) * 100) + "%");
+            halt.setAttribute("stop-color", farben[stelle]);
+            verlauf.appendChild(halt);
+        }
+
+        defs.appendChild(verlauf);
+        svg.appendChild(defs);
+        return kennung;
+    },
+
     _wuerfelBauen(stufe, pech) {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "wuerfel");
@@ -859,11 +898,39 @@ Object.assign(TEAM_SCHACH, {
             { punkte: "92,30 50,54 50,96 92,72", ton: 1 }
         ];
 
+        /*
+         * DIE VERBORGENE LOOTBOX SCHILLERT (seit v0.69, Wunsch #26).
+         *
+         * Wer die Seltenheit nicht anzeigen lässt, bekam bis v0.68 ein
+         * unauffälliges Grau — und damit sah die Lootbox nach gar nichts aus.
+         * Jetzt läuft ein Regenbogen über alle drei Flächen.
+         *
+         * ES IST FÜR JEDE VERBORGENE LOOTBOX DERSELBE VERLAUF. Ein Zufall je
+         * Box oder eine Farbe je Stufe würde genau das verraten, was der Haken
+         * verbergen soll (eiserne Regel: Die Oberfläche verrät nie, was drin
+         * steckt). Die Helligkeitsstufen der drei Seiten bleiben trotzdem —
+         * sonst sähe der Würfel flach aus statt körperlich.
+         */
+        const verlauf = stufe.regenbogen
+            ? TEAM_SCHACH._regenbogenVerlauf(svg)
+            : null;
+
         for (const flaeche of flaechen) {
             const teil = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             teil.setAttribute("points", flaeche.punkte);
-            teil.setAttribute("fill", TEAM_SCHACH._tonAendern(stufe.farbe, flaeche.ton));
-            teil.setAttribute("stroke", TEAM_SCHACH._tonAendern(stufe.farbe, 0.45));
+
+            if (verlauf) {
+                teil.setAttribute("fill", "url(#" + verlauf + ")");
+                /* Die Fläche wird über die Deckkraft heller oder dunkler —
+                   den Verlauf selbst je Seite umzufärben hiesse drei
+                   Farbverläufe statt einem. */
+                teil.setAttribute("fill-opacity", String(Math.min(1, flaeche.ton * 0.75)));
+                teil.setAttribute("stroke", "#2b2f36");
+            } else {
+                teil.setAttribute("fill", TEAM_SCHACH._tonAendern(stufe.farbe, flaeche.ton));
+                teil.setAttribute("stroke", TEAM_SCHACH._tonAendern(stufe.farbe, 0.45));
+            }
+
             teil.setAttribute("stroke-width", "3");
             teil.setAttribute("stroke-linejoin", "round");
             svg.appendChild(teil);

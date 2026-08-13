@@ -3,6 +3,17 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.70.0 — 2026-08-13
+
+- **Verborgene Lootboxen schillern.** Wer die Seltenheit nicht anzeigen lässt,
+  bekam bisher ein unauffälliges Grau — jetzt läuft ein Regenbogen über die
+  Box. Es ist bei **jeder** verborgenen Lootbox derselbe Verlauf: Eine Farbe je
+  Stufe würde ja genau das verraten, was der Haken verbergen soll.
+- **Ein großes quadratisches Brett.** Unter „Quadratisch" gab es nur zwei
+  Größen; das „Große Brett" ist 10 mal 8 und liegt deshalb bei den
+  rechteckigen. Neu ist **10 mal 10** — dieselbe Aufstellung wie das große,
+  dazu vier Reihen Anlauf.
+
 ## v0.69.0 — 2026-08-13
 
 - **Züge werden wieder gezeigt — auch mit dem Springer.** Die Spur des letzten
