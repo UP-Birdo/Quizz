@@ -3,6 +3,14 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.64.0 — 2026-08-13
+
+- **Die Rückschau zeigt jetzt die Schlussstellung.** Links steht das Brett, so
+  wie es ganz zum Schluss aussah — mit allem darauf: Figuren, liegen gebliebene
+  Würfel, Mauern, Risse. Rechts daneben der Text: wie es endete, was es
+  gekostet hat, was den Ausschlag gab. Auf schmalen Geräten stehen die beiden
+  untereinander, das Brett zuerst.
+
 ## v0.63.0 — 2026-08-13
 
 Der letzte offene Wunsch — und der grösste.

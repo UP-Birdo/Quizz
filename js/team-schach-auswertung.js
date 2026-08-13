@@ -125,7 +125,43 @@ Object.assign(TEAM_SCHACH, {
 
         flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-marke", partie.titel));
         flaeche.appendChild(TEAM_SCHACH._element("h2", "abschluss-titel", "Wie es dazu kam"));
-        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-text", schau.ende));
+
+        /*
+         * ZWEI SPALTEN (seit v0.64): links die SCHLUSSSTELLUNG, rechts der
+         * Text. Gemeldet als „blende den Text rechts ein und links das finale
+         * Spielfeld nochmal zeigen, wie das Feld ganz zum Schluss aussah."
+         *
+         * Das Brett ist dasselbe, das auch die Anleitungen zeichnen
+         * (`_beispielBrettBauen`) — klein, ohne Bedienung, aber mit allem
+         * darauf: Figuren, Würfel, Mauern, Risse. Eine zweite Zeichenroutine
+         * liefe früher oder später der ersten hinterher.
+         *
+         * Auf schmalen Geräten stehen die beiden untereinander, Brett zuerst
+         * (siehe Stildatei) — nebeneinander wäre das Brett dort briefmarkengross.
+         */
+        const spalten = TEAM_SCHACH._element("div", "rueckschau-spalten");
+
+        const brettSpalte = TEAM_SCHACH._element("div", "rueckschau-brett");
+        brettSpalte.appendChild(TEAM_SCHACH._element("span", "rueckschau-marke",
+            "So stand es am Ende"));
+        /* Ein Bild ohne jede Markierung: kein Tipp, kein Pfeil, kein Zielfeld —
+           die Stellung, wie sie stehen geblieben ist. Die leeren Listen sind
+           Pflicht, `_beispielBrettBauen` fragt sie ohne Umweg ab. */
+        brettSpalte.appendChild(TEAM_SCHACH._beispielBrettBauen({
+            runde: partie,
+            marken: [],
+            wahl: [],
+            ziele: [],
+            wege: [],
+            tipp: -1
+        }));
+        spalten.appendChild(brettSpalte);
+
+        const textSpalte = TEAM_SCHACH._element("div", "rueckschau-text");
+        spalten.appendChild(textSpalte);
+        flaeche.appendChild(spalten);
+
+        textSpalte.appendChild(TEAM_SCHACH._element("p", "abschluss-text", schau.ende));
 
         /* Was jede Seite an Material gelassen hat. */
         const bilanz = TEAM_SCHACH._element("div", "abschluss-aufschluesselung");
@@ -139,10 +175,10 @@ Object.assign(TEAM_SCHACH, {
 
         zeile("Dein Team hat verloren (Figurenwert)", schau.wert.eigen);
         zeile("Der Gegner hat verloren (Figurenwert)", schau.wert.gegner);
-        flaeche.appendChild(bilanz);
+        textSpalte.appendChild(bilanz);
 
         const abstand = schau.wert.gegner - schau.wert.eigen;
-        flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-grund",
+        textSpalte.appendChild(TEAM_SCHACH._element("p", "abschluss-grund",
             (abstand === 0)
                 ? "Am Material lag es nicht — beide Seiten haben gleich viel gelassen."
                 : ((abstand > 0)
@@ -172,7 +208,7 @@ Object.assign(TEAM_SCHACH, {
             liste.appendChild(eintrag);
         }
 
-        flaeche.appendChild(liste);
+        textSpalte.appendChild(liste);
 
         const leiste = TEAM_SCHACH._element("div", "abschluss-leiste");
         leiste.appendChild(TEAM_SCHACH._knopf("Weiter zum Ergebnis", "knopf-haupt",

@@ -839,6 +839,39 @@ pruefe("Wer verliert, bekommt den Abschluss-Bildschirm", () => {
         throw new Error("die Rueckschau fehlt");
     }
 
+    /*
+     * ZWEI SPALTEN (v0.64): links die Schlussstellung, rechts der Text. Das
+     * Brett hat so viele Felder wie das Brett der Partie — sonst zeigt es eine
+     * andere Stellung als die, um die es geht.
+     */
+    const suchen = (element, klasse) => {
+        for (const kind of element.kinder || []) {
+            if (String(kind.className || "").indexOf(klasse) !== -1) {
+                return kind;
+            }
+            const tiefer = suchen(kind, klasse);
+            if (tiefer) {
+                return tiefer;
+            }
+        }
+        return null;
+    };
+
+    const brettSpalte = suchen(TEAM_SCHACH.wurzelEl, "rueckschau-brett");
+    const textSpalte = suchen(TEAM_SCHACH.wurzelEl, "rueckschau-text");
+
+    if (!brettSpalte || !textSpalte) {
+        throw new Error("die Rueckschau hat keine zwei Spalten");
+    }
+
+    const schluss = suchen(brettSpalte, "vorschau");
+    const partieJetzt = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.klein);
+    const erwartet = SCHACH.felderVon(partieJetzt.stand);
+
+    if (!schluss || schluss.kinder.length < erwartet) {
+        throw new Error("die Schlussstellung fehlt oder ist unvollstaendig");
+    }
+
     /* Erster Schritt weiter: Anna spielt Weiss und hat aufgegeben — sie sieht
        den Verlierer-Schirm. */
     TEAM_SCHACH.abschluss.schritt = 1;

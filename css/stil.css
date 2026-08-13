@@ -381,10 +381,41 @@ body {
     background: var(--karte);
 }
 
+/*
+ * Zwei Spalten (seit v0.64): links die Schlussstellung, rechts der Text.
+ * `align-items: flex-start` hält das Brett oben, statt es über die ganze
+ * Texthöhe zu strecken.
+ */
+.rueckschau-spalten {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--abstand);
+    width: 100%;
+    max-width: 900px;
+    text-align: left;
+}
+
+.rueckschau-brett {
+    flex: 0 1 320px;
+    min-width: 220px;
+}
+
+.rueckschau-marke {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: var(--schrift-leise);
+}
+
+.rueckschau-text {
+    flex: 1 1 320px;
+    min-width: 240px;
+}
+
 .rueckschau-liste {
     margin-top: var(--abstand);
     width: 100%;
-    max-width: 520px;
     text-align: left;
 }
 
