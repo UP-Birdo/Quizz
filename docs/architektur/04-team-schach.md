@@ -674,6 +674,38 @@ für sie wird die Liste einmalig aus `variante.bonusFelder` minus
 `verloren` sammelt geschlagene Figuren je Farbe — die Wiedergeburt holt daraus
 die zuletzt verlorene zurück.
 
+### Die vier Lagen des Brettes (seit v0.72)
+
+Bis v0.71 gab es zwei Ansichten: Weiss sah das Brett, wie es steht, Schwarz um
+180 Grad gedreht (eine Zeile: `feld = felder - 1 - anzeige`). Seit v0.65 stehen
+auf dem Kreuz Armeen auch **links und rechts** — wer dort spielt, sah seine
+eigene Armee quer.
+
+`TEAM_SCHACH._drehungVon(partie, farbe)` liefert deshalb **0 bis 3
+Vierteldrehungen im Uhrzeigersinn**, und die Zahl sagt zugleich, welche Seite
+des Brettes unten landet: `0 unten, 1 rechts, 2 oben, 3 links`
+(`DREHUNG_JE_SEITE`). Hat eine Farbe zwei Seiten, entscheidet
+`SEITEN_VORZUG` — „unten" zuerst, damit das gewohnte Brett gewohnt bleibt.
+
+Drei Stellen rechnen damit, und alle fragen dieselben zwei Funktionen:
+
+| Funktion | Beantwortet |
+|---|---|
+| `_feldZuAnzeige(stand, drehung, zeigeReihe, zeigeSpalte)` | Welches FELD liegt in der Ansicht an dieser Stelle? (Brett und Randbeschriftung) |
+| `_wegZuAnzeige(drehung, dReihe, dSpalte)` | Wie sieht ein Weg auf dem Brett in der Ansicht aus? (die gleitende Bewegung) |
+
+Bei einer Vierteldrehung **tauschen Breite und Höhe der Ansicht** — die
+Stil-Variablen `--brett-spalten` und `--brett-reihen` bekommen deshalb die
+Masse der ANSICHT, nicht die des Brettes. Und die Randbeschriftung dreht mit:
+Unten stehen dann die Zahlen, links die Buchstaben.
+
+**Gedreht wird einmal zu Beginn** (Nutzer-Ansage 13.08.), nicht laufend. Die
+Lage hängt an `SCHACH.startSeitenVon(stand, farbe)`, und die Antwort steht im
+Stand (`startSeiten`, gesetzt beim Aufstellen) — nicht in den Bauern: Sonst
+drehte sich die Ansicht in dem Moment, in dem der letzte Bauer einer Seite
+fällt. Gespeichert wird nichts davon im gemeinsamen Stand: Jedes Gerät zeichnet
+sein eigenes Brett.
+
 ### Was „vorn" heisst — das Nudelholz (seit v0.46)
 
 Das Brett wird für Schwarz **gedreht** gezeichnet. Eine Fähigkeit, deren

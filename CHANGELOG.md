@@ -3,6 +3,25 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.72.0 — 2026-08-14
+
+- **Das Brett dreht sich so, dass deine Armee unten steht.** Bisher gab es zwei
+  Ansichten: Weiss sah das Brett, wie es steht, Schwarz um 180 Grad gedreht.
+  Auf dem Kreuz stehen Armeen aber auch links und rechts — wer dort spielte,
+  sah seine eigene Armee quer von der Seite. Jetzt gibt es vier Lagen, und
+  jeder bekommt die, in der eine seiner Armeen unten steht. Die
+  Randbeschriftung dreht sich mit; bei einer Vierteldrehung stehen unten die
+  Zahlen und links die Buchstaben.
+  - **Gedreht wird EINMAL zu Beginn**, nicht im Laufe der Partie. Die Lage
+    hängt an der Startseite deiner Armee und gehört deinem Gerät — im
+    gemeinsamen Stand ändert sich dadurch nichts.
+- **Drei neue Spielarten: die Kreuz-Duelle.** Dieselben drei Kreuz-Grössen,
+  aber mit nur **einer Armee je Team** statt vier. Auf welcher der vier Seiten
+  ihr startet, wird ausgelost; ihr steht euch immer gegenüber, und die beiden
+  übrigen Streifen bleiben leer — sie sind der Umweg, über den man den Gegner
+  umgehen kann. Ein König je Team heisst: Schach und Matt gelten von Anfang an
+  (beim Kreuz mit vier Armeen hat man weiterhin zwei Leben).
+
 ## v0.71.0 — 2026-08-14
 
 - **Vier Stufen statt Haken und Schieberegler: wie viele Lootboxen?** Direkt

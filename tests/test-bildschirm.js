@@ -513,6 +513,138 @@ pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
     }
 });
 
+/* ------------------------------------------------------------------ *
+ * Die vier Lagen des Brettes (seit v0.72, Wunsch K4)
+ * ------------------------------------------------------------------ */
+
+pruefe("Jede Vierteldrehung zeigt jedes Feld genau einmal (v0.72)", () => {
+    /*
+     * `_feldZuAnzeige` ist die einzige Stelle, an der die Drehung steht —
+     * Brett, Randbeschriftung und Bewegung fragen sie. Geht dabei ein Feld
+     * verloren oder taucht eines doppelt auf, fehlt es auf dem Brett.
+     */
+    const stand = SCHACH.standNormalisieren({ variante: "gross" });
+    const breite = SCHACH.breiteVon(stand);
+    const hoehe = SCHACH.hoeheVon(stand);
+
+    if (breite === hoehe) {
+        throw new Error("geprueft werden muss an einem NICHT quadratischen Brett");
+    }
+
+    for (const drehung of [0, 1, 2, 3]) {
+        const quer = (drehung % 2) === 1;
+        const spalten = quer ? hoehe : breite;
+        const reihen = quer ? breite : hoehe;
+        const gesehen = {};
+
+        for (let zeigeReihe = 0; zeigeReihe < reihen; zeigeReihe++) {
+            for (let zeigeSpalte = 0; zeigeSpalte < spalten; zeigeSpalte++) {
+                const feld = TEAM_SCHACH._feldZuAnzeige(stand, drehung, zeigeReihe, zeigeSpalte);
+
+                if (feld < 0 || feld >= breite * hoehe) {
+                    throw new Error("Drehung " + drehung + ": Feld " + feld + " liegt draussen");
+                }
+                if (gesehen[feld]) {
+                    throw new Error("Drehung " + drehung + ": Feld " + feld + " kommt doppelt");
+                }
+                gesehen[feld] = true;
+            }
+        }
+
+        if (Object.keys(gesehen).length !== breite * hoehe) {
+            throw new Error("Drehung " + drehung + " zeigt nur "
+                + Object.keys(gesehen).length + " von " + (breite * hoehe) + " Feldern");
+        }
+    }
+});
+
+pruefe("Die gewaehlte Seite landet wirklich unten (v0.72)", () => {
+    const stand = SCHACH.standNormalisieren({ variante: "standard" });
+    const breite = SCHACH.breiteVon(stand);
+    const hoehe = SCHACH.hoeheVon(stand);
+
+    /* Ein Feld der jeweiligen Seite muss in der UNTERSTEN Anzeigereihe
+       landen — das ist der ganze Zweck der Drehung. */
+    const proben = {
+        unten: SCHACH.feldNummer("d1"),
+        oben: SCHACH.feldNummer("d8"),
+        links: SCHACH.feldNummer("a4"),
+        rechts: SCHACH.feldNummer("h4")
+    };
+
+    for (const seite of Object.keys(proben)) {
+        const drehung = TEAM_SCHACH.DREHUNG_JE_SEITE[seite];
+        const quer = (drehung % 2) === 1;
+        const spalten = quer ? hoehe : breite;
+        const reihen = quer ? breite : hoehe;
+
+        let gefunden = false;
+        for (let zeigeSpalte = 0; zeigeSpalte < spalten; zeigeSpalte++) {
+            if (TEAM_SCHACH._feldZuAnzeige(stand, drehung, reihen - 1, zeigeSpalte)
+                === proben[seite]) {
+                gefunden = true;
+            }
+        }
+
+        if (!gefunden) {
+            throw new Error("die Seite " + seite + " liegt bei Drehung "
+                + drehung + " nicht in der untersten Reihe");
+        }
+    }
+});
+
+pruefe("Jeder sieht seine eigene Armee unten (v0.72)", () => {
+    /* Das gewohnte Brett: Weiss unverdreht, Schwarz um 180 Grad — wie vor
+       v0.72. Ein Zuschauer sieht es wie Weiss. */
+    const gewohnt = { stand: SCHACH.standNormalisieren({ variante: "standard" }) };
+    const erwartet = { weiss: 0, schwarz: 2, "": 0 };
+
+    for (const farbe of Object.keys(erwartet)) {
+        const drehung = TEAM_SCHACH._drehungVon(gewohnt, farbe);
+        if (drehung !== erwartet[farbe]) {
+            throw new Error("auf dem gewohnten Brett muesste " + (farbe || "ein Zuschauer")
+                + " die Lage " + erwartet[farbe] + " sehen, war " + drehung);
+        }
+    }
+
+    /* Das Kreuz mit vier Armeen: Ein Team steht oben und unten, das andere
+       links und rechts. Das zweite muss eine Vierteldrehung bekommen. */
+    const kreuz = SCHACH_RUNDE.leereRunde(1000, "kreuz", "p-dreh", "K");
+
+    const kreuzWeiss = SCHACH.startSeitenVon(kreuz.stand, "weiss");
+    const kreuzSchwarz = SCHACH.startSeitenVon(kreuz.stand, "schwarz");
+
+    if (kreuzWeiss.length !== 2 || kreuzSchwarz.length !== 2) {
+        throw new Error("auf dem Kreuz muessten es zwei Seiten je Farbe sein");
+    }
+
+    /*
+     * DIE TEAMS STEHEN SICH GEGENUEBER: ein PAAR je Team. Beim Bauen stand
+     * hier zuerst „die Gegenseite jeder eigenen Seite" — das ergab fuer
+     * oben+unten wieder unten+oben, also beide Teams senkrecht. Gefunden
+     * wurde es erst am Bild, nicht am Test; deshalb steht es jetzt hier.
+     */
+    for (const seite of kreuzWeiss) {
+        if (kreuzSchwarz.indexOf(seite) !== -1) {
+            throw new Error("beide Teams stehen auf " + seite);
+        }
+    }
+    if (kreuzWeiss.indexOf("unten") === -1 && kreuzSchwarz.indexOf("unten") === -1) {
+        throw new Error("keines der beiden Teams steht unten");
+    }
+
+    for (const farbe of ["weiss", "schwarz"]) {
+        const seiten = SCHACH.startSeitenVon(kreuz.stand, farbe);
+        const drehung = TEAM_SCHACH._drehungVon(kreuz, farbe);
+        const soll = (seiten.indexOf("unten") !== -1) ? 0 : 3;
+
+        if (drehung !== soll) {
+            throw new Error(farbe + " steht auf " + seiten.join("+")
+                + " und muesste die Lage " + soll + " sehen, war " + drehung);
+        }
+    }
+});
+
 pruefe("Ein Haken zeigt seine Unterpunkte SOFORT (v0.71)", () => {
     /*
      * DER FEHLER AUS DEM EINGANGSKORB VOM 13.08.: „Hakt man Lootboxen an,

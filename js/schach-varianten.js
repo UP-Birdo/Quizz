@@ -1140,7 +1140,7 @@ const SCHACH_VARIANTEN = {
      * kann. Hier steht Weiss links — welche Seite es in einer Partie wirklich
      * ist, entscheidet die Partie-Kennung.
      */
-    kreuzAufstellung(mitte) {
+    kreuzAufstellung(mitte, nurSeiten) {
         const felder = SCHACH_VARIANTEN.kreuzFelder(mitte);
         const kante = mitte + 2 * SCHACH_VARIANTEN.KREUZ.rand;
         const zeichen = [];
@@ -1156,6 +1156,12 @@ const SCHACH_VARIANTEN = {
         const weiss = ["unten", "rechts"];
 
         for (const eintrag of felder) {
+            /* Mit nur EINER Armee je Team (seit v0.72) bleiben zwei Seiten
+               leer — welche zwei, entscheidet auch hier erst die Partie. */
+            if (nurSeiten && nurSeiten.indexOf(eintrag.seite) === -1) {
+                continue;
+            }
+
             zeichen[eintrag.feld] = (weiss.indexOf(eintrag.seite) !== -1)
                 ? eintrag.figur
                 : eintrag.figur.toLowerCase();
@@ -1544,6 +1550,67 @@ const SCHACH_VARIANTEN = {
             breite: 14,
             hoehe: 14,
             kreuz: true,
+            aufstellung: null,
+            rochade: true,
+            koenigSchlagbar: false,
+            bonusFelder: []
+        },
+
+        /* ------------------------------------------------------------ *
+         * DIESELBEN DREI KREUZE MIT NUR EINER ARMEE JE TEAM (seit v0.72)
+         *
+         * `kreuzEinzeln` heisst: Von den vier Streifen sind nur ZWEI
+         * besetzt, und welche zwei, wird gezogen — gegenüberliegend, damit
+         * die Teams sich ansehen. Zwei leere Flügel bleiben als Umweg
+         * stehen; das ist der Reiz gegenüber einem gewöhnlichen Brett.
+         *
+         * Ein König je Team heisst: KEIN `koenigeAlsLeben` — Schach und
+         * Matt gelten von der ersten Sekunde an, anders als beim Kreuz mit
+         * vier Armeen. Und: Sie stehen am ENDE der Liste (eiserne Regel).
+         * ------------------------------------------------------------ */
+        {
+            id: "kreuzKleinEinzeln",
+            titel: "Kleines Kreuz-Duell",
+            form: "kreuz",
+            beschreibung: "10 mal 10, aber nur eine Armee je Team. Auf welcher "
+                + "Seite ihr startet, wird gezogen; die beiden anderen Streifen "
+                + "bleiben leer.",
+            breite: 10,
+            hoehe: 10,
+            kreuz: true,
+            kreuzEinzeln: true,
+            aufstellung: null,
+            rochade: true,
+            koenigSchlagbar: false,
+            bonusFelder: []
+        },
+        {
+            id: "kreuzEinzeln",
+            titel: "Kreuz-Duell",
+            form: "kreuz",
+            beschreibung: "12 mal 12 mit einer Armee je Team — das gewohnte "
+                + "Kräfteverhältnis auf einem Brett mit zwei leeren Flügeln. Auf "
+                + "welcher Seite ihr startet, wird gezogen.",
+            breite: 12,
+            hoehe: 12,
+            kreuz: true,
+            kreuzEinzeln: true,
+            aufstellung: null,
+            rochade: true,
+            koenigSchlagbar: false,
+            bonusFelder: []
+        },
+        {
+            id: "kreuzGrossEinzeln",
+            titel: "Großes Kreuz-Duell",
+            form: "kreuz",
+            beschreibung: "14 mal 14 mit einer Armee je Team. Viel Platz, weite "
+                + "Wege — und zwei leere Flügel, über die man den Gegner umgehen "
+                + "kann. Die Startseite wird gezogen.",
+            breite: 14,
+            hoehe: 14,
+            kreuz: true,
+            kreuzEinzeln: true,
             aufstellung: null,
             rochade: true,
             koenigSchlagbar: false,
@@ -1978,7 +2045,11 @@ const SCHACH_VARIANTEN = {
 for (const variante of SCHACH_VARIANTEN.liste) {
     if (variante.kreuz && !variante.aufstellung) {
         variante.aufstellung = SCHACH_VARIANTEN.kreuzAufstellung(
-            variante.breite - 2 * SCHACH_VARIANTEN.KREUZ.rand);
+            variante.breite - 2 * SCHACH_VARIANTEN.KREUZ.rand,
+
+            /* Mit nur einer Armee je Team steht in der VORLAGE ein Paar —
+               welches die Partie zieht, entscheidet `kreuzAufstellen`. */
+            variante.kreuzEinzeln ? ["oben", "unten"] : null);
     }
 }
 

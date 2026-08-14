@@ -326,9 +326,38 @@ const SCHACH_RUNDE = {
          */
         const senkrechtIstWeiss = SCHACH_RUNDE._zufallsWert(saat) < 0.5;
 
-        const weisseSeiten = senkrechtIstWeiss
+        /* Die Teams stehen sich GEGENÜBER: ein PAAR je Team, nicht eine Seite.
+           Wer senkrecht steht, bekommt oben und unten; das andere Team die
+           beiden Flügel. */
+        let weisseSeiten = senkrechtIstWeiss
             ? ["oben", "unten"]
             : ["links", "rechts"];
+
+        let schwarzeSeiten = senkrechtIstWeiss
+            ? ["links", "rechts"]
+            : ["oben", "unten"];
+
+        /*
+         * NUR EINE ARMEE JE TEAM (seit v0.72, Wunsch K3).
+         *
+         * Dann wird nicht das Paar gezogen, sondern die eine STARTSEITE von
+         * Weiss; Schwarz bekommt die gegenüberliegende, damit die Teams sich
+         * ansehen. Die beiden übrigen Streifen bleiben leer und sind der
+         * Umweg, der diese Bretter von einem gewöhnlichen unterscheidet.
+         *
+         * Gezogen wird auch hier gerechnet, aus derselben Saat mit anderem
+         * Zusatz — die Kennung steht vorne (Regel zu `_zufallsWert`).
+         */
+        if (variante.kreuzEinzeln) {
+            const seiten = SCHACH_VARIANTEN.KREUZ.seiten;
+            const stelle = Math.floor(
+                SCHACH_RUNDE._zufallsWert(saat + "|einzeln") * seiten.length);
+
+            const startWeiss = seiten[Math.min(stelle, seiten.length - 1)];
+
+            weisseSeiten = [startWeiss];
+            schwarzeSeiten = [SCHACH.SEITEN[startWeiss].gegen];
+        }
 
         const zeichen = [];
         for (let feld = 0; feld < kante * kante; feld++) {
@@ -345,6 +374,13 @@ const SCHACH_RUNDE = {
 
         for (const eintrag of SCHACH_VARIANTEN.kreuzFelder(mitte)) {
             const istWeiss = (weisseSeiten.indexOf(eintrag.seite) !== -1);
+            const istSchwarz = (schwarzeSeiten.indexOf(eintrag.seite) !== -1);
+
+            /* Mit nur einer Armee je Team gehören zwei Seiten niemandem —
+               sie bleiben leer. */
+            if (!istWeiss && !istSchwarz) {
+                continue;
+            }
 
             zeichen[eintrag.feld] = istWeiss
                 ? eintrag.figur
@@ -361,12 +397,29 @@ const SCHACH_RUNDE = {
          * Den ersten König schlägt der Gegner wie jede Figur, beim letzten
          * gelten wieder Schach und Matt. Ohne diesen Schalter wäre Schachmatt
          * mit zwei Königen gar nicht eindeutig (eiserne Regel).
+         *
+         * Mit nur EINER Armee je Team (seit v0.72) gibt es auch nur einen
+         * König je Team — dann gelten Schach und Matt von Anfang an, und der
+         * Schalter bleibt aus.
          */
         runde.stand = Object.assign({}, runde.stand, {
             brett: zeichen.join(""),
             bauernSeiten: bauernSeiten,
-            koenigeAlsLeben: true,
-            risse: SCHACH_VARIANTEN.kreuzEcken(variante)
+            koenigeAlsLeben: !variante.kreuzEinzeln,
+            risse: SCHACH_VARIANTEN.kreuzEcken(variante),
+
+            /*
+             * WELCHE SEITEN WEM GEHÖREN, WIRD FESTGEHALTEN (seit v0.72).
+             *
+             * Der Bildschirm dreht die Ansicht danach (K4). Er könnte es aus
+             * den Bauern ablesen — aber nur, solange welche stehen, und die
+             * Ansicht darf sich nicht drehen, weil der letzte Bauer gefallen
+             * ist. Hier ist der eine Ort, an dem die Antwort entsteht.
+             */
+            startSeiten: {
+                weiss: weisseSeiten.slice(),
+                schwarz: schwarzeSeiten.slice()
+            }
         });
 
         return runde;

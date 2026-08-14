@@ -30,6 +30,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - „Fenster blockiert", obwohl das Fenster aufging (v0.66)
     - Die neue Lootbox verdeckte den Zug, der gerade passiert war (v0.69)
     - Eine Liste im Behandler, die niemand mitpflegt (v0.60, gefunden v0.71)
+    - Die Gegenseite eines PAARES ist nicht die gespiegelte Seite (v0.72)
 
 ## entschieden.md - Entschieden - und warum
 
@@ -137,6 +138,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum eine Leihgabe erst zählt, wenn man wieder am Zug ist (v0.57)
 - Warum ein Zug unterwegs enden kann (v0.58) — **nimmt eine Aussage aus
   derselben Runde zurück**
+- Warum die Ansicht sich nur EINMAL dreht (v0.72)
+- Warum das Kreuz-Duell die Startseite auslost (v0.72)
 - Warum aus zwei Schaltern vier Stufen wurden (v0.71) — **ersetzt den
   Regen-Haken (v0.50) und den Schieberegler (v0.60)**
 - Warum es von Anfang an Tabs gibt

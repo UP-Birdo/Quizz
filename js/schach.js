@@ -395,7 +395,25 @@ const SCHACH = {
              * Eintrag mit (`_bauernSeitenNachfuehren`). Wandelt er um, fällt
              * der Eintrag weg — er ist dann kein Bauer mehr.
              */
-            bauernSeiten: []
+            bauernSeiten: [],
+
+            /*
+             * VON WELCHER SEITE JEDE FARBE GESTARTET IST (seit v0.72):
+             * { weiss: ["unten"], schwarz: ["oben"] } — beim Kreuz je zwei.
+             *
+             * WOZU. Der Bildschirm dreht die Ansicht so, dass eine der eigenen
+             * Armeen unten steht. Er könnte die Seiten aus `bauernSeiten`
+             * ablesen — aber nur, solange die Farbe noch Bauern hat. Die Lage
+             * der Ansicht darf sich mitten in der Partie nicht drehen, bloss
+             * weil der letzte Bauer gefallen ist. Deshalb steht die Antwort
+             * EINMAL beim Aufstellen im Stand und ändert sich nie wieder.
+             *
+             * ADDITIV: Fehlt der Eintrag (jede Partie vor v0.72), fällt
+             * `SCHACH.startSeitenVon` auf die Bauern und danach auf die
+             * Farbregel zurück — Weiss unten, Schwarz oben, also genau die
+             * Ansicht von früher.
+             */
+            startSeiten: {}
         };
     },
 
@@ -628,6 +646,25 @@ const SCHACH = {
                     alle.findIndex((anderer) => anderer.feld === eintrag.feld) === stelle);
         }
 
+        /* Die Startseiten der beiden Farben (seit v0.72). Unbekannte Seiten
+           fallen weg; bleibt für eine Farbe nichts übrig, entscheidet später
+           der Rückfall in `startSeitenVon`. */
+        if (roh.startSeiten && typeof roh.startSeiten === "object") {
+            for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
+                const liste = Array.isArray(roh.startSeiten[farbe])
+                    ? roh.startSeiten[farbe]
+                    : [];
+
+                const sauber = liste
+                    .filter((seite) => !!SCHACH.SEITEN[seite])
+                    .filter((seite, stelle, alle) => alle.indexOf(seite) === stelle);
+
+                if (sauber.length > 0) {
+                    stand.startSeiten[farbe] = sauber;
+                }
+            }
+        }
+
         /* Das Opfer eines Doppelschritts (seit v0.65) — siehe `_ausfuehren`. */
         if (Number.isInteger(roh.enPassantOpfer) && roh.enPassantOpfer >= 0
             && roh.enPassantOpfer < felder) {
@@ -682,6 +719,50 @@ const SCHACH = {
             return eintrag.seite;
         }
         return (farbe === SCHACH.WEISS) ? "unten" : "oben";
+    },
+
+    /*
+     * VON WELCHEN SEITEN SPIELT DIESE FARBE? (seit v0.72)
+     *
+     * Auf jedem gewohnten Brett ist es eine (Weiss unten, Schwarz oben), auf
+     * dem Kreuz mit vier Armeen sind es zwei. Der Bildschirm dreht danach die
+     * Ansicht; die Regeln fragen die Seite weiterhin je Bauer.
+     *
+     * DREI QUELLEN, IN DIESER REIHENFOLGE — jede spätere ist nur der Rückfall
+     * für Stände, die die frühere nicht kennen:
+     *
+     *   1. `stand.startSeiten` (seit v0.72, beim Aufstellen gesetzt). Steht
+     *      fest und ändert sich nie — auch nicht, wenn die letzte Figur einer
+     *      Seite fällt.
+     *   2. Die Bauern (`bauernSeiten`, seit v0.65). Deckt die Kreuz-Partien
+     *      ab, die vor v0.72 angelegt wurden, solange sie Bauern haben.
+     *   3. Die Farbregel. Sie gilt für jedes gewohnte Brett und ist die
+     *      Ansicht von früher.
+     */
+    startSeitenVon(stand, farbe) {
+        const gemerkt = (stand && stand.startSeiten) ? stand.startSeiten[farbe] : null;
+
+        if (Array.isArray(gemerkt) && gemerkt.length > 0) {
+            return gemerkt.slice();
+        }
+
+        const seiten = [];
+        const liste = (stand && Array.isArray(stand.bauernSeiten)) ? stand.bauernSeiten : [];
+
+        for (const eintrag of liste) {
+            const figur = SCHACH.figurAuf(stand, eintrag.feld);
+
+            if (figur !== "." && SCHACH.farbeVon(figur) === farbe
+                && SCHACH.SEITEN[eintrag.seite]
+                && seiten.indexOf(eintrag.seite) === -1) {
+                seiten.push(eintrag.seite);
+            }
+        }
+
+        if (seiten.length > 0) {
+            return seiten;
+        }
+        return [(farbe === SCHACH.WEISS) ? "unten" : "oben"];
     },
 
     /* Die Laufrichtung dieses Bauern als { dr, ds }. */

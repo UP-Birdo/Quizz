@@ -1751,6 +1751,65 @@ pruefe("Die Teams stehen sich gegenueber, das Paar wird gerechnet (v0.65)", () =
     gleich(verteilungen.size, 2, "ueber viele Partien kommen beide Verteilungen vor");
 });
 
+pruefe("Das Kreuz-Duell hat eine Armee je Team, gegenueber (v0.72)", () => {
+    /*
+     * K3: Dieselben drei Groessen mit nur EINER Armee je Team. Die Startseite
+     * wird gezogen (gerechnet aus der Kennung), Schwarz bekommt die
+     * gegenueberliegende — und die beiden uebrigen Streifen bleiben leer.
+     */
+    for (const id of ["kreuzKleinEinzeln", "kreuzEinzeln", "kreuzGrossEinzeln"]) {
+        const runde = kreuzPartie(id, "p-duell-" + id);
+        const kante = SCHACH.breiteVon(runde.stand);
+        const rand = SCHACH_VARIANTEN.KREUZ.rand;
+        const mitte = kante - 2 * rand;
+
+        /* Ein Koenig je Team heisst: Schach und Matt gelten von Anfang an. */
+        gleich(SCHACH.koenigFelder(runde.stand, SCHACH.WEISS).length, 1,
+            id + ": ein weisser Koenig");
+        gleich(SCHACH.koenigFelder(runde.stand, SCHACH.SCHWARZ).length, 1,
+            id + ": ein schwarzer Koenig");
+        gleich(runde.stand.koenigeAlsLeben, false, id + ": keine zwei Leben");
+
+        /* Zwei volle Armeen statt vier. */
+        let figuren = 0;
+        for (let feld = 0; feld < kante * kante; feld++) {
+            if (SCHACH.figurAuf(runde.stand, feld) !== ".") {
+                figuren++;
+            }
+        }
+        gleich(figuren, 2 * 2 * mitte, id + ": zwei volle Armeen");
+
+        /* Und sie stehen sich gegenueber. */
+        const weiss = SCHACH.startSeitenVon(runde.stand, SCHACH.WEISS);
+        const schwarz = SCHACH.startSeitenVon(runde.stand, SCHACH.SCHWARZ);
+
+        gleich(weiss.length, 1, id + ": Weiss hat eine Seite");
+        gleich(schwarz.length, 1, id + ": Schwarz hat eine Seite");
+        gleich(SCHACH.SEITEN[weiss[0]].gegen, schwarz[0],
+            id + ": sie stehen sich gegenueber");
+
+        wahr(SCHACH.alleZuege(runde.stand).length > 0, id + ": es laesst sich ziehen");
+    }
+});
+
+pruefe("Die gezogene Startseite ist gerechnet und streut (v0.72)", () => {
+    /* Dieselbe Kennung ergibt dasselbe Brett — und ueber viele Partien kommen
+       mehrere Seiten vor, sonst waere das Ziehen eine Behauptung. */
+    const seiteVon = (kennung) => SCHACH.startSeitenVon(
+        kreuzPartie("kreuzEinzeln", kennung).stand, SCHACH.WEISS)[0];
+
+    gleich(seiteVon("p-gleich-duell"), seiteVon("p-gleich-duell"),
+        "dieselbe Kennung, dieselbe Seite");
+
+    const gesehen = new Set();
+    for (let nummer = 0; nummer < 60; nummer++) {
+        gesehen.add(seiteVon("p-duell-" + nummer));
+    }
+
+    wahr(gesehen.size >= 3, "es kommen mehrere Startseiten vor (waren "
+        + gesehen.size + ")");
+});
+
 pruefe("Ein Bauer laeuft von seiner Startseite zur gegenueberliegenden (v0.65)", () => {
     const runde = kreuzPartie("kreuz", "p-lauf");
     const kante = SCHACH.breiteVon(runde.stand);

@@ -1152,6 +1152,61 @@ pruefe("Der Sprung bedroht sehr wohl - er schlaegt", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Von welchen Seiten eine Farbe startet (seit v0.72)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ohne Angabe gilt die Farbregel: Weiss unten, Schwarz oben", () => {
+    const stand = standAus({ "e1": "K", "e8": "k" }, "weiss");
+
+    gleich(SCHACH.startSeitenVon(stand, "weiss").join(","), "unten", "Weiss");
+    gleich(SCHACH.startSeitenVon(stand, "schwarz").join(","), "oben", "Schwarz");
+});
+
+pruefe("Die gemerkten Startseiten gehen der Farbregel vor (v0.72)", () => {
+    const stand = SCHACH.standNormalisieren({
+        brett: brettAus({ "e1": "K", "e8": "k" }),
+        amZug: "weiss",
+        startSeiten: { weiss: ["links", "rechts"], schwarz: ["oben", "unten"] }
+    });
+
+    gleich(SCHACH.startSeitenVon(stand, "weiss").join(","), "links,rechts", "Weiss");
+    gleich(SCHACH.startSeitenVon(stand, "schwarz").join(","), "oben,unten", "Schwarz");
+
+    /* Und sie halten, auch wenn keine Figur der Farbe mehr steht — genau
+       dafuer stehen sie im Stand und werden nicht abgelesen. */
+    const leer = SCHACH.standNormalisieren(Object.assign({}, stand, {
+        brett: brettAus({ "e1": "K" })
+    }));
+    gleich(SCHACH.startSeitenVon(leer, "schwarz").join(","), "oben,unten",
+        "auch ohne Figuren");
+
+    /* Unsinn faellt weg und damit auf den Rueckfall zurueck. */
+    const kaputt = SCHACH.standNormalisieren(Object.assign({}, stand, {
+        startSeiten: { weiss: ["quer"], schwarz: [] }
+    }));
+    gleich(SCHACH.startSeitenVon(kaputt, "weiss").join(","), "unten",
+        "eine unbekannte Seite zaehlt nicht");
+});
+
+pruefe("Ohne gemerkte Seiten antworten die Bauern (v0.72)", () => {
+    /*
+     * Der Rueckfall fuer Kreuz-Partien aus v0.65 bis v0.71: Dort steht die
+     * Startseite je BAUER im Stand, aber noch nicht je Farbe.
+     */
+    const stand = SCHACH.standNormalisieren({
+        brett: brettAus({ "e1": "K", "e8": "k", "b2": "B", "g7": "b" }),
+        amZug: "weiss",
+        bauernSeiten: [
+            { feld: SCHACH.feldNummer("b2"), seite: "links" },
+            { feld: SCHACH.feldNummer("g7"), seite: "rechts" }
+        ]
+    });
+
+    gleich(SCHACH.startSeitenVon(stand, "weiss").join(","), "links", "Weiss vom Bauern");
+    gleich(SCHACH.startSeitenVon(stand, "schwarz").join(","), "rechts", "Schwarz vom Bauern");
+});
+
+/* ------------------------------------------------------------------ *
  * Ergebnis
  * ------------------------------------------------------------------ */
 

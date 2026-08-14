@@ -1746,6 +1746,48 @@ Nachwirkung des Zuges, kein Filter davor.
   freie Feld; findet sich keines, bleibt der Zug lieber, wie er war. Eine Figur
   ohne Feld wäre schlimmer als ein Zug zu viel.
 
+## Warum die Ansicht sich nur EINMAL dreht (v0.72)
+
+Mit vier Armeen auf dem Kreuz brauchte die Ansicht vier Lagen statt zwei. Die
+naheliegende Umsetzung wäre gewesen, sie laufend nachzuführen — immer so, dass
+die Armee unten steht, die gerade wichtig ist. Der Nutzer hat es am 13.08.
+anders entschieden: **einmal zu Beginn, dann nie wieder.** Es reicht, dass EINE
+der eigenen Armeen unten steht; wo die zweite landet, ergibt sich daraus (bei
+vier Armeen gegenüber).
+
+Der Grund ist Orientierung: Ein Brett, das sich während der Partie dreht, macht
+jede gemerkte Stellung wertlos. „Meine Dame steht links unten" muss den ganzen
+Abend gelten.
+
+**Damit gehört die Lage dem GERÄT, nicht der Partie.** Sie hängt allein an der
+Farbe, in der man spielt, und wird nirgends gespeichert — zwei Spieler
+desselben Teams sehen dasselbe, ein Zuschauer sieht das Brett wie Weiss.
+
+**Warum die Startseite trotzdem im Stand steht.** Die Lage liesse sich aus den
+Bauern ablesen (`bauernSeiten`, seit v0.65). Nur: Wer keine Bauern mehr hat,
+fiele auf die Farbregel zurück — die Ansicht drehte sich mitten in der Partie,
+sobald der letzte Bauer fällt. Deshalb schreibt `kreuzAufstellen` die Seiten je
+Farbe einmalig in den Stand (`startSeiten`). Für Partien, die davor angelegt
+wurden, bleibt der Rückfall über die Bauern.
+
+## Warum das Kreuz-Duell die Startseite auslost (v0.72)
+
+Beim Kreuz mit vier Armeen wird gezogen, welches Team das senkrechte Paar
+bekommt. Mit nur einer Armee je Team (K3) wäre die naheliegende Wahl gewesen,
+Weiss wie gewohnt unten zu lassen. Dagegen sprach der Zweck dieser Bretter: Die
+beiden leeren Streifen sind der Umweg, der sie von einem gewöhnlichen Brett
+unterscheidet — und der ist nur interessant, wenn nicht jede Partie gleich
+aussieht.
+
+Ausgelost wird deshalb die eine Startseite von Weiss; **Schwarz bekommt immer
+die gegenüberliegende.** Zwei Armeen über Eck (etwa oben und links) wären kein
+Schach mehr: Die Bauern liefen aneinander vorbei, und die Umwandlungsreihe der
+einen Seite wäre die Startreihe der anderen.
+
+Ein König je Team heisst dabei: **kein `koenigeAlsLeben`.** Schach und Matt
+gelten von der ersten Sekunde an — anders als beim Kreuz mit vier Armeen, wo
+zwei Könige zwei Leben sind.
+
 ## Warum aus zwei Schaltern vier Stufen wurden (v0.71)
 
 Bis v0.70 beantworteten zwei Einstellungen dieselbe Frage: der Haken

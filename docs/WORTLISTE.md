@@ -39,6 +39,9 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 |---|---|---|
 | **Sperre** | `SCHACH.gesperrt` | Ein Feld, das niemand betreten darf. Zwei Ursachen: **Mauer** (läuft ab) und **Riss / Loch** (bleibt die ganze Partie). |
 | **Sichtlinie / Strahl** | `_strahl`, `_feldBedroht` | Die Linie, die Turm, Läufer und Dame entlangziehen. Eine Sperre bricht sie ab — beim Ziehen UND beim Drohen. |
+| **Lage der Ansicht** | `TEAM_SCHACH._drehungVon`, `_feldZuAnzeige` | Wie herum dieses Gerät das Brett zeigt: 0 bis 3 Vierteldrehungen, sodass eine eigene Armee unten steht (seit v0.72). Steht in keinem Spielstand. |
+| **Startseite eines Teams** | `stand.startSeiten` | Von welcher Seite eine FARBE gestartet ist (beim Kreuz zwei). Daran hängt die Lage der Ansicht. |
+| **Kreuz-Duell** | `variante.kreuzEinzeln` | Ein Kreuz mit nur einer Armee je Team, Startseite ausgelost (seit v0.72). |
 | **Startseite** | `stand.bauernSeiten` | Von welcher Seite ein Bauer kommt. Er läuft geradewegs zur gegenüberliegenden; dort wandelt er um. Ohne Eintrag gilt die Farbregel (Weiss unten, Schwarz oben). |
 | **Gefallen** | `runde.gefallen` | Merkt sich **wo** eine Figur starb (`{art, feld}`). Dafür der Friedhof und die Wiederbelebung. |
 | **Verloren** | `runde.verloren` | Merkt sich nur **was** verloren ging. Dafür die Wiedergeburt und die Bilanz. |

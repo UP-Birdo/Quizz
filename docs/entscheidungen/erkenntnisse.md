@@ -576,6 +576,29 @@ Und: Was der Bildschirm tut, misst man am besten im Bildschirm — ein Testblatt
 mit den echten Dateien und einem echten Klick hat die Frage in zwei Minuten
 beantwortet, die durch Lesen nicht zu beantworten war.
 
+## Die Gegenseite eines PAARES ist nicht die gespiegelte Seite (v0.72)
+
+**Der Fehler:** Beim Bau der Brettdrehung (K4) sollten die Startseiten je Farbe
+in den Stand geschrieben werden. Weiss bekommt beim Kreuz ein PAAR — etwa
+oben+unten —, und für Schwarz stand da: „die Gegenseite jeder weissen Seite".
+
+Das ergibt für oben+unten wieder unten+oben. **Beide Teams standen damit
+senkrecht**, und die Ansicht drehte sich für niemanden. Die Rechnung ist für
+EINE Seite richtig und für ein Paar falsch: Das Gegenstück eines Paares ist das
+ANDERE Paar.
+
+**Gefunden wurde es am Bild, nicht im Test.** Alle Tests waren grün — sie
+prüften die Aufstellung, und die entsteht aus `weisseSeiten`, wo der Fehler
+nicht sass. Sichtbar wurde er erst auf einem Bildschirmfoto: Schwarz sah das
+Kreuz unverdreht, obwohl es auf den Flügeln stand.
+
+**Die Lehre:** Wo zwei Angaben dasselbe beschreiben sollen (hier: die
+Aufstellung und die gemerkten Startseiten), muss ein Test sie
+GEGENEINANDER prüfen — nicht jede für sich. Der Test dazu steht jetzt in
+`test-bildschirm.js` („Jeder sieht seine eigene Armee unten"): Die Seiten
+beider Farben dürfen sich nicht überschneiden, und eine der beiden muss unten
+sein.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

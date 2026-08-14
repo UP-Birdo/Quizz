@@ -70,14 +70,19 @@ Object.assign(TEAM_SCHACH, {
         const halter = TEAM_SCHACH._element("div", "brett-halter");
 
         const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
-        /* Schwarze Teams sehen das Brett gedreht — jeder blickt von seiner
-           Seite darauf, wie am echten Tisch. */
-        const gedreht = (meinTeam === "schwarz");
+
+        /* Jeder blickt von SEINER Seite auf das Brett, wie am echten Tisch —
+           seit v0.72 in vier Lagen statt zweien (siehe `_drehungVon`). */
+        const drehung = TEAM_SCHACH._drehungVon(partie, meinTeam);
+        const quer = (drehung % 2) === 1;
 
         const stand = partie.stand;
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
         const felder = breite * hoehe;
+
+        /* Bei einer Vierteldrehung tauschen Breite und Höhe der ANSICHT. */
+        const zeigeSpalten = quer ? hoehe : breite;
 
         const brett = TEAM_SCHACH._element("div", "brett");
 
@@ -87,8 +92,8 @@ Object.assign(TEAM_SCHACH, {
          * Figuren. So bleibt alles Aussehen in der Stildatei, und ein breites
          * Brett schrumpft auf dem Handy von selbst mit.
          */
-        brett.style.setProperty("--brett-spalten", String(breite));
-        brett.style.setProperty("--brett-max", Math.min(64 * breite, 900) + "px");
+        brett.style.setProperty("--brett-spalten", String(zeigeSpalten));
+        brett.style.setProperty("--brett-max", Math.min(64 * zeigeSpalten, 900) + "px");
 
         /* Gemerkt für _figurGroesseSetzen: Die Schriftgröße der Figuren lässt
            sich erst messen, wenn das Brett im Bildschirm steht. */
@@ -114,7 +119,8 @@ Object.assign(TEAM_SCHACH, {
         const spur = TEAM_SCHACH._letzteSpur(partie);
 
         for (let anzeige = 0; anzeige < felder; anzeige++) {
-            const feld = gedreht ? (felder - 1 - anzeige) : anzeige;
+            const feld = TEAM_SCHACH._feldZuAnzeige(stand, drehung,
+                Math.floor(anzeige / zeigeSpalten), anzeige % zeigeSpalten);
 
             const zelle = document.createElement("button");
             zelle.type = "button";
@@ -392,13 +398,13 @@ Object.assign(TEAM_SCHACH, {
          * wächst sie mit jeder Spielart mit, ohne Sonderfall.
          */
         const rahmen = TEAM_SCHACH._element("div", "brett-rahmen");
-        rahmen.style.setProperty("--brett-spalten", String(breite));
-        rahmen.style.setProperty("--brett-reihen", String(hoehe));
-        rahmen.style.setProperty("--brett-max", Math.min(64 * breite, 900) + "px");
+        rahmen.style.setProperty("--brett-spalten", String(zeigeSpalten));
+        rahmen.style.setProperty("--brett-reihen", String(quer ? breite : hoehe));
+        rahmen.style.setProperty("--brett-max", Math.min(64 * zeigeSpalten, 900) + "px");
 
-        rahmen.appendChild(TEAM_SCHACH._randBauen(partie, gedreht, "reihen"));
+        rahmen.appendChild(TEAM_SCHACH._randBauen(partie, drehung, "reihen"));
         rahmen.appendChild(brett);
-        rahmen.appendChild(TEAM_SCHACH._randBauen(partie, gedreht, "spalten"));
+        rahmen.appendChild(TEAM_SCHACH._randBauen(partie, drehung, "spalten"));
 
         halter.appendChild(rahmen);
 
@@ -678,28 +684,122 @@ Object.assign(TEAM_SCHACH, {
             + " Lang: " + lage[1].grund;
     },
 
+    /* ---------------------------------------------------------------- *
+     * DIE VIER LAGEN DES BRETTS (seit v0.72, Wunsch K4)
+     *
+     * Bis v0.71 gab es zwei: Weiss sah das Brett, wie es steht, Schwarz um
+     * 180 Grad gedreht. Auf dem Kreuz stehen seit v0.65 Armeen auch LINKS und
+     * RECHTS — für die brauchte es zwei weitere Lagen, sonst spielt man seine
+     * eigene Armee quer von der Seite.
+     *
+     * `drehung` zählt Vierteldrehungen IM UHRZEIGERSINN und sagt zugleich,
+     * welche Seite des Brettes unten landet:
+     *
+     *     0  unten (nichts zu tun)      2  oben  (die Ansicht von Schwarz)
+     *     1  rechts                     3  links
+     *
+     * GEDREHT WIRD EINMAL ZU BEGINN, nicht laufend (Nutzer-Ansage 13.08.).
+     * Die Lage hängt an der STARTSEITE der eigenen Armee — die steht im Stand
+     * und ändert sich nie (`SCHACH.startSeitenVon`). Deshalb steht sie in
+     * keinem Spielstand: Jeder sieht sein eigenes Brett, geschrieben wird
+     * nichts.
+     * ---------------------------------------------------------------- */
+
+    DREHUNG_JE_SEITE: { unten: 0, rechts: 1, oben: 2, links: 3 },
+
+    /* Welche Seite unten stehen soll, wenn eine Farbe mehrere hat. „unten"
+       zuerst — dann bleibt das gewohnte Brett gewohnt. */
+    SEITEN_VORZUG: ["unten", "links", "rechts", "oben"],
+
+    _drehungVon(partie, farbe) {
+        /* Wer nur zuschaut, sieht das Brett wie Weiss. */
+        if (!farbe) {
+            return 0;
+        }
+
+        const seiten = SCHACH.startSeitenVon(partie.stand, farbe);
+        const gewaehlt = TEAM_SCHACH.SEITEN_VORZUG.find(
+            (seite) => seiten.indexOf(seite) !== -1) || "unten";
+
+        return TEAM_SCHACH.DREHUNG_JE_SEITE[gewaehlt];
+    },
+
+    /*
+     * Welches FELD liegt in der Ansicht an dieser Stelle? Die Umkehrung der
+     * Drehung, und die einzige Stelle, an der sie steht: Brett, Randbeschrif-
+     * tung und die Bewegung fragen alle hier.
+     */
+    _feldZuAnzeige(stand, drehung, zeigeReihe, zeigeSpalte) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+
+        let reihe = zeigeReihe;
+        let spalte = zeigeSpalte;
+
+        if (drehung === 1) {
+            spalte = zeigeReihe;
+            reihe = hoehe - 1 - zeigeSpalte;
+        } else if (drehung === 2) {
+            reihe = hoehe - 1 - zeigeReihe;
+            spalte = breite - 1 - zeigeSpalte;
+        } else if (drehung === 3) {
+            reihe = zeigeSpalte;
+            spalte = breite - 1 - zeigeReihe;
+        }
+
+        return reihe * breite + spalte;
+    },
+
+    /*
+     * Ein Weg auf dem BRETT, umgerechnet auf die Ansicht. Gebraucht für die
+     * gleitende Bewegung: Eine Figur, die auf dem Brett nach oben zieht, muss
+     * bei einer Vierteldrehung nach rechts wandern.
+     */
+    _wegZuAnzeige(drehung, dReihe, dSpalte) {
+        if (drehung === 1) {
+            return { dr: dSpalte, ds: -dReihe };
+        }
+        if (drehung === 2) {
+            return { dr: -dReihe, ds: -dSpalte };
+        }
+        if (drehung === 3) {
+            return { dr: -dSpalte, ds: dReihe };
+        }
+        return { dr: dReihe, ds: dSpalte };
+    },
+
     /*
      * Eine Randbeschriftung: die Spaltenbuchstaben unter dem Brett oder die
      * Reihenzahlen links daneben. Beide kommen aus den Maßen der Spielart und
-     * beachten das gedrehte Brett.
+     * beachten die Lage des Brettes — bei einer Vierteldrehung stehen unten
+     * die ZAHLEN und links die Buchstaben, weil dort dann Reihen und Spalten
+     * getauscht sind.
      */
-    _randBauen(partie, gedreht, art) {
-        const breite = SCHACH.breiteVon(partie.stand);
-        const hoehe = SCHACH.hoeheVon(partie.stand);
+    _randBauen(partie, drehung, art) {
+        const stand = partie.stand;
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const quer = (drehung % 2) === 1;
+        const untenDrunter = (art === "spalten");
+
+        const anzahl = untenDrunter
+            ? (quer ? hoehe : breite)
+            : (quer ? breite : hoehe);
+
         const rand = TEAM_SCHACH._element("div", "brett-rand brett-rand-" + art);
 
-        if (art === "spalten") {
-            for (let spalte = 0; spalte < breite; spalte++) {
-                const stelle = gedreht ? (breite - 1 - spalte) : spalte;
-                rand.appendChild(TEAM_SCHACH._element("span", "brett-marke",
-                    SCHACH.SPALTEN[stelle]));
-            }
-        } else {
-            for (let reihe = 0; reihe < hoehe; reihe++) {
-                const stelle = gedreht ? (hoehe - 1 - reihe) : reihe;
-                rand.appendChild(TEAM_SCHACH._element("span", "brett-marke",
-                    String(hoehe - stelle)));
-            }
+        for (let stelle = 0; stelle < anzahl; stelle++) {
+            const feld = TEAM_SCHACH._feldZuAnzeige(stand, drehung,
+                untenDrunter ? 0 : stelle,
+                untenDrunter ? stelle : 0);
+
+            /* Buchstabe oder Zahl? Ohne Vierteldrehung tragen die Spalten die
+               Buchstaben, mit ihr die Reihen — also genau dann getauscht. */
+            const text = (untenDrunter !== quer)
+                ? SCHACH.SPALTEN[SCHACH.spalteVon(feld, breite)]
+                : String(hoehe - SCHACH.reiheVon(feld, breite));
+
+            rand.appendChild(TEAM_SCHACH._element("span", "brett-marke", text));
         }
 
         return rand;
@@ -1123,16 +1223,16 @@ Object.assign(TEAM_SCHACH, {
         }
 
         const breite = SCHACH.breiteVon(partie.stand);
-        const gedreht = (SCHACH_RUNDE.teamVon(partie, person.id) === "schwarz");
-        const richtung = gedreht ? -1 : 1;
 
-        const dSpalte = (SCHACH.spalteVon(letzter.von, breite)
-            - SCHACH.spalteVon(letzter.nach, breite)) * richtung;
-        const dReihe = (SCHACH.reiheVon(letzter.von, breite)
-            - SCHACH.reiheVon(letzter.nach, breite)) * richtung;
+        /* Der Weg auf dem BRETT — und danach umgerechnet auf die Lage, in der
+           dieses Gerät das Brett sieht (seit v0.72 vier statt zwei). */
+        const weg = TEAM_SCHACH._wegZuAnzeige(
+            TEAM_SCHACH._drehungVon(partie, SCHACH_RUNDE.teamVon(partie, person.id)),
+            SCHACH.reiheVon(letzter.von, breite) - SCHACH.reiheVon(letzter.nach, breite),
+            SCHACH.spalteVon(letzter.von, breite) - SCHACH.spalteVon(letzter.nach, breite));
 
-        figurEl.style.transform = "translate(" + (dSpalte * groesse) + "px, "
-            + (dReihe * groesse) + "px)";
+        figurEl.style.transform = "translate(" + (weg.ds * groesse) + "px, "
+            + (weg.dr * groesse) + "px)";
         /* Die wandernde Figur liegt über ihren Nachbarfeldern. */
         zelle.classList.add("feld-zieht");
 
