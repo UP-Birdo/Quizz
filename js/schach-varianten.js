@@ -171,8 +171,14 @@ const SCHACH_VARIANTEN = {
                 + "Vorbeiziehen mitnimmt und danach vor einem Loch steht, bleibt "
                 + "davor stehen — der Zug endet dort."
         },
+        /*
+         * „HALLUZINATION" HEISST SIE SEIT v0.73 (Meldung I11) — die KENNUNG
+         * bleibt `vollesGlas`. Sie steckt in jeder laufenden Partie und in den
+         * Firebase-Daten; ein Umbenennen wäre ein Bruch des additiven
+         * Datenvertrags ohne jeden Gewinn (dieselbe Regel wie bei „Lootbox").
+         */
         vollesGlas: {
-            titel: "Volles Glas",
+            titel: "Halluzination",
             stufe: "gruen",
             beschreibung: "Wer ihn einsammelt, sieht die gegnerischen Figuren 8 "
                 + "Halbzüge lang falsch: Sie ziehen wie immer, sehen aber aus wie "
@@ -777,8 +783,10 @@ const SCHACH_VARIANTEN = {
             zielArt: "frostblock",
             beschreibung: "Friert ein 2-mal-2-Feld für einen Zug ein: Was darin "
                 + "steht, zieht nicht und lässt sich in dieser Zeit auch nicht "
-                + "schlagen — eigene Figuren eingeschlossen. Könige bleiben "
-                + "verschont. Angetippt wird die linke obere Ecke des Blocks."
+                + "schlagen — eigene Figuren eingeschlossen. Genau das kann der "
+                + "Zweck sein: Ein eingefrorener eigener Läufer ist einen Zug lang "
+                + "unantastbar. Könige bleiben verschont. Angetippt wird die linke "
+                + "obere Ecke des Blocks; er muss mindestens eine Figur treffen."
         },
         /*
          * VERSTÄRKUNG IST SEIT v0.56 EINE AUFWERTUNGSKETTE.
@@ -889,7 +897,9 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Legt eine Mauer über drei freie Felder derselben Reihe — auf "
                 + "das angetippte Feld und je eines links und rechts davon. Niemand zieht "
                 + "hindurch, aber Springer setzen darüber hinweg. Nach 6 Halbzügen — "
-                + "also je drei Zügen für dich und den Gegner — zerfällt sie."
+                + "also je drei Zügen für dich und den Gegner — zerfällt sie. "
+                + "Am äussersten Rand geht sie nicht: Dort fehlt der Nachbar, den sie "
+                + "auf einer Seite braucht."
         },
 
         /*

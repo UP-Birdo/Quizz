@@ -3920,15 +3920,157 @@ pruefe("Der Stolperstein trifft die einsammelnde Figur, auch im Vorbeiziehen (v0
     wahr(gezogen !== null, "der Turm zieht die Spalte hinauf");
     gleich(gezogen.bonus.length, 0, "den Wuerfel hat er unterwegs mitgenommen");
 
-    /* Zurueckgeworfen wird er von seinem ZIELFELD aus, eine Reihe Richtung
-       eigener Grundreihe — also von a7 nach a6. */
+    /*
+     * ZURUECKGEWORFEN WIRD AB DEM FELD DER LOOTBOX (seit v0.73, Meldung I8) —
+     * nicht mehr vom Zielfeld aus. Der Stein liegt auf a4, der Turm kam von
+     * unten: also ein Feld dahinter, auf a3. Bis v0.72 landete er auf a6.
+     */
     gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a7")), ".",
         "auf a7 steht er nicht mehr");
-    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a6")), "T",
-        "sondern ein Feld zurueck auf a6");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a3")), "T",
+        "sondern ein Feld vor dem Stein, auf a3");
 
     const letzter = gezogen.verlauf[gezogen.verlauf.length - 1];
     gleich(letzter.wirkung, "pech", "und der Verlauf haelt es fest");
+});
+
+pruefe("Der Stolperstein wirft in die Richtung zurueck, aus der man kam (v0.73)", () => {
+    /*
+     * I8: Ein diagonal ziehender Laeufer fliegt diagonal zurueck — nicht
+     * senkrecht Richtung Grundreihe wie bis v0.72.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "L...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("c3"), art: "stolperstein", pech: true }];
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("e5"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Laeufer zieht die Diagonale hinauf");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("b2")), "L",
+        "und liegt diagonal hinter dem Stein auf b2");
+});
+
+pruefe("Der Springer kehrt an seinen Ausgangsort zurueck (v0.73)", () => {
+    /* I8: Zwischen Start und Ziel gibt es beim Springer keine Richtung —
+       also zurueck an den Anfang. */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "S...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("b3"), art: "stolperstein", pech: true }];
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("b3"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Springer springt");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a1")), "S",
+        "und steht wieder auf seinem Ausgangsfeld");
+});
+
+pruefe("Ein abgebrochener Angriff schlaegt nichts (v0.73)", () => {
+    /*
+     * I8, zweiter Teil: Wer sein Ziel nicht erreicht, schlaegt dort auch
+     * nichts — dieselbe Regel wie beim Zugabbruch am Riss (v0.58).
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "t......."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("a4"), art: "stolperstein", pech: true }];
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("a7"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Turm zieht los");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a7")), "t",
+        "der schwarze Turm steht noch");
+    gleich(gezogen.verloren.schwarz.length, 0, "und zaehlt nicht als verloren");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("a3")), "T",
+        "der eigene Turm liegt vor dem Stein");
+});
+
+pruefe("Zurueckgestolpert ins Schach heisst verloren (v0.73)", () => {
+    /*
+     * I9 (Nutzer-Entscheidung 09.08.): Eine Ungluecks-Lootbox DARF eine Partie
+     * beenden. Geprueft wird NACH dem Rueckwurf — `lage()` kennt diesen Fall
+     * nicht, denn es ist weder Matt noch Patt.
+     *
+     * Die Stellung: Der schwarze Turm auf h1 gibt Schach ueber die Grundreihe.
+     * Weiss schlaegt ihn mit dem Turm von h5 — ein voellig gueltiger Zug, er
+     * beendet das Schach. Unterwegs liegt auf h3 ein Stolperstein: Der Turm
+     * kommt nicht an, der Schlag faellt damit aus, der schwarze Turm steht
+     * wieder auf h1 — und der weisse Koenig im Schach.
+     */
+    let runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + ".......T"
+            + "........"
+            + "........"
+            + "........"
+            + "K......t",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    runde.bonusFassung = 2;
+    runde.bonus = [{ feld: SCHACH.feldNummer("h3"), art: "stolperstein", pech: true }];
+
+    gleich(SCHACH.imSchach(runde.stand, "weiss"), true,
+        "vorher steht Weiss schon im Schach");
+
+    const gezogen = SCHACH_RUNDE.ziehen(runde, "id-anna",
+        SCHACH.feldNummer("h5"), SCHACH.feldNummer("h1"), "D", "Anna", 3000);
+
+    wahr(gezogen !== null, "der Turm schlaegt den Angreifer");
+    gleich(SCHACH.figurAuf(gezogen.stand, SCHACH.feldNummer("h1")), "t",
+        "der geschlagene Turm steht wieder da");
+    gleich(SCHACH.imSchach(gezogen.stand, "weiss"), true,
+        "der weisse Koenig steht danach im Schach");
+    gleich(gezogen.ergebnis, "schwarz", "und Weiss hat verloren");
+    gleich(gezogen.laeuft, false, "die Partie ist zu Ende");
 });
 
 /*

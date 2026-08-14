@@ -934,6 +934,21 @@ Object.assign(TEAM_SCHACH, {
     _anleitungRuhigBauen(schritte) {
         const halter = TEAM_SCHACH._element("div", "anleitung");
 
+        /*
+         * UND EIN SATZ, DER ES ERKLÄRT (seit v0.73, Meldung I1).
+         *
+         * Gemeldet wurde: „ist die Animation evtl. nicht am PC zu sehen oder
+         * geht sie generell nicht mehr?" Sie geht — nur zeigt die App hier
+         * absichtlich alle Bilder nebeneinander, weil im Betriebssystem
+         * „weniger Bewegung" eingestellt ist (seit v0.42). Ohne einen Hinweis
+         * sieht genau das aus wie ein Fehler.
+         */
+        halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            "Dein Gerät ist auf weniger Bewegung eingestellt — deshalb stehen "
+            + "hier alle Bilder nebeneinander, statt nacheinander abgespielt zu "
+            + "werden. Wer den Ablauf sehen möchte, schaltet in den "
+            + "Systemeinstellungen die Animationen wieder ein."));
+
         for (let nummer = 0; nummer < schritte.length; nummer++) {
             const kasten = TEAM_SCHACH._element("div", "anleitung-bild");
 

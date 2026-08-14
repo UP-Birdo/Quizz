@@ -3255,36 +3255,115 @@ const SCHACH = {
      * null, wenn nichts passieren kann.
      * ---------------------------------------------------------------- */
 
-    /* Stolperstein: Die Figur auf `feld` wird ein Feld zurückgeworfen. */
-    stolperstein(stand, farbe, feld) {
+    /*
+     * Der Schritt von einem Feld zum anderen, auf eins gekürzt — oder `null`,
+     * wenn dazwischen keine gerade Linie liegt (Springer). Gebraucht überall
+     * dort, wo die RICHTUNG eines Zuges zählt und nicht seine Länge.
+     */
+    _schrittZwischen(stand, von, nach) {
         const breite = SCHACH.breiteVon(stand);
-        const figur = SCHACH.figurAuf(stand, feld);
+        const dr = SCHACH.reiheVon(nach, breite) - SCHACH.reiheVon(von, breite);
+        const ds = SCHACH.spalteVon(nach, breite) - SCHACH.spalteVon(von, breite);
+
+        if (dr === 0 && ds === 0) {
+            return null;
+        }
+        if (dr !== 0 && ds !== 0 && Math.abs(dr) !== Math.abs(ds)) {
+            return null;
+        }
+
+        const schritte = Math.max(Math.abs(dr), Math.abs(ds));
+        return { dr: dr / schritte, ds: ds / schritte };
+    },
+
+    /*
+     * STOLPERSTEIN: DIE FIGUR FLIEGT DORTHIN ZURÜCK, WO SIE HERKAM
+     * (seit v0.73, Meldung I8 — vorher: ein Feld Richtung eigener Grundreihe).
+     *
+     * Drei Dinge stecken darin:
+     *
+     *   - **Die Richtung ist die des ZUGES, rückwärts.** Ein diagonal
+     *     ziehender Läufer fliegt diagonal zurück, nicht senkrecht. Ohne
+     *     gerade Linie dazwischen (Springer) gibt es keine Richtung — dann
+     *     kehrt die Figur an ihren AUSGANGSORT zurück.
+     *   - **Gezählt wird ab dem Feld der LOOTBOX**, nicht ab dem Zielfeld:
+     *     Man stolpert dort, wo der Stein liegt. Wer im Vorbeiziehen
+     *     einsammelt, kommt also gar nicht erst an.
+     *   - Ist das Feld dahinter besetzt oder gesperrt, wird weiter zurück
+     *     gesucht — bis zum Ausgangsfeld. Findet sich nichts, passiert
+     *     nichts.
+     *
+     * `wo` ist das Feld, auf dem die Figur JETZT steht, `von` ihr Ausgangsfeld
+     * (oder -1, wenn sie nicht gezogen ist, sondern eine Fähigkeit sie gesetzt
+     * hat), `bonusFeld` das Feld der Lootbox. Ohne Zug-Angaben gilt die Regel
+     * von früher — dann gibt es keine Zugrichtung, an der man sich ausrichten
+     * könnte.
+     */
+    stolperstein(stand, farbe, wo, von, bonusFeld) {
+        const breite = SCHACH.breiteVon(stand);
+        const figur = SCHACH.figurAuf(stand, wo);
 
         if (SCHACH.farbeVon(figur) !== farbe) {
             return null;
         }
 
-        /* Zurück heißt: in Richtung der eigenen Grundreihe. */
-        const zurueck = (farbe === SCHACH.WEISS) ? 1 : -1;
-        const reihe = SCHACH.reiheVon(feld, breite);
-        const spalte = SCHACH.spalteVon(feld, breite);
+        const hatZug = Number.isInteger(von) && von >= 0 && von !== wo;
+        const schritt = hatZug ? SCHACH._schrittZwischen(stand, von, wo) : null;
+        const ziele = [];
 
-        if (!SCHACH._imBrett(stand, reihe + zurueck, spalte)) {
+        if (schritt) {
+            const start = (Number.isInteger(bonusFeld) && bonusFeld >= 0)
+                ? bonusFeld
+                : wo;
+
+            let reihe = SCHACH.reiheVon(start, breite) - schritt.dr;
+            let spalte = SCHACH.spalteVon(start, breite) - schritt.ds;
+
+            while (SCHACH._imBrett(stand, reihe, spalte)) {
+                const platz = SCHACH._feld(stand, reihe, spalte);
+                ziele.push(platz);
+
+                if (platz === von) {
+                    break;
+                }
+                reihe -= schritt.dr;
+                spalte -= schritt.ds;
+            }
+
+        } else if (hatZug) {
+            /* Springer: dazwischen gibt es keine Richtung, also zurück an den
+               Ausgangsort. */
+            ziele.push(von);
+        }
+
+        if (ziele.length === 0) {
+            /* Die Regel von früher, für alles, was nicht aus einem Zug kommt:
+               ein Feld in Richtung der eigenen Grundreihe. */
+            const zurueck = (farbe === SCHACH.WEISS) ? 1 : -1;
+            const reihe = SCHACH.reiheVon(wo, breite) + zurueck;
+            const spalte = SCHACH.spalteVon(wo, breite);
+
+            if (SCHACH._imBrett(stand, reihe, spalte)) {
+                ziele.push(SCHACH._feld(stand, reihe, spalte));
+            }
+        }
+
+        const ziel = ziele.find((platz) => platz !== wo
+            && SCHACH.figurAuf(stand, platz) === "."
+            && !SCHACH.gesperrt(stand, platz));
+
+        if (ziel === undefined) {
             return null;
         }
 
-        const ziel = SCHACH._feld(stand, reihe + zurueck, spalte);
-        if (SCHACH.figurAuf(stand, ziel) !== ".") {
-            return null;
-        }
-
-        let brett = SCHACH._brettMit(stand.brett, feld, ".");
+        let brett = SCHACH._brettMit(stand.brett, wo, ".");
         brett = SCHACH._brettMit(brett, ziel, figur);
 
         return {
             stand: Object.assign({}, stand, { brett: brett, enPassant: "" }),
-            felder: [feld, ziel],
-            wege: [{ von: feld, nach: ziel }],
+            felder: [wo, ziel],
+            wege: [{ von: wo, nach: ziel }],
+            halt: ziel,
             text: SCHACH.artName(SCHACH.artVon(figur)) + " stolpert zurück"
         };
     },

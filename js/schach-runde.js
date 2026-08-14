@@ -1465,10 +1465,11 @@ const SCHACH_RUNDE = {
      * `altStand` ist der Stand VOR dem Zug: Die Felder gehören zu seiner
      * Nummerierung, und ein Unglückswürfel kann das Brett vergrössern.
      */
-    _bonusEinsammeln(runde, altStand, von, nach, farbe, wer) {
+    _bonusEinsammeln(runde, altStand, von, nach, farbe, wer, bericht) {
         return SCHACH_RUNDE._bonusEinsammelnAufFeldern(runde,
             SCHACH.betreteneFelder(altStand, von, nach), farbe, wer,
-            { vonZug: true, von: von, nach: nach, altStand: altStand });
+            { vonZug: true, von: von, nach: nach, altStand: altStand,
+                bericht: bericht });
     },
 
     /*
@@ -1610,7 +1611,7 @@ const SCHACH_RUNDE = {
                 : bonus.feld;
 
             SCHACH_RUNDE._pechAusloesen(runde, bonus.art, farbe, bonus.feld, wer,
-                von, traeger);
+                von, traeger, woher.bericht);
         }
 
         return pechFelder;
@@ -1624,13 +1625,24 @@ const SCHACH_RUNDE = {
      * (seit v0.58) — beim Vorbeiziehen ist das nicht dasselbe. Fehlt es, gilt
      * wie früher das Würfelfeld.
      */
-    _pechAusloesen(runde, art, farbe, feld, wer, herkunft, traeger) {
+    _pechAusloesen(runde, art, farbe, feld, wer, herkunft, traeger, bericht) {
         const basis = (runde.id || "partie") + "|" + runde.zugZaehler + "|pech";
         const wo = Number.isInteger(traeger) ? traeger : feld;
         let wirkung = null;
 
         if (art === "stolperstein") {
-            wirkung = SCHACH.stolperstein(runde.stand, farbe, wo);
+            wirkung = SCHACH.stolperstein(runde.stand, farbe, wo, herkunft, feld);
+
+            /*
+             * Wo die Figur hängen bleibt, muss der ZUG erfahren: Er bricht
+             * dort ab, und ein Schlag am Zielfeld fällt damit aus (seit
+             * v0.73, Meldung I8). Gemeldet wird es über `bericht`, weil das
+             * Zurücknehmen nur `ziehen` kann — dort liegen die geschlagene
+             * Figur und der Verlaufseintrag.
+             */
+            if (wirkung && bericht) {
+                bericht.stolperHalt = wirkung.halt;
+            }
 
         } else if (art === "ausdehnung") {
             /*
@@ -1998,12 +2010,19 @@ const SCHACH_RUNDE = {
          * DER FROST SPERRT SEIT v0.56 EINEN 2×2-BLOCK.
          *
          * Angetippt wird die linke obere Ecke — dieselbe Lesart wie beim
-         * Friedhof. Angeboten wird ein Block nur, wenn wenigstens eine
-         * GEGNERISCHE Figur darin steht, die sich einfrieren lässt: Sonst
-         * stünden auf einem leeren Brett hunderte gültiger Ziele, und die
-         * Fähigkeit könnte man wirkungslos verbrauchen.
+         * Friedhof.
          *
-         * Eingefroren wird dann alles im Block, auch eigene Figuren
+         * WO ER SICH SETZEN LÄSST (seit v0.73, Meldung I10, Nutzer-Entscheidung
+         * 09.08.: „eigenen helfen oder Gegner blockieren"). Bis v0.72 musste
+         * wenigstens eine GEGNERISCHE Figur im Block stehen. Jetzt zählt jede
+         * Figur, gleich welcher Farbe: Eingefroren heisst auch unantastbar, und
+         * genau das kann man für die eigenen Leute wollen.
+         *
+         * Ein LEERER Block bleibt trotzdem draussen. Er friert nichts ein und
+         * wäre ein verschenkter Würfel; ausserdem stünden auf einem leeren Brett
+         * sonst hunderte gültiger Ziele.
+         *
+         * Eingefroren wird alles im Block, auch eigene Figuren
          * (Nutzer-Entscheidung 08.08.). Könige bleiben verschont — das
          * entscheidet `SCHACH.eingefroren`, nicht die Auswahl hier.
          */
@@ -2017,7 +2036,7 @@ const SCHACH_RUNDE = {
 
             const trifft = block.filter((platz) => {
                 const figur = SCHACH.figurAuf(runde.stand, platz);
-                return SCHACH.farbeVon(figur) === gegner && SCHACH.artVon(figur) !== "K";
+                return figur !== "." && SCHACH.artVon(figur) !== "K";
             });
 
             if (trifft.length === 0) {
@@ -2697,15 +2716,33 @@ const SCHACH_RUNDE = {
         SCHACH_RUNDE._verlaufKuerzen(neu);
 
         /* Würfel einsammeln — auf dem ganzen Weg, nicht nur auf dem Zielfeld. */
+        const bericht = {};
         const pechFelder = SCHACH_RUNDE._bonusEinsammeln(
-            neu, alt.stand, von, nach, farbe, wer);
+            neu, alt.stand, von, nach, farbe, wer, bericht);
 
         /*
          * Hat der eingesammelte Würfel den weiteren Weg gesperrt, endet der Zug
          * vor dem Hindernis (seit v0.58).
          */
-        SCHACH_RUNDE._zugAmRissAbbrechen(neu, alt.stand, von, nach, farbe,
-            geschlagen, ergebnis.zug, zugEintrag, pechFelder);
+        const amRiss = SCHACH_RUNDE._zugAmRissAbbrechen(neu, alt.stand, von, nach,
+            farbe, geschlagen, ergebnis.zug, zugEintrag, pechFelder);
+
+        /*
+         * DERSELBE ABBRUCH NACH EINEM STOLPERSTEIN (seit v0.73, Meldung I8).
+         *
+         * Der Stein hat die Figur bereits zurückgeworfen; was fehlt, ist der
+         * Rest eines abgebrochenen Zuges: die geschlagene Figur kommt zurück,
+         * ein Bauer bleibt ein Bauer, und der Verlauf nennt das Feld, auf dem
+         * die Figur wirklich steht. Der Riss geht vor — er hat die Figur dann
+         * schon woanders hingesetzt.
+         */
+        if (!amRiss && Number.isInteger(bericht.stolperHalt)
+            && bericht.stolperHalt !== nach) {
+
+            SCHACH_RUNDE._zugZurueckSetzen(neu, alt.stand, von, nach, farbe,
+                geschlagen, zugEintrag, bericht.stolperHalt,
+                " — der Zug bricht dort ab");
+        }
 
         /* Und alle paar Züge erscheint ein neuer Würfel. */
         SCHACH_RUNDE._bonusNachziehen(neu);
@@ -2718,6 +2755,41 @@ const SCHACH_RUNDE = {
         } else if (lage.art === "patt" || lage.art === "remis") {
             neu.ergebnis = "remis";
             neu.laeuft = false;
+        }
+
+        /*
+         * ZURÜCKGEWORFEN INS SCHACH HEISST VERLOREN (seit v0.73, Meldung I9,
+         * Nutzer-Entscheidung 09.08.: „weil es eine Unglücksbox ist — diese
+         * können zum Schachmatt führen").
+         *
+         * Damit fällt für UNGLÜCKS-Lootboxen die alte Regel, dass keine
+         * Wirkung eine Partie beenden darf. Für Fähigkeiten gilt sie weiter:
+         * Die wählt man, ein Unglück trifft einen.
+         *
+         * Gefragt wird NACH dem Rückwurf und nicht `lage()`: Die kennt nur
+         * Matt und Patt, und hier ist es weder das eine noch das andere — der
+         * Gegner ist am Zug, und der eigene König steht im Schach. Der Fall
+         * trifft jede zurückgeworfene Figur, nicht nur den König: Wer den
+         * Block vor dem eigenen König verliert, verliert genauso.
+         */
+        if (neu.laeuft && Number.isInteger(bericht.stolperHalt)
+            && SCHACH.imSchach(neu.stand, farbe)) {
+
+            neu.ergebnis = SCHACH.gegner(farbe);
+            neu.laeuft = false;
+
+            neu.verlauf.push({
+                text: "Zurückgestolpert ins Schach — "
+                    + ((farbe === SCHACH.WEISS) ? "Weiss" : "Schwarz")
+                    + " verliert die Partie",
+                wer: "",
+                farbe: farbe,
+                von: -1,
+                nach: -1,
+                wirkung: "pech",
+                felder: [bericht.stolperHalt]
+            });
+            SCHACH_RUNDE._verlaufKuerzen(neu);
         }
 
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
@@ -2820,10 +2892,33 @@ const SCHACH_RUNDE = {
             return false;
         }
 
-        /*
-         * Zurückgesetzt wird auf die URSPRÜNGLICHE Figur: Ein Bauer, der sein
-         * Umwandlungsfeld nicht erreicht, bleibt ein Bauer.
-         */
+        SCHACH_RUNDE._zugZurueckSetzen(runde, altStand, von, nach, farbe,
+            geschlagen, zugEintrag, halt, " — der Zug bricht davor ab");
+
+        return true;
+    },
+
+    /*
+     * EIN ZUG, DER SEIN ZIEL NICHT ERREICHT HAT (seit v0.58, seit v0.73
+     * gemeinsam genutzt).
+     *
+     * Zwei Unglückswürfel enden hier: der RISS, der den Weg sperrt, und der
+     * STOLPERSTEIN, der die Figur zurückwirft. Wo die Figur stehen bleibt,
+     * rechnet jeder für sich aus (`halt`) — was danach zu tun ist, ist bei
+     * beiden dasselbe:
+     *
+     *   - Die URSPRÜNGLICHE Figur steht auf dem Haltefeld: Ein Bauer, der sein
+     *     Umwandlungsfeld nicht erreicht, bleibt ein Bauer.
+     *   - **Der Schlag fällt mit aus.** Wer sein Ziel nicht erreicht, schlägt
+     *     dort nichts — die geschlagene Figur kommt zurück aufs Brett und aus
+     *     den Verlustlisten heraus. Alles andere wäre ein Angriff aus der
+     *     Ferne.
+     *   - Der Verlaufseintrag wird nachgeführt, sonst wandert die Figur am
+     *     Bildschirm auf ein Feld, auf dem sie gar nicht steht.
+     */
+    _zugZurueckSetzen(runde, altStand, von, nach, farbe, geschlagen, zugEintrag,
+        halt, grund) {
+
         const urspruenglich = SCHACH.figurAuf(altStand, von);
         let brett = SCHACH._brettMit(runde.stand.brett, nach, ".");
         brett = SCHACH._brettMit(brett, halt, urspruenglich);
@@ -2848,8 +2943,6 @@ const SCHACH_RUNDE = {
                 (eintrag.feld === nach) ? { feld: halt, bis: eintrag.bis } : eintrag)
         });
 
-        /* Der Zug im Verlauf endet jetzt woanders — sonst wandert die Figur am
-           Bildschirm auf ein Feld, auf dem sie gar nicht steht. */
         const breite = SCHACH.breiteVon(runde.stand);
         const hoehe = SCHACH.hoeheVon(runde.stand);
 
@@ -2861,14 +2954,12 @@ const SCHACH_RUNDE = {
            des Verlaufs und bekommt das Haltefeld dazu. */
         const letzter = runde.verlauf[runde.verlauf.length - 1];
         if (letzter && letzter.wirkung === "pech") {
-            letzter.text += " — der Zug bricht davor ab";
+            letzter.text += grund;
 
             if (letzter.felder.indexOf(halt) === -1) {
                 letzter.felder.push(halt);
             }
         }
-
-        return true;
     },
 
     /*

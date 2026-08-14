@@ -27,7 +27,8 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 |---|---|---|
 | **Lootbox** | `bonus`, `wuerfel` | Die Box, die auf freien Feldern erscheint. Für den Nutzer seit v0.68 überall „Lootbox" — die Bezeichner im Code heissen weiter `wuerfel`/`bonus`, weil sie in jeder laufenden Partie und in den Firebase-Daten stecken. |
 | **Fähigkeit** | `FAEHIGKEITEN` | Was Gutes in einer Lootbox stecken kann. |
-| **Unglücks-Lootbox** | `PECH`, `pech: true` | Was Schlechtes darin stecken kann. Wirkt sofort beim Einsammeln. |
+| **Unglücks-Lootbox** | `PECH`, `pech: true` | Was Schlechtes darin stecken kann. Wirkt sofort beim Einsammeln — und darf seit v0.73 eine Partie beenden. |
+| **Halluzination** | `vollesGlas` | Der Unglückswürfel, der die gegnerischen Figuren falsch aussehen lässt. Hiess bis v0.72 „Volles Glas"; die Kennung im Code bleibt. |
 | **Stufe / Seltenheit** | `STUFEN` | Gewöhnlich, Ungewöhnlich, Episch, Legendär — sichtbar an der Farbe, wenn der Haken es zulässt. |
 | **Vorrat** | `runde.faehigkeiten[farbe]` | Die gesammelten Fähigkeiten eines Teams, die Marken unter dem Brett. |
 | **Stufe der Menge** | `regeln.lootboxMenge` | Wie viele Lootboxen erscheinen: **wenig / normal / viele / Regen** (seit v0.71, vier Kästchen unter dem Lootbox-Haken). Tabelle: `SCHACH_VARIANTEN.LOOTBOX_MENGEN`. |

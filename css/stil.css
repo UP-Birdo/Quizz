@@ -2222,8 +2222,18 @@ body {
  * Auswahlmarke, keinen Zugpunkt. Er ist kein Feld mehr, auf das man zieht,
  * und jede Markierung darauf wäre eine Einladung ins Leere.
  */
+/*
+ * EIN RISS IST EIN LOCH — also DURCHSICHTIG (seit v0.73, Meldung I7).
+ *
+ * Seit v0.57 trug das Feld die Hintergrundfarbe der Seite. Das ist fast
+ * dasselbe, aber eben nur fast: Das Brett liegt in einer Karte, und deren Grund
+ * ist eine Spur heller — der Riss sah dadurch aus wie ein eingefärbtes Feld mit
+ * Rahmen, nicht wie ein Loch. Gemeldet als „eingerahmte Felder, wo man die
+ * Feldfarbe noch sieht". Durchsichtig lässt wirklich das durchscheinen, worauf
+ * das Brett liegt.
+ */
 .feld-riss {
-    background: var(--hintergrund) !important;
+    background: transparent !important;
     box-shadow: inset 0 3px 4px -2px rgba(0, 0, 0, 0.5);
     cursor: default;
 }
@@ -2386,12 +2396,30 @@ body {
     opacity: 0.45;
 }
 
-/* Auf dem Brett füllt der Abdruck ein Feld; auf der Marke sitzt er daneben. */
+/*
+ * Auf dem Brett füllt der Abdruck ein Feld; auf der Marke sitzt er daneben.
+ *
+ * DER ABDRUCK BRAUCHT PLATZ NACH UNTEN (seit v0.73, Meldung I5: „der
+ * Fingerabdruck am Vorrat-Knopf ist abgeschnitten"). Die Marke ist eine Pille,
+ * deren Höhe der Text bestimmt — ein quadratisches Zeichen von 1,1em stiess
+ * dort oben und unten an den Rand, und die äusseren Bögen lagen genau auf der
+ * Kante. Jetzt bekommt die Pille etwas mehr Höhe, das Zeichen darf nicht
+ * schrumpfen (`flex: none`, sonst quetscht der Flex-Kasten es schmal), und ein
+ * kleiner Abstand hält es von der Rundung weg.
+ */
+.anleitung-knopf {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-right: 8px;
+    overflow: visible;
+}
+
 .anleitung-knopf .anleitung-finger {
     position: static;
-    width: 1.1em;
-    height: 1.1em;
-    margin-left: 4px;
+    flex: none;
+    width: 1.15em;
+    height: 1.15em;
+    margin-left: 5px;
 }
 
 .anleitung-marke {

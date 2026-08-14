@@ -138,6 +138,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum eine Leihgabe erst zählt, wenn man wieder am Zug ist (v0.57)
 - Warum ein Zug unterwegs enden kann (v0.58) — **nimmt eine Aussage aus
   derselben Runde zurück**
+- Warum eine Unglücks-Lootbox eine Partie beenden darf (v0.73) — **hebt eine
+  eiserne Regel für Unglückswürfel auf**
+- Warum der Stolperstein rückwärts wirft und nicht abwärts (v0.73)
 - Warum die Ansicht sich nur EINMAL dreht (v0.72)
 - Warum das Kreuz-Duell die Startseite auslost (v0.72)
 - Warum aus zwei Schaltern vier Stufen wurden (v0.71) — **ersetzt den

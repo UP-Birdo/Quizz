@@ -428,7 +428,7 @@ Object.assign(TEAM_SCHACH, {
 
         if (glas) {
             halter.appendChild(TEAM_SCHACH._element("p", "erklaerung erklaerung-rochade",
-                "Volles Glas: Du siehst die gegnerischen Figuren gerade falsch. "
+                "Halluzination: Du siehst die gegnerischen Figuren gerade falsch. "
                 + "Sie ziehen wie immer — verlass dich lieber auf die "
                 + "hervorgehobenen Felder. Noch "
                 + (partie.stand.glasBis - partie.zugZaehler) + " Halbzüge."));

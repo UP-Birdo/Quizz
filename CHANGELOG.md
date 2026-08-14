@@ -3,6 +3,38 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.73.0 — 2026-08-14
+
+**Achtung, eine Regel ändert sich grundlegend:** Eine Unglücks-Lootbox kann ab
+jetzt eine Partie beenden. Wer vom Stolperstein so zurückgeworfen wird, dass
+sein König danach im Schach steht, hat verloren. Für Fähigkeiten gilt weiter,
+dass sie den eigenen König nie im Schach zurücklassen dürfen — eine Fähigkeit
+wählt man, ein Unglück trifft einen.
+
+- **Der Stolperstein wirft dorthin zurück, wo du herkamst.** Bisher ging es
+  immer ein Feld Richtung eigener Grundreihe. Jetzt fliegt ein diagonal
+  ziehender Läufer diagonal zurück, und gezählt wird **ab dem Feld der
+  Lootbox**, nicht ab dem Zielfeld: Man stolpert dort, wo der Stein liegt. Der
+  **Springer** kehrt an seinen Ausgangsort zurück — zwischen Absprung und
+  Landung gibt es keine Richtung.
+- **Ein abgebrochener Angriff schlägt nichts.** Wer sein Ziel nicht mehr
+  erreicht, weil er unterwegs gestolpert ist, schlägt dort auch nicht: Die
+  gegnerische Figur kommt zurück aufs Brett. (Dieselbe Regel gilt seit v0.58
+  schon für den Zug, der an einem Riss endet.)
+- **Der Frost lässt sich überall setzen, wo eine Figur steht** — auch dort, wo
+  nur eigene stehen. Eingefroren heisst auch unantastbar, und genau das kann
+  der Zweck sein. Nur ein ganz leerer Block bleibt draussen.
+- **Aus „Volles Glas" wird „Halluzination".** Nur der Name; laufende Partien
+  merken nichts davon.
+- **Risse sehen jetzt wirklich wie Löcher aus** — das Feld ist durchsichtig,
+  statt eine eigene Farbe zu tragen.
+- **Der Fingerabdruck am Vorrat-Knopf ist nicht mehr abgeschnitten.**
+- **Ein Satz erklärt, warum die Anleitung nicht abgespielt wird.** Wer im
+  Betriebssystem „weniger Bewegung" eingestellt hat, bekommt absichtlich alle
+  Bilder nebeneinander — bisher sah das aus wie ein Fehler.
+- **Die Mauer sagt jetzt, warum sie am äussersten Rand nicht geht:** Dort fehlt
+  der Nachbar, den sie auf einer Seite braucht.
+
 ## v0.72.0 — 2026-08-14
 
 - **Das Brett dreht sich so, dass deine Armee unten steht.** Bisher gab es zwei

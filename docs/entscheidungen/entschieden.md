@@ -1746,6 +1746,52 @@ Nachwirkung des Zuges, kein Filter davor.
   freie Feld; findet sich keines, bleibt der Zug lieber, wie er war. Eine Figur
   ohne Feld wäre schlimmer als ein Zug zu viel.
 
+## Warum eine Unglücks-Lootbox eine Partie beenden darf (v0.73)
+
+Bis v0.72 galt als eiserne Regel: Keine Wirkung lässt den eigenen König im
+Schach zurück, und keine beendet eine Partie. Der Nutzer hat das am 09.08. für
+Unglücks-Lootboxen aufgehoben (Meldung I9), mit einer Begründung, die trägt:
+*„weil es eine Unglücksbox ist — diese können zum Schachmatt führen."*
+
+**Der Unterschied ist die Absicht.** Eine Fähigkeit wählt man; sie darf einen
+nicht in eine Lage bringen, die man nicht wollte. Ein Unglück trifft einen —
+das ist sein ganzer Zweck, und eine Strafe, die nie ernst wird, ist keine.
+
+Beim Bauen zu beachten (steht auch als eiserne Regel in der `CLAUDE.md`):
+
+- **Geprüft wird NACH dem Rückwurf**, in `SCHACH_RUNDE.ziehen`. `lage()` genügt
+  nicht: Sie kennt Matt und Patt, und hier ist es weder das eine noch das
+  andere — der Gegner ist am Zug, und der eigene König steht im Schach.
+- Der Fall trifft **jede** zurückgeworfene Figur, nicht nur den König: Wer den
+  Block vor dem eigenen König verliert, verliert genauso.
+- Damit kann ein Würfel eine Partie entscheiden, ohne dass jemand etwas dafür
+  konnte. Genau das war der Grund für die alte Regel — der Nutzer will es
+  trotzdem.
+
+## Warum der Stolperstein rückwärts wirft und nicht abwärts (v0.73)
+
+Bis v0.72 warf er die Figur ein Feld in Richtung der eigenen Grundreihe. Das
+war einfach zu rechnen und für einen Turm auf einer Spalte auch richtig — für
+alles andere nicht: Ein Läufer, der eine Diagonale hinaufzog, machte plötzlich
+einen Schritt senkrecht nach unten und stand auf einer ganz anderen Linie.
+
+Seit v0.73 (Meldung I8) ist es die Richtung des ZUGES, rückwärts. Drei
+Entscheidungen stecken darin:
+
+- **Gezählt wird ab dem Feld der Lootbox**, nicht ab dem Zielfeld: Man stolpert
+  dort, wo der Stein liegt. Wer im Vorbeiziehen einsammelt, kommt also gar
+  nicht erst an — und der Zug bricht ab.
+- **Der Springer kehrt an seinen Ausgangsort zurück.** Zwischen Absprung und
+  Landung gibt es keine Richtung, an der man sich ausrichten könnte.
+- **Der Schlag fällt mit aus** — dieselbe Regel wie beim Zugabbruch am Riss
+  (v0.58). Beide Abbrüche teilen sich seither eine Funktion
+  (`SCHACH_RUNDE._zugZurueckSetzen`); nur WO die Figur stehen bleibt, rechnet
+  jeder für sich aus.
+
+Ist das Feld hinter dem Stein besetzt oder gesperrt, wird weiter zurück gesucht
+— bis zum Ausgangsfeld. Findet sich nichts, passiert nichts: Eine Figur ohne
+Feld wäre schlimmer als ein Unglück, das einmal verpufft.
+
 ## Warum die Ansicht sich nur EINMAL dreht (v0.72)
 
 Mit vier Armeen auf dem Kreuz brauchte die Ansicht vier Lagen statt zwei. Die
