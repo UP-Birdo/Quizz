@@ -3,6 +3,38 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.75.0 — 2026-08-14
+
+**Die Bildanleitungen aus Bündel I — zehn Szenen neu gestellt.**
+
+- **Der Händler zeigt endlich sein Fenster.** Bisher stand sein Angebot nur als
+  Satz unter dem Bild; jetzt ist das Fenster zu sehen, in dem man annimmt oder
+  ablehnt — mit demselben Wortlaut wie im Spiel.
+- **Friedhof und Wiederbelebung zeigen die Gefallenen blass**, so wie am echten
+  Brett. Vorher erzählten beide Anleitungen von etwas, das man nicht sah.
+- **Die Fessel zeigt den Schlag.** Ein Bild mehr: Der Gegner zieht — nur die
+  gefesselte Figur nicht —, und dann fällt sie wirklich.
+- **Der Stolperstein bricht einen Angriff ab.** Am Ende der Spalte steht jetzt
+  ein Läufer, den der Turm schlagen wollte: Der Stein wirft ihn zurück, und
+  geschlagen wird nichts.
+- **Die Halluzination geht bis zum Schlag durch**, und es stehen genug Gegner
+  da, um die Verwandlung überhaupt zu sehen.
+- **Beim Einsturz gelingt der Angriff:** Der Turm erreicht sein Ziel und
+  schlägt — nur das Spielfeld wird nebenbei kleiner.
+- **Das Erdbeben spielt nicht mehr auf einem vollgestellten Brett.** Fünf
+  Figuren statt dreissig; dass die Risse trotzdem verlässlich vor dem Turm
+  aufreissen, macht eine eigene Kennung dieser Szene.
+- **Bei der Ausdehnung steht der Gegner nicht mehr im Weg** — vorher stand ein
+  schwarzer Bauer so, dass jeder ihn geschlagen hätte, statt auf die Lootbox zu
+  ziehen.
+- **Beim Frost ist der Turm erklärt:** Er steht von Anfang an in der Spalte
+  seines Ziels, statt aus der Ecke aufzutauchen.
+- **Bei der Meuterei läuft ein Turm über**, kein Bauer.
+- **Beim Doppelzug ist der Läufer zu sehen** — er stand in der äussersten
+  Spalte und ging dort im Rahmen unter.
+- **Beim Schutzschild sagt das letzte Bild jetzt, wozu das gut ist:** woanders
+  angreifen, ohne Angst um die Dame.
+
 ## v0.74.0 — 2026-08-14
 
 - **Die Anleitung zum Ausweichen führt nicht mehr ins Verderben.** Im alten

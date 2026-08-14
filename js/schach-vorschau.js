@@ -66,6 +66,10 @@ const SCHACH_VORSCHAU = {
      *               was das Pluszeichen wert ist: erst die Fähigkeit, dann der
      *               Zug, den man dadurch noch hat.
      *     nachsatz  Wahlfrei: der Satz zum Bild nach `nachspiel`.
+     *     nachschlag Wahlfrei: [von, nach] — NOCH ein eigener Zug, eine Runde
+     *               später (seit v0.75). Dazwischen zieht der Gegner einmal;
+     *               gebraucht für Wirkungen, die über mehrere Halbzüge halten.
+     *     nachschlagSatz Wahlfrei: der Satz zu diesem Bild.
      *     verloren  Wahlfrei: geschlagene eigene Figuren als Arten
      *               (für die Wiedergeburt).
      *     gefallen  Wahlfrei: eigene Gefallene als [{ art, feld }]
@@ -245,8 +249,13 @@ const SCHACH_VORSCHAU = {
                 + "als Nächstes.",
             nachher: "Mit dem Schild überlebt sie den Schlag: Er verpufft, der "
                 + "Angreifer bleibt stehen. Die Zahl sagt, wie lange es hält.",
-            nachsatz: "Und weil das Schild dich keinen Zug kostet, holt sich dein "
-                + "Turm im selben Atemzug den Läufer."
+            /* Der Satz sagt seit v0.75 ausdrücklich, WOZU das gut ist (Meldung
+               I14): Man greift woanders an, ohne Angst um die Dame — der
+               schwarze Turm steht ja noch da und zielt weiter auf sie. */
+            nachsatz: "Und weil das Schild dich keinen Zug kostet, greifst du im "
+                + "selben Atemzug woanders an: Dein Turm holt sich den Läufer. Um "
+                + "die Dame musst du dabei keine Angst haben — der schwarze Turm "
+                + "zielt weiter auf sie, aber sein Schlag verpufft."
         },
         /* Das Erdbeben ist seit v0.54 ein Unglückswürfel — sein Beispiel steht
            weiter unten bei `PECH_BEISPIELE`. */
@@ -336,25 +345,33 @@ const SCHACH_VORSCHAU = {
          * FLÄCHE. Beide Angreifer der Dame stehen im selben 2×2-Block; das
          * letzte Bild zeigt, was das Pluszeichen wert ist.
          */
+        /*
+         * DER TURM IST JETZT ERKLÄRT (v0.75, Meldung I18: „woher kommt der
+         * Turm?"). Bis v0.74 stand er in der einen Ecke und schlug einen Bauern
+         * in der anderen — beide hatten mit der Szene nichts zu tun. Jetzt
+         * steht er von Anfang an in derselben Spalte wie sein Ziel: Man sieht
+         * im ersten Bild, was er vorhat, und im letzten, dass der Frost ihm den
+         * Zug dafür gelassen hat.
+         */
         frost: {
             brett: [
                 "......",
                 "..sl..",
-                "......",
+                "....b.",
                 ".D....",
                 "......",
-                "b....T"
+                "....T."
             ],
             figur: 8,
             ziel: 8,
-            nachspiel: [35, 30],
+            nachspiel: [34, 16],
             vorher: "Springer und Läufer haben beide deine Dame im Visier — einer "
                 + "von ihnen holt sie.",
             nachher: "Der Frost sperrt ein 2-mal-2-Feld: Beide sind einen Zug lang "
                 + "festgefroren und in dieser Zeit auch nicht zu schlagen. Die "
                 + "blaue Linie zeigt, wer eingesperrt ist.",
-            nachsatz: "Und weil er dich keinen Zug kostet, schlägt dein Turm derweil "
-                + "an ganz anderer Stelle zu."
+            nachsatz: "Und weil er dich keinen Zug kostet, holt sich dein Turm "
+                + "derweil den Bauern, auf den er die ganze Zeit gezielt hat."
         },
         verstaerkung: {
             brett: [
@@ -377,9 +394,22 @@ const SCHACH_VORSCHAU = {
          * Züge und lässt die Figur schlagbar — beides zeigt erst das letzte
          * Bild: Man stellt in Ruhe den Turm auf, der sie holt.
          */
+        /*
+         * DIE FESSEL ZEIGT JETZT DEN SCHLAG (v0.75, Meldung I17).
+         *
+         * Bis v0.74 endete die Anleitung damit, dass der Turm sich aufstellt —
+         * ob der Läufer wirklich fällt, blieb eine Behauptung. Das letzte Bild
+         * holt ihn jetzt (`nachschlag`), und dazwischen zieht der Gegner
+         * einmal: Genau darum geht es bei einer Fessel, die MEHRERE Halbzüge
+         * hält.
+         *
+         * Der schwarze Bauer oben links ist dafür da, dass der Gegner
+         * überhaupt ziehen KANN — der Läufer ist ja gefesselt. Ohne ihn wäre
+         * Schwarz patt, und die Anleitung endete eine Runde zu früh.
+         */
         fessel: {
             brett: [
-                "......",
+                "b.....",
                 "......",
                 "..l...",
                 "......",
@@ -389,12 +419,15 @@ const SCHACH_VORSCHAU = {
             figur: 14,
             ziel: 14,
             nachspiel: [30, 32],
+            nachschlag: [32, 14],
             vorher: "Der schwarze Läufer greift deinen Bauern an — und könnte "
                 + "jederzeit wegziehen.",
             nachher: "Gefesselt: Er bleibt mehrere Züge stehen. Die Zahl an seinem "
                 + "Feld zählt herunter — geschlagen werden kann er dabei ganz normal.",
             nachsatz: "Die Fessel kostet dich keinen Zug: Du stellst deinen Turm "
-                + "gleich so, dass er ihn als Nächstes holt."
+                + "gleich so, dass er ihn als Nächstes holt.",
+            nachschlagSatz: "Der Gegner zieht — nur der Läufer nicht, der steht "
+                + "fest. Und dann holt ihn dein Turm wirklich."
         },
 
         /* ---- Legendär ---- */
@@ -404,11 +437,20 @@ const SCHACH_VORSCHAU = {
          * der Turm einen Bauern und durfte „zurück" — das zeigte den zweiten
          * Zug, aber nicht, wozu er gut ist. Jetzt holt er zwei Figuren.
          */
+        /*
+         * DER LÄUFER RÜCKT VOM RAND WEG (v0.75, Meldung I20: „der Läufer ist am
+         * PC nicht zu sehen"). Er stand in der äussersten Spalte und ging dort
+         * im Rahmen unter. Zwei Felder weiter innen bleibt der Kombinationszug
+         * derselbe, nur sieht man jetzt beide Ziele.
+         *
+         * Der zweite Teil der Meldung („Bild 1 weg") ist bewusst NICHT gebaut —
+         * die Begründung steht in `entscheidungen\offen-und-abgelehnt.md`.
+         */
         doppelzug: {
             brett: [
                 "......",
                 "......",
-                "..b..l",
+                "..b.l.",
                 "..T...",
                 "......",
                 "......"
@@ -416,7 +458,7 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             ziel: -1,
             zug: [20, 14],
-            nachspiel: [14, 17],
+            nachspiel: [14, 16],
             vorher: "Der Turm kann den Bauern schlagen — und dahinter steht noch "
                 + "ein Läufer.",
             nachher: "Geschlagen, und dein Team ist sofort wieder am Zug: Die Punkte "
@@ -573,10 +615,23 @@ const SCHACH_VORSCHAU = {
          * dort kommt die Figur NICHT an. Vorher lag der Würfel auf dem
          * Zielfeld, und der Rückwurf sah aus wie ein kurzer Zug.
          */
+        /*
+         * STOLPERSTEIN: DER ABGEBROCHENE ANGRIFF (v0.75, Meldung I13).
+         *
+         * Bis v0.74 zog der Turm ins Leere — man sah den Rückwurf, aber nicht,
+         * was er kostet. Jetzt steht am Ende der Spalte ein Läufer, den er
+         * schlagen wollte: Der Stein wirft ihn zurück, und weil er sein Ziel
+         * nicht erreicht, schlägt er dort auch nichts (seit v0.73). Der Läufer
+         * bleibt stehen — das ist der Schaden.
+         *
+         * Zurückgeworfen wird seit v0.73 AB DEM FELD DER LOOTBOX und entgegen
+         * der Zugrichtung: Der Turm landet also genau ein Feld darunter, nicht
+         * mehr ein Feld unter seinem Zielfeld.
+         */
         stolperstein: {
             brett: [
                 "......",
-                ".....d",
+                "..l...",
                 "......",
                 "......",
                 "......",
@@ -585,11 +640,11 @@ const SCHACH_VORSCHAU = {
             figur: 32,
             wuerfel: 20,
             zug: [32, 8],
-            vorher: "Der Turm will die ganze Spalte hinauf, um die Dame ins Visier "
-                + "zu nehmen — auf dem Weg liegt eine Lootbox.",
-            nachher: "Es war ein schlechter: Unterwegs eingesammelt, und die Figur "
-                + "fliegt ein Feld zurück Richtung eigener Grundreihe. Oben kommt "
-                + "sie nicht an, die Dame bleibt ausser Gefahr."
+            vorher: "Der Turm will die Spalte hinauf und den Läufer schlagen — auf "
+                + "dem Weg liegt eine Lootbox.",
+            nachher: "Es war ein schlechter: Er stolpert am Stein zurück, dorthin, "
+                + "wo er hergekommen ist. Der Läufer steht noch — wer sein Ziel "
+                + "nicht erreicht, schlägt dort auch nichts."
         },
 
         /*
@@ -597,9 +652,17 @@ const SCHACH_VORSCHAU = {
          * und kommt nur nach oben heraus — über den Würfel. Er MUSS also, statt
          * zufällig darüber zu ziehen.
          */
+        /*
+         * HALLUZINATION NEU GESTELLT (v0.75, Meldung I12). Zwei Dinge fehlten:
+         * Der Zug endete auf dem Würfelfeld, statt bis zum Schlag durchzugehen
+         * — und es standen zu wenige Gegner da, um die Verwandlung überhaupt
+         * zu sehen. Jetzt zieht der Turm ÜBER die Lootbox hinweg und holt den
+         * Springer dahinter; drei weitere schwarze Figuren bleiben stehen und
+         * sehen danach anders aus, als sie sind.
+         */
         vollesGlas: {
             brett: [
-                "......",
+                ".t..b.",
                 "..s.l.",
                 "......",
                 ".BTB..",
@@ -608,12 +671,14 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             wuerfel: 14,
-            zug: [20, 14],
+            zug: [20, 8],
             vorher: "Der Turm ist von den eigenen Leuten eingebaut — heraus kommt er "
-                + "nur nach oben, und genau dort liegt eine Lootbox.",
-            nachher: "Es war ein schlechter: Für DICH sehen die gegnerischen Figuren "
-                + "eine Weile falsch aus. Sie ziehen wie immer — der Gegner merkt "
-                + "nichts davon."
+                + "nur nach oben. Dort liegt eine Lootbox, und dahinter steht der "
+                + "Springer, den er holen will.",
+            nachher: "Geschlagen hat er ihn — die Lootbox war trotzdem eine "
+                + "schlechte: Für DICH sehen die übrigen gegnerischen Figuren eine "
+                + "Weile falsch aus. Sie ziehen wie immer, der Gegner merkt nichts "
+                + "davon."
         },
 
         /*
@@ -629,13 +694,21 @@ const SCHACH_VORSCHAU = {
              * dieses Beispiel bekommt deshalb eine eigene.
              */
             saat: "vorschau-a",
+
+            /*
+             * OHNE GEGNERISCHEN BAUERN VOR DEM TURM (v0.75, Meldung I15). Bis
+             * v0.74 stand ein schwarzer Bauer auf der eigenen Grundreihe —
+             * dort hätte er längst umgewandelt sein müssen —, und der Turm
+             * stand direkt darüber: Jeder normale Spieler hätte ihn geschlagen,
+             * statt auf die Lootbox zu ziehen. Der Gegner steht jetzt abseits.
+             */
             brett: [
                 "......",
                 "B.....",
                 "......",
                 "......",
                 "..T...",
-                "..b..."
+                ".....l"
             ],
             figur: 26,
             wuerfel: 20,
@@ -652,9 +725,19 @@ const SCHACH_VORSCHAU = {
          * gegnerische Bauern am Rand — das Bild war ein Geschenk. Jetzt
          * stehen EIGENE Figuren an den Rändern und stürzen mit.
          */
+        /*
+         * DER ANGRIFF GELINGT (v0.75, Meldung I16). Bis v0.74 zog der Turm nur
+         * ein Feld auf die Lootbox und schlug nichts — der Einsturz sah aus wie
+         * die einzige Wirkung. Jetzt sammelt er im VORBEIZIEHEN ein, erreicht
+         * sein Ziel und schlägt den gegnerischen Turm; nebenbei bricht eine
+         * Seite weg und nimmt eigene Bauern mit. Anders als beim Erdbeben
+         * bricht der Zug dabei nicht ab: Ein Würfel, der die Brettgrösse
+         * ändert, lässt den Zug ausdrücklich in Ruhe (siehe
+         * `_zugAmRissAbbrechen`).
+         */
         schrumpfung: {
             brett: [
-                "..t...",
+                "..t..s",
                 "B....B",
                 "......",
                 "..T...",
@@ -663,12 +746,13 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             wuerfel: 14,
-            zug: [20, 14],
-            vorher: "Vier eigene Bauern halten die Ränder — und der Turm greift "
-                + "nach der Lootbox.",
-            nachher: "Es war ein schlechter: Eine ganze Reihe oder Spalte bricht "
-                + "weg, und was dort stand, stürzt mit. Es trifft die eigenen "
-                + "Leute genauso."
+            zug: [20, 2],
+            vorher: "Vier eigene Bauern halten die Ränder, und der Turm zieht auf "
+                + "den gegnerischen los — die Lootbox liegt auf dem Weg.",
+            nachher: "Geschlagen hat er ihn: Der Angriff geht durch. Die Lootbox war "
+                + "trotzdem eine schlechte — eine ganze Reihe oder Spalte bricht "
+                + "weg, und was dort stand, stürzt mit. Es trifft die eigenen Leute "
+                + "genauso."
         },
         /*
          * ERDBEBEN NEU GESTELLT (v0.58, Punkt H8).
@@ -677,30 +761,39 @@ const SCHACH_VORSCHAU = {
          * dass man einen Würfel auch im VORBEIZIEHEN einsammelt. Der Turm
          * fährt deshalb die ganze Spalte hinauf und nimmt ihn unterwegs mit.
          *
-         * DAS BRETT IST ABSICHTLICH VOLL. `erdbebenRisse` reisst freie Felder
-         * auf, und welche das sind, streut über den Spielstand. Auf einem
-         * leeren Brett landen die drei Risse irgendwo, und das Bild erzählt
-         * nichts. Hier bleibt fast nur die Spalte des Turms frei — die Risse
-         * fallen also dorthin, wo er gerade hergekommen ist.
+         * DAS VOLLE BRETT IST WEG (v0.75, Meldung I19: „ergibt keinen Sinn").
+         *
+         * Bis v0.74 stand die Stellung absichtlich voll: `erdbebenRisse` trifft
+         * FREIE Felder, und auf einem leeren Brett landen die drei Risse
+         * irgendwo — das Bild erzählte dann nichts. Nur sah ein Brett mit 28
+         * Bauern eben auch nach nichts aus.
+         *
+         * Der bessere Weg ist derselbe wie bei der Ausdehnung: eine eigene
+         * `saat`. Sie ist die Partie-Kennung dieser Szene, und aus ihr rechnet
+         * das Regelwerk die Risse — `vorschau-e12` legt einen davon in die
+         * Spalte des Turms, ein Feld VOR ihn. Gesucht wurde sie nicht von Hand,
+         * sondern durchprobiert; die REGEL bleibt unangetastet (eiserne Regel:
+         * nie die Regel anfassen, damit ein Bild passt).
          */
         erdbeben: {
+            saat: "vorschau-e12",
             brett: [
-                "bb..bb",
-                "bb.bbb",
-                "bb.bbb",
-                "BB.BBB",
-                "BB.BBB",
-                "BBTBBB"
+                "..l..s",
+                "......",
+                "......",
+                "......",
+                "......",
+                "..T..."
             ],
             figur: 32,
             wuerfel: 20,
             zug: [32, 2],
-            vorher: "Der Turm will die ganze Spalte hinauf — und sammelt die Lootbox "
-                + "unterwegs ein, ohne auf ihm stehen zu bleiben.",
-            nachher: "Es war ein schlechter: Der Boden reisst SOFORT auf, mitten in "
+            vorher: "Der Turm will die ganze Spalte hinauf und den Läufer schlagen — "
+                + "die Lootbox nimmt er unterwegs mit, ohne stehen zu bleiben.",
+            nachher: "Es war eine schlechte: Der Boden reisst SOFORT auf, mitten in "
                 + "seinem Weg. Oben kommt er nicht mehr an — der Zug endet vor dem "
-                + "Loch. Die Risse bleiben die ganze Partie; nur Springer setzen "
-                + "darüber."
+                + "Loch, und der Läufer bleibt stehen. Die Risse bleiben die ganze "
+                + "Partie; nur Springer setzen darüber."
         },
 
         /*
@@ -725,24 +818,33 @@ const SCHACH_VORSCHAU = {
             nachher: "Alle eigenen Figuren rutschen ein Feld zurück — nicht nur die, "
                 + "die die Lootbox eingesammelt hat. Beide Angriffe sind dahin."
         },
+        /*
+         * ES LÄUFT EIN TURM ÜBER, KEIN BAUER (v0.75, Meldung I22: „Meuterei ist
+         * nicht negativ genug").
+         *
+         * Erzwungen wird das nicht mit einer Sonderregel, sondern mit der
+         * Stellung: `SCHACH.meuterei` zieht eine BELIEBIGE eigene Figur, und
+         * hier sind alle eigenen Figuren Türme. Welcher der beiden es trifft,
+         * bleibt gerechnet — teuer ist es so oder so.
+         */
         meuterei: {
             brett: [
                 "t.....",
                 "......",
                 "..T...",
-                ".B.B..",
                 "......",
-                "......"
+                "......",
+                "T....."
             ],
             /* `figur` markiert im ERSTEN Bild, worum es geht — das ist der
                Turm auf seinem Startfeld, nicht sein Ziel. */
             figur: 14,
             wuerfel: 20,
             zug: [14, 20],
-            vorher: "Noch gehören alle diese Figuren dir.",
-            nachher: "Eine läuft zum Gegner über und kämpft ab sofort GEGEN dich — "
-                + "der Unterschied ist doppelt so gross wie ein Verlust. Könige "
-                + "meutern nicht."
+            vorher: "Zwei Türme, und noch gehören beide dir.",
+            nachher: "Einer läuft zum Gegner über und kämpft ab sofort GEGEN dich — "
+                + "der Unterschied ist doppelt so gross wie ein Verlust, und beim "
+                + "nächsten Zug kostet er dich etwas. Könige meutern nicht."
         }
     },
 
@@ -1011,13 +1113,40 @@ const SCHACH_VORSCHAU = {
             const angebot = SCHACH_RUNDE.handelsAngebot(vorher, SCHACH_VORSCHAU.FARBE);
 
             if (angebot) {
+                const namen = (felder) => felder
+                    .map((feld) => name(feld))
+                    .join(", ");
+
                 liste.push(SCHACH_VORSCHAU._schritt({
                     runde: vorher,
                     marken: angebot.gibtFelder.concat(angebot.bekommtFelder)
                         .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle),
-                    text: "Der Händler macht sein Angebot: " + angebot.text
-                        + ". Markiert ist, was weggeht und wo das Neue erscheint. "
-                        + "Du darfst ablehnen — dann behältst du die Fähigkeit."
+
+                    /*
+                     * DAS FENSTER GEHÖRT INS BILD (seit v0.75, Meldung I6).
+                     *
+                     * v0.58 hat das Angebot als SATZ gebaut — gemeint war das
+                     * Fenster, in dem man annimmt oder ablehnt. Der Händler ist
+                     * die einzige Fähigkeit mit einer Rückfrage, und wer sie
+                     * nicht kennt, weiss nicht, dass er ablehnen darf.
+                     *
+                     * Der Wortlaut kommt aus derselben Quelle wie im Spiel
+                     * (`SCHACH_RUNDE.handelsAngebot`), damit Anleitung und
+                     * Dialog nicht auseinanderlaufen.
+                     */
+                    fenster: {
+                        titel: "Der Händler bietet",
+                        text: angebot.text
+                            + "\n\nDu gibst ab: " + namen(angebot.gibtFelder)
+                            + "\nDu bekommst auf: " + namen(angebot.bekommtFelder),
+                        ja: "Annehmen",
+                        nein: "Abbrechen"
+                    },
+
+                    text: "So sieht sein Angebot aus: Erst kommt dieses Fenster. "
+                        + "Markiert ist auf dem Brett, was weggeht und wo das Neue "
+                        + "erscheint. Du darfst ablehnen — dann behältst du die "
+                        + "Fähigkeit."
                 }));
             }
         }
@@ -1090,6 +1219,11 @@ const SCHACH_VORSCHAU = {
         const nachspiel = SCHACH_VORSCHAU._nachspielSchritt(bilder.nachher, beispiel, name);
         if (nachspiel) {
             liste.push(nachspiel);
+
+            const nachschlag = SCHACH_VORSCHAU._nachschlagSchritt(nachspiel, beispiel, name);
+            if (nachschlag) {
+                liste.push(nachschlag);
+            }
         }
 
         /*
@@ -1111,7 +1245,33 @@ const SCHACH_VORSCHAU = {
             }
         }
 
+        /*
+         * BLASSE GEFALLENE AUCH IN DER ANLEITUNG (seit v0.75, Meldung I21).
+         *
+         * Am echten Brett zeigen Friedhof und Wiederbelebung seit v0.57, WO
+         * jemand gefallen ist — sonst tippt man ins Blaue. Die Anleitung tat es
+         * nicht: `_beispielBrettBauen` zeichnete keine Gräber, und die
+         * Beispiele der beiden erzählten damit von etwas Unsichtbarem.
+         *
+         * `graeber` sagt, WESSEN Gefallene blass zu sehen sind — dieselbe
+         * Unterscheidung wie `TEAM_SCHACH._grabAuf`: Der Friedhof leiht sich
+         * GEGNER, die Wiederbelebung holt EIGENE zurück.
+         */
+        const graeber = SCHACH_VORSCHAU.GRAEBER_ZEIGEN[art];
+
+        if (graeber) {
+            for (const schritt of liste) {
+                schritt.graeber = graeber;
+            }
+        }
+
         return liste;
+    },
+
+    /* Wessen Gefallene eine Anleitung blass zeigt (seit v0.75). */
+    GRAEBER_ZEIGEN: {
+        friedhof: SCHACH.SCHWARZ,
+        wiederbelebung: SCHACH.WEISS
     },
 
     /*
@@ -1192,6 +1352,48 @@ const SCHACH_VORSCHAU = {
         });
     },
 
+    /*
+     * NOCH EIN ZUG, EINE RUNDE SPÄTER (seit v0.75, Meldung I17).
+     *
+     * Manche Fähigkeiten wirken über MEHRERE Züge — die Fessel hält vier
+     * Halbzüge. Dass das etwas bringt, sieht man erst, wenn die gefesselte
+     * Figur wirklich fällt, und dazwischen muss der Gegner einmal ziehen: Die
+     * Regeln geben das Zugrecht nicht zweimal hintereinander her.
+     *
+     * Deshalb zieht hier erst der Gegner (`_gegnerZiehtEinmal`, derselbe Weg
+     * wie bei den Zugmustern), dann folgt der Schlag. Klappt eines von beidem
+     * nicht, fällt das Bild weg — nicht die Anleitung.
+     */
+    _nachschlagSchritt(vorheriger, beispiel, name) {
+        if (!beispiel.nachschlag) {
+            return null;
+        }
+
+        const dran = (vorheriger.runde.stand.amZug === SCHACH_VORSCHAU.FARBE)
+            ? vorheriger.runde
+            : SCHACH_VORSCHAU._gegnerZiehtEinmal(vorheriger.runde);
+
+        if (!dran) {
+            return null;
+        }
+
+        const gezogen = SCHACH_RUNDE.ziehen(dran, SCHACH_VORSCHAU.SPIELER,
+            beispiel.nachschlag[0], beispiel.nachschlag[1], "D", "", 0);
+
+        if (!gezogen) {
+            return null;
+        }
+
+        return SCHACH_VORSCHAU._schritt({
+            runde: gezogen,
+            marken: [beispiel.nachschlag[1]],
+            wege: [{ von: beispiel.nachschlag[0], nach: beispiel.nachschlag[1] }],
+            text: beispiel.nachschlagSatz || ("Und eine Runde später: von "
+                + name(beispiel.nachschlag[0]) + " nach "
+                + name(beispiel.nachschlag[1]) + ".")
+        });
+    },
+
     /* Füllt einen Schritt auf, damit der Bildschirm nie auf Fehlendes trifft. */
     _schritt(roh) {
         return {
@@ -1201,6 +1403,10 @@ const SCHACH_VORSCHAU = {
             ziele: roh.ziele || [],
             tipp: Number.isInteger(roh.tipp) ? roh.tipp : -1,
             wege: roh.wege || [],
+
+            /* Ein nachgestelltes Fenster über dem Brett (seit v0.75) — bisher
+               nur beim Händler, der als Einziger nachfragt. */
+            fenster: roh.fenster || null,
 
             /*
              * `knopf` (seit v0.50) und `knopfTipp` (seit v0.58).

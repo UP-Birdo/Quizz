@@ -29,6 +29,7 @@ Zugzähler-Prüfung sorgt dafür, dass sie trotzdem nur einmal greift.
 | Automatisches Auflösen zu einer festen Uhrzeit | Mehr Technik als Nutzen; jeder deckt auf, wann er will. |
 | Chat oder Fragenprotokoll in der App | Die Fragen stellt man sich im echten Leben — genau das ist das Spiel. |
 | Emojis für die Würfelwerte | Haus-Regel. |
+| Das erste Bild einer Anleitung weglassen (Meldung I20, v0.75) | Es zeigt die Ausgangsstellung — und die ist seit v0.50 der Grund, WARUM man die Fähigkeit nimmt (ein Angreifer, eine Sperre, eine Lücke). Bild 2 unterscheidet sich davon nur durch den Fingerabdruck auf der Marke, weil die Marke seit v0.58 in JEDEM Bild steht (sonst sprang die Anleitung in der Höhe). Beim Doppelzug fällt das auf, gilt aber für jede Fähigkeit gleich: Nur dort wegzulassen wäre eine Ausnahme ohne Regel. **Wer es trotzdem will, sagt es — dann fällt es überall weg.** |
 
 ## Braucht eine Nutzer-Entscheidung (nicht ungefragt bauen)
 

@@ -2382,6 +2382,45 @@ body {
     justify-content: center;
 }
 
+/*
+ * DAS NACHGESTELLTE FENSTER IN DER ANLEITUNG (seit v0.75, Meldung I6).
+ *
+ * Es soll wie der echte Dialog AUSSEHEN, ohne einer zu sein: derselbe Grund,
+ * derselbe Rahmen, dieselben zwei Knöpfe rechts unten — nur kleiner und ohne
+ * Funktion. Ein echter Dialog liesse sich hier gar nicht zeigen, er liegt über
+ * der ganzen Seite.
+ */
+.anleitung-fenster {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    border: 1px solid var(--rahmen);
+    border-radius: 8px;
+    background: var(--karte);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.anleitung-fenster-titel {
+    font-weight: 700;
+    font-size: 0.82rem;
+}
+
+.anleitung-fenster-text {
+    margin: 0;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: var(--schrift-leise);
+    white-space: pre-line;
+}
+
+.anleitung-fenster-knoepfe {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
 .anleitung-knopf {
     position: relative;
     --stufe-farbe: var(--haupt);

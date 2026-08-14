@@ -1016,6 +1016,34 @@ Object.assign(TEAM_SCHACH, {
                 zelle.appendChild(TEAM_SCHACH._element("span",
                     "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz"),
                     TEAM_SCHACH._figurZeichen(gezeigt)));
+
+            } else if (schritt.graeber) {
+                /*
+                 * BLASSE GEFALLENE (seit v0.75, Meldung I21) — nur auf FREIEN
+                 * Feldern und nur, wo die Anleitung sie braucht (Friedhof,
+                 * Wiederbelebung; siehe `SCHACH_VORSCHAU.GRAEBER_ZEIGEN`).
+                 *
+                 * Gezeichnet wird in der Farbe DESSEN, der die Fähigkeit
+                 * einsetzt: Was er bekommt, steht danach in seiner Farbe auf
+                 * dem Brett — genau wie am echten Brett.
+                 */
+                const gefallene = (runde.gefallen && runde.gefallen[schritt.graeber])
+                    ? runde.gefallen[schritt.graeber]
+                    : [];
+
+                let grab = "";
+                for (let stelle = gefallene.length - 1; stelle >= 0 && !grab; stelle--) {
+                    if (gefallene[stelle].feld === feld) {
+                        grab = gefallene[stelle].art;
+                    }
+                }
+
+                if (grab) {
+                    zelle.appendChild(TEAM_SCHACH._element("span",
+                        "figur figur-schemen figur-weiss",
+                        TEAM_SCHACH._figurZeichen(grab)));
+                    zelle.title = "Hier fiel " + SCHACH.artName(grab);
+                }
             }
 
             const wuerfel = runde.bonus.find((eintrag) => eintrag.feld === feld);
@@ -1105,12 +1133,48 @@ Object.assign(TEAM_SCHACH, {
          * Zurückgegeben wird dann eine Hülle um beides; der Aufrufer hängt
          * weiterhin genau EIN Element ein und muss nichts darüber wissen.
          */
-        if (!schritt.knopf) {
+        if (!schritt.knopf && !schritt.fenster) {
             return brett;
         }
 
         const huelle = TEAM_SCHACH._element("div", "anleitung-mitknopf");
         huelle.appendChild(brett);
+
+        /*
+         * DAS NACHGESTELLTE FENSTER (seit v0.75, Meldung I6).
+         *
+         * Der Händler ist die einzige Fähigkeit, die nachfragt — und genau die
+         * Rückfrage fehlte in der Anleitung: Man sah den Griff an den Vorrat
+         * und das Ergebnis, aber nie das Fenster dazwischen. Es ist ein BILD
+         * des Fensters, kein echtes: Die Knöpfe sind Attrappen (`disabled`),
+         * damit niemand in der Bibliothek etwas anzunehmen versucht.
+         */
+        if (schritt.fenster) {
+            const fenster = TEAM_SCHACH._element("div", "anleitung-fenster");
+
+            fenster.appendChild(TEAM_SCHACH._element("span", "anleitung-fenster-titel",
+                schritt.fenster.titel));
+            fenster.appendChild(TEAM_SCHACH._element("p", "anleitung-fenster-text",
+                schritt.fenster.text));
+
+            const knoepfe = TEAM_SCHACH._element("div", "anleitung-fenster-knoepfe");
+
+            for (const eintrag of [{ text: schritt.fenster.nein, klasse: "knopf-still" },
+                { text: schritt.fenster.ja, klasse: "knopf-haupt" }]) {
+
+                const knopf = TEAM_SCHACH._element("span",
+                    "knopf knopf-klein " + eintrag.klasse, eintrag.text);
+                knopf.setAttribute("aria-hidden", "true");
+                knoepfe.appendChild(knopf);
+            }
+
+            fenster.appendChild(knoepfe);
+            huelle.appendChild(fenster);
+        }
+
+        if (!schritt.knopf) {
+            return huelle;
+        }
 
         /*
          * DIE MARKE STEHT IN JEDEM BILD (seit v0.58), der Fingerabdruck nur in

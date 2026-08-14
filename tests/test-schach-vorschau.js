@@ -192,8 +192,18 @@ pruefe("Der Haendler zeigt sein Angebot als eigenes Bild (v0.58)", () => {
 
     gleich(schritte.length, 4, "Stellung, Griff, Angebot, Wirkung");
     wahr(!!angebot, "es gibt ein Angebot");
-    wahr(schritte[2].text.indexOf(angebot.text) !== -1,
-        "das Bild nennt den konkreten Tausch");
+
+    /*
+     * SEIT v0.75 STEHT DER TAUSCH IM FENSTER (Meldung I6): Gemeint war nie der
+     * Satz unter dem Bild, sondern das Fenster, in dem man annimmt oder
+     * ablehnt. Geprueft wird deshalb das Fenster — und dass sein Wortlaut aus
+     * derselben Quelle kommt wie im Spiel.
+     */
+    wahr(!!schritte[2].fenster, "das Bild zeigt das Fenster");
+    wahr(schritte[2].fenster.text.indexOf(angebot.text) !== -1,
+        "das Fenster nennt den konkreten Tausch");
+    wahr(!!schritte[2].fenster.ja && !!schritte[2].fenster.nein,
+        "und beide Knoepfe, Annehmen wie Ablehnen");
 
     /* Markiert ist, was weggeht und wo Neues erscheint — beides zusammen. */
     for (const feld of angebot.gibtFelder.concat(angebot.bekommtFelder)) {
@@ -240,7 +250,12 @@ pruefe("Wo eine Faehigkeit den Zug laesst, zieht das Beispiel danach (v0.58)", (
     for (const art of mitNachspiel) {
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);
         const schritte = SCHACH_VORSCHAU.schritte(art);
-        const letzter = schritte[schritte.length - 1];
+
+        /* Seit v0.75 kann NACH dem Nachspiel noch ein Nachschlag folgen (die
+           Fessel zeigt so, dass die gefesselte Figur wirklich faellt). Dann ist
+           das Nachspiel das vorletzte Bild. */
+        const stelle = schritte.length - (beispiel.nachschlag ? 2 : 1);
+        const letzter = schritte[stelle];
 
         wahr(Array.isArray(beispiel.nachspiel), art + ": das Beispiel hat ein Nachspiel");
         wahr(SCHACH_VARIANTEN.zeigtPlus(art), art + ": sie traegt auch wirklich das Plus");
@@ -251,6 +266,30 @@ pruefe("Wo eine Faehigkeit den Zug laesst, zieht das Beispiel danach (v0.58)", (
         gleich(SCHACH.figurAuf(letzter.runde.stand, beispiel.nachspiel[0]), ".",
             art + ": das alte Feld ist frei");
     }
+});
+
+pruefe("Der Nachschlag zeigt, dass die gefesselte Figur wirklich faellt (v0.75)", () => {
+    /*
+     * MELDUNG I17: „Fessel: den Schlag zeigen — ein Bild mehr, in dem der
+     * Laeufer wirklich faellt."
+     *
+     * Dazwischen muss der Gegner einmal ziehen; genau das prueft dieser Test
+     * mit: Der gefesselte Laeufer darf sich dabei NICHT bewegt haben.
+     */
+    const beispiel = SCHACH_VORSCHAU.beispielVon("fessel");
+    const schritte = SCHACH_VORSCHAU.schritte("fessel");
+    const letzter = schritte[schritte.length - 1];
+
+    wahr(Array.isArray(beispiel.nachschlag), "das Beispiel hat einen Nachschlag");
+
+    gleich(letzter.wege.length, 1, "ein Pfeil zeigt den Schlag");
+    gleich(letzter.wege[0].nach, beispiel.nachschlag[1], "auf das Feld des Laeufers");
+
+    /* Auf dem Zielfeld steht danach die EIGENE Figur — der Laeufer ist weg. */
+    gleich(SCHACH.farbeVon(SCHACH.figurAuf(letzter.runde.stand, beispiel.nachschlag[1])),
+        SCHACH_VORSCHAU.FARBE, "und dort steht jetzt die eigene Figur");
+    wahr(letzter.runde.verloren.schwarz.indexOf("L") !== -1,
+        "der Laeufer steht in der Verlustliste von Schwarz");
 });
 
 pruefe("Die Zugmuster haben ein Bild mehr: den Zug selbst", () => {
