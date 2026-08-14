@@ -139,22 +139,38 @@ const SCHACH_VORSCHAU = {
          * und ist damit der Zug, den `_gegnerZiehtEinmal` nimmt: harmlos, und
          * die Drohung bleibt stehen.
          */
+        /*
+         * AUSWEICHEN NEU GESTELLT (v0.74, Meldung I4).
+         *
+         * Bis v0.73 stand oben links ein schwarzer Bauer und rechts eine Dame.
+         * Der Turm hatte mehrere freie Nachbarfelder — und ausgerechnet das
+         * vorgeführte lag im Schlagbereich dieses Bauern: Die Notbremse führte
+         * im Bild direkt ins Verderben. Genau so wurde es gemeldet.
+         *
+         * Jetzt bleibt GENAU EIN freies Nachbarfeld übrig (b4), und das ist
+         * nachweislich sicher: Der Angreifer ist ein SPRINGER, weil nur er
+         * durch die eigene Mauer hindurch drohen kann — eine Dame oder ein Turm
+         * bräuchte eine freie Linie, und die gäbe es nur über das Fluchtfeld.
+         * Von c4 aus deckt der Springer c3, aber nicht b4; nachgerechnet wird
+         * es nicht von Hand, sondern von einem Test.
+         */
         ausweichen: {
             brett: [
-                "b....d",
                 "......",
-                "..B...",
+                "......",
+                "..BBs.",
                 ".BTB..",
-                "..B...",
+                ".BBB..",
                 "......"
             ],
             figur: 20,
             ziel: -1,
             vorher: "Der Turm ist von den eigenen Leuten zugestellt — kein einziger "
-                + "Zug bleibt ihm, und die Dame zielt längst auf ihn.",
+                + "Zug bleibt ihm, und der Springer holt ihn beim nächsten Mal.",
             nachher: "Ausweichen öffnet ihm ein Feld in jede Richtung, auch schräg. "
-                + "Nur auf FREIE Felder, geschlagen wird dabei nicht — es ist die "
-                + "Notbremse, kein Angriff."
+                + "Hier ist genau eines frei — und dort kommt der Springer nicht "
+                + "hin. Nur auf FREIE Felder, geschlagen wird dabei nicht: Es ist "
+                + "die Notbremse, kein Angriff."
         },
 
         /*

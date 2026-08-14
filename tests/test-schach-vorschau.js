@@ -542,6 +542,37 @@ pruefe("Verstaerkung: aus dem Bauern wird wirklich ein Springer", () => {
     gleich(SCHACH.figurAuf(bilder.nachher.runde.stand, 20), "S", "nachher ein Springer");
 });
 
+pruefe("Ausweichen: die Notbremse fuehrt auf ein SICHERES Feld (v0.74)", () => {
+    /*
+     * MELDUNG I4: „Im Ausweichen-Bild flieht der Turm nach b4, wo ihn der
+     * schwarze Bauer von a5 schlaegt — die Notbremse fuehrt im Bild ins
+     * Verderben."
+     *
+     * Der Test rechnet nach, was das Bild zeigt: Wohin die Figur ausweicht,
+     * entscheiden die echten Regeln — geprueft wird, dass dieses Feld danach
+     * von Schwarz NICHT bedroht ist. Ein Test, der ein bestimmtes Feld
+     * verlangt, wuerde jede neue Stellung blockieren (Hausregel seit v0.50).
+     */
+    const bilder = SCHACH_VORSCHAU.bilder("ausweichen");
+    const nachher = bilder.nachher.runde.stand;
+    const ziele = bilder.nachher.ziele || [];
+
+    wahr(ziele.length > 0, "das Bild zeigt ueberhaupt ein Fluchtfeld");
+
+    /*
+     * Bedroht Schwarz eines davon? Gefragt wird das Regelwerk (dieselbe
+     * Funktion, die auch ueber Schach entscheidet) — nicht die Anschauung.
+     * Genau daran ist die alte Szene gescheitert. Geprueft werden ALLE
+     * gezeigten Ziele: Der Nutzer sieht sie alle und darf jedes waehlen.
+     */
+    for (const feld of ziele) {
+        if (SCHACH._feldBedroht(nachher, feld, SCHACH.SCHWARZ)) {
+            throw new Error("das gezeigte Fluchtfeld " + feld
+                + " ist von Schwarz bedroht");
+        }
+    }
+});
+
 pruefe("Mauer: das Nachher-Bild traegt drei gesperrte Felder", () => {
     const bilder = SCHACH_VORSCHAU.bilder("mauer");
     const mauern = SCHACH.mauern(bilder.nachher.runde.stand);

@@ -3,6 +3,16 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.74.0 — 2026-08-14
+
+- **Die Anleitung zum Ausweichen führt nicht mehr ins Verderben.** Im alten
+  Bild floh der Turm auf ein Feld, das ein schwarzer Bauer sofort schlagen
+  konnte — die Notbremse endete also im Verlust. Die Stellung ist neu gestellt:
+  Der Turm ist von den eigenen Leuten zugestellt, ein Springer droht, und es
+  bleibt genau **ein** freies Feld, an das der Springer nicht herankommt. Dass
+  das Fluchtfeld wirklich sicher ist, rechnet jetzt ein Test nach — mit
+  denselben Regeln, die im Spiel über Schach entscheiden.
+
 ## v0.73.0 — 2026-08-14
 
 **Achtung, eine Regel ändert sich grundlegend:** Eine Unglücks-Lootbox kann ab
