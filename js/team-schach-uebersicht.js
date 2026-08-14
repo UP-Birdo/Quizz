@@ -150,14 +150,6 @@ Object.assign(TEAM_SCHACH, {
                 nurMitWuerfeln: true
             },
             {
-                schluessel: "regen",
-                titel: "Lootbox-Regen",
-                hinweis: "Je leerer das Brett, desto mehr Lootboxen erscheinen — gegen "
-                    + "Ende einer Partie regnet es. Aus heißt: Es kommt wie immer "
-                    + "meist einer nach, unabhängig davon, wie viel Platz ist.",
-                nurMitWuerfeln: true
-            },
-            {
                 schluessel: "zufallsArmee",
                 titel: "Zufallsarmee",
                 hinweis: "Jede Seite bekommt gewürfelt die halbe Armee statt der "
@@ -212,11 +204,24 @@ Object.assign(TEAM_SCHACH, {
             kasten.addEventListener("change", () => {
                 TEAM_SCHACH.neueRegeln[eintrag.schluessel] = !!kasten.checked;
 
-                /* Ein Oberpunkt blendet seine Unterpunkte ein oder aus. */
-                if (eintrag.schluessel === "faehigkeiten"
-                    || eintrag.schluessel === "zufallsArmee") {
-                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
-                }
+                /*
+                 * JEDER HAKEN ZEICHNET NEU (seit v0.71).
+                 *
+                 * Bis v0.70 stand hier eine Liste mit zwei Schlüsseln: Nur
+                 * „Lootboxen" und „Zufallsarmee" zeichneten neu, weil nur sie
+                 * Unterpunkte hatten. Als der Regen-Haken v0.60 seinen
+                 * Schieberegler bekam, wurde er zum dritten — und niemand
+                 * ergänzte die Liste. Der Regler erschien deshalb erst, wenn
+                 * irgendetwas anderes ein Neuzeichnen auslöste, etwa ein Tipp
+                 * auf eine andere Brettform und zurück. Genau so wurde es
+                 * gemeldet.
+                 *
+                 * Eine Liste, die man beim Einbauen des nächsten Unterpunkts
+                 * mitpflegen muss, ist eine Falle. Neuzeichnen kostet hier
+                 * nichts: `neueRegeln` ist reiner Bildschirm-Zustand, die
+                 * Ansicht baut sich aus ihm auf.
+                 */
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             });
             zeile.appendChild(kasten);
 
@@ -241,9 +246,11 @@ Object.assign(TEAM_SCHACH, {
 
             karte.appendChild(halter);
 
-            /* Der Regen hat als einziger Haken noch eine Zahl dahinter. */
-            if (eintrag.schluessel === "regen" && TEAM_SCHACH.neueRegeln.regen) {
-                karte.appendChild(TEAM_SCHACH._regenReglerBauen());
+            /* Wie viele Lootboxen es sein sollen, steht direkt unter ihrem
+               Haken — es ist die erste Frage, die man danach hat. */
+            if (eintrag.schluessel === "faehigkeiten"
+                && TEAM_SCHACH.neueRegeln.faehigkeiten) {
+                karte.appendChild(TEAM_SCHACH._mengenLeisteBauen());
             }
         }
 
@@ -251,52 +258,48 @@ Object.assign(TEAM_SCHACH, {
     },
 
     /*
-     * DER SCHIEBEREGLER FÜR DEN REGEN (seit v0.59, Wunsch #11).
+     * DIE VIER STUFEN FÜR DIE LOOTBOX-MENGE (seit v0.71).
      *
-     * Er sagt, WIE SPÄT der Regen einsetzt — nicht, wie stark er am Ende ist:
-     * Bei jeder Stufe bekommt am Schluss jedes freie Feld einen Würfel (die
-     * Rechnung dahinter steht in `SCHACH_VARIANTEN.REGEN.STUFEN`). 5 ist der
-     * Verlauf, den es seit v0.53 gibt, und bleibt die Vorgabe.
+     * Sie lösen zwei Einstellungen auf einmal ab: den Haken „Lootbox-Regen"
+     * (v0.50) und den Schieberegler „Wie früh es regnet" (v0.60). Beide
+     * beantworteten dieselbe Frage — wie viel kommt —, und man musste sie
+     * zusammendenken. Vier Kästchen nebeneinander sagen es in einem Blick.
      *
-     * Er erscheint nur, solange der Haken darüber gesetzt ist — wie jeder
-     * andere Unterpunkt auch. Ein Regler zu einem Regen, den es in dieser
-     * Partie nicht gibt, wäre eine Einstellung ohne Gegenstück.
+     * Was jede Stufe bedeutet, steht im Modell
+     * (`SCHACH_VARIANTEN.LOOTBOX_MENGEN`), samt dem Satz darunter: Der
+     * Bildschirm zeigt hier nur an, was das Modell sagt.
      */
-    _regenReglerBauen() {
-        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt regler-zeile");
+    _mengenLeisteBauen() {
+        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt mengen-zeile");
 
-        const beschriftung = TEAM_SCHACH._element("span", "schalter-titel", "Wie früh es regnet");
-        zeile.appendChild(beschriftung);
+        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-titel",
+            "Wie viele Lootboxen?"));
 
-        const regler = document.createElement("input");
-        regler.type = "range";
-        regler.className = "regler";
-        regler.min = "1";
-        regler.max = "5";
-        regler.step = "1";
-        regler.value = String(TEAM_SCHACH.neueRegeln.regenStufe);
-        regler.setAttribute("aria-label", "Wie früh es regnet, 1 bis 5");
-
-        const wert = TEAM_SCHACH._element("span", "regler-wert", "");
+        const leiste = TEAM_SCHACH._element("div", "mengen-leiste");
+        const satz = TEAM_SCHACH._element("span", "schalter-hinweis", "");
 
         const beschriften = () => {
-            const stufe = TEAM_SCHACH.neueRegeln.regenStufe;
-            wert.textContent = stufe + " von 5 — " + ((stufe === 5)
-                ? "wie gewohnt"
-                : ((stufe === 1) ? "sehr spät, dafür heftig" : "später als gewohnt"));
+            satz.textContent = SCHACH_VARIANTEN
+                .mengeVon(TEAM_SCHACH.neueRegeln.lootboxMenge).hinweis;
         };
 
-        regler.addEventListener("input", () => {
-            const gewaehlt = parseInt(regler.value, 10);
-            TEAM_SCHACH.neueRegeln.regenStufe = (gewaehlt >= 1 && gewaehlt <= 5)
-                ? gewaehlt
-                : SCHACH_VARIANTEN.REGEN.STUFE_VORGABE;
-            beschriften();
-        });
+        for (const menge of SCHACH_VARIANTEN.LOOTBOX_MENGEN) {
+            const aktiv = (menge.id === TEAM_SCHACH.neueRegeln.lootboxMenge);
+
+            const knopf = TEAM_SCHACH._knopf(menge.titel,
+                "knopf-klein mengen-knopf" + (aktiv ? " mengen-knopf-aktiv" : " knopf-still"),
+                () => {
+                    TEAM_SCHACH.neueRegeln.lootboxMenge = menge.id;
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                });
+
+            knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+            leiste.appendChild(knopf);
+        }
 
         beschriften();
-        zeile.appendChild(regler);
-        zeile.appendChild(wert);
+        zeile.appendChild(leiste);
+        zeile.appendChild(satz);
 
         return zeile;
     },

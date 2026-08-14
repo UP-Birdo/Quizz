@@ -388,6 +388,130 @@ const SCHACH_VARIANTEN = {
         return 100 * Math.pow(anteil, SCHACH_VARIANTEN.regenKurve(stufe).chanceKurve);
     },
 
+    /* ---------------------------------------------------------------- *
+     * VIER STUFEN FÜR DIE LOOTBOX-MENGE (seit v0.71)
+     *
+     * Bis v0.70 waren es ZWEI Einstellungen für dieselbe Frage: der Haken
+     * `regen` (seit v0.50) und der Schieberegler `regenStufe` 1 bis 5 (seit
+     * v0.60). Wer wissen wollte, wie viel kommt, musste beide zusammendenken
+     * — und ohne den Haken tat der Regler gar nichts. Jetzt ist es EINE Frage
+     * mit vier Antworten.
+     *
+     * Eine Stufe unterscheidet sich von der nächsten in genau zwei Dingen:
+     *
+     *   `jederHalbzug`   „wenig" wirft nur nach einem VOLLEN Zug aus (beide
+     *                    Seiten sind gezogen), die drei anderen nach jedem
+     *                    Halbzug;
+     *   `stufe`          0 heisst „hängt nicht am Füllstand" — das
+     *                    gleichmässige Grundrauschen mit `BONUS_CHANCE`.
+     *                    Sonst ist es die Kurve aus `REGEN.STUFEN`: je höher
+     *                    die Zahl, desto früher und desto mehr.
+     *
+     * DIE DREI FÜLLSTANDS-STUFEN LIEFERN NIE WENIGER ALS DAS GRUNDRAUSCHEN.
+     * Chance und Anzahl werden gegen den Grundwert genommen (`Math.max`) —
+     * ohne das käme früh in der Partie bei „normal" WENIGER als bei „wenig",
+     * weil die Kurve auf vollem Brett fast bei null steht. Eine Leiter mit
+     * einem Knick in der Mitte ist keine Leiter. Nebenbei beantwortet das die
+     * offene Frage aus v0.60 („ist die flachste Stufe überhaupt spürbar?").
+     * ---------------------------------------------------------------- */
+
+    LOOTBOX_MENGEN: [
+        {
+            id: "wenig",
+            titel: "wenig",
+            jederHalbzug: false,
+            stufe: 0,
+            hinweis: "Nach jedem vollen Zug kann eine Lootbox erscheinen, "
+                + "selten mehrere — unabhängig davon, wie voll das Brett ist."
+        },
+        {
+            id: "normal",
+            titel: "normal",
+            jederHalbzug: true,
+            stufe: 1,
+            hinweis: "Nach jedem Halbzug, und je leerer das Brett wird, desto mehr."
+        },
+        {
+            id: "viele",
+            titel: "viele",
+            jederHalbzug: true,
+            stufe: 3,
+            hinweis: "Dasselbe, nur früher und reichlicher."
+        },
+        {
+            id: "regen",
+            titel: "Regen",
+            jederHalbzug: true,
+            stufe: 5,
+            hinweis: "Es regnet: Stehen am Ende nur noch die beiden Könige, "
+                + "bekommt jedes freie Feld eine Lootbox."
+        }
+    ],
+
+    /* Ohne Angabe die unterste Stufe — eine neue Partie ist erst einmal ein
+       normales Schachspiel, und was dazukommt, stellt man ausdrücklich ein. */
+    MENGE_VORGABE: "wenig",
+
+    /* Der Eintrag zu einer Stufe; Unbekanntes fällt auf die Vorgabe zurück.
+       Heisst `mengeVon` und nicht `lootboxMenge`, weil DIE Frage an die Partie
+       geht (`SCHACH_RUNDE.lootboxMenge`) — hier wird nur nachgeschlagen. */
+    mengeVon(id) {
+        return SCHACH_VARIANTEN.LOOTBOX_MENGEN.find((eintrag) => eintrag.id === id)
+            || SCHACH_VARIANTEN.LOOTBOX_MENGEN.find(
+                (eintrag) => eintrag.id === SCHACH_VARIANTEN.MENGE_VORGABE);
+    },
+
+    /*
+     * Die Stufe einer Partie aus der Zeit der zwei alten Schalter (vor v0.71).
+     * Kein Regen heisst „wenig"; mit Regen entscheidet die alte Reglerstellung,
+     * denn genau sie war die Kurve. So spielt jede laufende Partie weiter, wie
+     * sie angelegt wurde.
+     */
+    mengeAusAltem(regen, stufe) {
+        if (regen !== true) {
+            return "wenig";
+        }
+
+        /* Ohne brauchbare Reglerstellung gilt dessen Vorgabe — nicht die
+           unterste Stufe: Ein Haken ohne Regler war der Regen von v0.53. */
+        const wert = (Number.isInteger(stufe) && stufe >= 1 && stufe <= 5)
+            ? stufe
+            : SCHACH_VARIANTEN.REGEN.STUFE_VORGABE;
+
+        if (wert >= 5) {
+            return "regen";
+        }
+        return (wert >= 3) ? "viele" : "normal";
+    },
+
+    /* Mit welcher Chance (Prozent) auf dieser Stufe überhaupt etwas erscheint. */
+    mengenChance(id, freieFelder, alleFelder) {
+        const menge = SCHACH_VARIANTEN.mengeVon(id);
+
+        if (!menge.stufe) {
+            return SCHACH_VARIANTEN.BONUS_CHANCE;
+        }
+        return Math.max(SCHACH_VARIANTEN.BONUS_CHANCE,
+            SCHACH_VARIANTEN.regenChance(freieFelder, alleFelder, menge.stufe));
+    },
+
+    /*
+     * Wie viele auf einmal. `wert` ist der gewürfelte Zufallswert (0 bis 1)
+     * für das Grundrauschen — er zählt auf jeder Stufe mit, damit auch die
+     * Füllstands-Stufen früh in der Partie ihre gelegentlichen zwei und drei
+     * behalten.
+     */
+    mengenAnzahl(id, freieFelder, alleFelder, wert) {
+        const menge = SCHACH_VARIANTEN.mengeVon(id);
+        const grund = SCHACH_VARIANTEN.anzahlZiehen(wert);
+
+        if (!menge.stufe) {
+            return grund;
+        }
+        return Math.max(grund,
+            SCHACH_VARIANTEN.regenAnzahl(freieFelder, alleFelder, menge.stufe));
+    },
+
     /* Wie viele Würfel erscheinen bei diesem Zufallswert? */
     anzahlZiehen(wert) {
         let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
@@ -1783,9 +1907,11 @@ const SCHACH_VARIANTEN = {
             + SCHACH_VARIANTEN.abklingenErklaerung(stufe.id)
             + "Innerhalb der Stufe sind alle gleich wahrscheinlich — bei "
             + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
-            + "Nach jedem Halbzug kann eine neue Lootbox erscheinen — mit "
-            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent, also im Schnitt etwa jeden "
-            + "sechsten. Meist einer, selten zwei, sehr selten drei. Der Nachschub "
+            + "Wie oft überhaupt eine erscheint, sagt die Stufe, die beim Anlegen "
+            + "gewählt wurde: auf der Stufe wenig nach jedem vollen Zug mit "
+            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent, meist eine, selten zwei, "
+            + "sehr selten drei. Auf normal, viele und Regen nach jedem "
+            + "Halbzug, und umso mehr, je leerer das Brett wird. Der Nachschub "
             + "hört nie auf, solange ein Feld frei ist; liegen gelassene Lootboxen "
             + "bleiben liegen, bis sie jemand einsammelt.\n\n"
             + "Jede achte Lootbox ist eine Unglücks-Lootbox (" + SCHACH_VARIANTEN.PECH_CHANCE
@@ -1799,12 +1925,18 @@ const SCHACH_VARIANTEN = {
             .map((eintrag) => eintrag.anzahl + " mit " + eintrag.chance + " Prozent")
             .join(", ");
 
-        let text = "Nach jedem Halbzug erscheint mit "
-            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent eine Lootbox auf einem freien "
-            + "Feld — meist einer, manchmal mehr (" + anzahl + "). Das hört nicht "
-            + "auf: Solange ein Feld frei ist, kommt Nachschub, und liegen "
-            + "gelassene bleiben liegen. Wer mit einer Figur darauf zieht, sammelt "
-            + "die Fähigkeit für sein Team ein.\n\n"
+        const stufen = SCHACH_VARIANTEN.LOOTBOX_MENGEN
+            .map((menge) => menge.titel)
+            .join(" / ");
+
+        let text = "Auf freien Feldern erscheinen Lootboxen — meist eine, manchmal "
+            + "mehr (" + anzahl + "). Wie oft, entscheidet die beim Anlegen "
+            + "gewählte Stufe (" + stufen + "): Die unterste wirft nach jedem "
+            + "vollen Zug mit " + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent aus, "
+            + "die drei anderen nach jedem Halbzug und umso reichlicher, je leerer "
+            + "das Brett wird. Das hört nicht auf: Solange ein Feld frei ist, kommt "
+            + "Nachschub, und liegen gelassene bleiben liegen. Wer mit einer Figur "
+            + "darauf zieht, sammelt die Fähigkeit für sein Team ein.\n\n"
             + "Welche es wird, hängt von der Stufe ab:\n";
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {

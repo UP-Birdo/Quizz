@@ -544,6 +544,38 @@ passiert ist". Sobald ein Verlauf NEBENHER entstandene Einträge kennt
 gemeinte ART von Ereignis trägt — hier `_letzterBewegungsEintrag`. Und: Wer
 einen neuen Eintragstyp erfindet, prüft, wer alles „den letzten" liest.
 
+## Eine Liste im Behandler, die niemand mitpflegt (v0.60, gefunden v0.71)
+
+**Der Fehler:** „Hakt man Lootboxen an, erscheinen die Unterpunkte erst, wenn
+man einmal auf eine andere Brettform und zurück tippt."
+
+**Der erste Verdacht war falsch.** Vermutet wurde, `TEAM_SCHACH.zeichnen`
+zeichne nur bei geänderten DATEN neu — `neueRegeln` steht ja in keiner Partie.
+Nachgemessen am 14.08. in einem echten Browser (Edge headless, ein Testblatt,
+das die echten Dateien lädt und einen Klick auslöst): Der Lootbox-Haken zeichnet
+sehr wohl sofort neu, seine drei Unterpunkte standen sofort da. Der
+**Regen-Haken** tat es nicht.
+
+**Die Ursache:** Im Behandler des Hakens stand eine Liste mit genau zwei
+Schlüsseln — nur „Lootboxen" und „Zufallsarmee" lösten ein Neuzeichnen aus,
+weil nur sie Unterpunkte hatten. Als der Regen-Haken in v0.60 seinen
+Schieberegler bekam, wurde er zum dritten Fall, und niemand ergänzte die Liste.
+Der Regler erschien deshalb erst, wenn irgendetwas anderes ein Neuzeichnen
+auslöste — etwa ein Tipp auf eine andere Brettform.
+
+**Dabei gleich mitgefunden:** `SCHACH_TAFEL.partieAnlegen` übernahm
+`regenStufe` gar nicht in die Partie. Der Schieberegler aus v0.60 hat also nie
+etwas bewirkt; jede Partie spielte mit der Vorgabe 5. Zwei Fehler, dieselbe
+Wurzel: eine Aufzählung, die beim nächsten Feld hätte mitwachsen müssen.
+
+**Die Lehre:** Eine Liste von Sonderfällen im Bildschirm-Code ist eine Falle,
+sobald sie beim Einbau des nächsten Falls mitgepflegt werden muss. Der Haken
+zeichnet jetzt IMMER neu (`neueRegeln` ist reiner Bildschirm-Zustand, das
+kostet nichts), und beim Anlegen wird jedes Feld der Einstellungen übernommen.
+Und: Was der Bildschirm tut, misst man am besten im Bildschirm — ein Testblatt
+mit den echten Dateien und einem echten Klick hat die Frage in zwei Minuten
+beantwortet, die durch Lesen nicht zu beantworten war.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

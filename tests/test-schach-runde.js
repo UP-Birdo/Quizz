@@ -3225,9 +3225,10 @@ pruefe("Die Stufe gehoert zur Partie und ueberlebt das Normalisieren (v0.59)", (
 });
 
 pruefe("Der Regen braucht den Wuerfel-Haken", () => {
-    /* Ein Regen ohne Wuerfel waere keiner — deshalb fragt `regenAn` beides. */
+    /* Ein Regen ohne Wuerfel waere keiner — deshalb fragt `regenAn` beides.
+       Seit v0.71 steht die Menge als STUFE in der Partie, nicht als Haken. */
     const ohne = SCHACH_RUNDE.leereRunde(1000, "standard", "p-regen", "R");
-    ohne.regeln.regen = true;
+    ohne.regeln.lootboxMenge = "regen";
     ohne.regeln.faehigkeiten = false;
     gleich(SCHACH_RUNDE.regenAn(ohne), false, "ohne Wuerfel kein Regen");
 
@@ -3236,22 +3237,22 @@ pruefe("Der Regen braucht den Wuerfel-Haken", () => {
     gleich(SCHACH_RUNDE.regenAn(mit), true, "mit Wuerfeln schon");
 
     const aus = SCHACH_RUNDE.kopieren(mit);
-    aus.regeln.regen = false;
-    gleich(SCHACH_RUNDE.regenAn(aus), false, "und nur mit gesetztem Haken");
+    aus.regeln.lootboxMenge = "wenig";
+    gleich(SCHACH_RUNDE.regenAn(aus), false, "und nur oberhalb der untersten Stufe");
 });
 
-pruefe("Im Regen erscheinen mehr Wuerfel als ohne", () => {
+pruefe("Im Regen erscheinen mehr Wuerfel als auf der untersten Stufe", () => {
     /*
      * Gemessen wird ueber viele Halbzuege auf demselben Brett: Der Regen muss
-     * SPUERBAR mehr auswerfen, sonst ist der Haken eine Behauptung.
+     * SPUERBAR mehr auswerfen, sonst ist die Stufe eine Behauptung.
      */
-    const zaehlen = (regen) => {
+    const zaehlen = (menge) => {
         let gesamt = 0;
 
         for (let nummer = 0; nummer < 120; nummer++) {
             const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-r" + nummer, "R");
             runde.regeln.faehigkeiten = true;
-            runde.regeln.regen = regen;
+            runde.regeln.lootboxMenge = menge;
             runde.zugZaehler = nummer;
 
             SCHACH_RUNDE._bonusNachziehen(runde);
@@ -3261,11 +3262,115 @@ pruefe("Im Regen erscheinen mehr Wuerfel als ohne", () => {
         return gesamt;
     };
 
-    const ohne = zaehlen(false);
-    const mit = zaehlen(true);
+    const wenig = zaehlen("wenig");
+    const viel = zaehlen("regen");
 
-    wahr(mit > ohne * 2, "der Regen wirft deutlich mehr aus ("
-        + mit + " gegen " + ohne + ")");
+    wahr(viel > wenig * 2, "der Regen wirft deutlich mehr aus ("
+        + viel + " gegen " + wenig + ")");
+});
+
+/* ------------------------------------------------------------------ *
+ * Die vier Stufen fuer die Lootbox-Menge (seit v0.71)
+ * ------------------------------------------------------------------ */
+
+pruefe("Eine Partie von frueher behaelt ihre Menge (v0.71)", () => {
+    /*
+     * DER KERN DES ADDITIVEN DATENVERTRAGS: `lootboxMenge` gibt es erst seit
+     * v0.71. Jede laufende Partie kennt nur `regen` und `regenStufe` — daraus
+     * muss dieselbe Menge herauskommen, mit der sie angelegt wurde.
+     */
+    const alte = (regen, stufe) => {
+        const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-alt", "R");
+        runde.regeln.faehigkeiten = true;
+        runde.regeln.regen = regen;
+        runde.regeln.regenStufe = stufe;
+        delete runde.regeln.lootboxMenge;
+
+        return SCHACH_RUNDE.lootboxMenge(SCHACH_RUNDE.kopieren(runde));
+    };
+
+    gleich(alte(false, 5), "wenig", "ohne Regen ist es die unterste Stufe");
+    gleich(alte(true, 5), "regen", "der Regen von v0.53 bleibt der Regen");
+    gleich(alte(true, 3), "viele", "eine mittlere Reglerstellung wird viele");
+    gleich(alte(true, 1), "normal", "die flachste Stellung wird normal");
+    gleich(alte(true, undefined), "regen",
+        "ein Haken ohne Reglerstellung ist der Regen von v0.53");
+
+    /* Und eine Partie, die die Stufe kennt, laesst sie sich nicht wegrechnen. */
+    const neue = SCHACH_RUNDE.leereRunde(1000, "standard", "p-neu", "R");
+    neue.regeln.lootboxMenge = "viele";
+    neue.regeln.regen = false;
+    gleich(SCHACH_RUNDE.lootboxMenge(SCHACH_RUNDE.kopieren(neue)), "viele",
+        "die Stufe geht vor den beiden alten Schaltern");
+
+    /* Unsinn faellt auf die Vorgabe zurueck. */
+    const kaputt = SCHACH_RUNDE.leereRunde(1000, "standard", "p-kaputt", "R");
+    kaputt.regeln.lootboxMenge = "sintflut";
+    gleich(SCHACH_RUNDE.lootboxMenge(SCHACH_RUNDE.kopieren(kaputt)), "wenig",
+        "eine unbekannte Stufe faellt auf die Vorgabe zurueck");
+});
+
+pruefe("Die vier Stufen sind eine Leiter ohne Knick (v0.71)", () => {
+    /*
+     * Jede Stufe muss bei JEDEM Fuellstand mindestens so viel liefern wie die
+     * darunter — sonst waere die Reihenfolge der Kaestchen eine Luege. Genau
+     * dafuer nehmen `mengenChance` und `mengenAnzahl` das Groessere von
+     * Grundrauschen und Fuellstands-Kurve.
+     */
+    const reihe = SCHACH_VARIANTEN.LOOTBOX_MENGEN.map((menge) => menge.id);
+
+    gleich(reihe.join(","), "wenig,normal,viele,regen", "die Reihenfolge steht fest");
+
+    for (const freie of [4, 16, 32, 48, 62]) {
+        for (let stelle = 1; stelle < reihe.length; stelle++) {
+            const drunter = SCHACH_VARIANTEN.mengenChance(reihe[stelle - 1], freie, 64);
+            const drueber = SCHACH_VARIANTEN.mengenChance(reihe[stelle], freie, 64);
+
+            wahr(drueber >= drunter, reihe[stelle] + " ist bei " + freie
+                + " freien Feldern nicht seltener als " + reihe[stelle - 1]
+                + " (" + drueber.toFixed(2) + " gegen " + drunter.toFixed(2) + ")");
+
+            /* Dasselbe fuer die Anzahl, bei ein und demselben Zufallswert. */
+            const anzahlDrunter =
+                SCHACH_VARIANTEN.mengenAnzahl(reihe[stelle - 1], freie, 64, 0.5);
+            const anzahlDrueber =
+                SCHACH_VARIANTEN.mengenAnzahl(reihe[stelle], freie, 64, 0.5);
+
+            wahr(anzahlDrueber >= anzahlDrunter, reihe[stelle]
+                + " wirft nicht weniger aus als " + reihe[stelle - 1]);
+        }
+    }
+
+    /* Am Ende bekommt jedes freie Feld eine Lootbox — auf der obersten Stufe. */
+    gleich(SCHACH_VARIANTEN.mengenAnzahl("regen", 62, 64, 0), 62,
+        "stehen nur noch die Koenige, ist jedes freie Feld dran");
+});
+
+pruefe("Die unterste Stufe wirft nur nach vollen Zuegen aus (v0.71)", () => {
+    /*
+     * „wenig" heisst: hoechstens einmal je vollem Zug. Gezaehlt wird in
+     * Halbzuegen (`zugZaehler`), also darf auf jedem zweiten nichts kommen.
+     */
+    const werfen = (menge, zaehler) => {
+        const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-halb", "R");
+        runde.regeln.faehigkeiten = true;
+        runde.regeln.lootboxMenge = menge;
+        runde.zugZaehler = zaehler;
+
+        SCHACH_RUNDE._bonusNachziehen(runde);
+        return runde.bonus.length;
+    };
+
+    let ungeradeWenig = 0;
+    let ungeradeNormal = 0;
+
+    for (let zaehler = 1; zaehler < 80; zaehler += 2) {
+        ungeradeWenig += werfen("wenig", zaehler);
+        ungeradeNormal += werfen("normal", zaehler);
+    }
+
+    gleich(ungeradeWenig, 0, "auf der untersten Stufe kommt nach einem halben Zug nichts");
+    wahr(ungeradeNormal > 0, "auf normal schon");
 });
 
 /* ------------------------------------------------------------------ *

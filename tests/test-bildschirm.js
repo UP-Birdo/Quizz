@@ -513,6 +513,75 @@ pruefe("Die Auswahl der Spielart zeigt je eine Kachel mit Vorschaubild", () => {
     }
 });
 
+pruefe("Ein Haken zeigt seine Unterpunkte SOFORT (v0.71)", () => {
+    /*
+     * DER FEHLER AUS DEM EINGANGSKORB VOM 13.08.: „Hakt man Lootboxen an,
+     * erscheinen die Unterpunkte erst, wenn man einmal auf eine andere
+     * Brettform und zurueck tippt."
+     *
+     * Ursache war eine Liste mit zwei Schluesseln im Behandler des Hakens:
+     * Nur „Lootboxen" und „Zufallsarmee" zeichneten neu. Der Regen-Haken
+     * bekam v0.60 einen Schieberegler als Unterpunkt und stand nicht darin.
+     * Nachgemessen am 14.08. in einem echten Browser — genau so war es.
+     *
+     * Geprueft wird deshalb ueber das EREIGNIS, nicht ueber einen direkten
+     * Aufruf von `zeichnen`: Nur so faellt auf, wenn der Haken das
+     * Neuzeichnen wieder verliert.
+     */
+    const suchen = (klasse) => {
+        const treffer = [];
+        const gehen = (element) => {
+            for (const kind of element.kinder || []) {
+                if (String(kind.className || "").split(" ").indexOf(klasse) !== -1) {
+                    treffer.push(kind);
+                }
+                gehen(kind);
+            }
+        };
+        gehen(TEAM_SCHACH.wurzelEl);
+        return treffer;
+    };
+
+    TEAM_SCHACH.partieAnlegen();
+
+    if (suchen("mengen-leiste").length !== 0) {
+        throw new Error("die Stufen stehen da, bevor Lootboxen angehakt sind");
+    }
+
+    const kasten = suchen("schalter-kasten")[0];
+    if (!kasten) {
+        throw new Error("kein Haken gezeichnet");
+    }
+
+    kasten.checked = true;
+    kasten.ausloesen("change");
+
+    if (!TEAM_SCHACH.neueRegeln.faehigkeiten) {
+        throw new Error("der Haken kam nicht an");
+    }
+    if (suchen("mengen-leiste").length !== 1) {
+        throw new Error("die vier Stufen erscheinen nicht sofort");
+    }
+
+    /* Und die Unterpunkte des Hakens sind auch da (Seltenheit, Unglueck). */
+    if (suchen("schalter-unterpunkt").length < 3) {
+        throw new Error("die Unterpunkte fehlen");
+    }
+
+    /* Eine Stufe antippen setzt sie und zeichnet neu. */
+    const knopf = suchen("mengen-knopf")[2];
+    knopf.ausloesen("click");
+
+    if (TEAM_SCHACH.neueRegeln.lootboxMenge !== SCHACH_VARIANTEN.LOOTBOX_MENGEN[2].id) {
+        throw new Error("die Stufe wurde nicht uebernommen");
+    }
+    if (suchen("mengen-knopf-aktiv").length !== 1) {
+        throw new Error("genau eine Stufe muesste hervorgehoben sein");
+    }
+
+    TEAM_SCHACH.auswahlSchliessen();
+});
+
 pruefe("Die Rochade steht als Zugpunkt beim Koenig", () => {
     /* Eine eigene Partie mit freier Grundreihe. */
     const angelegt = SCHACH_TAFEL.partieAnlegen(

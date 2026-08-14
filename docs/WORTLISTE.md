@@ -30,7 +30,8 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Unglücks-Lootbox** | `PECH`, `pech: true` | Was Schlechtes darin stecken kann. Wirkt sofort beim Einsammeln. |
 | **Stufe / Seltenheit** | `STUFEN` | Gewöhnlich, Ungewöhnlich, Episch, Legendär — sichtbar an der Farbe, wenn der Haken es zulässt. |
 | **Vorrat** | `runde.faehigkeiten[farbe]` | Die gesammelten Fähigkeiten eines Teams, die Marken unter dem Brett. |
-| **Lootbox-Regen** | `regeln.regen`, `regenStufe` | Je leerer das Brett, desto mehr erscheint. |
+| **Stufe der Menge** | `regeln.lootboxMenge` | Wie viele Lootboxen erscheinen: **wenig / normal / viele / Regen** (seit v0.71, vier Kästchen unter dem Lootbox-Haken). Tabelle: `SCHACH_VARIANTEN.LOOTBOX_MENGEN`. |
+| **Lootbox-Regen** | `regeln.regen`, `regenStufe` | Die zwei Einstellungen von v0.50/v0.60, die die Stufe abgelöst hat. Sie stehen noch in jeder Partie: Fehlt die Stufe, wird sie daraus gerechnet. Sichtbar sind sie nicht mehr. |
 
 ## Regeln und Wirkungen
 

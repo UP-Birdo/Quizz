@@ -3,6 +3,30 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.71.0 — 2026-08-14
+
+- **Vier Stufen statt Haken und Schieberegler: wie viele Lootboxen?** Direkt
+  unter dem Haken „Lootboxen" stehen jetzt vier Kästchen nebeneinander —
+  **wenig, normal, viele, Regen**. Sie ersetzen den Haken „Lootbox-Regen" und
+  den Schieberegler „Wie früh es regnet"; beide beantworteten dieselbe Frage,
+  und man musste sie zusammendenken.
+  - **wenig** wirft nach jedem VOLLEN Zug etwas aus, meist eine Lootbox,
+    selten zwei oder drei — unabhängig davon, wie voll das Brett ist.
+  - **normal** und **viele** kommen nach jedem Halbzug und werden umso
+    reichlicher, je leerer das Brett wird.
+  - **Regen** ist das, was der Haken bisher konnte: Stehen am Ende nur noch
+    die beiden Könige, bekommt jedes freie Feld eine Lootbox.
+  - Jede Stufe liefert bei jedem Spielstand mindestens so viel wie die
+    darunter — auch früh in der Partie.
+  - **Für laufende Partien ändert sich nichts:** Sie tragen ihre Stufe noch
+    nicht und bekommen sie aus ihren bisherigen Einstellungen ausgerechnet.
+    Neu angelegte Partien mit „wenig" bekommen etwa halb so oft Nachschub wie
+    bisher ohne Regen-Haken — wer die gewohnte Menge will, nimmt „normal".
+- **Ein Haken zeigt seine Unterpunkte sofort.** „Lootboxen" angehakt, und die
+  Unterpunkte darunter erschienen erst, wenn man zwischendurch auf eine andere
+  Brettform und zurück tippte. Betroffen war zuletzt der Schieberegler; die
+  Ursache lag seit v0.60 im Bildschirm-Code.
+
 ## v0.70.0 — 2026-08-13
 
 - **Verborgene Lootboxen schillern.** Wer die Seltenheit nicht anzeigen lässt,

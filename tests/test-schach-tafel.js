@@ -189,6 +189,40 @@ pruefe("Laufende Partien stehen oben, beendete unten", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Die Einstellungen aus der Auswahl
+ * ------------------------------------------------------------------ */
+
+pruefe("Anlegen schreibt die Lootbox-Stufe UND die zwei alten Schalter (v0.71)", () => {
+    /*
+     * Die Stufe ist die Wahrheit. `regen` und `regenStufe` werden daneben
+     * mitgeschrieben, damit ein Geraet mit einer aelteren Fassung im
+     * Zwischenspeicher nicht nach ganz anderen Zahlen spielt.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        SCHACH_TAFEL.leereTafel(1000), "standard", "M", 2000,
+        { faehigkeiten: true, lootboxMenge: "viele" });
+
+    gleich(angelegt.partie.regeln.lootboxMenge, "viele", "die Stufe steht in der Partie");
+    gleich(angelegt.partie.regeln.regen, true, "der alte Haken zieht mit");
+    gleich(angelegt.partie.regeln.regenStufe, 3, "und die alte Reglerstellung auch");
+
+    /* Ohne Stufe entscheiden die zwei alten Angaben — so legt auch alter
+       Aufruf-Code an, was er meint. */
+    const alt = SCHACH_TAFEL.partieAnlegen(
+        SCHACH_TAFEL.leereTafel(1000), "standard", "A", 2000,
+        { faehigkeiten: true, regen: true, regenStufe: 5 });
+
+    gleich(alt.partie.regeln.lootboxMenge, "regen", "Haken plus Stufe 5 ist der Regen");
+
+    const ohne = SCHACH_TAFEL.partieAnlegen(
+        SCHACH_TAFEL.leereTafel(1000), "standard", "O", 2000,
+        { faehigkeiten: true });
+
+    gleich(ohne.partie.regeln.lootboxMenge, "wenig", "ohne Angabe die unterste Stufe");
+    gleich(ohne.partie.regeln.regen, false, "und kein Regen");
+});
+
+/* ------------------------------------------------------------------ *
  * Vergleich
  * ------------------------------------------------------------------ */
 

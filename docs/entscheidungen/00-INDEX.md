@@ -29,6 +29,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die Sicherung gegen gleichzeitige Zuege verschluckte das Ausweichen (v0.66)
     - „Fenster blockiert", obwohl das Fenster aufging (v0.66)
     - Die neue Lootbox verdeckte den Zug, der gerade passiert war (v0.69)
+    - Eine Liste im Behandler, die niemand mitpflegt (v0.60, gefunden v0.71)
 
 ## entschieden.md - Entschieden - und warum
 
@@ -136,6 +137,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum eine Leihgabe erst zählt, wenn man wieder am Zug ist (v0.57)
 - Warum ein Zug unterwegs enden kann (v0.58) — **nimmt eine Aussage aus
   derselben Runde zurück**
+- Warum aus zwei Schaltern vier Stufen wurden (v0.71) — **ersetzt den
+  Regen-Haken (v0.50) und den Schieberegler (v0.60)**
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

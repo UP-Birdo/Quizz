@@ -313,7 +313,31 @@ const SCHACH_TAFEL = {
             }
             partie.regeln.seltenheitZeigen = (regeln.seltenheitZeigen !== false);
             partie.regeln.pechZeigen = (regeln.pechZeigen === true);
-            partie.regeln.regen = (regeln.regen === true);
+            /*
+             * DIE LOOTBOX-MENGE (seit v0.71) UND DIE ZWEI ALTEN SCHALTER.
+             *
+             * Die Stufe ist, was zählt; `regen` und `regenStufe` werden
+             * daneben mitgeschrieben, damit ein Gerät mit einer älteren
+             * Fassung im Zwischenspeicher nicht nach ganz anderen Zahlen
+             * spielt. Bis v0.70 fiel `regenStufe` hier durch — der
+             * Schieberegler von v0.60 erreichte die Partie nie.
+             *
+             * Nennt der Aufrufer keine Stufe, wird sie wie in
+             * `SCHACH_RUNDE.normalisieren` aus den zwei alten Schaltern
+             * abgeleitet — so legt auch alter Aufruf-Code an, was er meint.
+             */
+            const gewaehlt = SCHACH_VARIANTEN.LOOTBOX_MENGEN.some(
+                (eintrag) => eintrag.id === regeln.lootboxMenge)
+                ? regeln.lootboxMenge
+                : SCHACH_VARIANTEN.mengeAusAltem(regeln.regen === true, regeln.regenStufe);
+
+            const menge = SCHACH_VARIANTEN.mengeVon(gewaehlt);
+
+            partie.regeln.lootboxMenge = menge.id;
+            partie.regeln.regen = (menge.id !== "wenig");
+            partie.regeln.regenStufe = menge.stufe
+                || SCHACH_VARIANTEN.REGEN.STUFE_VORGABE;
+
             partie.regeln.zufallsArmee = (regeln.zufallsArmee === true);
             partie.regeln.armeeUnterschiedlich = (regeln.armeeUnterschiedlich === true);
             partie.regeln.einigkeit = (regeln.einigkeit === true);

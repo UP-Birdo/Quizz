@@ -802,12 +802,30 @@ zwei Haken:
 | `seltenheitZeigen` | Welche FARBE hat er? | einheitliches Grau (`STUFE_UNBEKANNT`) |
 | `pechZeigen` | Steht sein Fragezeichen auf dem KOPF? | kein Unterschied zu einem guten Würfel |
 
-Ein dritter Haken betrifft nicht das Aussehen, sondern die Menge:
-`regeln.regen` (**Glücksboxen-Regen**, seit v0.50). Chance und Anzahl hängen
-dann am ANTEIL der freien Felder — `SCHACH_VARIANTEN.regenChance` und
-`regenAnzahl`, gefragt über `SCHACH_RUNDE.regenAn`. Der Anteil und nicht die
-Anzahl, weil es sonst auf dem Doppelbrett (128 Felder) von Beginn an regnete
-und auf dem kleinen Brett (36) nie.
+**Wie VIELE Lootboxen erscheinen, ist seit v0.71 eine Frage mit vier
+Antworten:** `regeln.lootboxMenge` — `wenig`, `normal`, `viele`, `regen`. Die
+Tabelle dazu steht in `SCHACH_VARIANTEN.LOOTBOX_MENGEN`, gefragt wird sie über
+`SCHACH_RUNDE.lootboxMenge`, gerechnet in `SCHACH_VARIANTEN.mengenChance` und
+`mengenAnzahl`. Zwei Angaben je Stufe:
+
+| Angabe | Bedeutung |
+|---|---|
+| `jederHalbzug` | `false` (nur `wenig`) heisst: nur nach einem VOLLEN Zug wird überhaupt geworfen |
+| `stufe` | `0` = gleichmässiges Grundrauschen (`BONUS_CHANCE`), sonst die Kurve aus `REGEN.STUFEN` — je höher, desto früher und mehr |
+
+Die drei Füllstands-Stufen nehmen immer das **Grössere** von Grundrauschen und
+Kurve; ohne das läge „normal" früh in der Partie unter „wenig", weil die Kurve
+auf vollem Brett fast bei null steht. Dass der Füllstand als ANTEIL zählt und
+nicht als Anzahl, kommt aus v0.50: sonst regnete es auf dem Doppelbrett (128
+Felder) von Beginn an und auf dem kleinen Brett (36) nie.
+
+**Die zwei Vorgänger stehen noch in jeder Partie** (`regeln.regen` seit v0.50,
+`regenStufe` seit v0.60) und bleiben es — additiver Datenvertrag. Fehlt die
+Stufe, wird sie beim Normalisieren aus ihnen abgeleitet
+(`SCHACH_VARIANTEN.mengeAusAltem`), und beim Anlegen werden sie umgekehrt aus
+der Stufe mitgeschrieben, damit ein Gerät mit einer älteren Fassung im
+Zwischenspeicher nicht nach ganz anderen Zahlen spielt. `SCHACH_RUNDE.regenAn`
+gibt es weiter; es beantwortet jetzt „Stufe über `wenig`?".
 
 Bis v0.48 hing beides am ersten Haken, und das Unglück war zusätzlich eine
 eiserne Regel (immer sichtbar). Getrennt lässt sich einstellen, was gemeint war:

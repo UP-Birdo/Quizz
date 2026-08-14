@@ -1746,6 +1746,39 @@ Nachwirkung des Zuges, kein Filter davor.
   freie Feld; findet sich keines, bleibt der Zug lieber, wie er war. Eine Figur
   ohne Feld wäre schlimmer als ein Zug zu viel.
 
+## Warum aus zwei Schaltern vier Stufen wurden (v0.71)
+
+Bis v0.70 beantworteten zwei Einstellungen dieselbe Frage: der Haken
+**Lootbox-Regen** (v0.50) und der Schieberegler **Wie früh es regnet** 1 bis 5
+(v0.60). Wer wissen wollte, wie viele Lootboxen kommen, musste beide
+zusammendenken — und ohne den Haken tat der Regler ohnehin nichts. Der Wunsch
+vom 13.08. macht daraus eine Frage mit vier Antworten: **wenig / normal /
+viele / Regen**.
+
+**Drei Dinge waren dabei zu entscheiden:**
+
+- **Was „wenig" heisst.** Der Wunsch beschreibt es als „so viel wie heute ohne
+  Regen-Haken (höchstens drei je vollem Zug)". Das war eine Beschreibung des
+  IST-Zustands — nur stimmte sie nicht: Seit v0.52 kommt Nachschub nach jedem
+  HALBZUG. Gebaut ist die Stufe so, wie der Nutzer sie beschrieben hat (nach
+  jedem vollen Zug), nicht so, wie der Code sie hatte. Sonst wäre der
+  Unterschied zur nächsten Stufe („auch nach Halbzügen") gar keiner gewesen —
+  und die Leiter hätte unten keine Sprosse. Der Preis steht im `CHANGELOG.md`:
+  Eine neue Partie mit „wenig" bekommt etwa halb so oft Nachschub wie bisher
+  ohne Regen-Haken; wer die gewohnte Menge will, nimmt „normal".
+- **Dass keine Stufe die darunter unterbietet.** Die drei oberen Stufen hängen
+  am Füllstand, und auf vollem Brett steht ihre Kurve fast bei null — früh in
+  der Partie hätte „normal" also WENIGER geliefert als „wenig". Deshalb nehmen
+  `mengenChance` und `mengenAnzahl` immer das Grössere von Grundrauschen und
+  Kurve. Nebeneffekt: Die offene Frage aus v0.60 („ist die flachste Stufe
+  überhaupt spürbar?") ist damit beantwortet.
+- **Dass die alten Felder stehen bleiben.** `regen` und `regenStufe` stecken in
+  jeder laufenden Partie. Sie werden weiter geschrieben (aus der Stufe
+  abgeleitet) und beim Lesen umgekehrt zur Stufe verrechnet, wenn eine Partie
+  sie noch nicht kennt. So spielt jede laufende Partie unverändert weiter, und
+  ein Gerät, das noch eine ältere Fassung im Zwischenspeicher hat, spielt nicht
+  nach ganz anderen Zahlen.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

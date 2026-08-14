@@ -168,17 +168,30 @@ const SCHACH_RUNDE = {
                 pechZeigen: false,
 
                 /*
-                 * Glücksboxen-Regen (seit v0.50): Je leerer das Brett, desto
-                 * mehr Würfel erscheinen. Zahlen in `SCHACH_VARIANTEN.REGEN`.
+                 * WIE VIELE LOOTBOXEN ERSCHEINEN (seit v0.71): eine der vier
+                 * Stufen wenig / normal / viele / regen. Was jede bedeutet,
+                 * steht in `SCHACH_VARIANTEN.LOOTBOX_MENGEN`.
+                 *
+                 * Sie ersetzt die zwei Schalter darunter. Die bleiben stehen
+                 * (additiver Datenvertrag) und werden beim Anlegen weiter
+                 * mitgeschrieben — ein Gerät mit einer älteren Fassung im
+                 * Zwischenspeicher spielt sonst nach ganz anderen Zahlen.
+                 */
+                lootboxMenge: "wenig",
+
+                /*
+                 * Glücksboxen-Regen (seit v0.50, abgelöst in v0.71): Je leerer
+                 * das Brett, desto mehr Würfel erscheinen. Aus diesem Haken und
+                 * der Stufe darunter wird `lootboxMenge` abgeleitet, wenn eine
+                 * Partie sie noch nicht kennt.
                  */
                 regen: false,
 
                 /*
-                 * Wie steil der Regen ansteigt: 1 bis 5 (seit v0.59). 5 ist
-                 * der Verlauf von v0.53 und die Vorgabe, 1 lässt es lange
-                 * fast gar nicht regnen und dann umso heftiger. Das Ende ist
-                 * bei jeder Stufe dasselbe — Zahlen und Begründung in
-                 * `SCHACH_VARIANTEN.REGEN.STUFEN`.
+                 * Wie steil der Regen ansteigt: 1 bis 5 (seit v0.59, abgelöst
+                 * in v0.71). 5 ist der Verlauf von v0.53 und die Vorgabe, 1
+                 * lässt es lange fast gar nicht regnen und dann umso heftiger.
+                 * Zahlen und Begründung in `SCHACH_VARIANTEN.REGEN.STUFEN`.
                  */
                 regenStufe: 5,
 
@@ -621,6 +634,20 @@ const SCHACH_RUNDE = {
                     ? roh.regeln.regenStufe
                     : SCHACH_VARIANTEN.REGEN.STUFE_VORGABE;
 
+            /*
+             * DIE VIER STUFEN (seit v0.71). Fehlt der Eintrag, stammt die
+             * Partie aus der Zeit der zwei Schalter darüber — dann wird er
+             * daraus abgeleitet, und die Partie spielt weiter wie bisher.
+             * Deshalb steht diese Zeile NACH den beiden alten.
+             */
+            const bekannteMenge = SCHACH_VARIANTEN.LOOTBOX_MENGEN.some(
+                (eintrag) => eintrag.id === roh.regeln.lootboxMenge);
+
+            runde.regeln.lootboxMenge = bekannteMenge
+                ? roh.regeln.lootboxMenge
+                : SCHACH_VARIANTEN.mengeAusAltem(
+                    runde.regeln.regen, runde.regeln.regenStufe);
+
             runde.regeln.zufallsArmee = (roh.regeln.zufallsArmee === true);
             runde.regeln.armeeUnterschiedlich = (roh.regeln.armeeUnterschiedlich === true);
 
@@ -948,12 +975,23 @@ const SCHACH_RUNDE = {
      */
     regenAn(runde) {
         const stand = SCHACH_RUNDE.normalisieren(runde);
-        return stand.regeln.regen === true && SCHACH_RUNDE.faehigkeitenAn(stand);
+        return SCHACH_RUNDE.lootboxMenge(stand) !== "wenig"
+            && SCHACH_RUNDE.faehigkeitenAn(stand);
     },
 
     /* Wie steil der Regen in dieser Partie ansteigt (1 bis 5, seit v0.59). */
     regenStufe(runde) {
         return SCHACH_RUNDE.normalisieren(runde).regeln.regenStufe;
+    },
+
+    /*
+     * WIE VIELE LOOTBOXEN DIESE PARTIE AUSWIRFT (seit v0.71): eine der vier
+     * Stufen aus `SCHACH_VARIANTEN.LOOTBOX_MENGEN`. Sie steht in der Partie und
+     * wird für Partien von früher aus `regen`/`regenStufe` abgeleitet (siehe
+     * `normalisieren`) — hier ist sie deshalb immer eine gültige Stufe.
+     */
+    lootboxMenge(runde) {
+        return SCHACH_RUNDE.normalisieren(runde).regeln.lootboxMenge;
     },
 
     /*
@@ -1000,35 +1038,40 @@ const SCHACH_RUNDE = {
             return;
         }
 
-        const regen = SCHACH_RUNDE.regenAn(runde);
+        const menge = SCHACH_RUNDE.lootboxMenge(runde);
+
+        /*
+         * DIE UNTERSTE STUFE WIRFT NUR NACH EINEM VOLLEN ZUG AUS (seit v0.71).
+         *
+         * `zugZaehler` zählt Halbzüge und steht hier schon auf dem Wert NACH
+         * dem Zug; jeder zweite schliesst also einen vollen Zug ab. Auf den
+         * drei anderen Stufen kommt wie bisher nach jedem Halbzug etwas in
+         * Frage.
+         */
+        if (!SCHACH_VARIANTEN.mengeVon(menge).jederHalbzug
+            && (runde.zugZaehler % 2) !== 0) {
+            return;
+        }
 
         /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr, und seit
            v3.3 auch keine Höchstzahl (siehe SCHACH_VARIANTEN.BONUS_CHANCE). */
         const wuerfelt = SCHACH_RUNDE._zufallsWert(
             (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
 
-        const stufe = SCHACH_RUNDE.regenStufe(runde);
-
-        const grenze = regen
-            ? SCHACH_VARIANTEN.regenChance(freie.length, alleFelder, stufe)
-            : SCHACH_VARIANTEN.BONUS_CHANCE;
-
-        if (wuerfelt >= grenze) {
+        if (wuerfelt >= SCHACH_VARIANTEN.mengenChance(menge, freie.length, alleFelder)) {
             return;
         }
 
         const basis = (runde.id || "partie") + "|" + runde.zugZaehler;
 
         /*
-         * Ohne Regen: meist einer, manchmal zwei, sehr selten drei. Mit Regen
-         * entscheidet nicht der Zufall, sondern der Füllstand — das ist der
-         * ganze Sinn des Hakens. Nie mehr, als freie Felder da sind; das ist
-         * seit v3.3 die einzige harte Grenze.
+         * Meist einer, manchmal zwei, sehr selten drei — und auf den drei
+         * Füllstands-Stufen zusätzlich, was der Füllstand hergibt (das Grössere
+         * von beidem, siehe `SCHACH_VARIANTEN.LOOTBOX_MENGEN`). Nie mehr, als
+         * freie Felder da sind; das ist seit v3.3 die einzige harte Grenze.
          */
-        const gewuenscht = regen
-            ? SCHACH_VARIANTEN.regenAnzahl(freie.length, alleFelder, stufe)
-            : SCHACH_VARIANTEN.anzahlZiehen(
-                SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
+        const gewuenscht = SCHACH_VARIANTEN.mengenAnzahl(menge, freie.length, alleFelder,
+            SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
         const moeglich = Math.min(gewuenscht, freie.length);
 
         const neue = [];

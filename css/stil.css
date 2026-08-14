@@ -1237,28 +1237,36 @@ body {
 }
 
 /*
- * Der Schieberegler für den Würfel-Regen (seit v0.59, Wunsch #11). Er steht
- * als Unterpunkt unter seinem Haken und erbt von dort die Einrückung; hier
- * kommt nur die Anordnung dazu.
+ * DIE VIER STUFEN FÜR DIE LOOTBOX-MENGE (seit v0.71).
+ *
+ * Sie stehen als Unterpunkt unter dem Lootbox-Haken und erben von dort die
+ * Einrückung; hier kommt nur die Anordnung dazu. Aufbau wie die Brettform
+ * darunter: Knöpfe nebeneinander, der gewählte in der Hauptfarbe, auf schmalen
+ * Geräten brechen sie um statt sich zu quetschen. Sie ersetzen den
+ * Schieberegler von v0.60 samt seiner `.regler`-Klassen.
  */
-.regler-zeile {
+.mengen-zeile {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
     padding: 8px 0;
 }
 
-.regler {
-    flex: 1 1 140px;
-    min-width: 120px;
-    accent-color: var(--haupt);
+.mengen-leiste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.regler-wert {
-    flex: 0 0 auto;
-    font-size: 0.85rem;
-    color: var(--schrift-leise);
+.mengen-knopf {
+    flex: 1 1 auto;
+    min-width: 70px;
+}
+
+.mengen-knopf-aktiv {
+    background: var(--haupt);
+    color: #fff;
+    border-color: var(--haupt);
 }
 
 .schalter-text {

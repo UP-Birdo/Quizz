@@ -78,11 +78,11 @@ const TEAM_SCHACH = {
         faehigkeiten: false,
         seltenheitZeigen: false,
         pechZeigen: false,
-        regen: false,
 
-        /* Wie steil der Regen ansteigt (1 bis 5, seit v0.59). 5 ist die
-           Vorgabe und der Verlauf, den es seit v0.53 gibt. */
-        regenStufe: 5,
+        /* Wie viele Lootboxen erscheinen (seit v0.71): wenig / normal /
+           viele / regen. Sie löst den Haken `regen` und den Schieberegler
+           `regenStufe` ab; beide werden beim Anlegen daraus gefüllt. */
+        lootboxMenge: "wenig",
 
         zufallsArmee: false,
         armeeUnterschiedlich: false,
@@ -1186,8 +1186,7 @@ const TEAM_SCHACH = {
             faehigkeiten: false,
             seltenheitZeigen: false,
             pechZeigen: false,
-            regen: false,
-            regenStufe: SCHACH_VARIANTEN.REGEN.STUFE_VORGABE,
+            lootboxMenge: SCHACH_VARIANTEN.MENGE_VORGABE,
             zufallsArmee: false,
             armeeUnterschiedlich: false,
             einigkeit: false
@@ -1242,8 +1241,7 @@ const TEAM_SCHACH = {
                 || !!SCHACH_VARIANTEN.holen(varianteId).faehigkeiten,
             seltenheitZeigen: TEAM_SCHACH.neueRegeln.seltenheitZeigen,
             pechZeigen: TEAM_SCHACH.neueRegeln.pechZeigen,
-            regen: TEAM_SCHACH.neueRegeln.regen,
-            regenStufe: TEAM_SCHACH.neueRegeln.regenStufe,
+            lootboxMenge: TEAM_SCHACH.neueRegeln.lootboxMenge,
             zufallsArmee: TEAM_SCHACH.neueRegeln.zufallsArmee,
             armeeUnterschiedlich: TEAM_SCHACH.neueRegeln.armeeUnterschiedlich,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
