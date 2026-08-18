@@ -31,6 +31,11 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Die neue Lootbox verdeckte den Zug, der gerade passiert war (v0.69)
     - Eine Liste im Behandler, die niemand mitpflegt (v0.60, gefunden v0.71)
     - Die Gegenseite eines PAARES ist nicht die gespiegelte Seite (v0.72)
+    - Der Doppelzug nahm seinen zweiten Zug zurueck (v0.76)
+    - Ein Eintrag, der sich als Bewegung ausgab (v0.76)
+    - Ein Zaehler, der die Brettbreite meint, aber die Mitte braucht (v0.76)
+    - Ein Kettenschub sieht aus wie ein Schlag (v0.77, kein Fehler)
+    - Zwei richtige Regeln, die sich gegenseitig auffrassen (v0.77.1)
 
 ## entschieden.md - Entschieden - und warum
 
@@ -145,6 +150,12 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum das Kreuz-Duell die Startseite auslost (v0.72)
 - Warum aus zwei Schaltern vier Stufen wurden (v0.71) — **ersetzt den
   Regen-Haken (v0.50) und den Schieberegler (v0.60)**
+- Warum die Mauer die Lootbox jetzt frisst (v0.77) — **kehrt v0.66 um**
+- Warum laufende Partien NICHT auf ihrer Startversion eingefroren werden
+  (v0.77) — **beantwortet die Architekturfrage vom 18.08.**
+- Warum der Unglücks-Anteil am Füllstand hängt (v0.77) — **eine Mechanik
+  statt zweier, dieselbe wie bei der Menge seit v0.71**
+- Warum das Nudelholz jetzt auch Könige rollt (v0.77)
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

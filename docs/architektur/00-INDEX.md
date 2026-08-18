@@ -55,6 +55,7 @@ passenden Abschnitt hier.
     - Was „vorn" heisst — das Nudelholz (seit v0.46)
     - Welche Felder ein Ziel sein können
     - Die Zugbewegung
+    - Die stillen Animationen (seit v0.77)
     - Zwei Fragen an einen Weg
     - Die Größe der Figuren wird gemessen
     - Zwei Farben für jede Markierung

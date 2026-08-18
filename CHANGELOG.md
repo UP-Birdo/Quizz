@@ -3,6 +3,161 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.77.1 — 2026-08-18
+
+**Das Kreuz-Brett zerfranste im Laufe einer Partie.** Gemeldet mit
+Bildschirmfoto: Auf einem Kreuz waren die vier toten Ecken unsymmetrisch —
+links unten war alles bespielbar, rechts unten und links oben fehlten Felder,
+und Lootboxen lagen dort, wo eigentlich ein Loch sein müsste.
+
+Die Ursache war das Zusammenspiel zweier Unglücks-Lootboxen: Die **Schrumpfung**
+wirft eine Reihe oder Spalte samt ihren Löchern weg — das ist richtig so. Die
+**Ausdehnung** baute die neue Reihe oder Spalte aber immer vollständig
+bespielbar an, auch am Kreuz. Damit bekam die Ecke ein Loch nach aussen, und
+jedes Paar aus Schrumpfen und Wachsen kostete das Brett ein Stück Form, ohne
+dass jemand etwas dafür konnte.
+
+**Jetzt wachsen die toten Ecken mit:** Die Ausdehnung schaut sich die Rand-Reihe
+bzw. -Spalte an, an die sie anbaut, und setzt deren Ecken fort. Kopiert werden
+dabei nur die Löcher, nie die Figuren — und nur die Löcher an den ENDEN der
+Linie, denn genau das sind die Ecken. Ein einzelnes Loch mitten am Rand stammt
+von einem Erdbeben; es gehört dem Spielverlauf und wächst nicht mit, sonst
+würde es sich mit jeder Ausdehnung verbreitern. Auf dem klassischen Brett ohne
+Löcher ändert sich nichts.
+
+**Hinweis zur laufenden Partie:** Die Behebung wirkt ab der nächsten Ausdehnung.
+Ein Brett, das sich schon zerfranst hat, behält seine Form — die Löcher
+nachträglich zu setzen würde bedeuten, mitten im Spiel Felder unter Figuren und
+Lootboxen zu schliessen.
+
+## v0.77.0 — 2026-08-18
+
+**Sieben Punkte aus derselben Spielrunde — zwei Wünsche, zwei Regeländerungen,
+zwei Nachmessungen und ein Versionsstempel.**
+
+- **Die Mauer lässt sich jetzt überall hinlegen, wo Platz ist — und frisst die
+  Lootbox darunter.** Bisher waren Felder mit einer Lootbox als Ziel gesperrt,
+  weil die Box unter der Mauer unsichtbar und unerreichbar gewesen wäre. Man
+  sah aber nicht, warum ein Feld nicht ging. Jetzt geht es: Die Mauer darf
+  überall hin, wo drei freie Felder nebeneinander liegen, und eine Lootbox
+  darunter ist danach wirklich weg. Der Zugverlauf sagt es dazu („frisst 1
+  Lootbox"). Damit du beim Platzieren siehst, worauf du baust, **werden die
+  Lootboxen dabei ausgeblendet** — genau wie beim Friedhof.
+
+- **Das Nudelholz rollt jetzt auch Könige.** Es bewegte schon immer alle
+  Figuren beider Farben in den zwei Spalten — nur Könige nicht. Und ein König
+  hielt damit auch alles auf, was hinter ihm stand: Standen zwei Figuren hinter
+  ihm, bewegte sich gar nichts. Jetzt rollt wirklich alles. Deinen **eigenen**
+  König kannst du dir damit trotzdem nicht ins Schach schieben — das war schon
+  vorher verboten und gilt weiter.
+
+- **Unglücks-Lootboxen kommen jetzt häufiger, je leerer das Brett wird.** Bisher
+  war es eine feste Zahl (jede achte Box), egal wie weit die Partie war. Jetzt
+  hängt es am Füllstand — dieselbe Rechnung, die auch die MENGE der Lootboxen
+  steuert: Auf der Stufe **wenig** bleibt alles wie bisher, auf **normal**,
+  **viele** und **Regen** steigt der Anteil mit dem leerer werdenden Brett an,
+  bis auf höchstens gut jede dritte Box. Je höher die Stufe, desto früher.
+  **Welche** Unglücke kommen, ändert sich nicht: grün am häufigsten, dann blau,
+  dann lila, dann gelb.
+
+- **Vier kleine Animationen auf dem Brett** — ohne Farbe und sehr zurückhaltend:
+  Eine **erscheinende Lootbox** wächst auf, eine **verschwundene** (eingesammelt,
+  von einer Mauer gefressen oder in einen Riss gefallen) hinterlässt einen
+  kurzen Ring, eine **neu erschienene Figur** (Nachschub, Spiegel, Wiedergeburt,
+  Wiederbelebung, Friedhof) wächst auf, und wo **geschlagen** wurde, geht
+  derselbe Ring auf. Eine Figur, die nur gezogen ist, bekommt keine — sie
+  gleitet wie bisher. Wer im Betriebssystem „weniger Bewegung" eingestellt hat,
+  sieht sie nicht.
+
+- **Jede neue Partie merkt sich, mit welcher Version sie angelegt wurde.** In
+  der Übersicht steht es an der Partie, aber nur dann, wenn es eine andere
+  Version ist als die, mit der die Seite gerade läuft. Damit ist bei einer
+  Meldung sofort klar, auf welchen Stand sie sich bezieht. Antwort auf die
+  Frage, ob laufende Partien in ihrer Startversion bleiben können: **Regeln
+  ändern sich in einer laufenden Partie ohnehin nie** — jede neue Regel wird
+  beim Anlegen mitgeschrieben, und eine Partie ohne sie rechnet weiter wie
+  vorher. Fehlerbehebungen wirken dagegen sofort, und das ist so gewollt.
+
+**Zwei Meldungen waren keine Fehler:**
+
+- **Das Nudelholz schlägt nicht — es kann es gar nicht.** Nachgemessen: Es
+  schiebt ausschliesslich auf leere Felder, und die Zahl der Figuren auf dem
+  Brett ist vorher und nachher gleich. Was du gesehen hast, sieht nur genauso
+  aus: Steht eine gegnerische Figur direkt vor deiner, wird **zuerst sie** ein
+  Feld vorgeschoben, und deine rückt auf deren altes Feld nach. Deine Figur
+  steht danach dort, wo eben noch die gegnerische stand — die ist aber nicht
+  weg, sondern ein Feld weiter.
+- **Ausweichen funktioniert.** Nachgemessen an der ganzen Kette: Einsetzen geht
+  nur, während der Gegner am Zug ist, die Fähigkeit überlebt seinen Zug, die
+  Figur hat danach wirklich alle freien Nachbarfelder zur Wahl, und danach ist
+  sie verbraucht. Dass sie sich selten anbietet, liegt an genau dieser Regel —
+  sie ist gesperrt, solange du am Zug bist, also in dem Moment, in dem man
+  normalerweise auf seine Fähigkeiten schaut. Ob sie versteckt wird, ist noch
+  offen.
+
+## v0.76.0 — 2026-08-18
+
+**Zehn Punkte aus dem Eingangskorb — sechs Fehler und vier Regeländerungen.**
+
+- **Die Zugspur bleibt grün, auch wenn dabei eine Unglücks-Lootbox eingesammelt
+  wird.** Bisher wurde die ganze Spur gelb — und sie hörte dort auf, wo die
+  Lootbox lag, obwohl die Figur ganz woanders stand. Jetzt sind es zwei Spuren
+  nebeneinander: **grün der eigene Zug** (woher, wohin), **gelb nur, was das
+  Unglück wirklich bewegt hat**. Auch die gleitende Bewegung nimmt wieder die
+  Figur des Zuges statt des Lootbox-Feldes.
+- **Die Bildlaufleisten sind jetzt eingefärbt wie der Rest der Seite.** In
+  dunkler Darstellung stand eine weisse Leiste am Rand jedes Fensters, das
+  scrollt — am deutlichsten in den Anleitungen. Sie gehört dem Browser, nicht
+  der Seite, und folgt nur, wenn man es ihm sagt: Die Seite nennt jetzt ihre
+  Darstellung (`color-scheme`) und färbt die Leisten zusätzlich selbst. Gilt
+  überall, wo etwas scrollt — Dialoge, Zugverlauf, Punkte-Aufschlüsselung.
+- **Beim Anlegen ist „Team muss sich einig sein" jetzt die Vorgabe.** Der Haken
+  steht andersherum da und heisst **„Wer zuerst zieht, hat gezogen"** — wer den
+  schnellen Weg will, hakt ihn an. Laufende Partien ändern sich nicht; im
+  gespeicherten Stand steht dieselbe Einstellung wie bisher.
+
+- **Der Doppelzug nimmt den zweiten Zug nicht mehr zurück.** Gemeldet als „der
+  zweite Zug wird nur angezeigt". Am Doppelzug lag es nicht: Die regelmässige
+  Abfrage prüfte VOR dem Netzaufruf, ob gerade ein eigener Zug unterwegs ist —
+  und übernahm die Antwort auch dann, wenn in den ein bis zwei Sekunden
+  Wartezeit genau das passiert war. Danach rechnete der Bildschirm mit einem
+  veralteten Zählerstand, und der nächste Zug wurde als „jemand war schneller"
+  abgewiesen. Auffallen konnte das nur beim Doppelzug: Sonst ist zwischen zwei
+  eigenen Zügen immer der Gegner dran. Überholte Antworten werden jetzt
+  weggeworfen.
+- **Auf Kreuz-Brettern erscheinen keine Lootboxen mehr im Nichts.** Die vier
+  toten Ecken sind Risse — leer, aber unerreichbar. Eine Box dort lag für immer
+  im Schwarzen. Nebenbei zählen die Ecken jetzt auch nicht mehr als Brett: Auf
+  dem Kreuz regnete es dadurch spürbar weniger als auf einem gleich grossen
+  Quadrat.
+- **Der Figurenzähler unter dem Brett zählt jetzt die Figuren, die DA SIND** —
+  so wie in den bekannten Schach-Apps. Vorher rechnete er Beute minus eigene
+  Verluste; jede Umwandlung, jede Wiedergeburt und jede Verstärkung fehlte
+  darin. Und das Plus steht nur noch bei dem, der vorn liegt: Ein „-8" auf der
+  anderen Seite war dieselbe Auskunft ein zweites Mal. **Der Satz „beim Material
+  lagt ihr vorn/hinten" in der Rückschau rechnet jetzt ebenfalls aus der
+  Schlussstellung**; darüber stehen zwei neue Zeilen, was am Ende noch auf dem
+  Brett stand.
+- **Die Rückschau zeigt das Kreuz-Brett als Kreuz.** Im kleinen Schlussbild
+  fehlten die Risse — es sah aus wie ein gewöhnliches Quadrat, in dessen Ecken
+  zufällig nichts stand. Das galt auch für jede Anleitung, in der ein Erdbeben
+  Löcher reisst.
+- **Sprung und Teleport lassen sich abbrechen** (neu). Wer sie einsetzt, ist
+  sofort dabei, eine Figur auszuwählen — und die Fähigkeit war weg. Jetzt steht
+  unter dem Brett eine Leiste mit **Abbrechen**: Die Stellung bleibt, wie sie
+  war, und die Fähigkeit kommt zurück in den Vorrat. Fähigkeiten mit Zielfeld
+  haben das seit v0.57.
+- **Die Zufallsarmee auf dem Kreuz steht auf BEIDEN eigenen Seiten** (neu). Bis
+  jetzt kannte sie nur oben und unten: Auf dem Kreuz standen beide Armeen quer
+  über der Mitte, die Flügel blieben leer — und die Ansicht drehte sich auf eine
+  Startseite, auf der gar nichts stand. Jetzt bekommt jede Startseite ihre
+  eigene Armee, und wie viele Figuren das sind, richtet sich nach der MITTE des
+  Kreuzes statt nach der Brettbreite: **kleines Kreuz 4 je Seite (also 8 je
+  Team), Kreuz 8, grosses Kreuz 12.** Beim **Kreuz-Duell** bleibt es bei einer
+  Armee je Team, gegenüber — beim kleinen also 4 gegen 4.
+- Beim Doppelzug darf man weiterhin **je Zug auch ein Item einsetzen statt sich
+  zu bewegen**; das war schon so und ist jetzt durch einen Test festgehalten.
+
 ## v0.75.0 — 2026-08-14
 
 **Die Bildanleitungen aus Bündel I — zehn Szenen neu gestellt.**

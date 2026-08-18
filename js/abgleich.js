@@ -69,12 +69,25 @@ class Abgleich {
          * offen sein (Zug abschicken, während eine Abstimmung ausläuft).
          */
         this.eigeneVorgaenge = 0;
+
+        /*
+         * Wie viele eigene Vorgänge es INSGESAMT schon gab (seit v0.76).
+         *
+         * Der Zähler oben sagt nur, ob GERADE einer läuft — und das wird an
+         * genau einer Stelle zu wenig gefragt: `fremdenStandHolen` prüft ihn,
+         * BEVOR es den Server fragt. Die Antwort kommt aber später, und was
+         * dazwischen passiert ist, sieht die Prüfung nicht mehr. Diese Zahl
+         * ändert sich bei jedem eigenen Vorgang und macht überholte Antworten
+         * damit erkennbar; sie wird nur verglichen, nie gerechnet.
+         */
+        this.vorgangsZaehler = 0;
     }
 
     /* Ein eigener Schreibvorgang beginnt — bis er endet, wird kein fremder
        Stand übernommen. */
     eigenerVorgangBeginnt() {
         this.eigeneVorgaenge++;
+        this.vorgangsZaehler++;
     }
 
     eigenerVorgangEndet() {
@@ -211,8 +224,46 @@ class Abgleich {
             return;
         }
 
+        /*
+         * EINE ÜBERHOLTE ANTWORT WIRD WEGGEWORFEN (seit v0.76).
+         *
+         * GEMELDET ALS: „Doppelzug-Fehler — der zweite Zug wird nur angezeigt."
+         * Man setzt den Doppelzug ein, zieht, zieht gleich noch einmal — und
+         * der zweite Zug kommt mit „Jemand war schneller" zurück, obwohl man
+         * allein im Team ist.
+         *
+         * DIE URSACHE liegt nicht beim Doppelzug, sondern hier. Die Sperren
+         * oben greifen VOR dem Netzaufruf; über mobile Daten dauert der eine
+         * bis zwei Sekunden, und in dieser Zeit kann ein eigener Zug gesendet
+         * und fertig geschrieben worden sein. Die Antwort trägt dann den Stand
+         * von VOR dem Zug, wird trotzdem übernommen — und der Bildschirm
+         * zeichnet seine Knöpfe mit einem veralteten Zugzähler. Der nächste Zug
+         * meldet ihn an `TEAM_SCHACH._sendenMitPruefung`, dort passt er nicht
+         * mehr zum Server, und der Zug wird zurückgenommen.
+         *
+         * WARUM ES BEIM DOPPELZUG AUFFÄLLT und sonst kaum: Sonst ist nach dem
+         * eigenen Zug der Gegner dran, und bis man wieder tippen darf, hat die
+         * nächste Abfrage den Stand längst geradegerückt. Der Doppelzug ist der
+         * einzige Fall, in dem zwei eigene Züge unmittelbar aufeinander folgen.
+         *
+         * Geprüft wird deshalb NOCH EINMAL, nachdem die Antwort da ist — und
+         * zusätzlich am Zähler, ob dazwischen ein eigener Vorgang lief. Der
+         * verworfene Stand ist kein Verlust: Die nächste Abfrage kommt in
+         * wenigen Sekunden, und der eigene, neuere Stand steht bereits am
+         * Bildschirm.
+         */
+        const standVorher = this.vorgangsZaehler;
+
         try {
             const fremd = await this.speicher.laden();
+
+            if (this.schreibtGerade || this.aenderungOffen
+                || this.schreibZeitgeber !== null || this.eigeneVorgaenge > 0
+                || this.vorgangsZaehler !== standVorher) {
+                this.melden("bereit", this.speicher.beschreibung);
+                return;
+            }
+
             if (!this.inhaltGleich(fremd, this.daten)) {
                 this.daten = fremd;
                 this.beiDaten(this.daten);

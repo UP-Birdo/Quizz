@@ -329,11 +329,15 @@ umgebung.DIALOG = {
  */
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
     "SCHACH_TAFEL", "SCHACH_VORSCHAU", "TEAM_SCHACH", "IMPOSTER_WOERTER",
-    "IMPOSTER_RUNDE", "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam"];
+    "IMPOSTER_RUNDE", "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam",
+    /* Seit v0.76 auch der Abgleich: Sein Rennen mit der regelmaessigen Abfrage
+       war der „Doppelzug-Fehler", und ohne Test kaeme es unbemerkt zurueck. */
+    "Abgleich"];
 
 /* Die Reihenfolge ist dieselbe wie in index.html — die drei team-schach-Teile
    ergänzen das Objekt und müssen nach ihm kommen. */
-const dateien = ["konfig.js", "modell.js", "speicher.js", "schach-varianten.js",
+const dateien = ["konfig.js", "modell.js", "speicher.js", "abgleich.js",
+    "schach-varianten.js",
     "schach.js", "schach-runde.js", "schach-tafel.js", "schach-vorschau.js",
     "team-schach.js",
     "team-schach-uebersicht.js", "team-schach-brett.js", "team-schach-auswertung.js",
@@ -358,6 +362,7 @@ const IMPOSTER_TAFEL = umgebung.IMPOSTER_TAFEL;
 const IMPOSTER = umgebung.IMPOSTER;
 const RANGLISTE = umgebung.RANGLISTE;
 const SpeicherGemeinsam = umgebung.SpeicherGemeinsam;
+const Abgleich = umgebung.Abgleich;
 
 /* ------------------------------------------------------------------ *
  * Ausgangslage: zwei Mitspieler, je eine laufende Partie pro Spielart
@@ -392,7 +397,10 @@ for (const variante of SCHACH_VARIANTEN.liste) {
  */
 TEAM_SCHACH.abgleich = {
     daten: tafel,
-    speicher: { art: "lokal" },
+    /* `speichern` seit v0.76: Ein Test drueckt jetzt einen Knopf, der wirklich
+       ueber `_sendenMitPruefung` schreibt. Ohne die Funktion liefe der Weg in
+       seinen Fehlerzweig und naehme die Aenderung gleich wieder zurueck. */
+    speicher: { art: "lokal", async speichern() { return true; } },
     vorgaenge: 0,
     eigenerVorgangBeginnt() { this.vorgaenge++; },
     eigenerVorgangEndet() { this.vorgaenge = Math.max(0, this.vorgaenge - 1); }
@@ -873,6 +881,106 @@ pruefe("Nach einem Zug laeuft die Bewegung — und nur einmal", () => {
     if (nochmal.classList.contains("figur-zieht")) {
         throw new Error("Bewegung wiederholt sich bei jedem Zeichnen");
     }
+});
+
+pruefe("Was sich geaendert hat, wird erkannt — und beim ersten Anblick nichts (v0.77)", () => {
+    /*
+     * `_veraenderungen` ist die Grundlage der vier stillen Animationen
+     * (Nutzer-Wunsch 18.08., „keine Farben und sehr simpel"). Es vergleicht den
+     * jetzigen Anblick mit dem letzten. Geprueft wird hier die Unterscheidung,
+     * auf die alles ankommt: ERSCHIENEN ist nicht dasselbe wie HINGEZOGEN.
+     */
+    /*
+     * Eine EIGENE Partie, nicht die aus der Tafel: Der Vergleich haengt an
+     * zwei aufeinanderfolgenden Staenden, und welche Zuege die Tests davor
+     * schon gemacht haben, geht ihn nichts an. Die Staende werden hier direkt
+     * gesetzt — `_veraenderungen` rechnet ohnehin nur aus zwei Anblicken.
+     */
+    const partie = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-anim", "Animation");
+
+    const b1 = SCHACH.feldNummer("b1");
+    const c3 = SCHACH.feldNummer("c3");
+    if (SCHACH.figurAuf(partie.stand, b1) !== "S"
+        || SCHACH.figurAuf(partie.stand, c3) !== ".") {
+        throw new Error("die Startstellung sieht anders aus als erwartet");
+    }
+
+    /* 1. Der erste Anblick animiert nie — sonst poppt beim Oeffnen einer
+       Partie die ganze Stellung auf einmal auf. */
+    TEAM_SCHACH._letzterAnblick = null;
+    const erster = TEAM_SCHACH._veraenderungen(partie);
+
+    if (erster.figurenNeu.length || erster.boxenNeu.length
+        || erster.boxenWeg.length || erster.schlaege.length) {
+        throw new Error("der erste Anblick haette nichts melden duerfen");
+    }
+
+    /* 2. Ein ZUG ist kein Erscheinen: Das Zielfeld war leer und traegt jetzt
+       eine Figur — die Farbe hat aber nicht mehr Figuren als vorher. */
+    const gezogen = SCHACH_RUNDE.kopieren(partie);
+    gezogen.stand.brett = SCHACH._brettMit(
+        SCHACH._brettMit(gezogen.stand.brett, b1, "."), c3, "S");
+
+    const nachZug = TEAM_SCHACH._veraenderungen(gezogen);
+
+    if (nachZug.figurenNeu.length !== 0) {
+        throw new Error("ein Zug wurde als erschienene Figur gelesen: "
+            + nachZug.figurenNeu.join(","));
+    }
+    if (nachZug.schlaege.length !== 0) {
+        throw new Error("ein Zug ohne Schlag wurde als Schlag gelesen");
+    }
+
+    /* 3. Eine Lootbox, die dazukommt — und danach wieder verschwindet. */
+    const mitBox = SCHACH_RUNDE.kopieren(gezogen);
+    const boxFeld = SCHACH.feldNummer("c5");
+    mitBox.bonus.push({ feld: boxFeld, art: "sprung" });
+
+    const nachBox = TEAM_SCHACH._veraenderungen(mitBox);
+    if (nachBox.boxenNeu.join(",") !== String(boxFeld)) {
+        throw new Error("die neue Lootbox wurde nicht erkannt: " + nachBox.boxenNeu.join(","));
+    }
+
+    const ohneBox = SCHACH_RUNDE.kopieren(mitBox);
+    ohneBox.bonus = [];
+
+    const nachWeg = TEAM_SCHACH._veraenderungen(ohneBox);
+    if (nachWeg.boxenWeg.join(",") !== String(boxFeld)) {
+        throw new Error("die verschwundene Lootbox wurde nicht erkannt");
+    }
+
+    /* 4. Eine Figur, die WIRKLICH dazukommt: Weiss hat danach eine mehr. */
+    const mitFigur = SCHACH_RUNDE.kopieren(ohneBox);
+    const neuFeld = SCHACH.feldNummer("d5");
+    mitFigur.stand.brett = SCHACH._brettMit(mitFigur.stand.brett, neuFeld, "B");
+
+    const nachFigur = TEAM_SCHACH._veraenderungen(mitFigur);
+    if (nachFigur.figurenNeu.join(",") !== String(neuFeld)) {
+        throw new Error("die erschienene Figur wurde nicht erkannt: "
+            + nachFigur.figurenNeu.join(","));
+    }
+
+    /* 5. Ein Schlag ist ein Farbwechsel auf einem Feld. */
+    const geschlagen = SCHACH_RUNDE.kopieren(mitFigur);
+    const opfer = SCHACH.feldNummer("d7");
+    geschlagen.stand.brett = SCHACH._brettMit(geschlagen.stand.brett, opfer, "D");
+
+    const nachSchlag = TEAM_SCHACH._veraenderungen(geschlagen);
+    if (nachSchlag.schlaege.indexOf(opfer) === -1) {
+        throw new Error("der Schlag wurde nicht erkannt");
+    }
+
+    /* 6. Ein Wechsel der Partie setzt den Vergleich zurueck — sonst wuerde die
+       fremde Stellung als lauter Veraenderungen gelesen. */
+    const andere = SCHACH_RUNDE.kopieren(geschlagen);
+    andere.id = "eine-ganz-andere";
+
+    const nachWechsel = TEAM_SCHACH._veraenderungen(andere);
+    if (nachWechsel.figurenNeu.length || nachWechsel.schlaege.length) {
+        throw new Error("nach dem Partiewechsel wurde verglichen");
+    }
+
+    TEAM_SCHACH._letzterAnblick = null;
 });
 
 pruefe("Eine Partie mit Wuerfel und eingesammelter Faehigkeit zeichnet", () => {
@@ -1737,6 +1845,99 @@ pruefe("Ein eingesammelter Unglueckswuerfel wird angesagt (v0.59)", () => {
     TEAM_SCHACH.abgleich.daten = vorher;
 });
 
+pruefe("Zug und Unglueck haben getrennte Spurfarben (v0.76)", () => {
+    /*
+     * DER GEMELDETE FEHLER: „Kann es sein, dass sich die gruene Farbe meiner
+     * Bewegung nicht richtig verhaelt, wenn ich eine Ungluecksbox einsammle?"
+     *
+     * Ja. Der Bildschirm nahm immer nur den LETZTEN Verlaufseintrag — und das
+     * war nach einem eingesammelten Unglueckswuerfel dessen eigener Eintrag.
+     * Der trug bis v0.75 das Feld der LOOTBOX als Ziel: Die Spur wurde ganz
+     * gelb, lief vom Startfeld bis zur Lootbox und hoerte dort auf, waehrend
+     * die Figur ganz woanders stand.
+     *
+     * Der Turm zieht a1 nach a6 und nimmt auf a3 einen Erdrutsch mit, der ihn
+     * anschliessend auf a5 zurueckschiebt. Zu sehen sein muss BEIDES: der Zug
+     * in Gruen und der Rutsch in Gelb.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Spur und Unglueck", 7700);
+
+    let partie = SCHACH_RUNDE.teamBeitreten(angelegt.partie, "id-anna", "weiss", 7700);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 7700);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 7700);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 7700);
+
+    partie = SCHACH_RUNDE.kopieren(partie);
+    partie.regeln.faehigkeiten = true;
+    partie.regeln.lootboxMenge = "wenig";
+    partie.stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        brett: "....k..."
+            + "....b..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    partie.bonus.push({ feld: SCHACH.feldNummer("a3"), art: "erdrutsch", pech: true });
+
+    partie = SCHACH_RUNDE.ziehen(partie, "id-anna",
+        SCHACH.feldNummer("a1"), SCHACH.feldNummer("a6"), "D", "Anna", 7710);
+
+    const letzter = partie.verlauf[partie.verlauf.length - 1];
+    if (!letzter || letzter.wirkung !== "pech") {
+        throw new Error("der Zug hat gar keinen Unglueckswuerfel ausgeloest");
+    }
+    if (letzter.von !== -1 || letzter.nach !== -1) {
+        throw new Error("der Unglueck-Eintrag gibt sich als Bewegung aus: "
+            + letzter.von + " -> " + letzter.nach);
+    }
+
+    const spur = TEAM_SCHACH._letzteSpur(partie);
+    const feld = (name) => SCHACH.feldNummer(name);
+
+    /* Der ganze Weg des Zuges ist markiert — bis a6, nicht nur bis zur
+       Lootbox auf a3. */
+    for (const name of ["a1", "a2", "a3", "a4", "a5", "a6"]) {
+        if (!spur.weg[feld(name)]) {
+            throw new Error(name + " fehlt in der Spur des Zuges");
+        }
+    }
+
+    /* Gruen ist, was der Zug war — gelb nur, was der Erdrutsch bewegt hat. */
+    for (const name of ["a1", "a2", "a3", "a4"]) {
+        if (spur.pech[feld(name)]) {
+            throw new Error(name + " ist gelb, gehoert aber zum Zug");
+        }
+    }
+    for (const name of ["a5", "a6"]) {
+        if (!spur.pech[feld(name)]) {
+            throw new Error(name + " muesste gelb sein — dort wirkte der Erdrutsch");
+        }
+    }
+
+    /* Und die Bewegung nimmt die Figur des ZUGES, nicht das Lootbox-Feld. */
+    const vorher = TEAM_SCHACH.abgleich.daten;
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        angelegt.tafel, partie, 7710);
+    TEAM_SCHACH.partieOeffnen(partie.id);
+
+    const zelle = TEAM_SCHACH.wurzelEl.querySelector(
+        "[data-feld=\"" + SCHACH.feldNummer("a3") + "\"]");
+    if (zelle && zelle.kinder.some(
+        (kind) => String(kind.className || "").indexOf("figur-zieht") !== -1)) {
+        throw new Error("die Bewegung laeuft auf dem Feld der Lootbox");
+    }
+
+    TEAM_SCHACH.offeneId = "";
+    TEAM_SCHACH.abgleich.daten = vorher;
+});
+
 pruefe("Wer nicht am Zug ist, kann das Brett nicht bedienen", () => {
     /*
      * Vorzuege gibt es seit v2.8 nicht mehr (siehe docs\DECISIONS.md). Das
@@ -1803,6 +2004,261 @@ pruefe("Ohne Anmeldung kommt der Hinweis statt eines Bretts", () => {
         umgebung.ICH.person = () => ({ id: "id-anna", name: "Anna" });
     }
 });
+
+/* ------------------------------------------------------------------ *
+ * Die drei Bildschirm-Punkte aus v0.76
+ * ------------------------------------------------------------------ */
+
+/*
+ * Traegt dieses Element die Klasse? Gefragt werden BEIDE Wege: `className`
+ * (beim Bauen mitgegeben) und `classList` (spaeter hinzugefuegt). Im Browser
+ * ist das dasselbe, im Nachbau nicht — genau daran ist schon einmal ein Test
+ * vorbeigelaufen (siehe `classList.contains`).
+ */
+function hatKlasse(element, klasse) {
+    if (String(element.className || "").split(" ").indexOf(klasse) !== -1) {
+        return true;
+    }
+    return !!(element.classList && element.classList.contains(klasse));
+}
+
+/* Sucht das erste Kind mit dieser Klasse, egal wie tief. */
+function klasseSuchen(element, klasse) {
+    for (const kind of element.kinder || []) {
+        if (hatKlasse(kind, klasse)) {
+            return kind;
+        }
+        const tiefer = klasseSuchen(kind, klasse);
+        if (tiefer) {
+            return tiefer;
+        }
+    }
+    return null;
+}
+
+/* Zaehlt alle Kinder mit dieser Klasse, egal wie tief. */
+function klasseZaehlen(element, klasse) {
+    let anzahl = 0;
+    for (const kind of element.kinder || []) {
+        if (hatKlasse(kind, klasse)) {
+            anzahl++;
+        }
+        anzahl += klasseZaehlen(kind, klasse);
+    }
+    return anzahl;
+}
+
+pruefe("Das kleine Brett zeichnet die Risse mit (v0.76)", () => {
+    /*
+     * DER GEMELDETE FEHLER: „Bei der Was-ist-passiert-Ansicht zeigt es nicht
+     * das Kreuz-Schachbrett." Die Rueckschau zeichnet die Schlussstellung mit
+     * `_beispielBrettBauen` — und die kannte als Einzige die Risse nicht. Auf
+     * einem Kreuz-Brett sind die vier toten Ecken aber genau das.
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "kreuzKlein", "Kreuz-Rueckschau", 7400);
+
+    const partie = angelegt.partie;
+    const ecken = SCHACH.risse(partie.stand).length;
+
+    if (ecken === 0) {
+        throw new Error("das Kreuz-Brett hat keine toten Ecken");
+    }
+
+    const brett = TEAM_SCHACH._beispielBrettBauen({
+        runde: partie,
+        marken: [],
+        wahl: [],
+        ziele: [],
+        wege: [],
+        tipp: -1
+    });
+
+    const gezeichnet = klasseZaehlen(brett, "feld-riss");
+    if (gezeichnet !== ecken) {
+        throw new Error("erwartet " + ecken + " Risse, gezeichnet " + gezeichnet);
+    }
+
+    /* Auf einem Brett ohne Risse darf keiner auftauchen. */
+    const klassisch = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard);
+    const ohne = TEAM_SCHACH._beispielBrettBauen({
+        runde: klassisch,
+        marken: [],
+        wahl: [],
+        ziele: [],
+        wege: [],
+        tipp: -1
+    });
+
+    if (klasseZaehlen(ohne, "feld-riss") !== 0) {
+        throw new Error("ein Riss auf einem Brett ohne Risse");
+    }
+});
+
+pruefe("Nur die fuehrende Seite bekommt ein Plus (v0.76)", () => {
+    /*
+     * DER GEMELDETE FEHLER: „Der Figurenzaehler plus/minus ist nicht richtig,
+     * bitte von bekannten Schach-Apps abschauen." Dort steht das Plus nur bei
+     * dem, der vorn liegt — und es kommt aus der STELLUNG.
+     */
+    let partie = SCHACH_RUNDE.kopieren(
+        SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, kennungen.standard));
+
+    /* Ausgeglichen: nirgends eine Zahl. */
+    const gleichstand = TEAM_SCHACH._bilanzBauen(partie);
+    for (const spalte of gleichstand.kinder) {
+        const zahl = klasseSuchen(spalte, "bilanz-punkte");
+        if (zahl && String(zahl.textContent || "") !== "") {
+            throw new Error("bei Gleichstand steht eine Zahl: " + zahl.textContent);
+        }
+    }
+
+    /* Weiss hat eine Dame mehr, ohne dass jemals etwas geschlagen wurde —
+       genau der Fall, den der alte Zaehler nicht sah. */
+    partie.stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "D...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const zeile = TEAM_SCHACH._bilanzBauen(partie);
+    const zahlen = zeile.kinder.map((spalte) => {
+        const feld = klasseSuchen(spalte, "bilanz-punkte");
+        return feld ? String(feld.textContent || "") : "fehlt";
+    });
+
+    if (zahlen[0] !== "+9") {
+        throw new Error("Weiss muesste +9 zeigen, zeigt " + zahlen[0]);
+    }
+    if (zahlen[1] !== "") {
+        throw new Error("Schwarz darf nichts zeigen, zeigt " + zahlen[1]);
+    }
+});
+
+pruefe("Einigkeit ist die Vorgabe, der Haken fragt das Gegenteil (v0.76)", () => {
+    /*
+     * DER GEMELDETE PUNKT: „Team muss einig sein soll andersrum da stehen, also
+     * dass einig sein Standard sein soll und das andere (wer zuerst zieht,
+     * zieht zuerst) nur mit Knopfdruck auswaehlbar ist."
+     *
+     * Gespeichert wird weiter `regeln.einigkeit` mit derselben Bedeutung —
+     * umgedreht ist nur, was am Bildschirm steht.
+     */
+    TEAM_SCHACH.partieAnlegen();
+
+    if (TEAM_SCHACH.neueRegeln.einigkeit !== true) {
+        throw new Error("Einigkeit ist beim Anlegen nicht die Vorgabe");
+    }
+
+    /* Die Zeile heisst nach dem SCHNELLEN Weg — und ihr Haken ist aus. */
+    const zeilen = [];
+    const sammeln = (element) => {
+        if (String(element.className || "").indexOf("schalter-zeile") !== -1) {
+            zeilen.push(element);
+        }
+        for (const kind of element.kinder || []) {
+            sammeln(kind);
+        }
+    };
+    sammeln(TEAM_SCHACH.wurzelEl);
+
+    const gesucht = zeilen.find((zeile) => {
+        const titel = klasseSuchen(zeile, "schalter-titel");
+        return titel && String(titel.textContent || "") === "Wer zuerst zieht, hat gezogen";
+    });
+
+    if (!gesucht) {
+        throw new Error("die Zeile Wer-zuerst-zieht fehlt");
+    }
+
+    const kasten = gesucht.kinder.find((kind) => kind.tagName === "input");
+    if (!kasten) {
+        throw new Error("die Zeile hat keinen Haken");
+    }
+    if (kasten.checked !== false) {
+        throw new Error("der Haken muesste aus sein");
+    }
+
+    /* Anhaken schaltet die Abstimmung ab, nicht an. */
+    kasten.checked = true;
+    kasten.ausloesen("change");
+
+    if (TEAM_SCHACH.neueRegeln.einigkeit !== false) {
+        throw new Error("der umgekehrte Haken schaltet in die falsche Richtung");
+    }
+
+    TEAM_SCHACH.auswahlSchliessen();
+});
+
+pruefe("Ein laufender Sprung laesst sich abbrechen (v0.76)", () => {
+    /*
+     * DER GEMELDETE PUNKT: „Wenn man ein Item aktiv hat, also gerade dabei ist
+     * eine Figur auszuwaehlen, soll man mit einem Abbrechen-Knopf das Item
+     * abbrechen koennen, und das Item muss zurueckgegeben werden."
+     */
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        TEAM_SCHACH.abgleich.daten, "standard", "Sprung abbrechen", 7500);
+
+    let partie = angelegt.partie;
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-anna", "weiss", 7500);
+    partie = SCHACH_RUNDE.teamBeitreten(partie, "id-bert", "schwarz", 7500);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "weiss", true, 7500);
+    partie = SCHACH_RUNDE.bereitSetzen(partie, "schwarz", true, 7500);
+    partie.faehigkeiten.weiss.push("sprung");
+
+    partie = SCHACH_RUNDE.faehigkeitEinsetzen(
+        partie, "id-anna", "sprung", -1, "Anna", 7600);
+
+    TEAM_SCHACH.abgleich.daten = SCHACH_TAFEL.partieEinsetzen(
+        angelegt.tafel, partie, 7600);
+    TEAM_SCHACH.partieOeffnen(angelegt.partie.id);
+
+    const leiste = klasseSuchen(TEAM_SCHACH.wurzelEl, "platzieren");
+    if (!leiste) {
+        throw new Error("keine Leiste fuer das laufende Item");
+    }
+
+    const knopf = klasseSuchen(leiste, "knopf-still");
+    if (!knopf || String(knopf.textContent || "") !== "Abbrechen") {
+        throw new Error("kein Abbrechen-Knopf");
+    }
+
+    /* Der Knopf nimmt die Faehigkeit wirklich zurueck. */
+    knopf.ausloesen("click");
+
+    const jetzt = SCHACH_TAFEL.partie(TEAM_SCHACH.abgleich.daten, angelegt.partie.id);
+    if (jetzt.faehigkeiten.weiss.indexOf("sprung") === -1) {
+        throw new Error("der Sprung kam nicht in den Vorrat zurueck");
+    }
+    if (jetzt.stand.zusatzMuster !== "") {
+        throw new Error("das Muster laeuft weiter");
+    }
+
+    /* Ohne laufendes Item gibt es die Leiste nicht. */
+    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    if (klasseSuchen(TEAM_SCHACH.wurzelEl, "platzieren")) {
+        throw new Error("die Leiste bleibt stehen, obwohl nichts mehr laeuft");
+    }
+
+    TEAM_SCHACH.offeneId = "";
+
+    /*
+     * Der Schreibvorgang haengt noch am `await` und meldet sich erst ab, wenn
+     * dieser Lauf die Kontrolle abgibt — also nach allen synchronen Tests. Der
+     * Zaehler wird deshalb hier von Hand zurueckgesetzt; sonst zaehlt der Test
+     * „Ein Zug steht sofort auf dem Brett" weiter unten eins zu viel.
+     */
+    TEAM_SCHACH.abgleich.vorgaenge = 0;
+});
+
 
 /* ------------------------------------------------------------------ *
  * Rangliste
@@ -2724,6 +3180,75 @@ async function zeitlimitPruefen() {
         netz.haengt = false;
         await speicher.laden();
     });
+
+    /*
+     * DIE ÜBERHOLTE ANTWORT DER REGELMAESSIGEN ABFRAGE (v0.76).
+     *
+     * Gemeldet als „Doppelzug-Fehler — der zweite Zug wird nur angezeigt": Der
+     * zweite eigene Zug kam mit „Jemand war schneller" zurueck, obwohl niemand
+     * sonst im Team war. Die Ursache liegt nicht beim Doppelzug, sondern im
+     * Abgleich: Seine Sperren gegen fremde Staende greifen VOR dem Netzaufruf,
+     * die Antwort kommt aber danach — und trug den Stand von vor dem eigenen
+     * Zug. Der Bildschirm zeichnete daraufhin mit einem veralteten Zugzaehler,
+     * und der naechste Zug wurde als „jemand war schneller" abgewiesen.
+     *
+     * Auffallen konnte das nur beim Doppelzug: Sonst ist nach dem eigenen Zug
+     * der Gegner dran, und bis man wieder tippen darf, hat die naechste Abfrage
+     * den Stand laengst geradegerueckt.
+     */
+    const abgleichBauen = (laden, uebernahmen) => new Abgleich(
+        {
+            art: "gemeinsam",
+            beschreibung: "Attrappe",
+            laden: laden,
+            speichern: async () => true
+        },
+        { abfrageIntervallMs: 3000, schreibVerzoegerungMs: 10 },
+        {
+            beiDaten: () => { uebernahmen.anzahl++; },
+            beiStatus: () => { /* nichts zu melden */ },
+            leereDaten: () => ({ stand: "leer" }),
+            inhaltGleich: (a, b) => JSON.stringify(a) === JSON.stringify(b)
+        }
+    );
+
+    await pruefeMitWarten("Eine ueberholte Antwort der Abfrage wird verworfen (v0.76)",
+        async () => {
+            const uebernahmen = { anzahl: 0 };
+            const abgleich = abgleichBauen(async () => ({ stand: "alt" }), uebernahmen);
+
+            abgleich.daten = { stand: "neu" };
+
+            /* Die Antwort ist unterwegs — und genau in dieser Zeit laeuft ein
+               eigener Schreibvorgang durch. */
+            const laeuft = abgleich.fremdenStandHolen();
+            abgleich.eigenerVorgangBeginnt();
+            abgleich.eigenerVorgangEndet();
+            await laeuft;
+
+            if (uebernahmen.anzahl !== 0) {
+                throw new Error("der ueberholte Stand wurde uebernommen");
+            }
+            if (JSON.stringify(abgleich.daten) !== JSON.stringify({ stand: "neu" })) {
+                throw new Error("der eigene Stand wurde ueberschrieben");
+            }
+        });
+
+    await pruefeMitWarten("Ohne eigenen Vorgang kommt der fremde Stand ganz normal an",
+        async () => {
+            const uebernahmen = { anzahl: 0 };
+            const abgleich = abgleichBauen(async () => ({ stand: "fremd" }), uebernahmen);
+
+            abgleich.daten = { stand: "eigen" };
+            await abgleich.fremdenStandHolen();
+
+            if (uebernahmen.anzahl !== 1) {
+                throw new Error("ein fremder Stand kommt nicht mehr an");
+            }
+            if (JSON.stringify(abgleich.daten) !== JSON.stringify({ stand: "fremd" })) {
+                throw new Error("der fremde Stand wurde nicht uebernommen");
+            }
+        });
 
     console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
     process.exit(anzahlFehler === 0 ? 0 : 1);

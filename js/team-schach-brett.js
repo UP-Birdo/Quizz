@@ -66,6 +66,118 @@ Object.assign(TEAM_SCHACH, {
         if (!dabei(reihe, spalte + 1)) { zelle.classList.add("kante-rechts"); }
     },
 
+    /* ---------------------------------------------------------------- *
+     * WAS SICH SEIT DEM LETZTEN ZEICHNEN GEÄNDERT HAT (seit v0.77)
+     *
+     * Grundlage der kleinen Animationen: Eine Lootbox, die erscheint, eine,
+     * die verschwindet, eine Figur, die dazukommt, und eine, die geschlagen
+     * wird (Nutzer-Wunsch 18.08., ausdrücklich „keine Farben und sehr simpel").
+     *
+     * WARUM VERGLICHEN UND NICHT AUS DEM VERLAUF GELESEN. Der Verlauf sagt,
+     * was jemand GETAN hat; die Animation soll zeigen, was auf dem Brett
+     * ANDERS ist. Das ist nicht dasselbe: Eine Lootbox verschwindet auch, wenn
+     * eine Mauer sie frisst (v0.77) oder ein Riss sie verschluckt (v0.60), und
+     * für jeden dieser Wege einen eigenen Verlaufseintrag zu deuten hiesse,
+     * die Liste bei jeder neuen Regel nachzupflegen. Der Vergleich kennt sie
+     * alle, ohne einen davon zu kennen.
+     *
+     * DER ERSTE ANBLICK ANIMIERT NIE. Wer eine Partie öffnet, sähe sonst die
+     * ganze Stellung auf einmal aufpoppen. Dasselbe beim Wechsel der Partie —
+     * und wenn sich das BRETTMASS geändert hat (Ausdehnung, Einsturz), denn
+     * dann zeigen dieselben Feldnummern woanders hin.
+     *
+     * Liefert vier Listen von Feldnummern.
+     * ---------------------------------------------------------------- */
+    _letzterAnblick: null,
+
+    _veraenderungen(partie) {
+        const nichts = { boxenNeu: [], boxenWeg: [], figurenNeu: [], schlaege: [] };
+
+        const jetzt = {
+            partie: partie.id || "",
+            brett: partie.stand.brett,
+            boxen: SCHACH_RUNDE.offeneBonusFelder(partie).map((eintrag) => eintrag.feld)
+        };
+        const vorher = TEAM_SCHACH._letzterAnblick;
+        TEAM_SCHACH._letzterAnblick = jetzt;
+
+        if (!vorher || vorher.partie !== jetzt.partie
+            || vorher.brett.length !== jetzt.brett.length) {
+            return nichts;
+        }
+
+        /*
+         * WIE VIELE FIGUREN JE FARBE DAZUGEKOMMEN SIND — die Frage, an der
+         * „erschienen" und „hingezogen" auseinandergehen.
+         *
+         * Ein freies Feld, auf dem plötzlich eine Figur steht, ist meistens
+         * nur das Ziel eines Zuges; dort ist nichts erschienen, dort ist etwas
+         * angekommen. Wirklich NEU ist eine Figur nur, wenn ihre Farbe
+         * insgesamt mehr Figuren hat als vorher — so entstehen Nachschub,
+         * Spiegel, Wiedergeburt, Wiederbelebung und Friedhof, und so entsteht
+         * kein Zug.
+         */
+        const zaehlen = (brett, gross) => {
+            let anzahl = 0;
+            for (let stelle = 0; stelle < brett.length; stelle++) {
+                const zeichen = brett[stelle];
+                if (zeichen === ".") {
+                    continue;
+                }
+                if ((zeichen === zeichen.toUpperCase()) === gross) {
+                    anzahl++;
+                }
+            }
+            return anzahl;
+        };
+
+        const mehrWeiss = zaehlen(jetzt.brett, true) > zaehlen(vorher.brett, true);
+        const mehrSchwarz = zaehlen(jetzt.brett, false) > zaehlen(vorher.brett, false);
+
+        const figurenNeu = [];
+        const schlaege = [];
+
+        for (let feld = 0; feld < jetzt.brett.length; feld++) {
+            const alt = vorher.brett[feld];
+            const neu = jetzt.brett[feld];
+
+            if (alt === neu) {
+                continue;
+            }
+
+            if (alt === "." && neu !== ".") {
+                const weiss = (neu === neu.toUpperCase());
+                if (weiss ? mehrWeiss : mehrSchwarz) {
+                    figurenNeu.push(feld);
+                }
+                continue;
+            }
+
+            /*
+             * EIN SCHLAG IST EIN FARBWECHSEL AUF EINEM FELD. Stand dort eben
+             * noch Schwarz und jetzt Weiss, hat Weiss dort geschlagen —
+             * gleich, ob durch einen Zug oder durch eine Fähigkeit.
+             *
+             * Zwei Fälle fallen bewusst nicht darunter: das Schlagen im
+             * Vorbeigehen (der Bauer fällt auf einem ANDEREN Feld als dem
+             * Zielfeld) und eine Figur, die ohne Nachrücker verschwindet.
+             * Beides wäre nur mit einer zweiten Quelle sauber zu erkennen, und
+             * ein leeres Feld, das kurz aufblitzt, erklärt niemandem etwas.
+             */
+            if (alt !== "." && neu !== "."
+                && (alt === alt.toUpperCase()) !== (neu === neu.toUpperCase())) {
+                schlaege.push(feld);
+            }
+        }
+
+        return {
+            boxenNeu: jetzt.boxen.filter((feld) => vorher.boxen.indexOf(feld) === -1),
+            boxenWeg: vorher.boxen.filter((feld) => jetzt.boxen.indexOf(feld) === -1),
+            figurenNeu: figurenNeu,
+            schlaege: schlaege
+        };
+    },
+
     _brettBauen(partie, person) {
         const halter = TEAM_SCHACH._element("div", "brett-halter");
 
@@ -115,8 +227,36 @@ Object.assign(TEAM_SCHACH, {
         const graeberZeigen = (TEAM_SCHACH.zielFaehigkeit === "friedhof"
             || TEAM_SCHACH.zielFaehigkeit === "wiederbelebung");
 
+        /*
+         * WANN DIE LOOTBOXEN AUSBLEIBEN.
+         *
+         * Zwei Gründe, dieselbe Wirkung:
+         *
+         *   Gräber (seit v0.57)   Friedhof und Wiederbelebung zeigen ihre
+         *                         Gefallenen auf genau den Feldern, die auch
+         *                         Lootboxen tragen können — beides übereinander
+         *                         ist nicht mehr lesbar.
+         *   Mauer (seit v0.77)    Sie frisst die Lootbox, über die sie gelegt
+         *                         wird (Nutzer-Ansage 18.08., „blende sie aus
+         *                         wie beim Friedhof"). Man sucht in diesem
+         *                         Moment eine Reihe mit drei freien Feldern,
+         *                         nicht eine Box — und was gleich verschwindet,
+         *                         soll nicht so aussehen, als sei es noch zu
+         *                         holen.
+         *
+         * In beiden Fällen sind sie nur verborgen, nicht weg: Wer abbricht,
+         * sieht sie sofort wieder.
+         */
+        const wuerfelAusblenden = graeberZeigen
+            || (TEAM_SCHACH.zielFaehigkeit === "mauer");
+
         /* Die Felder, über die zuletzt gezogen wurde — siehe _letzteSpur. */
         const spur = TEAM_SCHACH._letzteSpur(partie);
+
+        /* Was sich seit dem letzten Zeichnen geändert hat — siehe
+           `_veraenderungen`. GENAU EINMAL je Zeichnung abfragen: Der Aufruf
+           merkt sich den neuen Anblick, ein zweiter fände nichts mehr. */
+        const anders = TEAM_SCHACH._veraenderungen(partie);
 
         for (let anzeige = 0; anzeige < felder; anzeige++) {
             const feld = TEAM_SCHACH._feldZuAnzeige(stand, drehung,
@@ -135,7 +275,10 @@ Object.assign(TEAM_SCHACH, {
              * was gerade möglich ist, ist wichtiger als das, was war.
              */
             if (spur.weg[feld]) {
-                zelle.classList.add(spur.pech ? "feld-spur-pech" : "feld-spur");
+                /* Gelb nur dort, wo wirklich ein Unglück gewirkt hat — der
+                   eigene Zug bleibt grün, auch wenn er eine Unglücks-Lootbox
+                   eingesammelt hat (seit v0.76). */
+                zelle.classList.add(spur.pech[feld] ? "feld-spur-pech" : "feld-spur");
                 if (spur.enden[feld]) {
                     zelle.classList.add("feld-spur-ende");
                 }
@@ -155,22 +298,30 @@ Object.assign(TEAM_SCHACH, {
 
                 const zeichen = TEAM_SCHACH._element("span",
                     "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz")
-                    + (getruebt ? " figur-getruebt" : ""),
+                    + (getruebt ? " figur-getruebt" : "")
+                    + ((anders.figurenNeu.indexOf(feld) !== -1) ? " figur-erscheint" : ""),
                     TEAM_SCHACH._figurZeichen(gezeigt));
                 zelle.appendChild(zeichen);
             }
 
             /*
-             * Liegt hier ein Würfel mit einer Fähigkeit?
-             *
-             * WÄHREND DIE GEFALLENEN BLASS LIEGEN, BLEIBEN DIE WÜRFEL AUS
-             * (seit v0.57). Friedhof und Wiederbelebung zeigen ihre Gräber auf
-             * genau den Feldern, die auch Würfel tragen können — beides
-             * übereinander ist nicht mehr lesbar, und in diesem Moment sucht
-             * man Gräber, keine Würfel. Sie sind nur verborgen, nicht weg:
-             * Wer abbricht, sieht sie sofort wieder.
+             * Hier wurde gerade geschlagen: ein kurzer grauer Ring, dort wo
+             * die gefallene Figur stand. Er liegt UNTER der neuen Figur, nicht
+             * an ihrer Stelle — sie ist ja schon da.
              */
-            const bonusHier = graeberZeigen
+            if (anders.schlaege.indexOf(feld) !== -1) {
+                zelle.appendChild(TEAM_SCHACH._element("span", "verpufft verpufft-schlag"));
+            }
+
+            /* Hier lag bis eben eine Lootbox: eingesammelt, von einer Mauer
+               gefressen oder in einen Riss gefallen. Derselbe Ring. */
+            if (anders.boxenWeg.indexOf(feld) !== -1) {
+                zelle.appendChild(TEAM_SCHACH._element("span", "verpufft verpufft-box"));
+            }
+
+            /* Liegt hier ein Würfel mit einer Fähigkeit? Warum er manchmal
+               ausbleibt, steht oben bei `wuerfelAusblenden`. */
+            const bonusHier = wuerfelAusblenden
                 ? null
                 : bonus.find((eintrag) => eintrag.feld === feld);
 
@@ -197,6 +348,9 @@ Object.assign(TEAM_SCHACH, {
                 const stufe = SCHACH_RUNDE.bonusStufe(bonusHier);
 
                 zelle.classList.add("feld-bonus");
+                if (anders.boxenNeu.indexOf(feld) !== -1) {
+                    zelle.classList.add("feld-bonus-neu");
+                }
                 zelle.title = "Lootbox"
                     + (zeigen ? " — " + stufe.titel : "")
                     + (pechZeigen ? (zeigen ? ", Unglück" : " — Unglück") : "");
@@ -444,6 +598,11 @@ Object.assign(TEAM_SCHACH, {
             halter.appendChild(platzieren);
         }
 
+        const zugmuster = TEAM_SCHACH._zugmusterBauen(partie, person);
+        if (zugmuster) {
+            halter.appendChild(zugmuster);
+        }
+
         const abstimmung = TEAM_SCHACH._abstimmungBauen(partie, person);
         if (abstimmung) {
             halter.appendChild(abstimmung);
@@ -497,6 +656,53 @@ Object.assign(TEAM_SCHACH, {
         }
         leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still",
             () => TEAM_SCHACH.zielVerwerfen()));
+
+        karte.appendChild(leiste);
+        return karte;
+    },
+
+    /*
+     * DIE LEISTE ZUM ABBRECHEN EINES AKTIVEN ITEMS (seit v0.76).
+     *
+     * Gemeldet als: „Wenn man ein Item aktiv hat, also gerade dabei ist eine
+     * Figur auszuwählen, soll man mit einem Abbrechen-Knopf das Item abbrechen
+     * können, und das Item muss zurückgegeben werden."
+     *
+     * Sie erscheint bei Sprung und Teleport — den Fähigkeiten, die IHR ZUG
+     * sind (`istDerZug`). Sie sind mit dem Antippen sofort verbraucht, und
+     * danach zählt auf dem Brett nur noch ihr Muster; wer sich vertippt hatte,
+     * musste bis v0.75 springen. Fähigkeiten mit Zielfeld haben ihren
+     * Abbrechen-Knopf seit v0.57 (`_platzierenBauen`) — dort ist noch gar
+     * nichts eingesetzt, hier wird wirklich zurückgenommen.
+     *
+     * WELCHE Fähigkeit gerade läuft, beantwortet das Modell
+     * (`SCHACH_RUNDE.laufendesZugmuster`) — der Bildschirm liest kein Muster.
+     */
+    _zugmusterBauen(partie, person) {
+        if (!SCHACH_RUNDE.darfZiehen(partie, person.id)) {
+            return null;
+        }
+
+        const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
+        const art = SCHACH_RUNDE.laufendesZugmuster(partie, meinTeam);
+
+        if (!art) {
+            return null;
+        }
+
+        const titel = SCHACH_VARIANTEN.faehigkeitTitel(art);
+        const karte = TEAM_SCHACH._element("section", "karte platzieren");
+
+        karte.appendChild(TEAM_SCHACH._element("h3", "", titel + " läuft"));
+        karte.appendChild(TEAM_SCHACH._element("p", "erklaerung",
+            titel + " IST dein Zug: Tippe deine Figur an, dann ihr Ziel. Etwas "
+            + "anderes geht in diesem Zug nicht mehr — wenn du es dir anders "
+            + "überlegst, brich hier ab. " + titel + " kommt dann zurück in "
+            + "deinen Vorrat."));
+
+        const leiste = TEAM_SCHACH._element("div", "knopf-zeile");
+        leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still",
+            () => TEAM_SCHACH.zugmusterVerwerfen(partie)));
 
         karte.appendChild(leiste);
         return karte;
@@ -883,47 +1089,112 @@ Object.assign(TEAM_SCHACH, {
         return null;
     },
 
+    /*
+     * DER ZUG, DER ZU DIESEM UNGLÜCK GEHÖRT (seit v0.76).
+     *
+     * Ein Unglückswürfel wird nicht eingesetzt, er wird EINGESAMMELT — also
+     * gehört zu ihm immer eine Bewegung, die ihn berührt hat. Sie steht
+     * unmittelbar davor im Verlauf; dazwischen können nur Einträge stehen, die
+     * nebenher entstanden sind (neu erschienene Lootboxen, ein zweiter
+     * Unglückswürfel auf demselben Weg).
+     *
+     * Weiter zurück wird NICHT gesucht: Der erste Eintrag, der etwas anderes
+     * ist, gehört zu diesem Halbzug — sonst zeigte die Spur einen Zug von
+     * vorgestern.
+     */
+    _zugZumUnglueck(partie, unglueck) {
+        const stelle = partie.verlauf.lastIndexOf(unglueck);
+
+        for (let nummer = stelle - 1; nummer >= 0; nummer--) {
+            const eintrag = partie.verlauf[nummer];
+
+            if (eintrag.wirkung === "erscheint" || eintrag.wirkung === "pech") {
+                continue;
+            }
+            return eintrag;
+        }
+
+        return null;
+    },
+
+    /*
+     * ZUG UND UNGLÜCK SIND ZWEI DINGE (seit v0.76).
+     *
+     * Gemeldet als: „Wenn ich eine Unglücksbox einsammle, verhält sich die
+     * grüne Farbe meiner Bewegung nicht richtig." Genau so war es: Der
+     * Bildschirm nahm IMMER nur den letzten Eintrag. Sammelte ein Zug
+     * unterwegs einen Unglückswürfel ein, war das der Unglücks-Eintrag — die
+     * ganze Spur wurde gelb, und sie endete dort, wo die Lootbox lag, statt
+     * dort, wo die Figur steht.
+     *
+     * Jetzt werden beide gezeichnet: der ZUG in Grün (wo bin ich hergekommen,
+     * wo stehe ich) und darüber das UNGLÜCK in Gelb (was hat es bewegt, was
+     * hat es getroffen). Überschneiden sie sich, gewinnt Gelb — das Unglück
+     * ist das Jüngere und das Ungewöhnliche.
+     */
     _letzteSpur(partie) {
-        const spur = { weg: {}, enden: {}, wirkung: {}, pech: false };
+        const spur = { weg: {}, enden: {}, wirkung: {}, pech: {} };
         const letzter = TEAM_SCHACH._letzterBewegungsEintrag(partie);
 
         if (!letzter) {
             return spur;
         }
-        spur.pech = (letzter.wirkung === "pech");
 
-        let wege = (letzter.wege && letzter.wege.length > 0) ? letzter.wege : [];
-
-        if (wege.length === 0 && Number.isInteger(letzter.von) && letzter.von >= 0
-            && Number.isInteger(letzter.nach) && letzter.nach >= 0) {
-            wege = [{ von: letzter.von, nach: letzter.nach }];
-        }
-
-        for (const weg of wege) {
-            if (weg.von === weg.nach) {
-                continue;
-            }
-            spur.enden[weg.von] = true;
-            spur.enden[weg.nach] = true;
-
-            for (const feld of SCHACH.wegFelder(partie.stand, weg.von, weg.nach)) {
-                spur.weg[feld] = true;
+        /* Der Zug zuerst, das Unglück darüber. */
+        const eintraege = [];
+        if (letzter.wirkung === "pech") {
+            const zug = TEAM_SCHACH._zugZumUnglueck(partie, letzter);
+            if (zug) {
+                eintraege.push(zug);
             }
         }
+        eintraege.push(letzter);
 
-        /*
-         * Fähigkeiten, die nichts bewegen (Schutzschild, Fessel, Verstärkung),
-         * bekommen eine eigene Marke — sonst wäre die einzige Spur ein kurzes
-         * Aufleuchten, das verpasst, wer gerade nicht hinsieht.
-         *
-         * Neu erschienene Würfel bekommen KEINE: Sie sind schon als Würfel zu
-         * sehen, und eine zweite Marke sähe aus, als wäre gerade etwas mit
-         * ihnen passiert.
-         */
-        if (letzter.wirkung && letzter.wirkung !== "erscheint") {
-            for (const feld of (letzter.felder || [])) {
-                if (!spur.weg[feld]) {
-                    spur.wirkung[feld] = true;
+        for (const eintrag of eintraege) {
+            const istPech = (eintrag.wirkung === "pech");
+            let wege = (eintrag.wege && eintrag.wege.length > 0) ? eintrag.wege : [];
+
+            /*
+             * Der Rückfall auf `von`/`nach` gilt nur für Einträge, die WIRKLICH
+             * eine Bewegung beschreiben. Ein Unglück tut das nie — was es
+             * bewegt hat, steht ausschliesslich in `wege` (seit v0.76 trägt es
+             * deshalb `von`/`nach` = -1).
+             */
+            if (wege.length === 0 && Number.isInteger(eintrag.von) && eintrag.von >= 0
+                && Number.isInteger(eintrag.nach) && eintrag.nach >= 0) {
+                wege = [{ von: eintrag.von, nach: eintrag.nach }];
+            }
+
+            for (const weg of wege) {
+                if (weg.von === weg.nach) {
+                    continue;
+                }
+                spur.enden[weg.von] = true;
+                spur.enden[weg.nach] = true;
+
+                for (const feld of SCHACH.wegFelder(partie.stand, weg.von, weg.nach)) {
+                    spur.weg[feld] = true;
+                    if (istPech) {
+                        spur.pech[feld] = true;
+                    }
+                }
+            }
+
+            /*
+             * Fähigkeiten, die nichts bewegen (Schutzschild, Fessel,
+             * Verstärkung), bekommen eine eigene Marke — sonst wäre die einzige
+             * Spur ein kurzes Aufleuchten, das verpasst, wer gerade nicht
+             * hinsieht.
+             *
+             * Neu erschienene Würfel bekommen KEINE: Sie sind schon als Würfel
+             * zu sehen, und eine zweite Marke sähe aus, als wäre gerade etwas
+             * mit ihnen passiert.
+             */
+            if (eintrag.wirkung && eintrag.wirkung !== "erscheint") {
+                for (const feld of (eintrag.felder || [])) {
+                    if (!spur.weg[feld]) {
+                        spur.wirkung[feld] = true;
+                    }
                 }
             }
         }
@@ -1198,7 +1469,17 @@ Object.assign(TEAM_SCHACH, {
     _zugAnimieren(halter, partie, person) {
         /* Derselbe Eintrag wie bei der Spur (seit v0.69) — sonst zeigt die eine
            den Zug und die andere nicht. */
-        const letzter = TEAM_SCHACH._letzterBewegungsEintrag(partie);
+        const gefunden = TEAM_SCHACH._letzterBewegungsEintrag(partie);
+
+        /*
+         * Bei einem Unglückswürfel wandert die Figur des ZUGES, nicht das
+         * Unglück (seit v0.76). Der Unglücks-Eintrag beschreibt gar keine
+         * Bewegung — bis v0.75 trug er das Feld der Lootbox als Ziel, und die
+         * Bewegung suchte ihre Figur dort statt dort, wo sie wirklich steht.
+         */
+        const letzter = (gefunden && gefunden.wirkung === "pech")
+            ? TEAM_SCHACH._zugZumUnglueck(partie, gefunden)
+            : gefunden;
 
         if (!letzter || !Number.isInteger(letzter.von) || letzter.von < 0
             || letzter.nach < 0) {

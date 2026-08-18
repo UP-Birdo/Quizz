@@ -86,7 +86,17 @@ const TEAM_SCHACH = {
 
         zufallsArmee: false,
         armeeUnterschiedlich: false,
-        einigkeit: false
+
+        /*
+         * EINIGKEIT IST DIE VORGABE (seit v0.76, Eingangskorb vom 18.08.:
+         * „Team muss einig sein soll andersrum da stehen").
+         *
+         * Der Haken am Anlege-Bildschirm fragt deshalb das GEGENTEIL ab und
+         * heisst „Wer zuerst zieht, hat gezogen". Im MODELL bleibt `false` die
+         * Vorgabe: Eine Partie ohne Regeln-Block stammt von früher und muss
+         * weiterrechnen wie bisher.
+         */
+        einigkeit: true
     },
 
     /*
@@ -898,6 +908,30 @@ const TEAM_SCHACH = {
     },
 
     /*
+     * „Abbrechen" bei Sprung und Teleport (seit v0.76).
+     *
+     * Anders als bei `zielVerwerfen` reicht es hier NICHT, den Bildschirm
+     * aufzuräumen: Die Fähigkeit ist längst eingesetzt und steht als Muster im
+     * gemeinsamen Stand. Zurückgenommen wird sie deshalb im Modell und über
+     * denselben Weg geschrieben wie ein Zug — mitsamt der Zugzähler-Prüfung,
+     * damit zwei aus einem Team sich nicht in die Quere kommen.
+     */
+    async zugmusterVerwerfen(partie) {
+        const person = TEAM_SCHACH._ich();
+        if (!person) {
+            return;
+        }
+
+        const neu = SCHACH_RUNDE.zugmusterZuruecknehmen(partie, person.id);
+        if (!neu) {
+            return;
+        }
+
+        TEAM_SCHACH._auswahlAufheben();
+        await TEAM_SCHACH._sendenMitPruefung(neu, partie.zugZaehler);
+    },
+
+    /*
      * Wirft eine Auswahl weg, die nicht mehr zur Stellung passt (seit v4.0).
      *
      * SO SAH DER FEHLER AUS: Man tippt eine Figur an, die Zielpunkte und die
@@ -1189,7 +1223,9 @@ const TEAM_SCHACH = {
             lootboxMenge: SCHACH_VARIANTEN.MENGE_VORGABE,
             zufallsArmee: false,
             armeeUnterschiedlich: false,
-            einigkeit: false
+
+            /* Einigkeit ist die Vorgabe (seit v0.76) — siehe `neueRegeln`. */
+            einigkeit: true
         };
 
         TEAM_SCHACH._auswahlAufheben();

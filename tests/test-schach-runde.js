@@ -1964,30 +1964,61 @@ pruefe("Nachschub setzt einen Bauern auf die eigene Grundreihe (v0.61, Wunsch #1
         String(SCHACH.feldNummer("b8")), "Schwarz bekommt seine eigene Grundreihe");
 });
 
-pruefe("Eine Mauer wird nicht ueber einen Wuerfel gelegt (v0.66, Wunsch #32)", () => {
+pruefe("Die Mauer frisst die Lootbox darunter (v0.77) — kehrt v0.66 um", () => {
     /*
-     * Unter der Mauer ist das Feld gesperrt — der Wuerfel darunter waere bis
-     * zum Ablauf unerreichbar und am Brett nicht zu sehen. Gemeldet als „die
-     * Items verschwinden". Deshalb steht so ein Feld gar nicht erst zur Wahl.
+     * BIS v0.76 (Wunsch #32) war ein Feld mit Lootbox als Mauer-Ziel GESPERRT:
+     * Unter der Mauer waere die Box unerreichbar und unsichtbar gewesen, „von
+     * aussen dasselbe wie weg".
+     *
+     * SEIT v0.77 ist es umgekehrt (Nutzer-Ansage 18.08.): Die Mauer darf
+     * ueberall hin, wo es von den Figuren und vom Brettrand her geht, und eine
+     * Lootbox darunter wird gefressen — sie ist danach wirklich weg. Aus dem
+     * „dasselbe wie weg" ist ein ehrliches Weg geworden.
      */
     const runde = faehigkeitenPartie();
     const mitte = SCHACH.feldNummer("d4");
+    const wuerfelFeld = SCHACH.feldNummer("c4");
 
     const ohneWuerfel = SCHACH_RUNDE.zielFelder(runde, "id-anna", "mauer");
-    wahr(ohneWuerfel.indexOf(mitte) !== -1, "ohne Wuerfel steht d4 zur Wahl");
+    wahr(ohneWuerfel.indexOf(mitte) !== -1, "ohne Lootbox steht d4 zur Wahl");
 
-    /* Ein Wuerfel auf c4 — er liegt im Riegel um d4 (c4, d4, e4). */
+    /* Eine Lootbox auf c4 — sie liegt im Riegel um d4 (c4, d4, e4). */
     const mitWuerfel = SCHACH_RUNDE.kopieren(runde);
-    mitWuerfel.bonus.push({ feld: SCHACH.feldNummer("c4"), art: "sprung" });
+    mitWuerfel.bonus.push({ feld: wuerfelFeld, art: "sprung" });
 
     const felder = SCHACH_RUNDE.zielFelder(mitWuerfel, "id-anna", "mauer");
-    wahr(felder.indexOf(mitte) === -1, "mit Wuerfel im Riegel nicht mehr");
+    wahr(felder.indexOf(mitte) !== -1, "mit Lootbox im Riegel steht d4 WEITER zur Wahl");
 
-    /* Und weiter weg geht es weiterhin. */
-    wahr(felder.length > 0, "anderswo laesst sich die Mauer legen");
+    /* Das Ausprobieren in `zielFelder` laeuft auf Kopien: Die echte Partie
+       darf dabei keine Box verlieren. */
+    gleich(mitWuerfel.bonus.length, 1, "beim blossen Anbieten wird nichts gefressen");
 
-    /* Der Wuerfel bleibt liegen, wo er ist. */
-    gleich(mitWuerfel.bonus.length, 1, "der Wuerfel wird nicht weggeraeumt");
+    /* Und jetzt wirklich legen. */
+    const gelegt = einsetzen(mitWuerfel, "mauer", mitte);
+
+    wahr(gelegt !== null, "die Mauer laesst sich legen");
+    gleich(gelegt.bonus.length, 0, "die Lootbox darunter ist gefressen");
+    wahr(SCHACH.mauerAuf(gelegt.stand, wuerfelFeld), "und die Mauer steht auf ihrem Feld");
+
+    /* Im Verlauf steht, dass etwas gefressen wurde — sonst verschwindet eine
+       Box wortlos, und genau das war die Meldung von v0.66. */
+    const letzter = gelegt.verlauf[gelegt.verlauf.length - 1];
+    wahr(letzter.text.indexOf("frisst") !== -1,
+        "der Verlauf nennt es: " + letzter.text);
+});
+
+pruefe("Eine Mauer ohne Lootbox darunter frisst nichts (v0.77)", () => {
+    /*
+     * Die Gegenprobe zum Test darueber: Der Verlaufstext bekommt seinen Zusatz
+     * nur, wenn wirklich etwas gefressen wurde. Sonst stuende bei jeder Mauer
+     * „frisst 0 Lootboxen".
+     */
+    const gelegt = einsetzen(faehigkeitenPartie(), "mauer", SCHACH.feldNummer("d4"));
+
+    wahr(gelegt !== null, "gelegt");
+    const letzter = gelegt.verlauf[gelegt.verlauf.length - 1];
+    gleich(letzter.text.indexOf("frisst"), -1,
+        "kein Zusatz im Verlauf: " + letzter.text);
 });
 
 pruefe("Ohne Gefallene laesst sich gar nicht erst einsetzen (v0.59, Wunsch #19)", () => {
@@ -3405,6 +3436,103 @@ pruefe("Die vier Stufen sind eine Leiter ohne Knick (v0.71)", () => {
         "stehen nur noch die Koenige, ist jedes freie Feld dran");
 });
 
+pruefe("Der Ungluecks-Anteil haengt am Fuellstand (v0.77)", () => {
+    /*
+     * NUTZER-ANSAGE 18.08.: „Bei Lootbox-Regen soll die Wahrscheinlichkeit
+     * gesteigert werden, dass Ungluecksboxen erscheinen" — auf Rueckfrage
+     * praezisiert zu „so wie bei den normalen Lootboxen, anhand der freien
+     * Felder".
+     *
+     * Bis v0.76 war es eine feste Zahl (`PECH_CHANCE`, 12). Jetzt gilt
+     * dieselbe Mechanik wie bei der MENGE seit v0.71 — mit denselben Kurven
+     * und denselben zwei Klammern.
+     */
+    const grund = SCHACH_VARIANTEN.PECH_CHANCE;
+    const hoch = SCHACH_VARIANTEN.PECH_CHANCE_HOCH;
+
+    wahr(hoch > grund, "der Hoechstwert liegt ueber dem Grundwert");
+
+    /* 1. „wenig" haengt grundsaetzlich nicht am Fuellstand — auch hier nicht. */
+    for (const freie of [4, 32, 62]) {
+        gleich(SCHACH_VARIANTEN.pechChance("wenig", freie, 64), grund,
+            "wenig bleibt bei " + freie + " freien Feldern beim Grundwert");
+    }
+
+    /* 2. Auf vollem Brett faellt keine Stufe unter den Grundwert. */
+    for (const menge of SCHACH_VARIANTEN.LOOTBOX_MENGEN) {
+        wahr(SCHACH_VARIANTEN.pechChance(menge.id, 0, 64) >= grund,
+            menge.id + " unterschreitet den Grundwert nicht");
+    }
+
+    /* 3. Je leerer das Brett, desto mehr Unglueck — und nie mehr als der
+       Hoechstwert. */
+    let vorher = 0;
+    for (const freie of [0, 16, 32, 48, 62]) {
+        const wert = SCHACH_VARIANTEN.pechChance("regen", freie, 64);
+
+        wahr(wert >= vorher, "bei " + freie + " freien Feldern nicht weniger als davor ("
+            + wert.toFixed(2) + " gegen " + vorher.toFixed(2) + ")");
+        wahr(wert <= hoch, "und nie ueber dem Hoechstwert");
+        vorher = wert;
+    }
+
+    /* 4. Steht nur noch das, was stehen bleibt, ist der Hoechstwert erreicht:
+       `Math.pow(1, n)` ist 1, bei jeder Kurve. */
+    gleich(SCHACH_VARIANTEN.pechChance("regen", 62, 64), hoch,
+        "auf dem leeren Brett der Hoechstwert");
+
+    /* 5. Dieselbe Leiter wie bei der Menge: keine Stufe ist harmloser als die
+       darunter. */
+    const reihe = SCHACH_VARIANTEN.LOOTBOX_MENGEN.map((menge) => menge.id);
+    for (const freie of [4, 16, 32, 48, 62]) {
+        for (let stelle = 1; stelle < reihe.length; stelle++) {
+            wahr(SCHACH_VARIANTEN.pechChance(reihe[stelle], freie, 64)
+                >= SCHACH_VARIANTEN.pechChance(reihe[stelle - 1], freie, 64),
+                reihe[stelle] + " bringt bei " + freie
+                + " freien Feldern nicht weniger Unglueck als " + reihe[stelle - 1]);
+        }
+    }
+
+    /* 6. Was IN einem Unglueck steckt, hat sich nicht geaendert: gruen bleibt
+       klar am haeufigsten. Das war der zweite Teil des Wunsches. */
+    const gezogen = {};
+    for (let schritt = 0; schritt < 1000; schritt++) {
+        const art = SCHACH_VARIANTEN.pechZiehen(schritt / 1000);
+        const stufe = SCHACH_VARIANTEN.pechStufeVon(art).id;
+        gezogen[stufe] = (gezogen[stufe] || 0) + 1;
+    }
+    wahr(gezogen.gruen > gezogen.blau, "gruen kommt oefter als blau");
+    wahr(gezogen.blau > gezogen.lila, "blau oefter als lila");
+    wahr(gezogen.lila > gezogen.gelb, "lila oefter als gelb");
+});
+
+pruefe("Eine Partie merkt sich, mit welcher Version sie angelegt wurde (v0.77)", () => {
+    /*
+     * Aus der Frage „laufende Matches sollen in der zu Start verfuegbaren
+     * Version bleiben — oder gibt es andere Loesungen?" (18.08.). Gebaut wurde
+     * nicht das Einfrieren, sondern der Stempel; die Begruendung steht in
+     * ROADMAP.md, Buendel O3.
+     *
+     * In den Tests ist konfig.js nicht geladen, `KONFIG` also unbekannt. Genau
+     * das muss der Stempel aushalten, ohne zu werfen — im Browser steht dort
+     * die Nummer.
+     */
+    const frisch = SCHACH_RUNDE.leereRunde(1000, "standard", "p-stempel", "R");
+    gleich(typeof frisch.angelegtMit, "string", "der Stempel ist immer ein Text");
+
+    /* Er ueberlebt das Normalisieren — sonst waere er beim ersten Laden weg. */
+    const geladen = SCHACH_RUNDE.normalisieren(
+        Object.assign({}, frisch, { angelegtMit: "0.76.0" }));
+    gleich(geladen.angelegtMit, "0.76.0", "und kommt aus dem Gespeicherten zurueck");
+
+    /* Eine Partie von vor v0.77 hat ihn nicht — dann bleibt er leer, statt
+       etwas zu behaupten. */
+    const alt = Object.assign({}, frisch);
+    delete alt.angelegtMit;
+    gleich(SCHACH_RUNDE.normalisieren(alt).angelegtMit, "",
+        "eine Partie von frueher bekommt keinen erfundenen Stempel");
+});
+
 pruefe("Die unterste Stufe wirft nur nach vollen Zuegen aus (v0.71)", () => {
     /*
      * „wenig" heisst: hoechstens einmal je vollem Zug. Gezaehlt wird in
@@ -4365,8 +4493,154 @@ pruefe("Nudelholz: zwei Spalten rollen von der eigenen Seite weg", () => {
     wahr(runter !== null, "Schwarz kann es einsetzen");
     gleich(SCHACH.figurAuf(runter.stand, SCHACH.feldNummer("a4")), "b", "a5 nach a4");
 
-    /* Koenige bleiben stehen. */
-    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("e8")), "k", "der Koenig blieb");
+    /* Der Koenig auf e8 liegt gar nicht in den gerollten Spalten (a und b) —
+       er steht also weiterhin da. Dass Koenige seit v0.77 SEHR WOHL mitrollen,
+       wenn sie in der Spalte stehen, pruefen die zwei Tests weiter unten. */
+    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("e8")), "k",
+        "der Koenig ausserhalb der Spalten blieb");
+});
+
+pruefe("Nudelholz: Koenige rollen mit (v0.77)", () => {
+    /*
+     * NUTZER-ANSAGE 18.08.: „Nudelholz soll alle Figuren bewegen."
+     *
+     * Nachgemessen war: Es bewegte schon alle Figuren beider Farben — ausser
+     * Koenigen. Und diese Ausnahme wog schwerer, als sie aussah: Der Koenig
+     * blieb stehen, sein Feld blieb besetzt, und damit hielt er auch alles
+     * auf, was hinter ihm stand. Genau das steht in diesem Test.
+     */
+    const runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "........"
+            + "........"
+            + "........"
+            + "........"
+            + "k......."
+            + "B......."
+            + "B......."
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const wirkung = SCHACH.nudelholz(runde.stand, 0, -1);
+    wahr(wirkung !== null, "es passiert etwas — bis v0.76 blockierte der Koenig alles");
+
+    const auf = (name) => SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer(name));
+
+    gleich(auf("a5"), "k", "der gegnerische Koenig ist mitgerollt");
+    gleich(auf("a4"), "B", "der Bauer dahinter ruecken nach");
+    gleich(auf("a3"), "B", "und der dahinter auch");
+    gleich(auf("a2"), ".", "hinten bleibt es leer");
+});
+
+pruefe("Nudelholz: den EIGENEN Koenig schiebt man nicht ins Schach (v0.77)", () => {
+    /*
+     * Die Gegenprobe zum Test darueber. Koenige rollen mit — aber die Regel
+     * von v3.6 bleibt: Wer eine Faehigkeit einsetzt, darf seinen eigenen Koenig
+     * dabei nicht im Schach zuruecklassen. Sie steht in
+     * `faehigkeitEinsetzen`, nicht in `SCHACH.nudelholz`, und deckt damit auch
+     * das Erdbeben und den Bauernschub ab.
+     *
+     * Die Stellung: Der weisse Koenig steht auf a2 und ist dort SICHER — der
+     * schwarze Turm auf h3 beherrscht die dritte Reihe, nicht die zweite.
+     * Gerollt wuerde der Koenig genau dorthin, nach a3. Der Turm steht
+     * ausserhalb der gerollten Spalten a und b und bleibt, wo er ist.
+     *
+     * Dass er VORHER sicher steht, ist der Kern des Tests: Wer schon im Schach
+     * steht, darf weiter Faehigkeiten einsetzen, die den Zug nicht beenden —
+     * er muss danach ja ohnehin herausziehen (v3.6).
+     */
+    const runde = faehigkeitenPartie();
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + ".......t"
+            + "K......."
+            + "........",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    wahr(!SCHACH.imSchach(runde.stand, "weiss"), "auf a2 steht der Koenig sicher");
+
+    /* Die reine Rechnung schiebt ihn sehr wohl — sie kennt den Zugzusammenhang
+       nicht. */
+    const roh = SCHACH.nudelholz(runde.stand, 0, -1);
+    wahr(roh !== null, "die Rechnung selbst schiebt");
+    gleich(SCHACH.figurAuf(roh.stand, SCHACH.feldNummer("a3")), "K",
+        "der Koenig stuende auf a3");
+    wahr(SCHACH.imSchach(roh.stand, "weiss"), "und stuende dort im Schach");
+
+    /* Der Einsatz wird deshalb abgewiesen. */
+    gleich(einsetzen(runde, "nudelholz", SCHACH.feldNummer("a1")), null,
+        "eingesetzt werden kann es so nicht");
+});
+
+pruefe("Nudelholz schlaegt nicht — es schiebt nur (v0.77)", () => {
+    /*
+     * NACHGEMESSEN AM 18.08. zur Meldung: „Anscheinend ist meine Figur durch
+     * das Nudelholz auf die Figur eines Gegners gezogen und hat sie damit
+     * geschlagen."
+     *
+     * Das kann nicht passieren: Geschoben wird nur auf Felder, die LEER und
+     * nicht gesperrt sind. Was der Nutzer gesehen hat, ist etwas anderes und
+     * sieht nur genauso aus — die Spalten werden in Laufrichtung von VORN
+     * abgearbeitet, damit eine Figur Platz macht, bevor die naechste nachrueckt.
+     * Steht eine gegnerische Figur direkt vor der eigenen, wird also zuerst SIE
+     * vorgeschoben, und die eigene rueckt auf deren altes Feld nach. Am Brett
+     * steht die eigene Figur danach dort, wo eben noch die gegnerische stand —
+     * die ist aber nicht weg, sondern ein Feld weiter.
+     *
+     * Der Test misst beides: die Stellung und die Zahl der Figuren.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "b......."
+            + "B......."
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const zaehlen = (brett) => brett.split("").filter((zeichen) => zeichen !== ".").length;
+    const wirkung = SCHACH.nudelholz(stand, 0, -1);
+
+    wahr(wirkung !== null, "es passiert etwas");
+    gleich(zaehlen(wirkung.stand.brett), zaehlen(stand.brett),
+        "keine einzige Figur ist verschwunden");
+
+    const auf = (name) => SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer(name));
+    gleich(auf("a4"), "b", "der gegnerische Bauer ist ein Feld weiter");
+    gleich(auf("a3"), "B", "der eigene steht auf dessen altem Feld — das sieht aus wie ein Schlag");
+    gleich(auf("a2"), ".", "und sein eigenes altes Feld ist leer");
+
+    /* Und wenn davor WIRKLICH kein Platz ist, bleibt alles stehen. */
+    const dicht = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "b...k..."
+            + "b......."
+            + "B......."
+            + "B......."
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    gleich(SCHACH.nudelholz(dicht, 0, -1), null,
+        "bis zum Rand zugestellt bewegt sich nichts — geschlagen wird erst recht nicht");
 });
 
 /* ------------------------------------------------------------------ *
@@ -4488,6 +4762,122 @@ pruefe("Ausdehnung schiebt auch Schild, Fessel und Frost mit", () => {
     gleich(gewachsen.stand.frostFeld, stand.frostFeld + 8, "Frost mitgewandert");
     gleich(SCHACH.figurAuf(gewachsen.stand, gewachsen.stand.schildFeld), "B",
         "und da steht auch die geschuetzte Figur");
+});
+
+pruefe("Die toten Ecken wachsen mit — das Kreuz bleibt ein Kreuz (v0.77.1)", () => {
+    /*
+     * GEMELDET AM 18.08. mit Bildschirmfoto: Auf einem Kreuz-Brett waren die
+     * vier toten Ecken zerfranst, und Lootboxen lagen dort, wo ein Loch sein
+     * muesste. Ursache: Die Ausdehnung setzte die neue Spalte VOLLSTAENDIG
+     * frei, die Ecke bekam dadurch ein Loch nach aussen. Zusammen mit der
+     * Schrumpfung (die eine Linie samt Rissen wegwirft) frass sich die Form
+     * ueber die Partie von den Raendern her auf.
+     */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "kreuzKlein", "p-kreuz", "Kreuz");
+    const stand = runde.stand;
+
+    const rand = SCHACH_VARIANTEN.KREUZ.rand;
+    gleich(SCHACH.risse(stand).length, 4 * rand * rand, "frisch: vier volle Ecken");
+
+    for (const seite of ["links", "rechts"]) {
+        const gewachsen = SCHACH.ausdehnung(stand, seite);
+        wahr(gewachsen !== null, seite + ": gewachsen");
+
+        const neuBreite = SCHACH.breiteVon(gewachsen.stand);
+        const hoehe = SCHACH.hoeheVon(gewachsen.stand);
+        const spalte = (seite === "links") ? 0 : neuBreite - 1;
+
+        gleich(neuBreite, SCHACH.breiteVon(stand) + 1, seite + ": eine Spalte mehr");
+
+        /* Die neue Spalte traegt oben und unten je `rand` Loecher — die
+           fortgesetzte Ecke — und ist dazwischen frei. */
+        for (let reihe = 0; reihe < hoehe; reihe++) {
+            const feld = reihe * neuBreite + spalte;
+            const sollLoch = (reihe < rand) || (reihe >= hoehe - rand);
+
+            gleich(SCHACH.rissAuf(gewachsen.stand, feld), sollLoch,
+                seite + ": Reihe " + reihe + " der neuen Spalte "
+                + (sollLoch ? "ist ein Loch" : "ist frei"));
+        }
+
+        /* Und nichts steht darin — kopiert werden Loecher, keine Figuren. */
+        for (let reihe = 0; reihe < hoehe; reihe++) {
+            gleich(SCHACH.figurAuf(gewachsen.stand, reihe * neuBreite + spalte), ".",
+                seite + ": die neue Spalte ist leer in Reihe " + reihe);
+        }
+    }
+});
+
+pruefe("Ein Erdbeben-Loch am Rand waechst NICHT mit (v0.77.1)", () => {
+    /*
+     * Die Gegenprobe: Fortgesetzt werden nur die Loecher an den ENDEN der
+     * Randlinie, zusammenhaengend von dort gezaehlt — das sind die Ecken. Ein
+     * einzelnes Loch mittendrin stammt von einem Erdbeben, gehoert dem
+     * Spielverlauf und nicht der Brettform. Ohne diese Unterscheidung wuerde
+     * es sich mit jeder Ausdehnung verbreitern.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        /* Ein Loch mitten in der linken Randspalte (a5) und eins in der
+           obersten Ecke derselben Spalte (a8). */
+        risse: [SCHACH.feldNummer("a8"), SCHACH.feldNummer("a5")]
+    });
+
+    const gewachsen = SCHACH.ausdehnung(stand, "links");
+    wahr(gewachsen !== null, "gewachsen");
+
+    const neuBreite = SCHACH.breiteVon(gewachsen.stand);
+    gleich(neuBreite, 9, "eine Spalte mehr");
+
+    /* a8 ist die obere Ecke der Randspalte — sie setzt sich fort. */
+    gleich(SCHACH.rissAuf(gewachsen.stand, 0 * neuBreite), true,
+        "die Ecke oben setzt sich fort");
+
+    /* a5 liegt mittendrin (Reihe 3 von oben) — sie bleibt allein. */
+    gleich(SCHACH.rissAuf(gewachsen.stand, 3 * neuBreite), false,
+        "das Erdbeben-Loch waechst nicht mit");
+
+    /* Das alte Loch selbst bleibt natuerlich, nur eine Spalte weiter rechts. */
+    gleich(SCHACH.rissAuf(gewachsen.stand, 3 * neuBreite + 1), true,
+        "es liegt weiterhin da, wo es war");
+});
+
+pruefe("Auf einem Brett ohne Loecher aendert die Ausdehnung nichts (v0.77.1)", () => {
+    /* Kein Rueckschritt fuer das klassische Brett: keine Risse, keine neuen. */
+    const stand = SCHACH.standNormalisieren({ variante: "standard" });
+
+    for (const seite of ["links", "rechts", "oben", "unten"]) {
+        const gewachsen = SCHACH.ausdehnung(stand, seite);
+        wahr(gewachsen !== null, seite + ": gewachsen");
+        gleich(SCHACH.risse(gewachsen.stand).length, 0, seite + ": weiterhin keine Loecher");
+    }
+});
+
+pruefe("Auch oben und unten setzen die Ecken fort (v0.77.1)", () => {
+    /*
+     * Auf einem Kreuz kommt dieser Fall nie vor — `ausdehnung` sperrt „oben"
+     * und „unten" ab einer Hoehe von 9, und jedes Kreuz ist mindestens 10 hoch.
+     * Die Rechnung muss trotzdem in beide Richtungen stimmen, sonst ist sie
+     * beim naechsten Brett falsch.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        /* Die oberste Reihe traegt links und rechts je zwei Loecher. */
+        risse: [0, 1, 6, 7]
+    });
+
+    const gewachsen = SCHACH.ausdehnung(stand, "oben");
+    wahr(gewachsen !== null, "gewachsen");
+    gleich(SCHACH.hoeheVon(gewachsen.stand), 9, "eine Reihe mehr");
+
+    for (const spalte of [0, 1, 6, 7]) {
+        gleich(SCHACH.rissAuf(gewachsen.stand, spalte), true,
+            "Spalte " + spalte + " der neuen obersten Reihe ist ein Loch");
+    }
+    for (const spalte of [2, 3, 4, 5]) {
+        gleich(SCHACH.rissAuf(gewachsen.stand, spalte), false,
+            "Spalte " + spalte + " bleibt frei");
+    }
 });
 
 pruefe("Meuterei laesst eine eigene Figur ueberlaufen, nie den Koenig", () => {
@@ -4648,6 +5038,341 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
     }
 });
 
+
+/* ------------------------------------------------------------------ *
+ * Die Zufallsarmee auf dem Kreuz (v0.76)
+ * ------------------------------------------------------------------ */
+
+pruefe("Auf dem Kreuz zaehlt die MITTE, nicht die Brettbreite (v0.76)", () => {
+    /*
+     * DER GEMELDETE PUNKT: „Statt bei kleinem Quadrat 4 Figuren jeder hat man
+     * halt 8 beim Kreuz, weil die Armee gesplittet ist."
+     *
+     * Ein Kreuz-Streifen ist so breit wie die MITTE (Brettbreite minus die zwei
+     * toten Ecken je Seite), nicht wie das Brett. Beim kleinen Kreuz sind das
+     * dieselben 6 wie beim kleinen Quadrat — und damit dieselben 4 Figuren je
+     * Startseite.
+     */
+    const erwartet = { kreuzKlein: 4, kreuz: 8, kreuzGross: 12 };
+
+    for (const id of Object.keys(erwartet)) {
+        const variante = SCHACH_VARIANTEN.holen(id);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+
+        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante), erwartet[id],
+            id + ": Figuren je Startseite");
+
+        /* Zwei tote Ecken plus zwei freie Spalten — auf jeder Kreuz-Groesse. */
+        gleich(platz.rand, 4, id + ": zwei tote Ecken und zwei freie Spalten");
+        gleich(platz.rand + platz.spalten, variante.breite - 4,
+            id + ": auf der anderen Seite genauso");
+    }
+
+    /* Die viereckigen Bretter rechnen unveraendert weiter. */
+    for (const id of ["standard", "klein", "gross", "doppelbrett"]) {
+        gleich(SCHACH_VARIANTEN.armeeSpalten(SCHACH_VARIANTEN.holen(id)).rand, 2,
+            id + ": weiterhin zwei freie Spalten");
+    }
+});
+
+pruefe("Die Zufallsarmee steht auf beiden Startseiten des Kreuzes (v0.76)", () => {
+    /*
+     * Bis v0.75 kannte `_armeeStand` nur oben und unten: Auf dem Kreuz standen
+     * beide Armeen quer ueber der Mitte, die Fluegel blieben leer — und die
+     * Ansicht drehte sich auf eine Startseite ohne Figuren.
+     */
+    for (const kennung of ["k-a", "k-b", "k-c"]) {
+        const runde = armeePartie("kreuzKlein", kennung, false);
+        const soll = SCHACH_VARIANTEN.armeeAnzahl(SCHACH_VARIANTEN.holen("kreuzKlein"));
+
+        for (const farbe of ["weiss", "schwarz"]) {
+            const seiten = SCHACH.startSeitenVon(runde.stand, farbe);
+            gleich(seiten.length, 2, kennung + "/" + farbe + ": zwei Startseiten");
+
+            const gezaehlt = figurenZaehlen(runde.stand, farbe);
+            const summe = Object.keys(gezaehlt)
+                .reduce((wert, art) => wert + gezaehlt[art], 0);
+
+            gleich(summe, soll * 2,
+                kennung + "/" + farbe + ": je Startseite eine Armee");
+
+            /* Auf JEDER Startseite muss auch wirklich etwas stehen. */
+            for (const seite of seiten) {
+                const felder = SCHACH_RUNDE._armeeFelderKreuz(
+                    SCHACH_VARIANTEN.holen("kreuzKlein"), seite);
+                const besetzt = felder.filter((feld) =>
+                    SCHACH.farbeVon(SCHACH.figurAuf(runde.stand, feld)) === farbe);
+
+                gleich(besetzt.length, soll,
+                    kennung + "/" + farbe + "/" + seite + ": voll besetzt");
+            }
+        }
+
+        /* Nichts steht in einer toten Ecke — die Risse bleiben, was sie sind. */
+        for (const feld of SCHACH.risse(runde.stand)) {
+            gleich(SCHACH.figurAuf(runde.stand, feld), ".",
+                kennung + ": tote Ecke bleibt leer (" + feld + ")");
+        }
+    }
+});
+
+pruefe("Beim Kreuz-Duell steht je EINE Armee gegenueber (v0.76)", () => {
+    /* „Bei kleinem Kreuz-Duell sollen es wieder gegenueber je 4 Figuren sein." */
+    const runde = armeePartie("kreuzKleinEinzeln", "k-duell", false);
+    const soll = SCHACH_VARIANTEN.armeeAnzahl(SCHACH_VARIANTEN.holen("kreuzKleinEinzeln"));
+
+    gleich(soll, 4, "vier Figuren je Team");
+
+    const weisse = SCHACH.startSeitenVon(runde.stand, "weiss");
+    const schwarze = SCHACH.startSeitenVon(runde.stand, "schwarz");
+
+    gleich(weisse.length, 1, "Weiss hat eine Startseite");
+    gleich(schwarze.length, 1, "Schwarz hat eine Startseite");
+    gleich(SCHACH.SEITEN[weisse[0]].gegen, schwarze[0], "und sie liegen sich gegenueber");
+
+    for (const farbe of ["weiss", "schwarz"]) {
+        const gezaehlt = figurenZaehlen(runde.stand, farbe);
+        const summe = Object.keys(gezaehlt)
+            .reduce((wert, art) => wert + gezaehlt[art], 0);
+        gleich(summe, soll, farbe + ": genau die eine Armee");
+    }
+});
+
+pruefe("Jeder gewuerfelte Bauer auf dem Kreuz kennt seine Startseite (v0.76)", () => {
+    /*
+     * Ohne Eintrag faellt ein Bauer auf die FARBREGEL zurueck (Weiss nach oben)
+     * — auf einem Fluegel liefe er damit quer statt zur Mitte. Die Eintraege der
+     * Vorlage helfen nicht: Dort, wo vorher ein Bauer stand, steht jetzt
+     * vielleicht ein Turm.
+     */
+    for (const kennung of ["k-bauer-1", "k-bauer-2", "k-bauer-3"]) {
+        const runde = armeePartie("kreuzKlein", kennung, true);
+
+        for (let feld = 0; feld < SCHACH.felderVon(runde.stand); feld++) {
+            const figur = SCHACH.figurAuf(runde.stand, feld);
+            if (SCHACH.artVon(figur) !== "B") {
+                continue;
+            }
+
+            const seite = SCHACH.bauernSeite(runde.stand, feld);
+            const eigene = SCHACH.startSeitenVon(runde.stand, SCHACH.farbeVon(figur));
+
+            wahr(eigene.indexOf(seite) !== -1,
+                kennung + ": Bauer auf " + feld + " kennt seine Seite (" + seite + ")");
+        }
+
+        /* Und kein Eintrag zeigt auf ein Feld ohne Bauern. */
+        for (const eintrag of runde.stand.bauernSeiten) {
+            gleich(SCHACH.artVon(SCHACH.figurAuf(runde.stand, eintrag.feld)), "B",
+                kennung + ": Eintrag " + eintrag.feld + " gehoert zu einem Bauern");
+        }
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Lootboxen erscheinen nie im Nichts (v0.76)
+ * ------------------------------------------------------------------ */
+
+pruefe("Keine Lootbox auf einem Riss oder unter einer Mauer (v0.76)", () => {
+    /*
+     * DER GEMELDETE FEHLER: „Bei Kreuz-Karten sollen nicht Lootboxen im Nichts
+     * spawnen." Die vier toten Ecken sind gewoehnliche Risse — leer, aber
+     * unerreichbar. Bis v0.75 zaehlte `_bonusNachziehen` nur „steht da eine
+     * Figur", und die Box lag danach mitten im Schwarzen.
+     *
+     * Geprueft wird ueber viele Zuege, nicht ueber einen: Wo eine Box
+     * erscheint, ist gerechnet und haengt am Zugzaehler.
+     */
+    let runde = armeePartie("kreuzKlein", "k-loot", false);
+    runde.regeln.faehigkeiten = true;
+    runde.regeln.lootboxMenge = "regen";
+    runde.laeuft = true;
+    runde.teams.weiss = ["id-anna"];
+    runde.teams.schwarz = ["id-bert"];
+
+    /* Dazu ein paar Risse mitten im Brett — ein Erdbeben macht genau das. */
+    runde.stand = Object.assign({}, runde.stand, {
+        risse: SCHACH.risse(runde.stand).concat([44, 45, 54, 55])
+    });
+
+    let gesehen = 0;
+
+    for (let takt = 0; takt < 60; takt++) {
+        runde.zugZaehler = takt;
+        SCHACH_RUNDE._bonusNachziehen(runde);
+
+        for (const eintrag of runde.bonus) {
+            gleich(SCHACH.gesperrt(runde.stand, eintrag.feld), false,
+                "Lootbox auf " + eintrag.feld + " liegt auf freiem Grund");
+            gleich(SCHACH.figurAuf(runde.stand, eintrag.feld), ".",
+                "Lootbox auf " + eintrag.feld + " liegt auf einem leeren Feld");
+        }
+
+        gesehen = Math.max(gesehen, runde.bonus.length);
+    }
+
+    wahr(gesehen > 0, "es sind ueberhaupt Lootboxen erschienen (" + gesehen + ")");
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Figurenzaehler (v0.76)
+ * ------------------------------------------------------------------ */
+
+pruefe("Der Materialzaehler rechnet aus der STELLUNG (v0.76)", () => {
+    /*
+     * DER GEMELDETE FEHLER: „Der Figurenzaehler plus/minus ist nicht richtig,
+     * bitte von bekannten Schach-Apps abschauen." Die zaehlen, was auf dem
+     * Brett steht — und genau darin unterschied sich der alte Zaehler: Er
+     * rechnete Beute minus eigene Verluste und sah damit keine Umwandlung,
+     * keine Wiedergeburt und keine Verstaerkung.
+     */
+    const runde = laufendePartie();
+
+    gleich(SCHACH_RUNDE.materialWert(runde, "weiss"), 39, "Grundstellung: 39");
+    gleich(SCHACH_RUNDE.materialVorsprung(runde, "weiss"), 0, "und ausgeglichen");
+
+    /* Eine Dame gegen nichts — ohne dass jemals etwas geschlagen wurde. */
+    const dame = SCHACH_RUNDE.kopieren(runde);
+    dame.stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "D...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH_RUNDE.materialVorsprung(dame, "weiss"), 9, "neun voraus");
+    gleich(SCHACH_RUNDE.materialVorsprung(dame, "schwarz"), -9, "und von der anderen Seite");
+    gleich(SCHACH_RUNDE.bilanz(dame, "weiss").punkte, 0,
+        "die alte Rechnung sieht davon nichts — deshalb die neue");
+
+    /* Der Koenig zaehlt nicht mit: Ein zweiter Koenig ist ein Leben, kein
+       Materialvorteil. */
+    const koenige = SCHACH_RUNDE.kopieren(runde);
+    koenige.stand = SCHACH.standNormalisieren({
+        variante: "standard",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "K...K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH_RUNDE.materialVorsprung(koenige, "weiss"), 0, "Koenige zaehlen nicht");
+});
+
+/* ------------------------------------------------------------------ *
+ * Ein aktives Item abbrechen (v0.76)
+ * ------------------------------------------------------------------ */
+
+pruefe("Sprung und Teleport lassen sich abbrechen und kommen zurueck (v0.76)", () => {
+    /*
+     * DER GEMELDETE PUNKT: „Wenn man ein Item aktiv hat, also gerade dabei ist
+     * eine Figur auszuwaehlen, soll man mit einem Abbrechen-Knopf das Item
+     * abbrechen koennen, und das Item muss zurueckgegeben werden."
+     *
+     * Fuer Faehigkeiten mit Zielfeld gibt es das seit v0.57 — dort ist noch gar
+     * nichts eingesetzt. Sprung und Teleport (`istDerZug`) sind dagegen sofort
+     * verbraucht; hier wird wirklich zurueckgenommen.
+     */
+    for (const art of ["sprung", "teleport"]) {
+        let runde = laufendePartie();
+        runde.faehigkeiten.weiss.push(art);
+
+        const vorher = runde.stand.brett;
+
+        runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", art, -1, "Anna", 2000);
+        wahr(runde !== null, art + ": eingesetzt");
+        gleich(runde.faehigkeiten.weiss.length, 0, art + ": verbraucht");
+        gleich(SCHACH_RUNDE.laufendesZugmuster(runde, "weiss"), art,
+            art + ": das Modell weiss, welche laeuft");
+
+        const zurueck = SCHACH_RUNDE.zugmusterZuruecknehmen(runde, "id-anna", 2500);
+
+        wahr(zurueck !== null, art + ": abgebrochen");
+        gleich(zurueck.faehigkeiten.weiss.join(","), art, art + ": wieder im Vorrat");
+        gleich(zurueck.stand.zusatzMuster, "", art + ": kein Muster mehr");
+        gleich(zurueck.stand.zusatzNurDieses, false, art + ": und keine Fessel daran");
+        gleich(zurueck.stand.sprungAktiv, "", art + ": auch die Marke ist weg");
+        gleich(zurueck.stand.brett, vorher, art + ": die Stellung ist unberuehrt");
+        gleich(zurueck.stand.amZug, "weiss", art + ": man ist weiter am Zug");
+        gleich(zurueck.zugZaehler, runde.zugZaehler + 1, art + ": der Zugzaehler steigt");
+
+        /* Kein Geschenk: Ein zweites Abbrechen geht ins Leere, und der Gegner
+           darf es ohnehin nicht. */
+        gleich(SCHACH_RUNDE.zugmusterZuruecknehmen(zurueck, "id-anna", 2600), null,
+            art + ": nichts mehr abzubrechen");
+        gleich(SCHACH_RUNDE.zugmusterZuruecknehmen(runde, "id-bert", 2600), null,
+            art + ": der Gegner nimmt nichts zurueck");
+    }
+});
+
+pruefe("Ausweichen laeuft nicht als abbrechbares Zugmuster (v0.76)", () => {
+    /*
+     * Es setzt zwar ein Zugmuster, ist aber KEIN `istDerZug`: Man bekommt ein
+     * zusaetzliches Feld fuer den naechsten eigenen Zug und bleibt sonst frei.
+     * Da gibt es nichts abzubrechen — und `zusatzNurDieses` steht deshalb auch
+     * nicht.
+     */
+    let runde = laufendePartie();
+    runde.faehigkeiten.schwarz.push("ausweichen");
+
+    runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-bert", "ausweichen", -1, "Bert", 2000);
+
+    wahr(runde !== null, "im Gegenzug eingesetzt");
+    gleich(SCHACH_RUNDE.laufendesZugmuster(runde, "schwarz"), "", "kein laufendes Item");
+});
+
+/* ------------------------------------------------------------------ *
+ * Doppelzug: ein Item statt einer Bewegung (v0.76)
+ * ------------------------------------------------------------------ */
+
+pruefe("Beim Doppelzug darf man je Zug auch ein Item einsetzen (v0.76)", () => {
+    /*
+     * DER GEMELDETE PUNKT: „Bei Doppelzug soll man auch pro Zug ein Item
+     * einsetzen koennen, also statt sich zu bewegen."
+     *
+     * Die Regel dahinter gibt es seit v0.41: Wer den Doppelzug offen hat,
+     * BEHAELT den Zug sogar bei einer Faehigkeit mit `beendetZug` — sie
+     * verbraucht dann den Doppelzug statt den Zug abzugeben. Dieser Test haelt
+     * das fest, damit es nicht unbemerkt wegoptimiert wird.
+     */
+    let runde = laufendePartie();
+    runde.faehigkeiten.weiss.push("doppelzug");
+    runde.faehigkeiten.weiss.push("bauernschub");
+
+    runde = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "doppelzug", -1, "Anna", 2000);
+    gleich(runde.stand.extraZug, "weiss", "der Doppelzug steht offen");
+    gleich(SCHACH_RUNDE.behaeltZug(runde, "weiss", "bauernschub"), true,
+        "und deshalb kostet auch eine teure Faehigkeit den Zug nicht");
+
+    /* Erster der beiden Zuege: ein Item statt einer Bewegung. */
+    const nachItem = SCHACH_RUNDE.faehigkeitEinsetzen(
+        runde, "id-anna", "bauernschub", -1, "Anna", 3000);
+
+    wahr(nachItem !== null, "das Item ging durch");
+    gleich(nachItem.stand.amZug, "weiss", "man ist weiter am Zug");
+    gleich(nachItem.stand.extraZug, "", "der Doppelzug ist dafuer verbraucht");
+    gleich(SCHACH_RUNDE.darfZiehen(nachItem, "id-anna"), true, "und darf wirklich ziehen");
+
+    /* Zweiter Zug: die gewohnte Bewegung — danach ist der Gegner dran. */
+    const gezogen = SCHACH_RUNDE.ziehen(nachItem, "id-anna",
+        SCHACH.feldNummer("e3"), SCHACH.feldNummer("e4"), "D", "Anna", 4000);
+
+    wahr(gezogen !== null, "der zweite Zug geht");
+    gleich(gezogen.stand.amZug, "schwarz", "und danach ist der Gegner dran");
+});
 
 /* ------------------------------------------------------------------ *
  * Vergleich

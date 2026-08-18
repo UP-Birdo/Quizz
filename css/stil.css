@@ -9,6 +9,16 @@
  */
 
 :root {
+    /*
+     * DIE SEITE SAGT DEM BROWSER, IN WELCHEM LICHT SIE STEHT (seit v0.76).
+     *
+     * Ohne diese Zeile zeichnet der Browser alles, was IHM gehört — Bildlauf-
+     * leisten, Auswahlfelder, den Rand von Textfeldern — in seiner hellen
+     * Vorgabe, auch wenn die Seite dunkel ist. Genau so wurde es gemeldet:
+     * eine weisse Bildlaufleiste an einem dunklen Fenster.
+     */
+    color-scheme: light dark;
+
     --flaeche: #f5f6f8;
     --karte: #ffffff;
     --karte-leise: #eef0f4;
@@ -58,6 +68,56 @@ body {
     font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
     font-size: 16px;
     line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------ *
+ * Bildlaufleisten (seit v0.76)
+ *
+ * Gemeldet an der Anleitung zum Bauernschub: „die Bildlaufleiste ist noch
+ * nicht eingefärbt wie alles andere." Sie gehört dem Browser, nicht der Seite
+ * — sie folgt also nur, wenn man es ihm sagt. Zwei Wege sind nötig, weil sie
+ * sich die Browser teilen:
+ *
+ *   `scrollbar-color`      der Standard (Firefox, Chromium ab 121)
+ *   `::-webkit-scrollbar`  der ältere Weg (Edge, Chrome, Safari)
+ *
+ * Beide bekommen dieselben Variablen wie der Rest der Seite. Gilt für JEDEN
+ * Bereich, der scrollt — Dialoge, Zugverlauf, Aufschlüsselung, die ganze
+ * Seite —, damit nirgends eine helle Leiste in einem dunklen Fenster steht.
+ * ------------------------------------------------------------------ */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rahmen) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--rahmen);
+    border-radius: 6px;
+
+    /* Der Rand ist durchsichtig und lässt die Fläche darunter durchscheinen —
+       so wirkt der Greifer schmaler als seine Klickfläche. */
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--schrift-leise);
+    background-clip: padding-box;
+}
+
+/* Wo zwei Leisten aufeinandertreffen, bleibt sonst ein helles Quadrat übrig. */
+*::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 /* ------------------------------------------------------------------ *
@@ -1789,6 +1849,104 @@ body {
     }
 }
 
+/* ------------------------------------------------------------------ *
+ * DIE STILLEN ANIMATIONEN (seit v0.77)
+ *
+ * Vier kleine Bewegungen: Eine Lootbox erscheint, eine verschwindet, eine
+ * Figur kommt dazu, eine wird geschlagen. Wann sie laufen, entscheidet
+ * `TEAM_SCHACH._veraenderungen` — durch Vergleich mit dem letzten Anblick des
+ * Bretts, nicht aus dem Verlauf.
+ *
+ * OHNE FARBE, AUSDRÜCKLICH (Nutzer-Ansage 18.08.: „sie sollen keine Farben
+ * haben und sehr simpel"). Benutzt werden nur Grösse und Deckkraft; der Ring
+ * ist weiss mit einem dunklen Saum, damit er auf einem hellen wie auf einem
+ * dunklen Feld lesbar bleibt. Keine der Farben, die am Brett schon etwas
+ * BEDEUTEN, wird dabei aufgegriffen — blau ist die Wirkung, rot das Unglück,
+ * grün die Zugspur, gelb die Wirkung eines Unglücks.
+ *
+ * WARUM `scale` UND NICHT `transform: scale(…)`: Beides zusammen geht nicht.
+ * Der Würfel schwebt bereits über `transform`, und die ziehende Figur gleitet
+ * darüber (`.figur-zieht`). `scale` ist eine eigenständige Eigenschaft und
+ * rechnet sich mit einem vorhandenen `transform` zusammen, statt es zu
+ * überschreiben. Ein Browser, der sie nicht kennt, zeigt einfach keine
+ * Animation — es geht nichts dabei kaputt.
+ * ------------------------------------------------------------------ */
+
+/* Eine gerade erschienene Lootbox: Sie wächst auf und schwebt danach weiter
+   wie jede andere. Zwei Animationen nebeneinander — die eine fasst `scale`
+   und `opacity` an, die andere `transform`, sie kommen sich nicht ins Gehege. */
+.feld-bonus-neu .wuerfel {
+    animation:
+        wuerfel-auftauchen 360ms ease-out,
+        wuerfel-schweben 2.4s ease-in-out infinite;
+}
+
+@keyframes wuerfel-auftauchen {
+    from { scale: 0.2; opacity: 0; }
+    to { scale: 1; opacity: 1; }
+}
+
+/* Eine Figur, die wirklich DAZUGEKOMMEN ist — Nachschub, Spiegel,
+   Wiedergeburt, Wiederbelebung, Friedhof. Eine, die nur hingezogen ist,
+   bekommt sie nicht; das unterscheidet `_veraenderungen`. */
+.figur-erscheint {
+    animation: figur-auftauchen 320ms ease-out;
+}
+
+@keyframes figur-auftauchen {
+    from { scale: 0.3; opacity: 0; }
+    to { scale: 1; opacity: 1; }
+}
+
+/*
+ * Der Ring, der übrig bleibt: nach einem Schlag, und dort wo eine Lootbox
+ * verschwunden ist. Er wächst kurz aus der Feldmitte auf und ist weg.
+ *
+ * `pointer-events: none`, damit er den Tipp auf das Feld nicht abfängt — er
+ * liegt in der Sekunde nach dem Zug genau dort, wo man als Nächstes hinfasst.
+ */
+.verpufft {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 46%;
+    height: 46%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 3;
+    animation: verpuffen 420ms ease-out;
+}
+
+@keyframes verpuffen {
+    from {
+        opacity: 0.95;
+        transform: translate(-50%, -50%) scale(0.35);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.7);
+    }
+}
+
+/* Nach einem Schlag geht er etwas weiter auf als bei der Lootbox: Dort
+   verschwindet ein Gegenstand, hier fällt eine Figur. */
+.verpufft-schlag {
+    width: 60%;
+    height: 60%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feld-bonus-neu .wuerfel,
+    .figur-erscheint,
+    .verpufft {
+        animation: none;
+    }
+}
+
 /* Marke einer eingesammelten Fähigkeit — die Farbe zeigt die Seltenheit. */
 .faehigkeit-marke,
 .faehigkeit-knopf {
@@ -2616,6 +2774,17 @@ body {
 .partie-zeile {
     margin: 0 0 4px 0;
     font-size: 0.92rem;
+}
+
+/*
+ * Die Herkunftszeile einer Partie (seit v0.77): mit welcher App-Version sie
+ * angelegt wurde. Sie steht nur da, wenn es eine ANDERE als die laufende ist —
+ * eine Auskunft für den Fall, dass etwas gemeldet wird, kein Teil des Spiels.
+ * Deshalb leise: kleiner und in der stillen Schriftfarbe.
+ */
+.partie-herkunft {
+    font-size: 0.82rem;
+    color: var(--schrift-leise);
 }
 
 /* Kopfzeile einer geöffneten Partie: Zurück, Name, Spielart. */

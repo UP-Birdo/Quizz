@@ -58,4 +58,7 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Bibliothek** | `faehigkeitenOeffnen` | Die Übersicht aller Fähigkeiten hinter dem i-Knopf. |
 | **Rückschau** | `SCHACH_RUNDE.rueckschau` | „Wie es dazu kam" — der Bildschirm vor Sieg oder Niederlage. |
 | **Vorschau-Kasten** | `zielVorschau`, `zielUmriss` | Der grüne Rahmen beim Platzieren einer Fähigkeit mit Zielfeld. |
+| **Laufendes Item** | `laufendesZugmuster` | Eine Fähigkeit, die IHR Zug ist (Sprung, Teleport) und auf ihre Figur wartet. Lässt sich seit v0.76 abbrechen — dann kommt sie zurück in den Vorrat. |
+| **Figurenzähler** | `materialVorsprung` | Das `+N` unter dem Brett. Gerechnet aus der STELLUNG, nicht aus den Verlusten; nur die führende Seite trägt eine Zahl (seit v0.76). |
+| **Wer zuerst zieht, hat gezogen** | `regeln.einigkeit` (umgekehrt) | Der Haken beim Anlegen. **Aus** heisst: Das Team stimmt ab — das ist seit v0.76 die Vorgabe. Im Stand steht weiter `einigkeit`, unverändert in seiner Bedeutung. |
 | **Abschluss** | `TEAM_SCHACH.abschluss` | Der Bildschirm am Ende einer Partie, in drei Schritten: Rückschau, Ergebnis, Punktestand. |

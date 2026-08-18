@@ -120,8 +120,61 @@ const SCHACH_VARIANTEN = {
      * Unglückswürfel: Wie oft ein erscheinender Würfel ein schlechter ist.
      * Deutlich seltener als ein normaler — sonst wäre jeder Würfel eine
      * Zitterpartie statt einer Belohnung.
+     *
+     * Das ist seit v0.77 der GRUNDWERT auf vollem Brett; wie er mit dem
+     * Füllstand steigt, steht bei `pechChance`.
      */
     PECH_CHANCE: 12,
+
+    /*
+     * Der Höchstwert, auf den der Unglücks-Anteil steigen kann: bei einem
+     * leergefegten Brett gut jede dritte Box. Er wird nur auf den drei
+     * Füllstands-Stufen erreicht und auch dort erst ganz zum Schluss.
+     *
+     * Warum 40 und nicht mehr: Ab der Hälfte kippt der Charakter der Lootbox
+     * von „Belohnung mit Risiko" zu „Falle mit Chance". Der Wunsch war „mehr
+     * als derzeit", nicht „umgedreht".
+     */
+    PECH_CHANCE_HOCH: 40,
+
+    /*
+     * WIE OFT EINE ERSCHEINENDE BOX EIN UNGLÜCK IST (seit v0.77).
+     *
+     * Bis v0.76 war das eine feste Zahl — 12 Prozent, immer und überall. Der
+     * Nutzer wollte beim Lootbox-Regen mehr Unglück und hat auf die Rückfrage
+     * geantwortet: „so wie bei den normalen Lootboxen, anhand der freien
+     * Felder." Also dieselbe Mechanik wie bei der MENGE seit v0.71 — je leerer
+     * das Brett, desto mehr, und je höher die Mengenstufe, desto früher.
+     *
+     * Gerechnet wird mit derselben Kurventabelle (`REGEN.STUFEN`,
+     * `chanceKurve`), die auch `regenChance` benutzt. Zwei Punkte gelten dabei
+     * genau wie bei `mengenChance`:
+     *
+     *   - Die Stufe „wenig" (`stufe: 0`) hängt grundsätzlich nicht am
+     *     Füllstand. Sie behält die 12 Prozent. Eine Ausnahme nur fürs Unglück
+     *     wäre der Knick, den die Leiter der Mengen ausdrücklich vermeidet.
+     *   - Der Grundwert wird nie unterschritten (`Math.max`). Auf vollem Brett
+     *     steht die Kurve fast bei null; ohne diese Klammer käme bei „Regen"
+     *     früh in der Partie WENIGER Unglück als bei „wenig".
+     *
+     * Was in einem Unglückswürfel steckt, ändert sich dadurch nicht: Die
+     * Verteilung über die Stufen bleibt bei `pechZiehen` (52 / 33 / 12 / 3),
+     * grün also weiterhin klar am häufigsten.
+     */
+    pechChance(id, freieFelder, alleFelder) {
+        const menge = SCHACH_VARIANTEN.mengeVon(id);
+
+        if (!menge.stufe) {
+            return SCHACH_VARIANTEN.PECH_CHANCE;
+        }
+
+        const anteil = SCHACH_VARIANTEN.regenAnteil(freieFelder, alleFelder);
+        const spanne = SCHACH_VARIANTEN.PECH_CHANCE_HOCH - SCHACH_VARIANTEN.PECH_CHANCE;
+        const kurve = SCHACH_VARIANTEN.regenKurve(menge.stufe).chanceKurve;
+
+        return Math.max(SCHACH_VARIANTEN.PECH_CHANCE,
+            SCHACH_VARIANTEN.PECH_CHANCE + spanne * Math.pow(anteil, kurve));
+    },
 
     /*
      * Die Unglückswürfel, je Stufe einer. Sie kommen NICHT in den Vorrat,
@@ -727,8 +780,10 @@ const SCHACH_VARIANTEN = {
             zielArt: "spalte",
             beschreibung: "Rollt über zwei Spalten und schiebt alle Figuren darin ein "
                 + "Feld nach vorn — von dir weg. Angetippt wird ein Feld deiner eigenen "
-                + "Grundreihe, also unten am Brett. Wo kein Platz ist, bleibt die Figur "
-                + "stehen; Könige bleiben immer stehen."
+                + "Grundreihe, also unten am Brett. Es rollt wirklich alles: die eigenen "
+                + "wie die fremden, Könige eingeschlossen. Nur wo kein Platz mehr ist, "
+                + "bleibt die Figur stehen — und deinen eigenen König ins Schach schieben "
+                + "kannst du damit nicht."
         },
 
         /*
@@ -899,7 +954,8 @@ const SCHACH_VARIANTEN = {
                 + "hindurch, aber Springer setzen darüber hinweg. Nach 6 Halbzügen — "
                 + "also je drei Zügen für dich und den Gegner — zerfällt sie. "
                 + "Am äussersten Rand geht sie nicht: Dort fehlt der Nachbar, den sie "
-                + "auf einer Seite braucht."
+                + "auf einer Seite braucht. Lootboxen unter der Mauer werden gefressen — "
+                + "sie sind danach weg."
         },
 
         /*
@@ -1696,17 +1752,32 @@ const SCHACH_VARIANTEN = {
      * Rand heraus, und die 2-mal-2-Ecken waren weg — genau das, was am
      * klassischen Brett den Reiz ausmacht. Jetzt bleibt die Ecke, und die
      * Menge folgt ihr.
+     *
+     * AUF DEM KREUZ ZÄHLT NUR DIE MITTE (seit v0.76).
+     *
+     * Ein Kreuz-Streifen ist nicht so breit wie das Brett, sondern so breit wie
+     * die MITTE (`breite - 2 * KREUZ.rand`) — die 2-mal-2-Ecken gehören gar
+     * nicht dazu. Rechnete man mit der vollen Breite, stünde die Armee bis in
+     * die tote Ecke hinein und der freie Rand wäre weg. Gerechnet wird deshalb
+     * mit der Mitte, und `rand` ist danach der Abstand vom BRETTRAND: erst die
+     * tote Ecke, dann der freie Rand.
+     *
+     *     Kleines Kreuz (10)  Mitte 6 → 2 Spalten, Rand 4  →  4 Figuren je Seite
+     *     Kreuz (12)          Mitte 8 → 4 Spalten, Rand 4  →  8 Figuren je Seite
+     *     Großes Kreuz (14)   Mitte 10 → 6 Spalten, Rand 4 → 12 Figuren je Seite
      */
     armeeSpalten(variante) {
         const rand = SCHACH_VARIANTEN.ARMEE.randBreite;
+        const ecke = variante.kreuz ? SCHACH_VARIANTEN.KREUZ.rand : 0;
+        const nutzbar = variante.breite - 2 * ecke;
 
         /* Mindestens eine Spalte, sonst stünde auf einem sehr schmalen Brett
            gar nichts — dann schrumpft eben der Rand. */
-        const spalten = Math.max(1, variante.breite - 2 * rand);
+        const spalten = Math.max(1, nutzbar - 2 * rand);
 
         return {
             spalten: spalten,
-            rand: Math.floor((variante.breite - spalten) / 2)
+            rand: ecke + Math.floor((nutzbar - spalten) / 2)
         };
     },
 
@@ -1717,6 +1788,11 @@ const SCHACH_VARIANTEN = {
      *
      *     Klassisch (8)      4 Spalten →  8      Kleines Brett (6)  2 →  4
      *     Großes Brett (10)  6 Spalten → 12      Doppelbrett (16)  12 → 24
+     *
+     * AUF DEM KREUZ IST DAS DIE ZAHL JE STARTSEITE (seit v0.76), nicht je Team:
+     * Wer zwei Streifen bekommt, hat am Ende doppelt so viele Figuren. Das
+     * kleine Kreuz gibt also 4 je Seite — beim Duell (eine Armee je Team) sind
+     * das 4 Figuren, beim vollen Kreuz 8.
      *
      * Mindestens zwei: der König und eine Figur. Ein König allein wäre keine
      * Partie, sondern ein Wettlauf.

@@ -1867,6 +1867,133 @@ viele / Regen**.
   ein Gerät, das noch eine ältere Fassung im Zwischenspeicher hat, spielt nicht
   nach ganz anderen Zahlen.
 
+## Warum die Mauer die Lootbox jetzt frisst (v0.77) — **kehrt v0.66 um**
+
+v0.66 (Wunsch #32, „die Items unter der Mauer verschwinden und kommen nicht
+wieder") hat ein Feld mit Lootbox als Mauer-Ziel gar nicht erst angeboten. Die
+Begründung war ehrlich und stimmt weiter: Unter der Mauer ist das Feld
+gesperrt, niemand zieht dorthin, die Box ist unsichtbar und unerreichbar — „von
+aussen dasselbe wie weg". Damals wurden drei Wege erwogen und zwei verworfen:
+die Box wegräumen (dann wäre sie wirklich weg) und sie dem Mauerbauer schenken
+(neue Regel, und eine starke).
+
+Der Nutzer hat am 18.08. den ersten der beiden verworfenen Wege ausdrücklich
+verlangt: „Die Mauer soll man auf alle Felder platzieren können, wo es von den
+Figuren und vom Schachbrettrand her geht … und sobald man die Mauer dann wohin
+platziert, wo davor eine Lootbox stand, verschwindet diese — also wird sie
+gefressen."
+
+**Was den Ausschlag gibt, ist nicht der Geschmack, sondern die Bedienung.** Die
+Sperre von v0.66 war unsichtbar: Man tippt ein Feld an, und es passiert nichts.
+Warum, sagt niemand — die Lootbox liegt drei Felder weiter, und dass sie das
+Ziel blockiert, muss man wissen. Eine Regel, die man nur aus dem Ausbleiben
+einer Wirkung erschliessen kann, ist am Brett keine Regel, sondern ein Fehler.
+Aus dem „dasselbe wie weg" wird jetzt ein ehrliches Weg: Man sieht beim
+Platzieren, was man zerstört, und der Verlauf schreibt es hin.
+
+Damit fällt auch die Sonderstellung des Risses weg, die v0.66 noch begründen
+musste: Er frisst die Box seit v0.60, weil er niemanden fragt. Jetzt frisst
+auch die Mauer — der Unterschied ist nur, dass man es bei ihr will.
+
+**Ausgeblendet wird beim Platzieren** (`team-schach-brett.js`,
+`wuerfelAusblenden`) — dieselbe Hilfe, die der Friedhof seit v0.57 bekommt. In
+dem Moment sucht man drei freie Felder in einer Reihe; eine Lootbox, die gleich
+verschwindet, soll dabei nicht so aussehen, als sei sie noch zu holen.
+
+## Warum laufende Partien NICHT auf ihrer Startversion eingefroren werden (v0.77)
+
+Die Frage kam am 18.08. wörtlich so: „Laufende Matches sollen immer in der zu
+Start verfügbaren Version bleiben — sprich, auch wenn während der Runde eine
+neue Version kommt, lass das Spiel in der Version weiterspielen, sonst kann es
+zu Problemen kommen. Oder gibt es andere Lösungen?"
+
+**Die Sorge trifft nur die Hälfte des Problems, und diese Hälfte ist längst
+gelöst.** Regeln ändern sich in einer laufenden Partie nie: Jede neue Regel
+kommt seit jeher als eigenes Feld in `regeln`, und eine Partie ohne dieses Feld
+rechnet weiter wie vorher. So gebaut bei `pechZeigen` (v0.49), `regen` (v0.50),
+`regenStufe` (v0.59), `lootboxMenge` (v0.71) und zuletzt `einigkeit` (v0.76) —
+und dort jedes Mal ausdrücklich begründet. Der Datenvertrag ist additiv; das IST
+der Schutz, nach dem gefragt wurde.
+
+Was durchschlägt, sind **Fehlerbehebungen**. Und die sollen durchschlagen: Der
+Doppelzug-Fehler aus v0.76 war in einer laufenden Partie zu beheben, weil der
+Code sofort für alle gilt. Mit einem Einfrieren hätte die betroffene Partie ihn
+bis zum Ende behalten.
+
+Zwei Alternativen wurden geprüft und verworfen:
+
+- **Regel-Schnappschuss beim Anlegen** — nicht nur die Haken, sondern alle
+  ZAHLEN (Chancen, Kurven, Mauer-Dauer, Pech-Anteil) wandern in die Partie. Das
+  deckt Zahlen ab, aber keine geänderte Programmlogik; genau die machte in v0.76
+  den Unterschied. Dafür wächst jeder gespeicherte Stand um einen Block, der
+  bei fast jeder Partie derselbe ist.
+- **Voll-Freeze über die Versionsnummer** — die Partie merkt sich die Version,
+  und der Code hält für jede alte Version ihren Zweig vor. Das friert wirklich
+  alles ein, wächst aber unbegrenzt: Nach zwanzig Versionen stünden zwanzig
+  Rechnungen nebeneinander, jede mit eigenen Tests, und kein Fehler liesse sich
+  mehr in einer laufenden Partie beheben. Für eine App mit drei Spielern ist
+  das der Preis eines Problems, das es nicht gibt.
+
+**Gebaut wurde stattdessen das Billige und Nützliche:** `angelegtMit` hält beim
+Anlegen die App-Version fest, und die Übersicht zeigt sie — aber nur, wenn sie
+von der laufenden abweicht. Eine Angabe, die immer gleich ist, liest nach zwei
+Tagen niemand mehr; interessant ist sie genau dann, wenn die Partie älter ist
+als die Seite. Sie beantwortet damit die erste Rückfrage bei jeder Meldung
+(„welcher Stand war das?") — dieselbe Frage, die bei „Ausweichen funktioniert
+eh nicht" offengeblieben ist.
+
+## Warum der Unglücks-Anteil am Füllstand hängt (v0.77)
+
+Gewünscht war „bei Lootbox-Regen soll die Wahrscheinlichkeit gesteigert werden,
+dass Unglücksboxen erscheinen". Auf die Rückfrage nach der Staffelung — feste
+Zahlen je Mengenstufe oder etwas anderes — kam die Antwort: **„so wie bei den
+normalen Lootboxen, anhand der freien Felder."**
+
+Das ist die bessere Regel, und zwar nicht nur, weil sie gewünscht ist: Es gibt
+dann **eine** Mechanik statt zweier. Wie viele Lootboxen kommen, hängt seit
+v0.71 am Füllstand; wie gefährlich sie sind, hängt jetzt am selben Füllstand,
+mit derselben Kurventabelle (`REGEN.STUFEN`, `chanceKurve`) und denselben zwei
+Klammern:
+
+- **„wenig" bleibt flach.** Diese Stufe hängt grundsätzlich nicht am Füllstand
+  (`stufe: 0`). Eine Ausnahme nur fürs Unglück wäre genau der Knick, den die
+  Leiter der vier Stufen ausdrücklich vermeidet (siehe „Warum aus zwei
+  Schaltern vier Stufen wurden").
+- **Der Grundwert wird nie unterschritten** (`Math.max`). Auf vollem Brett steht
+  die Kurve fast bei null; ohne die Klammer käme bei „Regen" früh in der Partie
+  WENIGER Unglück als bei „wenig".
+
+Der Höchstwert ist 40 Prozent und nicht mehr. Ab der Hälfte kippt der Charakter
+der Lootbox von „Belohnung mit Risiko" zu „Falle mit Chance" — der Wunsch war
+„mehr als derzeit", nicht „umgedreht".
+
+**Was IN einem Unglück steckt, blieb unangetastet.** Der zweite Teil des
+Wunsches („grüne häufiger als blaue und immer so weiter") war schon erfüllt:
+`pechZiehen` verteilt über dieselben Stufen-Chancen wie die Fähigkeiten, also
+52 / 33 / 12 / 3.
+
+## Warum das Nudelholz jetzt auch Könige rollt (v0.77)
+
+„Nudelholz soll alle Figuren bewegen" — nachgemessen bewegte es schon alle
+Figuren **beider Farben**, nur Könige nicht (so seit v0.46). Die Rückfrage, was
+denn gemeint sei, hat der Nutzer mit „Könige sollen mitrollen" beantwortet.
+
+**Die Ausnahme wog schwerer, als sie aussah.** Ein König blieb nicht nur selbst
+stehen — sein Feld blieb besetzt, und damit hielt er alles auf, was hinter ihm
+stand. In einer Stellung mit zwei Figuren hinter einem König bewegte sich gar
+nichts, und das Nudelholz wirkte wie kaputt. Genau das dürfte hinter der
+Meldung stecken.
+
+**Der Selbstschutz musste dafür nicht angefasst werden.** Seit v3.6 weist
+`faehigkeitEinsetzen` jede Fähigkeit ab, die den eigenen König im Schach
+zurücklässt — die Prüfung steht dort und nicht in `SCHACH.nudelholz`, weil die
+Rechnung den Zugzusammenhang gar nicht kennt. Sie deckt das Erdbeben und den
+Bauernschub gleich mit ab und greift für den rollenden König von allein.
+
+**Erdbeben und Bauernschub behalten ihre Könige.** Der Wunsch galt dem
+Nudelholz; beim Bauernschub wäre ein rollender König ohnehin sinnwidrig, er
+schiebt Bauern.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

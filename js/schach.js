@@ -2843,8 +2843,28 @@ const SCHACH = {
 
     /*
      * Nudelholz: Zwei benachbarte Spalten werden um ein Feld verschoben.
-     * `richtung` ist -1 (nach oben) oder +1 (nach unten). Könige bleiben
-     * stehen, und wo kein Platz ist, bleibt die Figur ebenfalls.
+     * `richtung` ist -1 (nach oben) oder +1 (nach unten). Wo kein Platz ist,
+     * bleibt die Figur stehen.
+     *
+     * SEIT v0.77 ROLLEN AUCH KÖNIGE MIT (Nutzer-Entscheidung 18.08., „das
+     * Nudelholz soll alle Figuren bewegen").
+     *
+     * Bis v0.76 blieben sie stehen. Das war nicht nur eine Ausnahme für den
+     * König selbst: Sein Feld blieb besetzt, und damit hielt er die ganze
+     * Spalte hinter sich auf — in einer Stellung mit zwei Figuren hinter einem
+     * König bewegte sich gar nichts. Genau das war die Meldung.
+     *
+     * Sich selbst ins Schach schieben kann damit trotzdem niemand: Seit v3.6
+     * weist `SCHACH_RUNDE.faehigkeitEinsetzen` jede Fähigkeit ab, die den
+     * eigenen König im Schach zurücklässt — dieselbe Prüfung, die auch das
+     * Erdbeben und den Bauernschub abdeckt. Sie steht dort und nicht hier,
+     * weil `nudelholz` nur die Stellung rechnet und den Zugzusammenhang gar
+     * nicht kennt.
+     *
+     * DIE ANDEREN REIHEN-FÄHIGKEITEN BLEIBEN, WIE SIE SIND. Erdbeben und
+     * Bauernschub verschonen ihre Könige weiter (siehe dort) — der Wunsch galt
+     * dem Nudelholz, und beim Bauernschub wäre ein rollender König ohnehin
+     * sinnwidrig: Er schiebt Bauern.
      */
     nudelholz(stand, spalte, richtung) {
         const breite = SCHACH.breiteVon(stand);
@@ -2870,7 +2890,8 @@ const SCHACH = {
                 const von = SCHACH._feld(stand, reihe, lauf);
                 const figur = brett[von];
 
-                if (figur === "." || SCHACH.artVon(figur) === "K") {
+                /* Seit v0.77 ohne Königs-Ausnahme — siehe oben. */
+                if (figur === ".") {
                     continue;
                 }
                 if (!SCHACH._imBrett(stand, reihe + richtung, lauf)) {
@@ -3414,6 +3435,12 @@ const SCHACH = {
             brett: felder.join("")
         }, umrechnen);
 
+        /* Die toten Ecken wachsen mit (seit v0.77.1) — siehe `_eckenFortsetzen`. */
+        neu.risse = neu.risse
+            .concat(SCHACH._eckenFortsetzen(stand, seite, neuBreite))
+            .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle)
+            .sort((einer, anderer) => einer - anderer);
+
         const namen = { oben: "oben", unten: "unten", links: "links", rechts: "rechts" };
 
         return {
@@ -3423,6 +3450,71 @@ const SCHACH = {
             umrechnen: umrechnen,
             text: "Das Feld wächst " + (namen[seite] || seite)
         };
+    },
+
+    /*
+     * DIE TOTEN ECKEN WACHSEN MIT (seit v0.77.1).
+     *
+     * GEMELDET AM 18.08. mit Bildschirmfoto: „Gerade ist etwas ganz Komisches
+     * passiert." Auf einem Kreuz-Brett waren die vier toten Ecken zerfranst —
+     * links unten war alles bespielbar, rechts unten und links oben fehlten
+     * Felder, und Lootboxen lagen dort, wo eigentlich ein Loch sein müsste.
+     *
+     * DIE URSACHE: Die Ausdehnung setzte die neue Zeile oder Spalte VOLLSTÄNDIG
+     * frei. Auf einem gewöhnlichen Brett ist das richtig — auf einem Kreuz
+     * bekommt die Ecke dadurch ein Loch nach aussen, und das Kreuz ist keins
+     * mehr. Zusammen mit der Schrumpfung, die eine Linie samt ihren Rissen
+     * WEGWIRFT (v0.54, richtig so), frisst sich die Form über eine lange Partie
+     * von den Rändern her auf: Jedes Paar aus Schrumpfen und Wachsen kostet
+     * eine Ecke, ohne dass jemand etwas dafür kann.
+     *
+     * DIE REGEL, in den Worten des Nutzers: „Wenn das Spielfeld erweitert wird,
+     * soll davor die Spalte oder Zeile angeschaut werden und diese dann kopiert
+     * — sprich bei Kreuz-Map sollen die Ecken, wenn sie noch da sind, mit
+     * erweitert werden."
+     *
+     * KOPIERT WERDEN NUR DIE LÖCHER, NICHT DIE FIGUREN. Sonst stünde nach einer
+     * Ausdehnung eine zweite Armee auf dem Brett.
+     *
+     * UND NUR DIE LÖCHER AN DEN ENDEN, zusammenhängend von dort gezählt. Genau
+     * das sind die Ecken. Ein einzelnes Loch mitten in der Randlinie stammt
+     * dagegen von einem ERDBEBEN — es gehört dem Spielverlauf, nicht der
+     * Brettform, und würde sich sonst mit jeder Ausdehnung verbreitern.
+     *
+     * Auf einem Brett ohne Risse liefert die Rechnung eine leere Liste; für das
+     * klassische Brett ändert sich also nichts.
+     *
+     * Liefert die Feldnummern IM NEUEN Brett.
+     */
+    _eckenFortsetzen(stand, seite, neuBreite) {
+        const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
+        const senkrecht = (seite === "links" || seite === "rechts");
+
+        /* Wie lang die angebaute Linie ist, welches Feld ihr im ALTEN Brett
+           gegenüberliegt, und wo sie im NEUEN Brett zu liegen kommt. */
+        const laenge = senkrecht ? hoehe : breite;
+
+        const altFeld = (stelle) => senkrecht
+            ? stelle * breite + ((seite === "links") ? 0 : breite - 1)
+            : ((seite === "oben") ? 0 : hoehe - 1) * breite + stelle;
+
+        const neuFeld = (stelle) => senkrecht
+            ? stelle * neuBreite + ((seite === "links") ? 0 : neuBreite - 1)
+            : ((seite === "oben") ? 0 : hoehe) * neuBreite + stelle;
+
+        const istRiss = (stelle) => SCHACH.rissAuf(stand, altFeld(stelle));
+        const neue = [];
+
+        for (let stelle = 0; stelle < laenge && istRiss(stelle); stelle++) {
+            neue.push(neuFeld(stelle));
+        }
+        for (let stelle = laenge - 1; stelle >= 0 && istRiss(stelle); stelle--) {
+            neue.push(neuFeld(stelle));
+        }
+
+        /* Ist die ganze Linie ein Loch, treffen sich die beiden Läufe. */
+        return neue.filter((feld, stelle, alle) => alle.indexOf(feld) === stelle);
     },
 
     /*

@@ -73,6 +73,20 @@ const SCHACH_RUNDE = {
      */
     BONUS_FASSUNG: 2,
 
+    /*
+     * Die laufende App-Version, oder "" wenn keine da ist.
+     *
+     * `typeof` und nicht `globalThis.KONFIG`: Im Browser ist `KONFIG` ein
+     * `const` auf oberster Ebene und liegt damit im globalen LEXIKALISCHEN
+     * Bereich — als Eigenschaft von `globalThis` findet man es nicht. In den
+     * Tests wird konfig.js gar nicht geladen; dann greift dieselbe Abfrage.
+     */
+    _appVersion() {
+        return (typeof KONFIG !== "undefined" && KONFIG && KONFIG.APP_VERSION)
+            ? String(KONFIG.APP_VERSION)
+            : "";
+    },
+
     leereRunde(zeitpunkt, varianteId, id, titel) {
         const variante = SCHACH_VARIANTEN.holen(varianteId);
         const wann = (zeitpunkt === undefined) ? 0 : zeitpunkt;
@@ -83,6 +97,23 @@ const SCHACH_RUNDE = {
             titel: titel || "",
             variante: variante.id,
             erstelltAm: wann,
+
+            /*
+             * MIT WELCHER APP-VERSION DIE PARTIE ANGELEGT WURDE (seit v0.77).
+             *
+             * Entstanden aus der Frage „laufende Matches sollen in der zu
+             * Start verfügbaren Version bleiben — oder gibt es andere
+             * Lösungen?" (18.08.). Die Antwort war: Für REGELN löst das der
+             * additive Datenvertrag schon (jede neue Regel ist ein eigenes
+             * Feld in `regeln`, und wer es nicht hat, rechnet wie vorher). Was
+             * fehlte, war die Auskunft, WORAUF sich eine Meldung bezieht — die
+             * Begründung steht in `ROADMAP.md`, Bündel O3.
+             *
+             * Der Stempel ändert nichts an der Rechnung; er wird nur
+             * mitgeschrieben und angezeigt. Eine Partie von vor v0.77 hat ihn
+             * nicht, dann bleibt er leer.
+             */
+            angelegtMit: SCHACH_RUNDE._appVersion(),
 
             /*
              * Wann die Partie wirklich losging (beide Seiten bereit) — seit
@@ -475,6 +506,53 @@ const SCHACH_RUNDE = {
     },
 
     /*
+     * DIESELBE FRAGE FÜR EINE KREUZ-SEITE (seit v0.76).
+     *
+     * Auf dem Kreuz steht eine Armee nicht unten oder oben, sondern auf EINEM
+     * der vier Streifen — und ein Team kann zwei davon haben. Deshalb fragt
+     * diese Funktion nach der SEITE, nicht nach der Farbe; wer welche Seite
+     * bekommt, steht seit v0.72 als `startSeiten` im Stand.
+     *
+     * Der Aufbau ist derselbe wie auf jedem anderen Brett, nur einmal
+     * gekippt: zuerst die äussere Linie (dort landen die zuerst gezogenen
+     * Figuren, wie sonst die hintere Grundreihe), dann die innere. Die zwei
+     * toten Ecken bleiben aussen vor, und im übrigen Streifen bleibt links und
+     * rechts derselbe freie Rand wie überall — beides steckt schon in
+     * `SCHACH_VARIANTEN.armeeSpalten`.
+     */
+    _armeeFelderKreuz(variante, seite) {
+        const kante = variante.breite;
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        const felder = [];
+
+        /* Aussen zuerst, dann die innere Linie — in Brett-Koordinaten. */
+        const linien = {
+            oben: [0, 1],
+            unten: [kante - 1, kante - 2],
+            links: [0, 1],
+            rechts: [kante - 1, kante - 2]
+        }[seite];
+
+        if (!linien) {
+            return felder;
+        }
+
+        const senkrecht = (seite === "oben" || seite === "unten");
+
+        for (const linie of linien) {
+            for (let schritt = 0; schritt < platz.spalten; schritt++) {
+                const quer = platz.rand + schritt;
+
+                felder.push(senkrecht
+                    ? (linie * kante + quer)
+                    : (quer * kante + linie));
+            }
+        }
+
+        return felder;
+    },
+
+    /*
      * Die Figuren einer Seite, als Liste von Arten in Grossbuchstaben.
      *
      * Erst der König (selten zwei), dann wird aufgefüllt, dann gemischt — das
@@ -503,7 +581,7 @@ const SCHACH_RUNDE = {
         return stelle + "|" + was + "|" + basis;
     },
 
-    _armeeFiguren(id, farbe, variante, getrennt) {
+    _armeeFiguren(id, farbe, variante, getrennt, seite) {
         const regel = SCHACH_VARIANTEN.ARMEE;
         const anzahl = SCHACH_VARIANTEN.armeeAnzahl(variante);
 
@@ -516,8 +594,17 @@ const SCHACH_RUNDE = {
          * spiegelbildlich liefert, steht am Ende eine symmetrische Stellung:
          * gewürfelt, aber gerecht. Das ist die Vorgabe; wer die Schieflage
          * will, hakt „Beide Seiten getrennt würfeln" an.
+         *
+         * AUF DEM KREUZ ZÄHLT DAZU DIE STARTSEITE (seit v0.76) — ein Team hat
+         * dort bis zu zwei Armeen. Auch sie steht nur in der Saat, wenn
+         * getrennt gewürfelt wird; sonst bekommen alle vier Streifen dieselben
+         * Einheiten, und das Brett ist von jeder Seite aus dasselbe.
+         *
+         * DIE SEITE STEHT GANZ VORNE (Regel zu `_zufallsWert`): „oben" und
+         * „unten" unterscheiden sich am Ende einer Saat zu wenig.
          */
-        const basis = (id || "partie") + "|armee" + (getrennt ? "|" + farbe : "");
+        const basis = ((getrennt && seite) ? (seite + "|") : "")
+            + (id || "partie") + "|armee" + (getrennt ? "|" + farbe : "");
 
         const zweiKoenige = (SCHACH_RUNDE._zufallsWert(basis + "|koenige") * 100)
             < regel.zweiKoenige;
@@ -558,6 +645,10 @@ const SCHACH_RUNDE = {
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
 
+        if (variante.kreuz) {
+            return SCHACH_RUNDE._armeeStandKreuz(stand, id, getrennt);
+        }
+
         const zeichen = [];
         for (let feld = 0; feld < breite * hoehe; feld++) {
             zeichen.push(".");
@@ -578,6 +669,76 @@ const SCHACH_RUNDE = {
            `schach.js` kennt die Regeln der Partie nicht. */
         return Object.assign({}, stand, {
             brett: zeichen.join(""),
+            koenigeAlsLeben: true
+        });
+    },
+
+    /*
+     * DIE ZUFALLSARMEE AUF DEM KREUZ (seit v0.76).
+     *
+     * Gemeldet als: „Wenn man eine Kreuz-Karte startet, soll es genauso sein
+     * wie beim viereckigen Brett mit Zufallsarmee — nur dass man seine Armee an
+     * ZWEI Seiten hat. Statt 4 Figuren wie beim kleinen Quadrat hat man beim
+     * kleinen Kreuz also 8, weil die Armee gesplittet ist. Beim kleinen
+     * Kreuz-Duell sollen es wieder gegenüber je 4 sein."
+     *
+     * Bis v0.75 kannte `_armeeStand` nur oben und unten. Auf dem Kreuz stellte
+     * es deshalb beide Armeen quer über die volle Mitte, die Flügel blieben
+     * leer — und die Ansicht drehte sich (seit v0.72) auf eine Startseite, auf
+     * der gar nichts stand.
+     *
+     * DREI DINGE MÜSSEN HIER ZUSAMMENKOMMEN, und alle drei stehen schon im
+     * Stand: `kreuzAufstellen` ist vorher gelaufen.
+     *
+     *   1. WELCHE SEITEN WEM GEHÖREN (`startSeiten`). Daran hängt auch die
+     *      Drehung der Ansicht; abgelesen wird sie nie aus den Figuren.
+     *   2. DIE RISSE der vier toten Ecken. Sie bleiben unangetastet, weil hier
+     *      nur `brett` neu geschrieben wird.
+     *   3. DIE STARTSEITE JEDES BAUERN (`bauernSeiten`). Sie wird NEU gebaut:
+     *      Wo in der Vorlage ein Bauer stand, steht jetzt vielleicht ein Turm —
+     *      und ein gewürfelter Bauer zwei Felder weiter fiele ohne Eintrag auf
+     *      die Farbregel zurück und liefe auf dem Flügel quer.
+     */
+    _armeeStandKreuz(stand, id, getrennt) {
+        const variante = SCHACH.varianteVon(stand);
+        const zeichen = [];
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            zeichen.push(".");
+        }
+
+        const bauernSeiten = [];
+
+        for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
+            for (const seite of SCHACH.startSeitenVon(stand, farbe)) {
+                const felder = SCHACH_RUNDE._armeeFelderKreuz(variante, seite);
+                const arten = SCHACH_RUNDE._armeeFiguren(
+                    id, farbe, variante, getrennt, seite);
+                const anzahl = Math.min(felder.length, arten.length);
+
+                for (let stelle = 0; stelle < anzahl; stelle++) {
+                    const art = arten[stelle];
+
+                    zeichen[felder[stelle]] = (farbe === SCHACH.WEISS)
+                        ? art : art.toLowerCase();
+
+                    if (art === "B") {
+                        bauernSeiten.push({ feld: felder[stelle], seite: seite });
+                    }
+                }
+            }
+        }
+
+        /*
+         * Die zwei Leben gelten hier aus DEMSELBEN Grund wie überall: Die
+         * Ziehung kann einer Seite zwei Könige geben, und mit zwei Streifen je
+         * Team ist das der Regelfall. Bleibt es bei einem König, ändert der
+         * Schalter nichts — dann gelten Schach und Matt wie gewohnt
+         * (`SCHACH.koenigSchlagbarFuer`).
+         */
+        return Object.assign({}, stand, {
+            brett: zeichen.join(""),
+            bauernSeiten: bauernSeiten,
             koenigeAlsLeben: true
         });
     },
@@ -614,6 +775,9 @@ const SCHACH_RUNDE = {
         }
         if (typeof roh.geaendertAm === "number" && isFinite(roh.geaendertAm)) {
             runde.geaendertAm = roh.geaendertAm;
+        }
+        if (typeof roh.angelegtMit === "string") {
+            runde.angelegtMit = roh.angelegtMit;
         }
 
         /* Der Brett-Stand bekommt die Spielart der Partie mit, damit die Maße
@@ -870,6 +1034,60 @@ const SCHACH_RUNDE = {
         };
     },
 
+    /*
+     * WAS EINE SEITE GERADE AUF DEM BRETT STEHEN HAT, nach Figurenwert
+     * (seit v0.76).
+     *
+     * Gemeldet als „der Figurenzähler plus/minus ist nicht richtig, bitte von
+     * bekannten Schach-Apps abschauen". Genau das ist der Unterschied: Die
+     * bekannten Apps zählen die Figuren, die DA SIND, nicht die geschlagenen.
+     *
+     * Bis v0.75 rechnete der Zähler unter dem Brett `bilanz.punkte` — Beute
+     * minus eigene Verluste. In gewöhnlichem Schach ist das dasselbe; hier
+     * nicht, denn hier entsteht und verschwindet Material, ohne dass jemand
+     * schlägt:
+     *
+     *     Umwandlung        aus einem Bauern wird eine Dame (+8)
+     *     Verstärkung       eine Aufwertungskette bis zum König
+     *     Wiedergeburt,     eine gefallene Figur kommt zurück
+     *     Wiederbelebung,
+     *     Friedhof
+     *     Nachschub         ein Bauer aus dem Nichts
+     *     Spiegel, Handel   Material wechselt die Seite oder die Art
+     *     Einsturz          eine ganze Brettseite bricht weg
+     *
+     * Nach jedem dieser Vorgänge stimmte die Zahl unter dem Brett nicht mehr
+     * mit dem überein, was man sah. Aus der STELLUNG gerechnet stimmt sie
+     * immer — und zwar ohne dass irgendeine Fähigkeit etwas nachtragen muss.
+     *
+     * Der König zählt mit 0 (`FIGUR_WERT`), wie in jeder Schach-App: Ein
+     * zweiter König ist ein Leben, kein Materialvorteil.
+     */
+    materialWert(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde).stand;
+        let summe = 0;
+
+        for (let feld = 0; feld < SCHACH.felderVon(stand); feld++) {
+            const figur = SCHACH.figurAuf(stand, feld);
+
+            if (figur !== "." && SCHACH.farbeVon(figur) === farbe) {
+                summe += (SCHACH_RUNDE.FIGUR_WERT[SCHACH.artVon(figur)] || 0);
+            }
+        }
+
+        return summe;
+    },
+
+    /* Um wie viel Figurenwert diese Seite gerade vorn liegt. Negativ heisst
+       hinten — der Bildschirm zeigt wie in den bekannten Apps nur die
+       führende Seite an. */
+    materialVorsprung(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+
+        return SCHACH_RUNDE.materialWert(stand, farbe)
+            - SCHACH_RUNDE.materialWert(stand, SCHACH.gegner(farbe));
+    },
+
     /* Wie viele Wendepunkte die Rückschau höchstens zeigt (seit v0.61). */
     RUECKSCHAU_HOECHSTENS: 6,
 
@@ -940,6 +1158,22 @@ const SCHACH_RUNDE = {
                    geschlagen HAT, deshalb hier über Kreuz. */
                 eigen: SCHACH_RUNDE.beuteWert(stand, SCHACH.gegner(farbe)),
                 gegner: SCHACH_RUNDE.beuteWert(stand, farbe)
+            },
+
+            /*
+             * WAS AM ENDE NOCH STAND (seit v0.76).
+             *
+             * `wert` sagt, was die Partie GEKOSTET hat; das ist die Antwort auf
+             * „warum habe ich verloren". Wer besser dastand, ist eine andere
+             * Frage — und sie lässt sich nur aus der Stellung beantworten, weil
+             * Fähigkeiten Material erschaffen und zurückholen (siehe
+             * `materialWert`). Bis v0.75 wurde der Satz „beim Material lagt ihr
+             * vorn/hinten" aus den Verlusten gerechnet und stimmte deshalb in
+             * jeder Partie mit Wiedergeburt oder Umwandlung nicht.
+             */
+            stellung: {
+                eigen: SCHACH_RUNDE.materialWert(stand, farbe),
+                gegner: SCHACH_RUNDE.materialWert(stand, SCHACH.gegner(farbe))
             },
             wendepunkte: wendepunkte
         };
@@ -1076,13 +1310,43 @@ const SCHACH_RUNDE = {
          * Fähigkeiten erscheinen nur auf leeren Feldern, und nie dort, wo schon
          * eine liegt. Gezählt wird ZUERST: Im Glücksboxen-Regen hängen Chance
          * und Anzahl davon ab, wie leer das Brett gerade ist.
+         *
+         * KEINE LOOTBOX AUF EINEM GESPERRTEN FELD (seit v0.76).
+         *
+         * Gemeldet als „bei Kreuz-Karten sollen nicht Lootboxen im Nichts
+         * spawnen". Die vier toten Ecken eines Kreuz-Bretts sind gewöhnliche
+         * RISSE (seit v0.63) — leer, aber niemand zieht dorthin. Eine Lootbox
+         * dort war für immer unerreichbar und lag am Bildschirm mitten im
+         * Schwarzen. Dasselbe gilt für ein Loch aus einem Erdbeben und für
+         * eine Mauer: Unter ihr wäre die Box unsichtbar.
+         *
+         * Hier geht es um NEU erscheinende Boxen — die dürfen nicht unter eine
+         * schon stehende Mauer fallen. Wird umgekehrt eine Mauer über eine
+         * liegende Box gelegt, frisst sie diese seit v0.77 (`_zielWirkung`,
+         * Fall `mauer`); bis v0.66 war jenes Feld dafür gesperrt.
+         *
+         * Gefragt wird `SCHACH.gesperrt` — die eine Stelle, die beide Ursachen
+         * kennt (eiserne Regel).
+         *
+         * DIE TOTEN ECKEN ZÄHLEN AUCH NICHT MEHR ALS BRETT. `alleFelder` ist
+         * der Massstab dafür, wie leer das Brett ist; die Ecken stünden sonst
+         * für immer als „besetzt" darin, und auf dem Kreuz regnete es deutlich
+         * weniger als auf jedem anderen Brett derselben Grösse.
          */
         const belegt = runde.bonus.map((eintrag) => eintrag.feld);
-        const alleFelder = SCHACH.felderVon(runde.stand);
+        const felderGesamt = SCHACH.felderVon(runde.stand);
         const freie = [];
+        let alleFelder = 0;
 
-        for (let feld = 0; feld < alleFelder; feld++) {
-            if (SCHACH.figurAuf(runde.stand, feld) === "." && belegt.indexOf(feld) === -1) {
+        for (let feld = 0; feld < felderGesamt; feld++) {
+            if (SCHACH.rissAuf(runde.stand, feld)) {
+                continue;
+            }
+            alleFelder++;
+
+            if (SCHACH.figurAuf(runde.stand, feld) === "."
+                && !SCHACH.gesperrt(runde.stand, feld)
+                && belegt.indexOf(feld) === -1) {
                 freie.push(feld);
             }
         }
@@ -1127,6 +1391,16 @@ const SCHACH_RUNDE = {
             SCHACH_RUNDE._zufallsWert(basis + "|anzahl"));
         const moeglich = Math.min(gewuenscht, freie.length);
 
+        /*
+         * EINMAL VOR DER SCHLEIFE GERECHNET, nicht darin: `freie` schrumpft mit
+         * jedem gesetzten Würfel (`splice` unten), und der Füllstand ist der
+         * Stand VOR diesem Halbzug — sonst wäre der zweite Würfel eines
+         * Durchgangs ein Stück gefährlicher als der erste, ohne dass sich auf
+         * dem Brett etwas geändert hätte. Chance und Anzahl oben nehmen ihn aus
+         * demselben Grund vorher.
+         */
+        const pechChance = SCHACH_VARIANTEN.pechChance(menge, freie.length, alleFelder);
+
         const neue = [];
 
         for (let nummer = 0; nummer < moeglich; nummer++) {
@@ -1134,9 +1408,15 @@ const SCHACH_RUNDE = {
             const stelle = Math.floor(SCHACH_RUNDE._zufallsWert(marke + "|feld") * freie.length);
             const feld = freie[stelle];
 
-            /* Ist es ein Unglückswürfel? Deutlich seltener als ein normaler. */
+            /*
+             * Ist es ein Unglückswürfel? Deutlich seltener als ein normaler —
+             * und seit v0.77 umso häufiger, je leerer das Brett ist. Gerechnet
+             * wird das in `SCHACH_VARIANTEN.pechChance`, mit denselben Kurven
+             * wie die Menge; auf der Stufe „wenig" bleibt es beim festen
+             * Grundwert.
+             */
             const istPech = (SCHACH_RUNDE._zufallsWert(marke + "|pech") * 100)
-                < SCHACH_VARIANTEN.PECH_CHANCE;
+                < pechChance;
 
             /*
              * BEIM ERSCHEINEN STEHT NUR DIE STUFE FEST (seit v3.6).
@@ -1452,6 +1732,93 @@ const SCHACH_RUNDE = {
     },
 
     /*
+     * WELCHE FÄHIGKEIT WARTET GERADE AUF IHREN ZUG? (seit v0.76)
+     *
+     * `istDerZug` (Sprung, Teleport) setzt ein Zugmuster in den Stand und ist
+     * damit verbraucht — danach ist die Seite zwar am Zug, darf aber NUR noch
+     * nach diesem Muster ziehen. Der Stand merkt sich das Muster, nicht die
+     * Fähigkeit; hier steht der Rückweg. Gesucht wird in der Tabelle, damit
+     * eine neue Fähigkeit mit eigenem Muster von selbst mitkommt.
+     */
+    laufendesZugmuster(runde, farbe) {
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+
+        if (stand.stand.zusatzFarbe !== farbe || !stand.stand.zusatzNurDieses) {
+            return "";
+        }
+
+        const namen = Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN);
+        const gefunden = namen.find((art) => {
+            const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+            return eintrag.art === "zugmuster" && eintrag.istDerZug
+                && eintrag.muster === stand.stand.zusatzMuster;
+        });
+
+        return gefunden || "";
+    },
+
+    /*
+     * EIN AKTIVES ITEM ABBRECHEN — UND ZURÜCKBEKOMMEN (seit v0.76).
+     *
+     * Gemeldet als: „Wenn man ein Item aktiv hat, also gerade dabei ist eine
+     * Figur auszuwählen, soll man mit einem Abbrechen-Knopf das Item abbrechen
+     * können, und das Item muss zurückgegeben werden."
+     *
+     * Für Fähigkeiten mit ZIELFELD gab es das seit v0.57 (der Kasten wird
+     * platziert, „Abbrechen" verwirft ihn, eingesetzt ist noch gar nichts).
+     * Sprung und Teleport waren der blinde Fleck: Sie sind mit dem Antippen
+     * SOFORT verbraucht, und danach steht man vor einem Brett, auf dem nur noch
+     * das Muster zählt. Wer sich vertippt hatte, musste springen.
+     *
+     * Zurückgenommen wird deshalb genau das, was `faehigkeitEinsetzen` gesetzt
+     * hat: das Muster aus dem Stand und die Fähigkeit zurück in den Vorrat.
+     * ES IST KEIN GESCHENK — die Stellung ist danach dieselbe wie vorher, kein
+     * Halbzug ist verbraucht, und deshalb erscheint auch keine neue Lootbox
+     * (`_bonusNachziehen` läuft hier nicht, genau wie beim Einsetzen selbst).
+     * Der Zugzähler steigt trotzdem: Er zählt Änderungen am Stand, und daran
+     * hängt die Sicherung gegen zwei gleichzeitige Züge aus einem Team.
+     */
+    zugmusterZuruecknehmen(runde, spielerId, zeitpunkt) {
+        const alt = SCHACH_RUNDE.normalisieren(runde);
+
+        if (!SCHACH_RUNDE.darfZiehen(alt, spielerId)) {
+            return null;
+        }
+
+        const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
+        const art = SCHACH_RUNDE.laufendesZugmuster(alt, farbe);
+
+        if (!art) {
+            return null;
+        }
+
+        const neu = SCHACH_RUNDE.kopieren(alt);
+
+        neu.stand = Object.assign({}, neu.stand, {
+            zusatzFarbe: "",
+            zusatzMuster: "",
+            zusatzNurDieses: false,
+            sprungAktiv: ""
+        });
+
+        neu.faehigkeiten[farbe].push(art);
+        neu.zugZaehler = alt.zugZaehler + 1;
+
+        neu.verlauf.push({
+            text: "Fähigkeit " + SCHACH_VARIANTEN.faehigkeitTitel(art)
+                + " abgebrochen — sie bleibt im Vorrat",
+            wer: "",
+            farbe: farbe,
+            von: -1,
+            nach: -1
+        });
+        SCHACH_RUNDE._verlaufKuerzen(neu);
+
+        neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
+        return neu;
+    },
+
+    /*
      * Sammelt alle Würfel ein, über die dieser Zug geführt hat. Ändert die
      * übergebene Runde.
      *
@@ -1753,12 +2120,28 @@ const SCHACH_RUNDE = {
             text += " — ohne Wirkung";
         }
 
+        /*
+         * DER UNGLÜCKS-EINTRAG IST KEINE BEWEGUNG (seit v0.76).
+         *
+         * Bis v0.75 stand hier `von` = Startfeld des Zuges und `nach` = Feld
+         * der Lootbox. Beides zusammen sah für den Bildschirm aus wie ein Weg —
+         * und er zeichnete ihn: die Spur lief vom Startfeld zur LOOTBOX und
+         * hörte dort auf, in Gelb, während die Figur ganz woanders stand. Die
+         * grüne Spur des eigenen Zuges war damit weg, und die Bewegung suchte
+         * ihre Figur auf dem Lootbox-Feld (gemeldet am 18.08.: „wenn ich eine
+         * Unglücksbox einsammle, verhält sich die grüne Farbe meiner Bewegung
+         * nicht richtig").
+         *
+         * Was das Unglück wirklich bewegt hat, steht in `wege` — dort und
+         * nirgendwo sonst. `felder` sagt, worauf es gewirkt hat. Ein Weg vom
+         * Start des Zuges zur Lootbox hat nie stattgefunden.
+         */
         runde.verlauf.push({
             text: text,
             wer: wer || "",
             farbe: farbe,
-            von: Number.isInteger(herkunft) ? herkunft : -1,
-            nach: feld,
+            von: -1,
+            nach: -1,
             wirkung: "pech",
             felder: wirkung ? wirkung.felder : [feld],
             wege: wirkung ? (wirkung.wege || []) : []
@@ -1878,29 +2261,45 @@ const SCHACH_RUNDE = {
         if (art === "mauer") {
             const wirkung = SCHACH.mauerLegen(runde.stand, feld);
 
-            /*
-             * KEINE MAUER ÜBER EINEN WÜRFEL (seit v0.66, Wunsch #32).
-             *
-             * Gemeldet als „die Items unter der Mauer verschwinden und kommen
-             * nicht wieder". Sie verschwinden nicht wirklich — sie liegen
-             * weiter in `runde.bonus`. Aber das Feld ist gesperrt, solange die
-             * Mauer steht, und auf ein gesperrtes Feld zieht niemand: Der
-             * Würfel ist unerreichbar und am Brett nicht mehr zu sehen. Von
-             * aussen ist das dasselbe wie weg.
-             *
-             * Statt die Würfel wegzuräumen (dann wären sie wirklich weg) oder
-             * sie dem Mauerbauer zu schenken (das wäre eine neue Regel und
-             * eine starke dazu), wird das Feld gar nicht erst angeboten:
-             * `zielFelder` probiert jedes Feld gegen genau diese Rechnung
-             * durch. Wer eine Mauer legen will, sucht sich eine freie Stelle.
-             *
-             * Beim RISS geht das nicht — der entsteht durch ein Unglück und
-             * fragt niemanden. Dort fällt der Würfel deshalb wirklich hinein
-             * (v0.60).
-             */
-            if (wirkung && wirkung.felder.some(
-                (gesperrt) => runde.bonus.some((eintrag) => eintrag.feld === gesperrt))) {
+            if (!wirkung) {
                 return null;
+            }
+
+            /*
+             * DIE MAUER FRISST DIE LOOTBOX (seit v0.77, Nutzer-Ansage 18.08.)
+             * — KEHRT DIE REGEL AUS v0.66 UM.
+             *
+             * v0.66 (Wunsch #32) hat ein Feld mit Lootbox gar nicht erst als
+             * Ziel angeboten. Die Begründung damals: Unter der Mauer ist die
+             * Box unsichtbar und unerreichbar, „von aussen dasselbe wie weg" —
+             * also lieber die Mauer woanders hin.
+             *
+             * Der Nutzer will es andersherum: „Die Mauer soll man auf alle
+             * Felder platzieren können, wo es von den Figuren und vom Brettrand
+             * her geht. Sobald man die Mauer dahin platziert, wo davor eine
+             * Lootbox stand, verschwindet diese — sie wird gefressen."
+             *
+             * Damit wird aus dem „dasselbe wie weg" ein ehrliches Weg. Die
+             * beiden Nachteile von v0.66 fallen mit: Man muss beim Platzieren
+             * nicht mehr raten, warum ein Feld nicht geht, und die Mauer ist
+             * wieder überall dort legbar, wo sie hingehört. Dass man dabei
+             * etwas zerstört, ist die Gegenleistung — beim RISS ist es seit
+             * v0.60 genauso, nur ungewollt.
+             *
+             * Der Bildschirm blendet die Lootboxen aus, solange man eine Mauer
+             * platziert (`team-schach-brett.js`) — dieselbe Hilfe wie beim
+             * Friedhof seit v0.57: Was in diesem Moment nicht zur Wahl gehört,
+             * lenkt nur ab.
+             */
+            const gefressen = runde.bonus.filter(
+                (eintrag) => wirkung.felder.indexOf(eintrag.feld) !== -1);
+
+            if (gefressen.length > 0) {
+                runde.bonus = runde.bonus.filter(
+                    (eintrag) => wirkung.felder.indexOf(eintrag.feld) === -1);
+
+                wirkung.text += ", frisst " + gefressen.length
+                    + (gefressen.length === 1 ? " Lootbox" : " Lootboxen");
             }
 
             return wirkung;

@@ -175,12 +175,26 @@ Object.assign(TEAM_SCHACH, {
 
         zeile("Dein Team hat verloren (Figurenwert)", schau.wert.eigen);
         zeile("Der Gegner hat verloren (Figurenwert)", schau.wert.gegner);
+
+        /*
+         * WAS AM ENDE NOCH AUF DEM BRETT STAND (seit v0.76).
+         *
+         * Die zwei Zeilen darüber sagen, was die Partie GEKOSTET hat. Wer
+         * besser dastand, ist eine andere Frage — und die beantwortet nur die
+         * Stellung: Wiedergeburt, Umwandlung und Verstärkung bringen Material
+         * zurück oder erschaffen es, ohne dass jemand etwas verloren hätte. Bis
+         * v0.75 wurde der Satz darunter aus den VERLUSTEN gerechnet und
+         * widersprach deshalb dem, was man auf dem Brett daneben sah.
+         */
+        zeile("Auf dem Brett standen noch (dein Team)", schau.stellung.eigen);
+        zeile("Auf dem Brett standen noch (Gegner)", schau.stellung.gegner);
         textSpalte.appendChild(bilanz);
 
-        const abstand = schau.wert.gegner - schau.wert.eigen;
+        const abstand = schau.stellung.eigen - schau.stellung.gegner;
         textSpalte.appendChild(TEAM_SCHACH._element("p", "abschluss-grund",
             (abstand === 0)
-                ? "Am Material lag es nicht — beide Seiten haben gleich viel gelassen."
+                ? "Am Material lag es nicht — am Ende stand auf beiden Seiten "
+                    + "gleich viel."
                 : ((abstand > 0)
                     ? "Beim Material lagt ihr vorn, um " + abstand + "."
                     : "Beim Material lagt ihr hinten, um " + (-abstand) + ".")));
@@ -1067,6 +1081,21 @@ Object.assign(TEAM_SCHACH, {
                     zelle.classList.add("mauer-ende");
                 }
             }
+            /*
+             * RISSE GEHÖREN AUCH INS KLEINE BRETT (seit v0.76).
+             *
+             * Gemeldet als „bei der Was-ist-passiert-Ansicht zeigt es nicht das
+             * Kreuz-Schachbrett". Die Rückschau zeichnet die Schlussstellung
+             * mit genau dieser Funktion — und sie kannte als Einzige die Risse
+             * nicht. Auf einem Kreuz-Brett sind die vier toten Ecken aber
+             * nichts anderes als Risse (seit v0.63): Ohne sie sah die
+             * Schlussstellung aus wie ein gewöhnliches Quadrat, auf dem in den
+             * Ecken nur zufällig nichts stand. Dasselbe fehlte in jeder
+             * Anleitung, in der ein Erdbeben Löcher reisst.
+             */
+            if (SCHACH.rissAuf(stand, feld)) {
+                zelle.classList.add("feld-riss");
+            }
             if (stand.schildFeld === feld) {
                 zelle.classList.add("feld-schild");
             }
@@ -1341,6 +1370,22 @@ Object.assign(TEAM_SCHACH, {
      * Die Bilanz unter dem Brett: geschlagene und verlorene Figuren je Seite,
      * dazu der Vorsprung nach Figurenwert. Beantwortet auf einen Blick die
      * Frage, die man sonst durch Abzählen beantworten müsste — wer steht besser?
+     *
+     * SO WIE IN DEN BEKANNTEN SCHACH-APPS (seit v0.76, Nutzer-Meldung „der
+     * Figurenzähler plus/minus ist nicht richtig, bitte von bekannten
+     * Schach-Apps abschauen"). Zwei Dinge waren anders als dort:
+     *
+     *   1. GERECHNET WIRD AUS DER STELLUNG, nicht aus den Verlustlisten
+     *      (`SCHACH_RUNDE.materialVorsprung`). Hier entsteht Material, ohne
+     *      dass jemand schlägt — Umwandlung, Wiedergeburt, Verstärkung,
+     *      Nachschub —, und genau dann log der alte Zähler. Die Begründung
+     *      steht im Modell.
+     *   2. NUR DIE FÜHRENDE SEITE BEKOMMT EINE ZAHL. Bis v0.75 stand links
+     *      „+8" und rechts „-8" — dieselbe Auskunft zweimal, und ein Minus
+     *      zeigt keine Schach-App. Steht es gleich, steht nirgends etwas.
+     *
+     * Die geschlagenen Figuren daneben bleiben, wie sie waren: Sie sagen, WAS
+     * gefallen ist, und das beantwortet der Zähler nicht.
      */
     _bilanzBauen(partie) {
         const zeile = TEAM_SCHACH._element("div", "bilanz-reihe");
@@ -1371,9 +1416,10 @@ Object.assign(TEAM_SCHACH, {
             }
             spalte.appendChild(beute);
 
-            const vorsprung = (bilanz.punkte > 0) ? ("+" + bilanz.punkte) : String(bilanz.punkte);
+            const vorsprung = SCHACH_RUNDE.materialVorsprung(partie, farbe);
             spalte.appendChild(TEAM_SCHACH._element("span",
-                "bilanz-punkte" + (bilanz.punkte > 0 ? " bilanz-vorn" : ""), vorsprung));
+                "bilanz-punkte" + ((vorsprung > 0) ? " bilanz-vorn" : ""),
+                (vorsprung > 0) ? ("+" + vorsprung) : ""));
 
             zeile.appendChild(spalte);
         }

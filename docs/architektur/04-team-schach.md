@@ -43,6 +43,15 @@ Partie mit der Kennung `start` und dem Titel *Erste Partie*. Eine angefangene
 Partie läuft damit ohne Bruch weiter. `tests\test-schach-tafel.js` prüft das
 Feld für Feld — wer daran etwas ändert, bricht laufende Partien.
 
+
+**Jede Partie merkt sich ihre Geburtsversion** (`angelegtMit`, seit v0.77) —
+die App-Version, mit der sie angelegt wurde. Sie ändert an keiner Rechnung
+etwas; die Übersicht zeigt sie nur dann, wenn sie von der laufenden Version
+abweicht. Damit ist bei einer Meldung sofort klar, worauf sie sich bezieht.
+Sie ist ausdrücklich KEIN Einfrieren: Warum laufende Partien nicht auf ihrer
+Startversion festgehalten werden und warum der additive Datenvertrag das
+eigentliche Problem schon löst, steht in `entscheidungen\entschieden.md`.
+
 ### Die Hausregel: keine Reihenfolge im Team
 
 Jeder aus dem Team, das am Zug ist, darf ziehen (`SCHACH_RUNDE.darfZiehen`).
@@ -68,6 +77,17 @@ Schritt 3 ist die zweite Hälfte derselben Regel: **Geschrieben wird nie die
 eigene Tafel als Ganzes.** Sonst verschwänden Partien, die inzwischen woanders
 angelegt oder gezogen wurden — genau der Fehler, der im Würfel-Quizz einmal
 Mitspieler gelöscht hat (siehe DECISIONS.md).
+
+**Die Anmeldung in Schritt 0 allein reicht nicht** (seit v0.76). Sie hält die
+regelmässige Abfrage nur an, solange sie noch nicht losgelaufen ist:
+`Abgleich.fremdenStandHolen` prüft seine Sperren VOR dem Netzaufruf, und der
+dauert über mobile Daten ein bis zwei Sekunden. Kommt die Antwort danach, trägt
+sie womöglich den Stand von vor dem eigenen Zug — und der nächste Zug scheitert
+dann an Schritt 2, obwohl niemand sonst gezogen hat. Deshalb prüft
+`fremdenStandHolen` **nach** dem Aufruf ein zweites Mal, und zusätzlich an einem
+Zähler (`vorgangsZaehler`), ob dazwischen ein eigener Vorgang lief. Sichtbar
+wurde das als „Doppelzug-Fehler": Nur dort folgen zwei eigene Züge unmittelbar
+aufeinander (siehe `entscheidungen\erkenntnisse.md`).
 
 Deshalb bekommt der Schach-Abgleich **kein** `zusammenfuehren`: Er schreibt gar
 nicht. Alles Schreiben läuft über `TEAM_SCHACH._sendenMitPruefung`.
@@ -189,12 +209,29 @@ gesetzt), `SCHACH_TAFEL.partieAnlegen` (dort steht der Haken fest) und
 `armeeAufstellen` darf **nicht** `armeeAn` fragen: Das normalisiert, und
 `normalisieren` baut sich eine leere Runde — das wäre eine Endlosschleife.
 
-**Wie viele Figuren?** `SCHACH_VARIANTEN.armeeAnzahl` zählt die Grossbuchstaben
-der `aufstellung` und nimmt die Hälfte (`ARMEE.anteil`). Für „Klassisch" sind
-das die 8 aus v0.49; jedes andere Brett folgt von selbst, und eine neue Spielart
-braucht keine eigene Zahl. `armeeSpalten` leitet daraus die Breite ab
-(`ceil(anzahl / 2)`, weil auf ZWEI Grundreihen gestellt wird) und zentriert sie
-— auf dem 8er-Brett vier Spalten mit je zwei freien daneben.
+**Wie viele Figuren?** Umgekehrt gerechnet, als man vermuten würde (seit v0.52):
+Zuerst steht der freie RAND fest — immer zwei Spalten je Seite, auf jeder Karte,
+damit die 2-mal-2-Ecke bleibt. Was in der Mitte übrig ist, füllt die Armee auf
+zwei Grundreihen. `armeeSpalten` liefert beides, `armeeAnzahl` ist daraus
+`spalten * 2`: Klassisch 8, kleines Brett 4, grosses 12, Doppelbrett 24. **Keine
+Spielart nennt eine Zahl.** (v0.51 hatte es andersherum versucht — erst die
+halbe Armee, dann den Rand daraus; auf dem kleinen Brett blieb nur eine Spalte
+Rand übrig.)
+
+**Auf dem Kreuz zählt die MITTE, nicht die Brettbreite** (seit v0.76): Ein
+Streifen ist nur so breit wie `breite - 2 * KREUZ.rand`, die toten Ecken
+gehören nicht dazu. `armeeSpalten` rechnet deshalb mit der Mitte und gibt in
+`rand` den Abstand vom BRETTRAND zurück — erst die tote Ecke, dann der freie
+Rand. `armeeAnzahl` ist damit die Zahl **je Startseite**: kleines Kreuz 4,
+Kreuz 8, grosses Kreuz 12.
+
+**Und ein Kreuz stellt je STARTSEITE auf** (`_armeeStandKreuz`, seit v0.76).
+`_armeeStand` kannte bis dahin nur oben und unten und liess die Flügel leer.
+Die Seiten kommen aus `SCHACH.startSeitenVon` (also aus `startSeiten` im Stand,
+nie aus den Figuren abgelesen), die Risse der toten Ecken bleiben stehen, und
+**`bauernSeiten` wird neu gebaut** — nach dem Würfeln steht dort, wo die Vorlage
+einen Bauern hatte, vielleicht ein Turm. Ein Team mit zwei Streifen hat damit
+doppelt so viele Figuren wie eines im Kreuz-Duell.
 
 **Dieselbe Armee für beide?** Steckt die Farbe in der Saat, zieht jede Seite für
 sich; ohne sie fällt für beide dieselbe Ziehung. Weil `_armeeFelder` die Felder
@@ -276,6 +313,16 @@ verschiedenen Zeitpunkten: `beendetZug` gibt ihn ab, die Wirkung kommt eine
 Runde später; `istDerZug` lässt einen am Zug und schränkt ihn auf das Muster
 ein (`stand.zusatzNurDieses`). Wer dabei gar keinen Zug mehr hätte, darf die
 Fähigkeit nicht einsetzen — sonst stünde die Partie.
+
+**Ein laufendes `istDerZug` lässt sich abbrechen** (seit v0.76). Welche
+Fähigkeit gerade läuft, beantwortet `SCHACH_RUNDE.laufendesZugmuster` aus der
+Tabelle (Muster + `istDerZug`); `zugmusterZuruecknehmen` räumt Muster und Marke
+aus dem Stand und legt die Fähigkeit zurück in den Vorrat. Die Stellung bleibt
+unberührt und kein Halbzug wird verbraucht — also erscheint auch keine Lootbox.
+Der Zugzähler steigt trotzdem: An ihm hängt die Sicherung gegen zwei
+gleichzeitige Züge aus einem Team. Bei Fähigkeiten mit ZIELFELD braucht es das
+nicht, dort ist bis zum Drücken von „Einsetzen" noch gar nichts eingesetzt
+(v0.57).
 
 **Das Pluszeichen zeigt `!beendetZug && !istDerZug`** — eine Eigenschaft der
 Fähigkeit, seit v0.48 wieder unabhängig vom Spielstand. Von v0.41 bis v0.47
@@ -511,6 +558,18 @@ rechts nur an den Enden `mauer-anfang`/`mauer-ende`), und jedes Stück reicht ei
 Pixel in seinen Nachbarn hinein. Bis v0.40 zog der Rand um jedes Feld herum —
 gemeldet als „die Mauer ist nicht in sich geschlossen".
 
+
+**Die Mauer frisst Lootboxen unter sich** (seit v0.77, **kehrt v0.66 um**).
+Bis v0.76 wurde ein Feld mit einer Lootbox als Ziel gar nicht angeboten: Unter
+der Mauer war die Box gesperrt, unsichtbar und unerreichbar. Jetzt darf die
+Mauer überall hin, wo drei freie Felder nebeneinander liegen — und was darunter
+liegt, wird beim Legen aus `runde.bonus` entfernt und im Verlauf genannt
+(`_zielWirkung`, Fall `mauer`). Der Bildschirm blendet die Lootboxen während
+des Platzierens aus, wie beim Friedhof (`wuerfelAusblenden`). Umgekehrt gilt
+weiter: Eine NEUE Lootbox fällt nie unter eine stehende Mauer, das prüft
+`_bonusNachziehen` über `SCHACH.gesperrt`. Begründung in
+`entscheidungen\entschieden.md`.
+
 ### Platzieren mit Vorschau-Kasten (seit v0.57)
 
 Eine Fähigkeit mit Zielfeld wirkt nicht mehr beim ersten Tipp. Der Bildschirm
@@ -587,6 +646,31 @@ gewinnt. Beim Wachsen verschieben sich **alle Feldnummern**; deshalb rechnet
 `SCHACH.ausdehnung` auch die gemerkten Felder um (Rochaderechte, Schild, Fessel,
 Frost). Wer das vergisst, hat ein Schild auf dem falschen Feld — ein Test hält
 es fest.
+
+
+**Wie oft ein Unglück kommt, hängt seit v0.77 am Füllstand**
+(`SCHACH_VARIANTEN.pechChance`). Bis v0.76 war es eine feste Zahl
+(`PECH_CHANCE`, 12 Prozent). Jetzt gilt dieselbe Mechanik wie für die MENGE
+seit v0.71: auf der Stufe „wenig" flach beim Grundwert, auf den drei
+Füllstands-Stufen steigend bis `PECH_CHANCE_HOCH` (40), entlang derselben
+Kurventabelle (`REGEN.STUFEN`, `chanceKurve`) und mit derselben `Math.max`-
+Klammer gegen den Grundwert. **Welches** Unglück es wird, hat sich nicht
+geändert (`pechZiehen`, Stufen-Chancen 52 / 33 / 12 / 3).
+
+
+**Die toten Ecken wachsen mit** (seit v0.77.1). Bis v0.77.0 baute die
+Ausdehnung die neue Linie immer vollständig bespielbar an — auf einem Kreuz
+bekam die Ecke dadurch ein Loch nach aussen. Zusammen mit der Schrumpfung, die
+eine Linie samt Rissen wegwirft, frass sich die Form über eine lange Partie von
+den Rändern her auf: Grösse zurück, Form weg. Jetzt setzt `_eckenFortsetzen`
+die Ecken der angrenzenden Randlinie fort — **nur die Löcher, nie die Figuren,
+und nur die zusammenhängenden Läufe von den ENDEN der Linie.** Ein einzelnes
+Loch mitten am Rand stammt von einem Erdbeben, gehört dem Spielverlauf statt der
+Brettform und wächst deshalb nicht mit.
+
+**Nebenbefund, nicht geändert:** `ausdehnung` sperrt „oben" und „unten" ab einer
+Höhe von 9. Jedes Kreuz ist mindestens 10 hoch — es kann also nur seitlich
+wachsen, aber in alle vier Richtungen schrumpfen.
 
 ### Der Zug, der unterwegs endet (seit v0.58)
 
@@ -719,6 +803,15 @@ immer unten), und geschoben wird von dort weg — für Weiss also aufwärts, fü
 Schwarz abwärts, für beide „nach vorn". Wer eine Fähigkeit mit Richtung baut,
 rechnet sie aus der FARBE, nie aus der Reihe am Brett.
 
+
+**Es rollt wirklich alles — auch Könige** (seit v0.77). Bis v0.76 blieben sie
+stehen, und weil ihr Feld besetzt blieb, hielten sie auch alles auf, was hinter
+ihnen stand. Den EIGENEN König ins Schach schieben kann man damit trotzdem
+nicht: Das verhindert die Prüfung in `faehigkeitEinsetzen` (seit v3.6), die für
+jede Fähigkeit gilt — sie steht dort und nicht in `SCHACH.nudelholz`, weil die
+Rechnung den Zugzusammenhang nicht kennt. Erdbeben und Bauernschub verschonen
+ihre Könige weiterhin.
+
 ### Welche Felder ein Ziel sein können
 
 `SCHACH_RUNDE.zielFelder()` probiert für jedes Feld die Wirkung auf einer Kopie
@@ -755,6 +848,41 @@ Von v1.9 bis v3.5 war das ein gezeichneter **Pfeil**. Warum er weg ist, steht in
 `DECISIONS.md` („Warum der Zugpfeil verschwunden ist"): Er konnte eine Bewegung
 um ein einziges Feld gar nicht darstellen, und das waren drei der gemeldeten
 Fehler.
+
+### Die stillen Animationen (seit v0.77)
+
+Vier kleine Bewegungen am Brett, auf Nutzer-Wunsch **ohne Farbe und sehr
+einfach**: eine erscheinende Lootbox wächst auf, eine verschwundene hinterlässt
+einen kurzen Ring, eine neu erschienene Figur wächst auf, und wo geschlagen
+wurde, geht derselbe Ring auf.
+
+**Ausgelöst werden sie durch VERGLEICH, nicht durch Lesen des Verlaufs**
+(`TEAM_SCHACH._veraenderungen`). Der Verlauf sagt, was jemand GETAN hat; die
+Animation soll zeigen, was auf dem Brett ANDERS ist — das ist nicht dasselbe.
+Eine Lootbox verschwindet auch, wenn eine Mauer sie frisst (v0.77) oder ein Riss
+sie verschluckt (v0.60); für jeden dieser Wege einen Verlaufseintrag zu deuten
+hiesse, die Liste bei jeder neuen Regel nachzupflegen. Der Vergleich kennt sie
+alle, ohne einen davon zu kennen.
+
+Drei Feinheiten, an denen alles hängt:
+
+1. **ERSCHIENEN ist nicht HINGEZOGEN.** Ein freies Feld, auf dem plötzlich eine
+   Figur steht, ist meistens nur ein Zugziel. Wirklich neu ist sie nur, wenn
+   ihre FARBE insgesamt mehr Figuren hat als vorher — so entstehen Nachschub,
+   Spiegel, Wiedergeburt, Wiederbelebung und Friedhof, und so entsteht kein Zug.
+2. **Ein Schlag ist ein Farbwechsel auf einem Feld.** Das Schlagen im
+   Vorbeigehen fällt bewusst nicht darunter (der Bauer fällt auf einem anderen
+   Feld als dem Zielfeld) — dafür bräuchte es eine zweite Quelle.
+3. **Der erste Anblick animiert nie**, ebensowenig der erste nach einem
+   Partiewechsel oder nach einer Änderung des Brettmasses (Ausdehnung,
+   Einsturz — dieselben Feldnummern zeigen dann woanders hin). Sonst poppte
+   beim Öffnen die ganze Stellung auf einmal auf.
+
+Gezeichnet wird in der Stildatei mit `scale` und `opacity`, **nicht** mit
+`transform: scale(…)`: Der Würfel schwebt schon über `transform` und die
+ziehende Figur gleitet darüber. `scale` ist eine eigenständige Eigenschaft und
+rechnet sich mit einem vorhandenen `transform` zusammen. `prefers-reduced-motion`
+schaltet alles ab.
 
 ### Zwei Fragen an einen Weg
 
@@ -823,8 +951,16 @@ wie „Klassisch" mit gesetztem Würfel-Haken. **Gelöscht wird eine Spielart ni
 
 `partie.regeln` hält, was beim Anlegen gewählt wurde: `faehigkeiten` (Würfel an
 oder aus, `null` = die Spielart entscheidet), `seltenheitZeigen`, `pechZeigen`
-und `einigkeit`. Die Vorgaben entsprechen dem Verhalten von vor v2.5 — eine
-Partie ohne dieses Feld verhält sich also unverändert.
+und `einigkeit`. Die Vorgaben im MODELL entsprechen dem Verhalten von vor v2.5 —
+eine Partie ohne dieses Feld verhält sich also unverändert.
+
+**`einigkeit` ist seit v0.76 am Bildschirm umgedreht.** Der Haken beim Anlegen
+heisst „Wer zuerst zieht, hat gezogen" und ist aus; Abstimmung ist damit die
+Vorgabe. Umgedreht sind nur zwei Dinge: `TEAM_SCHACH.neueRegeln.einigkeit`
+startet auf `true`, und der Listeneintrag trägt `umgekehrt: true` (der Haken
+zeigt und schreibt das Gegenteil). **Im Stand ändert sich nichts** — dort
+bedeutet `einigkeit` weiter „das Team stimmt ab", und die Modell-Vorgabe bleibt
+`false`, damit eine Partie ohne Regeln-Block weiterrechnet wie bisher.
 
 **Wie ein Würfel aussieht, sind ZWEI Fragen** (seit v0.49), und sie hängen an
 zwei Haken:
@@ -850,6 +986,15 @@ Kurve; ohne das läge „normal" früh in der Partie unter „wenig", weil die K
 auf vollem Brett fast bei null steht. Dass der Füllstand als ANTEIL zählt und
 nicht als Anzahl, kommt aus v0.50: sonst regnete es auf dem Doppelbrett (128
 Felder) von Beginn an und auf dem kleinen Brett (36) nie.
+
+**WO eine Lootbox erscheinen darf, entscheidet `_bonusNachziehen`** — und seit
+v0.76 fragt es `SCHACH.gesperrt` mit. Ein leeres Feld genügt nicht: Auf einem
+RISS wäre die Box für immer unerreichbar (auf dem Kreuz sind die vier toten
+Ecken genau das), unter einer MAUER unsichtbar. Gemeldet wurde es als
+„Lootboxen spawnen im Nichts". **Und ein Riss zählt seit v0.76 auch nicht mehr
+als Brett:** Der Massstab „wie leer ist es gerade" lässt ihn aus — sonst
+standen auf dem Kreuz 16 Felder für immer als besetzt in der Rechnung, und es
+regnete dort spürbar weniger als auf einem gleich grossen Quadrat.
 
 **Die zwei Vorgänger stehen noch in jeder Partie** (`regeln.regen` seit v0.50,
 `regenStufe` seit v0.60) und bleiben es — additiver Datenvertrag. Fehlt die

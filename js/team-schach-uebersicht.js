@@ -167,13 +167,27 @@ Object.assign(TEAM_SCHACH, {
                     + "Einheiten, spiegelbildlich aufgestellt.",
                 nurMitArmee: true
             },
+            /*
+             * EINIGKEIT IST SEIT v0.76 DIE VORGABE — der Haken fragt das
+             * GEGENTEIL ab (Eingangskorb vom 18.08.: „Team muss einig sein soll
+             * andersrum da stehen, also dass einig sein Standard sein soll und
+             * das andere nur mit Knopfdruck auswählbar ist").
+             *
+             * Gespeichert wird weiter `regeln.einigkeit` mit derselben
+             * Bedeutung (additiver Datenvertrag — jede laufende Partie trägt
+             * das Feld). Umgedreht ist nur, was am Bildschirm steht: Der Haken
+             * heisst jetzt nach dem SCHNELLEN Weg und ist aus.
+             */
             {
                 schluessel: "einigkeit",
-                titel: "Team muss sich einig sein",
-                hinweis: "Ein Zug oder eine Fähigkeit wird erst vorgeschlagen und "
-                    + "ausgeführt, wenn alle aus dem Team zugestimmt haben — oder die "
-                    + "Frist abläuft. Achtung: Der Vorschlag steht im gemeinsamen "
-                    + "Stand, der Gegner kann ihn mitlesen."
+                umgekehrt: true,
+                titel: "Wer zuerst zieht, hat gezogen",
+                hinweis: "Aus heisst: Ein Zug oder eine Fähigkeit wird erst "
+                    + "vorgeschlagen und ausgeführt, wenn alle aus dem Team "
+                    + "zugestimmt haben — oder die Frist abläuft. Das ist die "
+                    + "Vorgabe. Angehakt zieht jeder sofort für sein ganzes Team, "
+                    + "ohne zu fragen. Zur Abstimmung: Der Vorschlag steht im "
+                    + "gemeinsamen Stand, der Gegner kann ihn mitlesen."
             }
         ];
 
@@ -200,9 +214,17 @@ Object.assign(TEAM_SCHACH, {
             const kasten = document.createElement("input");
             kasten.type = "checkbox";
             kasten.className = "schalter-kasten";
-            kasten.checked = !!TEAM_SCHACH.neueRegeln[eintrag.schluessel];
+            /* `umgekehrt` (seit v0.76): Der Haken fragt das GEGENTEIL des
+               gespeicherten Feldes ab — siehe „Wer zuerst zieht, hat gezogen".
+               Im Stand ändert sich dadurch nichts. */
+            kasten.checked = eintrag.umgekehrt
+                ? !TEAM_SCHACH.neueRegeln[eintrag.schluessel]
+                : !!TEAM_SCHACH.neueRegeln[eintrag.schluessel];
+
             kasten.addEventListener("change", () => {
-                TEAM_SCHACH.neueRegeln[eintrag.schluessel] = !!kasten.checked;
+                TEAM_SCHACH.neueRegeln[eintrag.schluessel] = eintrag.umgekehrt
+                    ? !kasten.checked
+                    : !!kasten.checked;
 
                 /*
                  * JEDER HAKEN ZEICHNET NEU (seit v0.71).
@@ -524,6 +546,26 @@ Object.assign(TEAM_SCHACH, {
         const variante = SCHACH_RUNDE.varianteVon(partie);
         karte.appendChild(TEAM_SCHACH._element("p", "partie-zeile",
             variante.titel + " — " + SCHACH_RUNDE.kurzfassung(partie)));
+
+        /*
+         * MIT WELCHER VERSION SIE ANGELEGT WURDE (seit v0.77) — aber NUR, wenn
+         * es eine andere als die laufende ist.
+         *
+         * Sonst stünde an jeder Karte dieselbe Nummer, und eine Angabe, die
+         * immer gleich ist, liest nach zwei Tagen niemand mehr. Interessant ist
+         * sie genau dann, wenn die Partie älter ist als die Seite: Dann
+         * beantwortet sie beim Melden eines Fehlers die erste Rückfrage
+         * („welcher Stand war das?"), ohne dass jemand sie stellen muss.
+         *
+         * Eine Partie von vor v0.77 trägt den Stempel nicht; dann bleibt die
+         * Zeile weg, statt „unbekannt" zu behaupten.
+         */
+        const jetzt = SCHACH_RUNDE._appVersion();
+        if (partie.angelegtMit && jetzt && partie.angelegtMit !== jetzt) {
+            karte.appendChild(TEAM_SCHACH._element("p", "partie-zeile partie-herkunft",
+                "Angelegt mit v" + partie.angelegtMit + " — die Seite läuft mit v"
+                + jetzt + "."));
+        }
 
         const weiss = partie.teams.weiss.map((id) => TEAM_SCHACH._nameVon(id));
         const schwarz = partie.teams.schwarz.map((id) => TEAM_SCHACH._nameVon(id));

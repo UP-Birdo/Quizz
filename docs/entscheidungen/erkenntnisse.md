@@ -599,6 +599,155 @@ GEGENEINANDER prüfen — nicht jede für sich. Der Test dazu steht jetzt in
 beider Farben dürfen sich nicht überschneiden, und eine der beiden muss unten
 sein.
 
+### Der Doppelzug nahm seinen zweiten Zug zurück (v0.76)
+
+**Was zu sehen war:** „Doppelzug-Bug — der zweite Zug wird nur angezeigt." Man
+setzt den Doppelzug ein, zieht, zieht gleich noch einmal — und der zweite Zug
+kommt mit „Jemand war schneller" zurück, obwohl niemand sonst im Team ist.
+
+**Die Ursache lag nicht beim Doppelzug**, sondern in `abgleich.js`. Die
+regelmässige Abfrage (`fremdenStandHolen`) prüft VOR dem Netzaufruf, ob gerade
+ein eigener Schreibvorgang läuft. Der Aufruf dauert über mobile Daten ein bis
+zwei Sekunden — und in dieser Zeit kann ein eigener Zug gesendet UND fertig
+geschrieben worden sein. Die Antwort trug dann den Stand von VOR dem Zug, wurde
+trotzdem übernommen, und der Bildschirm baute seine Knöpfe mit einem veralteten
+Zugzähler. Der nächste Zug meldete diesen Zähler an
+`TEAM_SCHACH._sendenMitPruefung`; dort passte er nicht mehr zum Server, und der
+Zug wurde zurückgenommen — genau so, wie es bei zwei Leuten aus einem Team
+gedacht ist.
+
+**Warum es AUSGERECHNET beim Doppelzug auffiel:** Sonst ist nach dem eigenen
+Zug der Gegner dran. Bis man wieder tippen darf, vergehen Sekunden, und die
+nächste Abfrage hat den Stand längst geradegerückt. Der Doppelzug ist der
+einzige Fall, in dem zwei eigene Züge unmittelbar aufeinander folgen — er machte
+aus einem seltenen Rennen einen reproduzierbaren Fehler.
+
+**Die Lehre:** **Eine Sperre, die vor einem `await` geprüft wird, gilt danach
+nicht mehr.** Wer nach einem Netzaufruf etwas übernimmt, prüft die Bedingung
+ERNEUT — und zusätzlich an einem Zähler, ob dazwischen etwas passiert ist
+(`vorgangsZaehler`). Ein Schalter beantwortet nur „läuft gerade etwas", nie
+„ist zwischendurch etwas gelaufen". Die zwei Tests dazu stehen am Ende von
+`test-bildschirm.js`, bei den Prüfungen, die warten können.
+
+**Zweite Lehre:** Die Meldung nannte den Doppelzug, und im Doppelzug war nichts
+kaputt — das Modell rechnet ihn seit v2.1 richtig. Ein Symptom, das nur unter
+einer bestimmten Fähigkeit auftritt, heisst nicht, dass die Fähigkeit die
+Ursache ist; sie kann auch bloss die einzige Gelegenheit sein, bei der ein
+allgemeines Rennen eng genug wird.
+
+### Ein Eintrag, der sich als Bewegung ausgab (v0.76)
+
+**Was zu sehen war:** „Kann es sein, dass sich die grüne Farbe meiner Bewegung
+nicht richtig verhält, wenn ich eine Unglücksbox einsammle?" — Ja: Die ganze
+Zugspur wurde gelb, lief vom Startfeld bis zum Feld der Lootbox und hörte dort
+auf, obwohl die Figur zwei oder drei Felder weiter stand. Die gleitende
+Bewegung suchte ihre Figur ebenfalls auf dem Lootbox-Feld und lief deshalb gar
+nicht — oder auf der falschen Figur.
+
+**Die Ursache:** Der Verlaufseintrag des Unglücks trug `von` = Startfeld des
+Zuges und `nach` = Feld der Lootbox. Beides zusammen sieht für den Bildschirm
+aus wie ein Weg, also zeichnete er ihn — einen Weg, den nie jemand gegangen
+ist. Was das Unglück wirklich bewegt hat, stand daneben in `wege`.
+
+**Die Lehre, und es ist dieselbe wie in v0.69** („die neu erschienene Lootbox
+verdeckte den Zug"): **Der Bildschirm nimmt EINEN Verlaufseintrag und hält ihn
+für das Ganze.** Ein Halbzug besteht aber aus mehreren Einträgen — Zug,
+Einsammeln, Unglück, neue Lootboxen —, und zwei davon können gleichzeitig
+sehenswert sein. Zwei Regeln folgen daraus:
+
+1. **Ein Eintrag trägt `von`/`nach` nur, wenn er WIRKLICH eine Bewegung
+   beschreibt.** Sonst `-1`. Wer stattdessen „irgendwelche zwei Felder, die
+   dazu passen" hineinschreibt, damit die Anzeige etwas hat, bekommt eine
+   Anzeige, die etwas Falsches zeigt.
+2. **Gehören zwei Ereignisse zu EINEM Halbzug, werden sie auch beide
+   gezeichnet** (`_zugZumUnglueck` sucht den Zug zum Unglück; die Spur führt
+   Grün und Gelb je Feld statt als einen Schalter für alles).
+
+### Ein Zähler, der die Brettbreite meint, aber die Mitte braucht (v0.76)
+
+**Was zu sehen war:** Auf einem Kreuz-Brett mit Zufallsarmee standen beide
+Armeen quer über der Mitte, die beiden Flügel blieben leer — und die Ansicht
+drehte sich (seit v0.72) auf eine Startseite, auf der gar nichts stand.
+
+**Die Ursache:** `_armeeStand` kannte nur „oben" und „unten"; das Kreuz kam
+2 Versionen später und niemand hat die beiden zusammengedacht. Dazu rechnete
+`armeeSpalten` mit `variante.breite` — auf dem Kreuz ist ein Streifen aber nur
+so breit wie die MITTE, die zwei toten Ecken gehören gar nicht dazu.
+
+**Die Lehre:** Wenn eine neue Brettform dazukommt, ist jede Funktion verdächtig,
+die aus `breite`/`hoehe` eine POSITION rechnet — nicht nur die, die Figuren
+zieht. Beim Kreuz sind das drei: die Aufstellung, die Zufallsarmee und die
+Lootbox-Verteilung (die zählte die toten Ecken als „Brett" mit und liess es
+dort deshalb spürbar weniger regnen). Zwei davon sind erst in v0.76
+aufgefallen, dreizehn Versionen nach dem Kreuz.
+
+### Ein Kettenschub sieht aus wie ein Schlag (v0.77, nachgemessen — kein Fehler)
+
+**Was gemeldet wurde:** „Anscheinend ist es vorgekommen, dass meine Figur auf
+die Figur eines Gegners gezogen ist durch Nudelholz und hat sie damit
+geschlagen. Bitte überprüfen."
+
+**Was nachgemessen wurde:** `SCHACH.nudelholz` schiebt ausschliesslich auf
+Felder, die LEER und nicht gesperrt sind; steht dort etwas, bleibt die Figur
+stehen. Über mehrere Stellungen gezählt ist die Zahl der Figuren auf dem Brett
+vorher und nachher gleich. Ein Schlag ist dort nicht möglich, und es gab keinen.
+
+**Was der Nutzer wirklich gesehen hat:** Die Spalten werden in Laufrichtung von
+VORN abgearbeitet — das muss so sein, damit eine Figur Platz macht, bevor die
+nächste nachrückt. Steht eine gegnerische Figur direkt vor der eigenen, wird
+also zuerst SIE ein Feld vorgeschoben, und die eigene rückt anschliessend auf
+deren altes Feld nach. Am Brett steht die eigene Figur danach genau dort, wo
+eben noch die gegnerische stand. Der Gegner ist nicht weg, sondern ein Feld
+weiter — aber wer auf das eine Feld schaut, sieht einen Schlag.
+
+**Die Lehre — und sie gilt über das Nudelholz hinaus:** Eine Meldung beschreibt,
+was jemand GESEHEN hat, nicht was passiert ist. Bevor man die Rechnung
+verdächtigt, lohnt die Frage, welche korrekte Rechnung genau diesen Anblick
+erzeugt. Beim Nudelholz war die Antwort in der Stellung zu finden, sobald man
+statt des einen Feldes die ganze Spalte ausgab — der erste Messversuch druckte
+nur zwei Felder und sah selbst wie ein Beweis für den Schlag aus.
+
+Beim ZWEITEN Nachmessen derselben Runde („Ausweichen funktioniert eh nicht")
+kam dasselbe Muster heraus: Die Fähigkeit funktioniert vollständig, sie ist nur
+gesperrt, solange man am Zug ist (`nurImGegenzug` seit v0.58) — also genau in
+dem Moment, in dem man auf seine Fähigkeiten schaut. „Funktioniert nicht" hiess
+beide Male „verhält sich anders, als ich dachte".
+
+### Zwei richtige Regeln, die sich gegenseitig auffrassen (v0.77.1)
+
+**Was zu sehen war:** Auf einem Kreuz-Brett waren die vier toten Ecken
+unsymmetrisch zerfranst — links unten alles bespielbar, rechts unten und links
+oben mit Lücken, und Lootboxen lagen auf Feldern, die eigentlich ein Loch sein
+müssten. Gemeldet als „gerade ist etwas ganz Komisches passiert".
+
+**Die Ursache lag in KEINER der beiden beteiligten Funktionen.** Beide waren
+für sich genommen richtig:
+
+- Die **Schrumpfung** (v0.54) wirft die wegfallende Linie samt allem darauf weg,
+  Risse eingeschlossen. Richtig — die Felder gibt es nicht mehr.
+- Die **Ausdehnung** (v2.7) baut die neue Linie vollständig bespielbar an.
+  Richtig — auf einem gewöhnlichen Brett soll dort gespielt werden.
+
+Zusammen ergeben sie eine Einbahnstrasse: Jedes Paar aus Schrumpfen und Wachsen
+gibt dem Brett seine Grösse zurück, aber nicht seine FORM. Über eine lange
+Partie mit vielen Unglückswürfeln frisst sich das Kreuz von den Rändern her auf.
+Der Effekt ist kumulativ und deshalb erst spät sichtbar — bei zwei, drei
+Ereignissen fällt er nicht auf, bei zehn ist das Brett unkenntlich.
+
+Verstärkt wurde er dadurch, dass **`ausdehnung` „oben" und „unten" ab einer Höhe
+von 9 sperrt**. Jedes Kreuz ist mindestens 10 hoch; es kann also ausschliesslich
+seitlich wachsen, während es in alle vier Richtungen schrumpfen kann. Die
+Erosion trifft damit bevorzugt die senkrechten Ränder.
+
+**Die Lehre:** Wenn zwei Eingriffe dieselbe Grösse verändern, muss man sie als
+PAAR prüfen, nicht einzeln. Die Frage lautet nicht „ist jede für sich richtig",
+sondern „führt Hin und Zurück wieder auf denselben Stand". Hier tat es das für
+die Masse (10 mal 10 blieb 10 mal 10), aber nicht für die Form — und die Form
+stand in einer zweiten Liste (`risse`), an die beim Wachsen niemand dachte.
+Dieselbe Familie von Fehlern wie „`_feldnummernUmrechnen` vergass drei der
+sieben gemerkten Listen" (v0.54): Was das Brett über sich selbst weiss, steht
+nicht nur im Brett-Text.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 
