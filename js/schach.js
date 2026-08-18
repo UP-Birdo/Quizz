@@ -3955,42 +3955,121 @@ const SCHACH = {
     erdrutsch(stand, farbe) {
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
-        const zurueck = (farbe === SCHACH.WEISS) ? 1 : -1;
+
+        /*
+         * „ZURÜCK" IST JE FIGUR VERSCHIEDEN (seit v0.82).
+         *
+         * Bis v0.81 stand hier `zurueck = (farbe === WEISS) ? 1 : -1` — eine
+         * einzige Richtung für die ganze Farbe, immer senkrecht. Auf dem KREUZ
+         * hat eine Farbe aber ZWEI Startseiten (v0.65), und nachgemessen kam
+         * dabei Unsinn heraus: Die obere weisse Armee rutschte nach UNTEN,
+         * also nach VORN — aus der Strafe wurde ein Geschenk —, und die untere
+         * bewegte sich gar nicht, weil hinter ihr das Brett zu Ende war.
+         * Gemeldet als „kontrolliere Erdrutsch, ob es beim Kreuz-Spielfeld
+         * noch funktioniert" (18.08.).
+         *
+         * Jetzt bekommt jede Figur die Richtung zu DER eigenen Startseite, die
+         * ihr am nächsten liegt — dorthin gehört sie zurück. Auf jedem
+         * gewohnten Brett gibt es nur eine Startseite, dort ändert sich also
+         * nichts.
+         */
+        const seiten = SCHACH.startSeitenVon(stand, farbe)
+            .filter((seite) => SCHACH.SEITEN[seite]);
+
+        /* Wie weit ist dieses Feld von einer Seite entfernt? */
+        const abstand = (seite, reihe, spalte) => {
+            if (seite === "oben") { return reihe; }
+            if (seite === "unten") { return hoehe - 1 - reihe; }
+            if (seite === "links") { return spalte; }
+            return breite - 1 - spalte;
+        };
+
+        const rutschVon = (reihe, spalte) => {
+            let naechste = seiten[0];
+
+            for (const seite of seiten) {
+                if (abstand(seite, reihe, spalte) < abstand(naechste, reihe, spalte)) {
+                    naechste = seite;
+                }
+            }
+            /* Zur Seite hin, nicht von ihr weg: die Gegenrichtung der
+               Laufrichtung, die `SEITEN` für diese Startseite nennt. */
+            return { dr: -SCHACH.SEITEN[naechste].dr, ds: -SCHACH.SEITEN[naechste].ds };
+        };
 
         let brett = stand.brett;
         const felder = [];
         const wege = [];
 
-        /* In Rutschrichtung von vorn abarbeiten, damit vorn Platz entsteht. */
-        const reihen = [];
-        for (let reihe = 0; reihe < hoehe; reihe++) {
-            reihen.push(reihe);
-        }
-        if (zurueck === 1) {
-            reihen.reverse();
-        }
+        /*
+         * IN RUTSCHRICHTUNG VON VORN ABARBEITEN, damit vorn Platz entsteht.
+         *
+         * Bei EINER Richtung genügte dafür die passende Reihenfolge der
+         * Reihen. Mit vier Startseiten auf einem Brett gibt es die nicht mehr:
+         * Was für die obere Armee „von vorn" ist, ist für die untere „von
+         * hinten".
+         *
+         * Gelöst über WIEDERHOLUNG: Es wird so lange durchgegangen, wie sich
+         * noch etwas bewegt. Wer im ersten Durchgang blockiert war, kommt im
+         * zweiten nach. Das endet sicher — jede Figur rutscht höchstens EIN
+         * Feld (`schonGerutscht`), also gibt es höchstens so viele Durchgänge,
+         * wie Figuren dieser Farbe auf dem Brett stehen.
+         */
+        const schonGerutscht = {};
+        let nochmal = true;
 
-        for (const reihe of reihen) {
-            for (let spalte = 0; spalte < breite; spalte++) {
-                const von = reihe * breite + spalte;
-                const figur = brett[von];
+        while (nochmal) {
+            nochmal = false;
 
-                if (SCHACH.farbeVon(figur) !== farbe || SCHACH.artVon(figur) === "K") {
-                    continue;
+            for (let reihe = 0; reihe < hoehe; reihe++) {
+                for (let spalte = 0; spalte < breite; spalte++) {
+                    const von = reihe * breite + spalte;
+                    const figur = brett[von];
+
+                    if (SCHACH.farbeVon(figur) !== farbe || SCHACH.artVon(figur) === "K") {
+                        continue;
+                    }
+                    if (schonGerutscht[von]) {
+                        continue;
+                    }
+
+                    const richtung = rutschVon(reihe, spalte);
+                    const zielReihe = reihe + richtung.dr;
+                    const zielSpalte = spalte + richtung.ds;
+
+                    if (!SCHACH._imBrett(stand, zielReihe, zielSpalte)) {
+                        continue;
+                    }
+
+                    const ziel = SCHACH._feld(stand, zielReihe, zielSpalte);
+
+                    /*
+                     * FREI HEISST LEER UND NICHT GESPERRT (seit v0.82).
+                     *
+                     * Bis v0.81 fragte der Erdrutsch als EINZIGE dieser
+                     * Funktionen nur „steht da eine Figur" — er schob Figuren
+                     * damit auf Mauern und in Risse hinein, wo sie danach auf
+                     * einem Feld standen, das es für die Regeln gar nicht mehr
+                     * gibt. Nachgemessen am 18.08. an einer Mauer und an einem
+                     * Riss; beides trat wirklich ein. Bauernschub, Nudelholz,
+                     * Erdbeben und Schubs fragen hier seit jeher richtig — der
+                     * Erdrutsch war übersehen worden, genau wie das Nudelholz
+                     * bis v0.59.
+                     */
+                    if (brett[ziel] !== "." || SCHACH.gesperrt(stand, ziel)) {
+                        continue;
+                    }
+
+                    brett = SCHACH._brettMit(brett, von, ".");
+                    brett = SCHACH._brettMit(brett, ziel, figur);
+                    felder.push(von, ziel);
+                    wege.push({ von: von, nach: ziel });
+
+                    /* Jede Figur rutscht höchstens EIN Feld — sonst schöbe der
+                       zweite Durchgang dieselbe noch einmal weiter. */
+                    schonGerutscht[ziel] = true;
+                    nochmal = true;
                 }
-                if (!SCHACH._imBrett(stand, reihe + zurueck, spalte)) {
-                    continue;
-                }
-
-                const ziel = SCHACH._feld(stand, reihe + zurueck, spalte);
-                if (brett[ziel] !== ".") {
-                    continue;
-                }
-
-                brett = SCHACH._brettMit(brett, von, ".");
-                brett = SCHACH._brettMit(brett, ziel, figur);
-                felder.push(von, ziel);
-                wege.push({ von: von, nach: ziel });
             }
         }
 

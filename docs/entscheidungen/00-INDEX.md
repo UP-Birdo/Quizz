@@ -36,6 +36,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Ein Zaehler, der die Brettbreite meint, aber die Mitte braucht (v0.76)
     - Ein Kettenschub sieht aus wie ein Schlag (v0.77, kein Fehler)
     - Zwei richtige Regeln, die sich gegenseitig auffrassen (v0.77.1)
+    - Die eine Funktion, die man beim Aufraeumen vergisst (v0.82) — dritte
+      Wiederholung von „Richtung aus der Farbe rechnet auf dem Kreuz falsch"
 
 ## entschieden.md - Entschieden - und warum
 

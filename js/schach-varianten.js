@@ -402,12 +402,37 @@ const SCHACH_VARIANTEN = {
          * sieht so auf einen Blick, was jede Stellung bedeutet, und kann eine
          * einzelne nachjustieren, ohne die anderen zu verschieben.
          * ------------------------------------------------------------ */
+        /*
+         * DIE OBERSTE STUFE IST SEIT v0.82 ETWAS FLACHER (Nutzer-Ansage
+         * 18.08.: „Regen ein kleines wenig schwächer, also nur ein wenig
+         * weniger — aber schon so, dass sich bei 2 Figuren jeden Halbzug alles
+         * füllt").
+         *
+         * Genau dafür ist `kurve` da, und beides zusammen geht nur so: Der
+         * Exponent steuert, WIE FRÜH es losgeht; das ENDE ist bei jedem
+         * Exponenten dasselbe, weil `Math.pow(1, n)` immer 1 ist. Stehen nur
+         * noch die beiden Könige, bekommt also weiterhin JEDES freie Feld eine
+         * Lootbox — davor kommt spürbar weniger.
+         *
+         * Von 3 auf 4 gemessen (Brett mit 64 Feldern, je Halbzug):
+         *
+         *     freie Felder    vorher     jetzt
+         *          24          2 Stk     1 Stk
+         *          32          5 Stk     3 Stk
+         *          40         11 Stk     7 Stk
+         *          48         23 Stk    18 Stk
+         *          56         42 Stk    38 Stk
+         *          62         62 Stk    62 Stk   (unverändert: alles)
+         *
+         * `chanceKurve` bleibt bei 2 — sie sagt, wie oft es überhaupt regnet,
+         * und danach war nicht gefragt.
+         */
         STUFEN: {
             1: { kurve: 9, chanceKurve: 6 },
             2: { kurve: 7, chanceKurve: 5 },
             3: { kurve: 5, chanceKurve: 4 },
             4: { kurve: 4, chanceKurve: 3 },
-            5: { kurve: 3, chanceKurve: 2 }
+            5: { kurve: 4, chanceKurve: 2 }
         },
 
         /* Die Vorgabe, wenn eine Partie keine Stufe nennt (alle Partien vor

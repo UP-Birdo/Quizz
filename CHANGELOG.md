@@ -3,6 +3,32 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.82.0 — 2026-08-18
+
+**Zwei Fehler beim Erdrutsch und ein etwas ruhigerer Regen.**
+
+- **Der Erdrutsch schob Figuren auf Mauern und in Risse.** Er war die einzige
+  dieser Fähigkeiten, die nur gefragt hat „steht da eine Figur" — nicht, ob das
+  Feld überhaupt begehbar ist. Eine zurückgerutschte Figur stand danach auf
+  einem Feld, das es für die Regeln nicht mehr gibt. Das betraf **jedes Brett**,
+  nicht nur das Kreuz.
+
+- **Auf dem Kreuz rutschte die falsche Armee in die falsche Richtung.** Die
+  Richtung hing an der Farbe und ging immer senkrecht. Auf dem Kreuz hat eine
+  Farbe aber zwei Startseiten: Die obere Armee rutschte nach unten, also nach
+  VORN — aus der Strafe wurde ein Geschenk —, und die untere bewegte sich gar
+  nicht. Jetzt rutscht jede Figur zu der eigenen Startseite, die ihr am
+  nächsten liegt.
+
+- **Der Lootbox-Regen ist etwas ruhiger geworden.** Am Ende bleibt alles wie
+  gehabt: Stehen nur noch die beiden Könige, bekommt weiterhin jedes freie Feld
+  eine Lootbox. Davor kommt spürbar weniger — bei 32 freien Feldern jetzt 3
+  statt 5 Stück, bei 40 dann 7 statt 11, bei 48 dann 18 statt 23.
+
+**Und eine Frage ist beantwortet:** Wie der Regen rechnet, steht jetzt
+nachvollziehbar in der Roadmap (Bündel S1) — mit den Formeln, den Exponenten
+und einer gemessenen Tabelle.
+
 ## v0.81.0 — 2026-08-18
 
 **Die Mauer lässt sich drehen.** Beim Platzieren steht jetzt ein Knopf

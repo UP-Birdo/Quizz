@@ -748,6 +748,43 @@ Dieselbe Familie von Fehlern wie „`_feldnummernUmrechnen` vergass drei der
 sieben gemerkten Listen" (v0.54): Was das Brett über sich selbst weiss, steht
 nicht nur im Brett-Text.
 
+### Die eine Funktion, die man beim Aufräumen vergisst (v0.82)
+
+**Was gemeldet wurde:** „Kontrolliere Erdrutsch, ob es beim Kreuz-Spielfeld
+auch noch funktioniert." Eine Vermutung, kein Befund — der Nutzer hatte nur
+bemerkt, dass um das Kreuz herum schon mehrfach etwas schieflag.
+
+**Was gefunden wurde: zwei Fehler, und der schwerere hatte mit dem Kreuz
+nichts zu tun.**
+
+Der Erdrutsch prüfte beim Zielfeld nur `brett[ziel] !== "."` — also „steht da
+eine Figur". Nicht geprüft wurde `SCHACH.gesperrt`. Er schob Figuren damit auf
+Mauern und in Risse, wo sie danach auf einem Feld standen, das es für die
+Regeln nicht mehr gibt. **Auf jedem Brett, seit es ihn gibt.**
+
+Das Bittere daran: Genau dieser Fehler ist im Haus schon einmal behoben worden.
+Das Nudelholz hatte ihn bis v0.59, und im Kommentar dort steht seither:
+*„Das Erdbeben fragt an derselben Stelle seit v0.54 richtig; das Nudelholz war
+übersehen worden."* Beim Aufräumen wurden Bauernschub, Nudelholz, Erdbeben und
+später der Schubs erfasst — der Erdrutsch nicht. Er ist ein Unglückswürfel und
+stand in einer anderen Ecke der Datei.
+
+**Die Lehre:** Wenn eine Regel an mehreren Stellen dieselbe Frage stellt
+(„darf hier etwas hin?"), reicht es nicht, die bekannten Stellen zu reparieren.
+Man muss die Liste vollständig machen — hier hätte ein `grep` nach
+`brett[ziel] !== "."` genügt, um den Ausreisser zu finden. Heute sind es fünf
+Funktionen, die schieben oder setzen; alle fünf fragen jetzt `gesperrt`.
+
+**Der zweite Fehler war der vermutete.** Die Rutschrichtung hing an der FARBE
+(`farbe === WEISS ? 1 : -1`) und war immer senkrecht. Auf dem Kreuz hat eine
+Farbe seit v0.65 ZWEI Startseiten — die obere Armee rutschte damit nach vorn
+statt zurück, die untere gar nicht. Das ist dieselbe Familie wie „Ein Zähler,
+der die Brettbreite meint, aber die Mitte braucht" (v0.76) und „Die Gegenseite
+eines PAARES ist nicht die gespiegelte Seite" (v0.72): **Wer eine Richtung aus
+der Farbe ableitet, rechnet auf dem Kreuz falsch.** Die dritte Wiederholung
+desselben Musters — inzwischen sollte jede neue Funktion mit einer Richtung
+zuerst gegen das Kreuz geprüft werden.
+
 Jede weitere nicht offensichtliche Bug-Ursache gehört hierher, bevor die
 Sitzung endet.
 

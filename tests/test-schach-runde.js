@@ -5503,6 +5503,181 @@ pruefe("Erdrutsch schiebt alle eigenen Figuren zurueck", () => {
     gleich(wirkung.wege.length, 3, "drei Wege fuer die Pfeile");
 });
 
+pruefe("Erdrutsch schiebt niemanden auf ein gesperrtes Feld (v0.82)", () => {
+    /*
+     * GEFUNDEN AM 18.08. auf die Frage „kontrolliere Erdrutsch, ob es beim
+     * Kreuz-Spielfeld noch funktioniert": Der Erdrutsch fragte als EINZIGE
+     * dieser Funktionen nur „steht da eine Figur" — nicht, ob das Feld
+     * gesperrt ist. Er schob Figuren damit auf Mauern und in Risse hinein.
+     * Bauernschub, Nudelholz, Erdbeben und Schubs fragen hier seit jeher
+     * richtig; derselbe Fehler hatte das Nudelholz bis v0.59.
+     */
+    const grund = "....k..."
+        + "........"
+        + "........"
+        + "........"
+        + "........"
+        + "........"
+        + "T......."
+        + "....K...";
+
+    /* 1. Eine Mauer hinter dem Turm. */
+    const mitMauer = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: grund,
+        amZug: "weiss",
+        rochade: "",
+        mauern: [{ felder: [SCHACH.feldNummer("a1"), SCHACH.feldNummer("b1"),
+            SCHACH.feldNummer("c1")], bis: 99 }]
+    });
+
+    wahr(SCHACH.mauerAuf(mitMauer, SCHACH.feldNummer("a1")), "die Mauer steht");
+
+    const anMauer = SCHACH.erdrutsch(mitMauer, "weiss");
+    if (anMauer) {
+        gleich(SCHACH.figurAuf(anMauer.stand, SCHACH.feldNummer("a1")), ".",
+            "auf der Mauer steht niemand");
+        gleich(SCHACH.figurAuf(anMauer.stand, SCHACH.feldNummer("a2")), "T",
+            "der Turm bleibt davor stehen");
+    }
+
+    /* 2. Ein Riss hinter dem Turm. */
+    const mitRiss = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: grund,
+        amZug: "weiss",
+        rochade: "",
+        risse: [SCHACH.feldNummer("a1")]
+    });
+
+    const amRiss = SCHACH.erdrutsch(mitRiss, "weiss");
+    if (amRiss) {
+        gleich(SCHACH.figurAuf(amRiss.stand, SCHACH.feldNummer("a1")), ".",
+            "im Riss steht niemand");
+        gleich(SCHACH.figurAuf(amRiss.stand, SCHACH.feldNummer("a2")), "T",
+            "der Turm bleibt auch hier stehen");
+    }
+
+    /* 3. Ohne Sperre rutscht er sehr wohl — sonst prueft der Test nichts. */
+    const frei = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: grund,
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const gerutscht = SCHACH.erdrutsch(frei, "weiss");
+    wahr(gerutscht !== null, "ohne Sperre passiert etwas");
+    gleich(SCHACH.figurAuf(gerutscht.stand, SCHACH.feldNummer("a1")), "T",
+        "der Turm rutscht auf a1 zurueck");
+});
+
+pruefe("Erdrutsch: auf dem Kreuz rutscht jede Armee zu IHRER Seite (v0.82)", () => {
+    /*
+     * DER GEMELDETE VERDACHT, und er stimmte. Bis v0.81 hatte der Erdrutsch
+     * EINE Richtung je Farbe (`farbe === WEISS ? 1 : -1`), immer senkrecht.
+     * Auf dem Kreuz hat eine Farbe aber ZWEI Startseiten (v0.65). Gemessen kam
+     * heraus: Die obere weisse Armee rutschte nach UNTEN, also nach VORN — aus
+     * der Strafe wurde ein Geschenk —, und die untere bewegte sich gar nicht.
+     */
+    /*
+     * DIE STELLUNG WIRD VON HAND GEBAUT, nicht aus einer Kreuz-Partie geholt:
+     * Welche Startseiten eine Farbe bekommt, wird aus der Partie-Kennung
+     * gerechnet (v0.72) — ein Test, der „oben und unten" erwartet, haengt dann
+     * an der Kennung und faellt beim naechsten Umbau um. Gebraucht wird hier
+     * nur der Fall ZWEI GEGENUEBERLIEGENDE STARTSEITEN, und den schreibt man
+     * direkt hin.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "BBB....."      /* obere weisse Armee, zwei Reihen vorgerueckt */
+            + "........"
+            + "........"
+            + "BBB....."      /* untere weisse Armee, ebenfalls vorgerueckt */
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: "",
+        startSeiten: { weiss: ["oben", "unten"], schwarz: ["links", "rechts"] }
+    });
+
+    const breite = SCHACH.breiteVon(stand);
+    gleich(SCHACH.startSeitenVon(stand, "weiss").slice().sort().join(","),
+        "oben,unten", "Weiss startet oben UND unten");
+
+    const gerutscht = SCHACH.erdrutsch(stand, "weiss");
+    wahr(gerutscht !== null, "es passiert etwas");
+
+    const auf = (r, s) => SCHACH.figurAuf(gerutscht.stand, r * breite + s);
+
+    for (let spalte = 0; spalte < 3; spalte++) {
+        /* Die OBERE Armee rutscht nach OBEN — zu ihrer eigenen Seite. */
+        gleich(auf(1, spalte), "B", "oben: Spalte " + spalte + " ist zurueckgerutscht");
+        gleich(auf(2, spalte), ".", "oben: das alte Feld ist frei");
+
+        /* Die UNTERE nach UNTEN — in die ANDERE Richtung, gleiche Farbe. */
+        gleich(auf(6, spalte), "B", "unten: Spalte " + spalte + " ist zurueckgerutscht");
+        gleich(auf(5, spalte), ".", "unten: das alte Feld ist frei");
+    }
+
+    /*
+     * DAS IST DER KERN: Bis v0.81 rutschten BEIDE nach unten, weil die
+     * Richtung nur an der Farbe hing. Die obere Armee waere damit nach VORN
+     * gerutscht — aus der Strafe waere ein Geschenk geworden.
+     */
+    gleich(auf(3, 0), ".", "die obere Armee ist NICHT nach unten gerutscht");
+});
+
+pruefe("Der Regen ist etwas schwaecher geworden — aber nicht am Ende (v0.82)", () => {
+    /*
+     * NUTZER-ANSAGE 18.08.: „Regen ein kleines wenig schwaecher, also nur ein
+     * wenig weniger — aber schon so, dass sich bei 2 Figuren jeden Halbzug
+     * alles fuellt."
+     *
+     * Beides zusammen geht nur ueber den Exponenten: Er steuert, wie frueh es
+     * losgeht; das Ende ist bei jedem Exponenten dasselbe, weil `Math.pow(1, n)`
+     * immer 1 ist.
+     */
+    const ALLE = 64;
+    const voll = ALLE - SCHACH_VARIANTEN.REGEN.bleibenStehen;
+
+    /* DAS ENDE IST UNANGETASTET: Stehen nur noch die Koenige, bekommt jedes
+       freie Feld eine Lootbox. Das ist die Zusage aus v0.59. */
+    gleich(SCHACH_VARIANTEN.mengenAnzahl("regen", voll, ALLE, 0), voll,
+        "am Ende weiterhin jedes freie Feld");
+    gleich(SCHACH_VARIANTEN.mengenChance("regen", voll, ALLE), 100,
+        "und es regnet dann auch sicher");
+
+    /* DAVOR IST ES WENIGER als mit der alten Kurve 3. */
+    const alt = (freie) => Math.max(1, Math.min(freie,
+        Math.ceil(freie * Math.pow(SCHACH_VARIANTEN.regenAnteil(freie, ALLE), 3))));
+
+    let irgendwoWeniger = false;
+    for (const freie of [24, 32, 40, 48, 56]) {
+        const jetzt = SCHACH_VARIANTEN.mengenAnzahl("regen", freie, ALLE, 0);
+
+        wahr(jetzt <= alt(freie), "bei " + freie + " freien Feldern nicht mehr als vorher ("
+            + jetzt + " gegen " + alt(freie) + ")");
+        if (jetzt < alt(freie)) {
+            irgendwoWeniger = true;
+        }
+    }
+    wahr(irgendwoWeniger, "und irgendwo wirklich weniger — sonst haette sich nichts getan");
+
+    /* DIE LEITER BLEIBT: Keine Stufe liefert weniger als die darunter. */
+    const reihe = SCHACH_VARIANTEN.LOOTBOX_MENGEN.map((menge) => menge.id);
+    for (const freie of [8, 24, 40, 56, voll]) {
+        for (let stelle = 1; stelle < reihe.length; stelle++) {
+            wahr(SCHACH_VARIANTEN.mengenAnzahl(reihe[stelle], freie, ALLE, 0.5)
+                >= SCHACH_VARIANTEN.mengenAnzahl(reihe[stelle - 1], freie, ALLE, 0.5),
+                reihe[stelle] + " wirft bei " + freie
+                + " freien Feldern nicht weniger aus als " + reihe[stelle - 1]);
+        }
+    }
+});
+
 pruefe("Der Verlauf verraet nicht, was in einem Wuerfel steckt", () => {
     const runde = springerZuege(faehigkeitenPartie(), 24);
     const eintrag = runde.verlauf.find((zeile) => zeile.wirkung === "erscheint");
