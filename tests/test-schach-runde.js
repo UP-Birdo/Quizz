@@ -359,6 +359,13 @@ pruefe("Jede Stufe hat mindestens eine Faehigkeit, jede Faehigkeit eine Stufe", 
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
         const stufe = SCHACH_VARIANTEN.stufeVon(art);
         wahr(!!stufe, "Stufe von " + art);
+
+        /* Eine VERSTECKTE erscheint nicht mehr — ihre Chance ist 0, und das
+           ist richtig so (seit v0.78). */
+        if (SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt) {
+            gleich(SCHACH_VARIANTEN.chanceVon(art), 0, "Chance von " + art + " (versteckt)");
+            continue;
+        }
         wahr(SCHACH_VARIANTEN.chanceVon(art) > 0, "Chance von " + art);
     }
 });
@@ -1033,9 +1040,28 @@ pruefe("Ein Springer sammelt unterwegs NICHT ein", () => {
 pruefe("Was man schon hat, kommt seltener nach", () => {
     /*
      * Ueber viele Ziehungen gemessen: Mit zwei Stueck „Sprung" im Vorrat muss
-     * er deutlich unter einem Drittel liegen (bei drei gewoehnlichen
-     * Faehigkeiten waere ein Drittel die Gleichverteilung).
+     * er deutlich unter der Gleichverteilung liegen.
+     *
+     * DIE GLEICHVERTEILUNG WIRD GERECHNET, NICHT HINGESCHRIEBEN (seit v0.78).
+     * Bis dahin stand hier ein Drittel als feste Zahl — die stimmte, solange
+     * die gewoehnliche Stufe genau drei erreichbare Faehigkeiten hatte. Als
+     * Ausweichen versteckt wurde, waren es zwei, und der Test schlug fehl,
+     * obwohl an der Daempfung nichts kaputt war.
      */
+    const erreichbar = SCHACH_VARIANTEN.faehigkeitenDerStufe("gruen").length;
+    const gleichverteilt = 100 / erreichbar;
+
+    /*
+     * Auch die ERWARTUNG MIT VORRAT wird gerechnet. Zwei Stueck druecken das
+     * Gewicht auf `wiederholung` hoch zwei, die uebrigen zaehlen mit 1 —
+     * daraus faellt der Anteil. Auch diese Zahl hing frueher an drei
+     * Faehigkeiten (dort 1,1 Prozent, bei zweien sind es 2,2).
+     */
+    const daempfung = SCHACH_VARIANTEN.STUFEN
+        .find((stufe) => stufe.id === "gruen").wiederholung;
+    const gewicht = Math.pow(daempfung, 2);
+    const erwartetMit = 100 * gewicht / (gewicht + (erreichbar - 1));
+
     const schritte = 3000;
     let mitVorrat = 0;
     let ohneVorrat = 0;
@@ -1055,8 +1081,74 @@ pruefe("Was man schon hat, kommt seltener nach", () => {
     const ohne = ohneVorrat / schritte * 100;
     const mit = mitVorrat / schritte * 100;
 
-    wahr(Math.abs(ohne - 100 / 3) < 1, "ohne Vorrat gleichverteilt (" + ohne.toFixed(1) + ")");
-    wahr(mit < 2, "mit zwei Stueck fast nie (" + mit.toFixed(1) + ")");
+    wahr(Math.abs(ohne - gleichverteilt) < 1, "ohne Vorrat gleichverteilt ("
+        + ohne.toFixed(1) + " gegen erwartete " + gleichverteilt.toFixed(1) + ")");
+    wahr(Math.abs(mit - erwartetMit) < 1, "mit zwei Stueck wie gerechnet ("
+        + mit.toFixed(1) + " gegen erwartete " + erwartetMit.toFixed(1) + ")");
+
+    /* Und der Punkt, um den es geht: deutlich seltener als ohne Vorrat. */
+    wahr(mit < gleichverteilt / 5, "mit zwei Stueck fast nie ("
+        + mit.toFixed(1) + " gegen " + gleichverteilt.toFixed(1) + ")");
+});
+
+pruefe("Eine versteckte Faehigkeit kommt nicht mehr — bleibt aber benutzbar (v0.78)", () => {
+    /*
+     * NUTZER-ENTSCHEIDUNG 18.08.: „Ausweichen kann raus." Nachgemessen hatte
+     * es vorher vollstaendig funktioniert; unbrauchbar machte es die Regel
+     * `nurImGegenzug` (v0.58), die es genau dann sperrt, wenn man auf seine
+     * Faehigkeiten schaut.
+     *
+     * VERSTECKT HEISST NICHT GELOESCHT. Ein Eintrag, der aus `FAEHIGKEITEN`
+     * verschwindet, wird von `normalisieren` beim naechsten Laden aus jedem
+     * Vorrat geworfen — laufende Partien verloeren ihn mitten im Spiel.
+     */
+    const versteckte = Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
+        .filter((art) => SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt);
+
+    wahr(versteckte.indexOf("ausweichen") !== -1, "Ausweichen ist versteckt");
+
+    for (const art of versteckte) {
+        const stufe = SCHACH_VARIANTEN.stufeVon(art).id;
+
+        /* 1. Keine Lootbox wirft sie mehr aus — ueber die ganze Breite der
+           Ziehung geprueft, nicht nur an einem Wert. */
+        gleich(SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe).indexOf(art), -1,
+            art + " steht nicht mehr in der Ziehungsliste");
+
+        for (let schritt = 0; schritt < 500; schritt++) {
+            gleich(SCHACH_VARIANTEN.faehigkeitAusStufe(stufe, schritt / 500, []) === art,
+                false, art + " wird bei " + (schritt / 500) + " nicht gezogen");
+        }
+
+        /* 2. Sie taucht in keinem Erklaertext mehr auf — sonst verspricht die
+           Bibliothek etwas, das keine Lootbox einloest. */
+        const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        gleich(SCHACH_VARIANTEN.faehigkeitenErklaerung().indexOf(eintrag.titel), -1,
+            art + " steht nicht mehr im Erklaertext");
+
+        /* 3. Ihre Tabelle bleibt vollstaendig — daran haengt alles Uebrige. */
+        wahr(!!eintrag.titel && !!eintrag.beschreibung,
+            art + " hat weiterhin Titel und Beschreibung");
+    }
+
+    /* 4. Wer sie im Vorrat hat, behaelt sie ueber das Laden hinweg UND darf
+       sie einsetzen. Das ist der eigentliche Grund fuer „verstecken statt
+       loeschen". */
+    let runde = faehigkeitenPartie();
+    runde.faehigkeiten.weiss.push("ausweichen");
+
+    const geladen = SCHACH_RUNDE.normalisieren(
+        JSON.parse(JSON.stringify(runde)));
+    wahr(geladen.faehigkeiten.weiss.indexOf("ausweichen") !== -1,
+        "Ausweichen ueberlebt das Laden");
+
+    /* Einsetzen geht nur im Gegenzug — also erst Weiss ziehen lassen. */
+    const nachZug = SCHACH_RUNDE.ziehen(geladen, "id-anna",
+        SCHACH.feldNummer("e2"), SCHACH.feldNummer("e4"), "D", "Anna", 2000);
+    wahr(nachZug !== null, "Weiss hat gezogen, Schwarz ist dran");
+
+    gleich(SCHACH_RUNDE.darfEinsetzen(nachZug, "id-anna", "ausweichen"), true,
+        "und einsetzen darf man sie weiterhin");
 });
 
 pruefe("Bei Legendaer ist die Daempfung viel schwaecher", () => {

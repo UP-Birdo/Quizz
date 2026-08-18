@@ -1994,6 +1994,49 @@ Bauernschub gleich mit ab und greift für den rollenden König von allein.
 Nudelholz; beim Bauernschub wäre ein rollender König ohnehin sinnwidrig, er
 schiebt Bauern.
 
+## Warum Ausweichen versteckt wurde, obwohl es funktioniert (v0.78)
+
+Der Nutzer wollte es rauswerfen: „werfe Ausweichen raus, funktioniert eh nicht"
+(18.08.). Der Verdacht war naheliegend — die Fähigkeit war in v0.66 repariert
+und in v0.74 neu bebildert worden, die Meldung hätte also einen alten Stand
+meinen können.
+
+**Nachgemessen am Stand v0.76, die ganze Kette:** Einsetzen ist nur im Gegenzug
+erlaubt und wird dem am Zug befindlichen Spieler verweigert; das Muster
+überlebt den gegnerischen Zug; beim eigenen Zug hat die Figur wirklich alle
+freien Nachbarfelder zur Auswahl; nach dem Zug ist es verbraucht. **Sie
+funktionierte vollständig.**
+
+**Und trotzdem war die Meldung berechtigt.** Was sie unbrauchbar macht, ist
+`nurImGegenzug` (v0.58): Sie ist gesperrt, solange man selbst am Zug ist — also
+genau in dem Moment, in dem man auf seine Fähigkeiten schaut. Wer sie benutzen
+will, muss sich merken, dass er sie hat, und daran denken, WÄHREND der Gegner
+überlegt. Das ist als Regel richtig (sie war als Notbremse gedacht und wurde
+bis v0.57 als Gratis-Zug missbraucht), aber in der Hand tot.
+
+Der Nutzer hat nach dem Befund entschieden: „kann raus." Das ist eine
+Geschmacksfrage, keine Fehlerbehebung — und deshalb seine.
+
+**Verstecken, nicht löschen.** `versteckt: true` an der Fähigkeit; gefiltert
+wird an EINER Stelle, in `faehigkeitenDerStufe`. Damit fällt sie zugleich aus
+der Ziehung, aus der Prozentrechnung (`chanceVon`), aus den Erklärtexten und
+aus der Bibliothek — vier Fragen, die alle dasselbe meinen: „was kann man
+bekommen".
+
+Der Grund gegen das Löschen ist derselbe wie bei den Spielarten:
+`SCHACH_RUNDE.normalisieren` wirft jede Fähigkeit aus dem Vorrat, die es in
+`FAEHIGKEITEN` nicht mehr gibt. Beim Erdbeben war das v0.54 gewollt (es war
+keine Fähigkeit mehr, sondern ein Unglückswürfel — eine, die sich nicht mehr
+einsetzen lässt, wäre schlimmer gewesen). Hier ist es nicht gewollt: Wer
+Ausweichen im Vorrat hat, soll es aufbrauchen können, statt es beim nächsten
+Laden zu verlieren.
+
+**Die Nebenwirkung ist beabsichtigt und nicht klein:** In der gewöhnlichen
+Stufe stehen jetzt zwei Fähigkeiten statt dreien. Sprung und Teleport kommen
+dadurch je 50 statt 33 Prozent — die Zahlen hinter dem i-Knopf rechnen es
+mit, weil sie aus derselben Liste kommen. Wer eine dritte gewöhnliche Fähigkeit
+ergänzt, stellt das Verhältnis von selbst wieder her.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

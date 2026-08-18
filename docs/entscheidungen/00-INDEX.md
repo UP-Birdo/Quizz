@@ -156,6 +156,8 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum der Unglücks-Anteil am Füllstand hängt (v0.77) — **eine Mechanik
   statt zweier, dieselbe wie bei der Menge seit v0.71**
 - Warum das Nudelholz jetzt auch Könige rollt (v0.77)
+- Warum Ausweichen versteckt wurde, obwohl es funktioniert (v0.78) —
+  **erste versteckte FÄHIGKEIT, nicht nur Spielart**
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

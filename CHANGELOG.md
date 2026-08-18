@@ -3,6 +3,26 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.78.0 — 2026-08-18
+
+**Ausweichen ist raus.** Es erscheint in keiner neuen Lootbox mehr und steht
+auch nicht mehr in der Fähigkeiten-Bibliothek.
+
+Vorher nachgemessen: Die Fähigkeit war **nicht kaputt** — einsetzen ging nur,
+während der Gegner am Zug war, das Muster überlebte seinen Zug, die Figur hatte
+danach wirklich alle freien Nachbarfelder zur Wahl. Unbrauchbar machte sie
+genau diese Regel: Solange du selbst am Zug bist, ist sie gesperrt — also in
+dem Moment, in dem man normalerweise auf seine Fähigkeiten schaut.
+
+**Wer sie noch im Vorrat hat, kann sie weiter einsetzen.** Sie ist versteckt,
+nicht gelöscht: Eine Fähigkeit, die ganz aus dem Spiel verschwindet, würde
+laufenden Partien beim nächsten Laden aus dem Vorrat fallen.
+
+**Was sich dadurch nebenbei ändert:** In der gewöhnlichen Stufe stehen jetzt
+zwei Fähigkeiten statt dreien (Sprung und Teleport). Jede von ihnen kommt
+entsprechend häufiger — die Prozentzahlen hinter dem i-Knopf rechnen das von
+selbst mit.
+
 ## v0.77.1 — 2026-08-18
 
 **Das Kreuz-Brett zerfranste im Laufe einer Partie.** Gemeldet mit

@@ -695,9 +695,38 @@ const SCHACH_VARIANTEN = {
          * sie gar nicht erst einsetzen — es gibt also keinen Zug zu behalten.
          * Der Blitz bleibt und ist jetzt das EINZIGE Zeichen an ihr.
          */
+        /*
+         * AUSWEICHEN IST SEIT v0.78 VERSTECKT — auf Nutzer-Entscheidung
+         * (18.08.: „werfe Ausweichen raus, funktioniert eh nicht" → nach der
+         * Nachmessung „kann raus").
+         *
+         * NACHGEMESSEN AM 18.08. AM STAND v0.76: Sie funktionierte
+         * vollständig. Einsetzen nur im Gegenzug, das Muster überlebt den
+         * gegnerischen Zug, die Figur hat danach wirklich alle freien
+         * Nachbarfelder zur Wahl, danach ist es verbraucht. Der Befund steht in
+         * `docs\entscheidungen\erkenntnisse.md`.
+         *
+         * WARUM SIE TROTZDEM GEHT: `nurImGegenzug` (v0.58) sperrt sie, solange
+         * man am Zug ist — also genau in dem Moment, in dem man auf seine
+         * Fähigkeiten schaut. Wer sie sehen will, muss sie sich merken, während
+         * der Gegner denkt. Als Regel richtig, in der Hand unbrauchbar.
+         *
+         * VERSTECKT, NICHT GELÖSCHT — dieselbe Regel wie bei den Spielarten:
+         * Laufende Partien tragen sie im Vorrat, und ein Eintrag, der aus
+         * `FAEHIGKEITEN` verschwindet, wird von `SCHACH_RUNDE.normalisieren`
+         * beim nächsten Laden weggeworfen (so beim Erdbeben in v0.54, dort
+         * gewollt). Hier ist es nicht gewollt: Wer sie hat, soll sie noch
+         * einsetzen können.
+         *
+         * Was `versteckt` bewirkt, steht bei `faehigkeitenDerStufe` — kurz: Sie
+         * erscheint in keiner neuen Lootbox mehr und in keiner Liste, aber alles
+         * andere an ihr funktioniert weiter. Ihr Beispiel in
+         * `schach-vorschau.js` bleibt deshalb ebenfalls stehen.
+         */
         ausweichen: {
             titel: "Ausweichen",
             stufe: "gruen",
+            versteckt: true,
             art: "zugmuster",
             muster: "ausweichen",
             imGegenzug: true,
@@ -1904,10 +1933,33 @@ const SCHACH_VARIANTEN = {
             || SCHACH_VARIANTEN.STUFEN[0];
     },
 
-    /* Alle Fähigkeiten einer Stufe, in fester Reihenfolge. */
+    /*
+     * Die ERREICHBAREN Fähigkeiten einer Stufe, in fester Reihenfolge.
+     *
+     * VERSTECKTE ZÄHLEN NICHT MIT (seit v0.78, `versteckt: true` — bisher nur
+     * Ausweichen). Diese eine Liste beantwortet vier Fragen auf einmal, und
+     * alle vier meinen dasselbe „was kann man bekommen":
+     *
+     *   `faehigkeitAusStufe`      was eine Lootbox auswerfen darf
+     *   `chanceVon`               wie wahrscheinlich eine einzelne ist
+     *   `stufenErklaerung`        was hinter dem i steht
+     *   die Fähigkeiten-Bibliothek (`team-schach-auswertung.js`)
+     *
+     * Deshalb wird hier gefiltert und nicht an vier Stellen: Eine versteckte
+     * Fähigkeit, die in der Bibliothek steht oder in die Prozentrechnung
+     * eingeht, ist ein Versprechen, das die Lootbox nicht mehr einlöst.
+     *
+     * `SCHACH_VARIANTEN.FAEHIGKEITEN` bleibt daneben die VOLLSTÄNDIGE Tabelle.
+     * Wer eine versteckte Fähigkeit im Vorrat hat, kann sie unverändert
+     * einsetzen — `normalisieren` behält sie, `darfEinsetzen` erlaubt sie, ihre
+     * Marke am Bildschirm zeigt Beschreibung und Anleitung wie immer. Dieselbe
+     * Aufteilung wie bei den Spielarten: `liste` ist vollständig,
+     * `zurAuswahl()` filtert, `holen()` findet weiterhin alles.
+     */
     faehigkeitenDerStufe(stufeId) {
         return Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
-            .filter((art) => SCHACH_VARIANTEN.FAEHIGKEITEN[art].stufe === stufeId)
+            .filter((art) => SCHACH_VARIANTEN.FAEHIGKEITEN[art].stufe === stufeId
+                && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt)
             .sort();
     },
 
@@ -2008,8 +2060,20 @@ const SCHACH_VARIANTEN = {
             gezogen.stufe.id, gezogen.anteil, vorrat);
     },
 
-    /* Die Chance einer einzelnen Fähigkeit in Prozent. */
+    /*
+     * Die Chance einer einzelnen Fähigkeit in Prozent.
+     *
+     * Eine VERSTECKTE erscheint nicht mehr — ihre Chance ist deshalb 0 und
+     * nicht etwa der Anteil, den sie hätte. Ohne diese Zeile käme für sie der
+     * Wert der noch erreichbaren heraus, weil sie im Nenner gar nicht mehr
+     * steht: eine Zahl, die niemandem gehört.
+     */
     chanceVon(art) {
+        const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        if (eintrag && eintrag.versteckt) {
+            return 0;
+        }
+
         const stufe = SCHACH_VARIANTEN.stufeVon(art);
         const anzahl = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length;
         return anzahl > 0 ? (stufe.chance / anzahl) : 0;
