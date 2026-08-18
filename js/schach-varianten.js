@@ -852,17 +852,35 @@ const SCHACH_VARIANTEN = {
          * lässt, wäre schlimmer.
          */
 
+        /*
+         * DAS NUDELHOLZ HAT SEIT v0.80 KEIN PLUSZEICHEN MEHR (Nutzer-Ansage
+         * 18.08.: „Nudelholz soll kein Plus mehr haben, also als ein Zug
+         * gelten").
+         *
+         * Das ist der zweite Anwendungsfall der Regel von v0.47: Wird eine
+         * Fähigkeit zu stark, nimmt man ihr das PLUSZEICHEN — die Stufe bleibt,
+         * wo sie ist. Der erste war der Bauernschub (v0.56), und die Begründung
+         * ist hier dieselbe: Das Nudelholz verschiebt eine ganze Doppelspalte,
+         * und mit dem Zug obendrauf waren das zwei Züge für eine Fähigkeit.
+         *
+         * ÜBERFÄLLIG WAR ES AUSSERDEM: In v0.78 hat es Zuwachs bekommen — es
+         * rollt seither auch Könige, und vorher hielt ein König alles auf, was
+         * hinter ihm stand. Der Preis zog damals nicht mit; das wurde als
+         * Beobachtung vermerkt und wird hier nachgeholt.
+         */
         nudelholz: {
             titel: "Nudelholz",
             stufe: "blau",
             art: "ziel",
             zielArt: "spalte",
+            beendetZug: true,
             beschreibung: "Rollt über zwei Spalten und schiebt alle Figuren darin ein "
                 + "Feld nach vorn — von dir weg. Angetippt wird ein Feld deiner eigenen "
                 + "Grundreihe, also unten am Brett. Es rollt wirklich alles: die eigenen "
                 + "wie die fremden, Könige eingeschlossen. Nur wo kein Platz mehr ist, "
                 + "bleibt die Figur stehen — und deinen eigenen König ins Schach schieben "
-                + "kannst du damit nicht."
+                + "kannst du damit nicht. Das Nudelholz IST dein Zug: Danach ist der "
+                + "Gegner dran."
         },
 
         /*
@@ -916,11 +934,14 @@ const SCHACH_VARIANTEN = {
             art: "ziel",
             zielArt: "frostblock",
             beschreibung: "Friert ein 2-mal-2-Feld für einen Zug ein: Was darin "
-                + "steht, zieht nicht und lässt sich in dieser Zeit auch nicht "
-                + "schlagen — eigene Figuren eingeschlossen. Genau das kann der "
-                + "Zweck sein: Ein eingefrorener eigener Läufer ist einen Zug lang "
-                + "unantastbar. Könige bleiben verschont. Angetippt wird die linke "
-                + "obere Ecke des Blocks; er muss mindestens eine Figur treffen."
+                + "steht, kommt nicht heraus und lässt sich in dieser Zeit auch "
+                + "nicht schlagen — eigene Figuren eingeschlossen. Genau das kann "
+                + "der Zweck sein: Ein eingefrorener eigener Läufer ist einen Zug "
+                + "lang unantastbar. Bewegen darf sich jede Figur INNERHALB des "
+                + "Blocks, der Frost ist eine Mauer aussen herum. Er gilt auch für "
+                + "Könige: Wer einen König so einsperrt, dass ihm kein Feld mehr "
+                + "bleibt, setzt ihn matt. Angetippt wird die linke obere Ecke des "
+                + "Blocks; er muss mindestens eine Figur treffen."
         },
         /*
          * VERSTÄRKUNG IST SEIT v0.56 EINE AUFWERTUNGSKETTE.

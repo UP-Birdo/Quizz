@@ -3,6 +3,37 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.80.0 — 2026-08-18
+
+**Zwei Punkte aus dem Eingangskorb: Der Frost sperrt jetzt auch Könige ein, und
+das Nudelholz kostet einen Zug.**
+
+- **Der Frost ist eine Mauer um den Block geworden, kein Anker.** Wer darin
+  steht, darf sich **innerhalb** des 2-mal-2-Feldes weiter bewegen — nur heraus
+  kommt er nicht. Bisher stand eine eingefrorene Figur einfach still.
+
+- **Und er gilt jetzt auch für Könige.** Wer einen König so einsperrt, dass ihm
+  im Block kein Feld mehr bleibt, **setzt ihn matt**. Bisher war der König vom
+  Frost ganz ausgenommen. Damit ist der Frost die erste Fähigkeit im Spiel, mit
+  der man gewinnen kann — bis jetzt konnte das nur eine Unglücks-Lootbox
+  (seit v0.73). Ein Block, in dem nur ein König steht, lässt sich deshalb ab
+  sofort überhaupt erst anwählen; vorher wurde er abgewiesen.
+
+  Was **nicht** dazugehört: Eingefroren heisst weiterhin auch unantastbar. Im
+  Block wird nicht geschlagen, weder rein noch untereinander.
+
+- **Das Nudelholz hat sein Pluszeichen verloren** — es IST jetzt dein Zug,
+  danach ist der Gegner dran. Es rollt eine ganze Doppelspalte, und mit dem Zug
+  obendrauf waren das zwei Züge für eine Fähigkeit. Überfällig war es
+  ausserdem, weil es in v0.78 stärker geworden ist (es rollt seither auch
+  Könige), ohne dass der Preis mitzog. Dieselbe Anpassung hat der Bauernschub
+  in v0.56 bekommen, aus demselben Grund.
+
+**Was aus dem Eingangskorb noch NICHT gebaut ist:** der Dreh-Knopf für die
+Mauer, die zwei Fähigkeiten Enttarnen und Verstecken und der Modus mit
+begrenztem Item-Vorrat samt Anzeige am Matchbeginn. Sie stehen eingeordnet und
+priorisiert in der Roadmap.
+
 ## v0.79.0 — 2026-08-18
 
 **Zwei neue gewöhnliche Fähigkeiten, und die Halluzination ist halb so lang.**

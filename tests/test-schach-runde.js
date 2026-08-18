@@ -2279,10 +2279,13 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
        Bauern. Der Nutzer hat es ohnehin so gewuenscht; hier faellt beides
        zusammen. */
     const kostetDenZug = ["bauernschub", "verstaerkung", "spiegel",
-        "wiedergeburt", "wiederbelebung", "friedhof", "haendler", "nachschub"];
+        "wiedergeburt", "wiederbelebung", "friedhof", "haendler", "nachschub",
+        /* Seit v0.80: zweiter Anwendungsfall von „zu stark heisst Plus weg,
+           nicht Stufe verschieben" (v0.47), nach dem Bauernschub in v0.56. */
+        "nudelholz"];
     /* Das Erdbeben steht seit v0.54 bei den Unglueckswuerfeln. */
     const behaeltDenZug = ["ausweichen", "schutzschild",
-        "nudelholz", "mauer", "fessel", "frost", "doppelzug",
+        "mauer", "fessel", "frost", "doppelzug",
         /* Die zwei gewoehnlichen von v0.79: rein positionell, kein Material
            und keine geschlagene Figur - genau die Bedingung dieser Gruppe. */
         "schubs", "platztausch"];
@@ -3813,14 +3816,24 @@ pruefe("Frost: eingefroren zieht nicht und wird nicht geschlagen", () => {
     wahr(ziele.indexOf("d6") === -1, "d6 ist unantastbar");
     wahr(ziele.indexOf("d5") !== -1, "davor darf der Turm ziehen");
 
-    /* Und die eingefrorene Figur selbst zieht nicht. */
+    /*
+     * Und die eingefrorene Figur kommt nicht heraus. Der SPRINGER kommt hier
+     * ueberhaupt nicht vom Fleck, und das liegt an ihm: Seit v0.80 darf eine
+     * eingefrorene Figur INNERHALB des Blocks ziehen — nur reicht kein
+     * Springerzug von einem Feld eines 2x2-Blocks auf ein anderes.
+     */
     const danach = SCHACH_RUNDE.ziehen(eingefroren, "id-anna",
         SCHACH.feldNummer("d4"), SCHACH.feldNummer("d5"), "D", "Anna", 3100);
     gleich(SCHACH.zuege(danach.stand, SCHACH.feldNummer("d6")).length, 0,
-        "der Springer steht fest");
+        "der Springer steht fest — im Block liegt kein Springerzug");
 
-    gleich(einsetzen(runde, "frost", SCHACH.feldNummer("e8")), null,
-        "auf einen Block mit nur dem Koenig wirkt er nicht");
+    /*
+     * SEIT v0.80 IST EIN BLOCK MIT NUR DEM KOENIG EIN GUELTIGES ZIEL. Bis
+     * v0.79 wurde er abgewiesen, weil Koenige nicht einfrieren konnten — und
+     * genau diesen Fall hat der Nutzer verlangt.
+     */
+    wahr(einsetzen(runde, "frost", SCHACH.feldNummer("e8")) !== null,
+        "auf einen Block mit nur dem Koenig wirkt er jetzt");
 });
 
 pruefe("Frost sperrt einen 2x2-Block, auch die eigenen Figuren (v0.56)", () => {
@@ -3858,15 +3871,38 @@ pruefe("Frost sperrt einen 2x2-Block, auch die eigenen Figuren (v0.56)", () => {
 
     gleich(SCHACH.figurAuf(kalt.stand, SCHACH.feldNummer("c5")), "T",
         "der eigene Turm steht mit im Block");
-    gleich(SCHACH.zuege(kalt.stand, SCHACH.feldNummer("c5")).length, 0,
-        "und er friert mit ein");
 
-    /* Der Gegner kommt an nichts im Block heran. */
+    /*
+     * SEIT v0.80 IST DER FROST EINE MAUER UM DEN BLOCK, KEIN ANKER: Wer
+     * drinsteht, darf sich DARIN bewegen — nur nicht hinaus. Bis v0.79 zog
+     * eine eingefrorene Figur gar nicht.
+     */
+    const raus = (feld) => SCHACH.zuege(kalt.stand, SCHACH.feldNummer(feld))
+        .filter((zug) => SCHACH.frostFelder(kalt.stand).indexOf(zug.nach) === -1);
+
+    gleich(raus("c5").length, 0, "der eigene Turm kommt nicht aus dem Block heraus");
+
+    /* Aber INNERHALB geht es: d5 ist frei und gehoert zum Block. */
+    const turmZiele = SCHACH.zuege(kalt.stand, SCHACH.feldNummer("c5"))
+        .map((zug) => zug.nach);
+    gleich(turmZiele.join(","), String(SCHACH.feldNummer("d5")),
+        "er zieht nur noch auf das freie Feld im Block");
+
+    /* Der Gegner kommt aus dem Block ebenfalls nicht heraus. */
     const schwarzAmZug = Object.assign({}, kalt.stand, { amZug: "schwarz" });
-    gleich(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("c6")).length, 0,
-        "der eingefrorene Springer zieht nicht");
-    gleich(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("d6")).length, 0,
-        "der Laeufer auch nicht");
+    const rausSchwarz = (feld) => SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer(feld))
+        .filter((zug) => SCHACH.frostFelder(schwarzAmZug).indexOf(zug.nach) === -1);
+
+    gleich(rausSchwarz("c6").length, 0, "der Springer kommt nicht heraus");
+    gleich(rausSchwarz("d6").length, 0, "der Laeufer auch nicht");
+
+    /* Und geschlagen wird im Block weiterhin nicht — eingefroren heisst
+       unantastbar (v0.56), daran hat v0.80 nichts geaendert. */
+    for (const feld of ["c6", "d6", "c5"]) {
+        wahr(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("d6"))
+            .every((zug) => zug.nach !== SCHACH.feldNummer(feld)),
+            "niemand schlaegt " + feld + " im Block");
+    }
 
     /* Ein leeres Feld im Block ist KEINE Sperre — dafuer gibt es die Mauer. */
     gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("d5")), false,
@@ -3877,11 +3913,14 @@ pruefe("Frost sperrt einen 2x2-Block, auch die eigenen Figuren (v0.56)", () => {
         "ein Block ohne Gegner wird nicht angeboten");
 });
 
-pruefe("Der Koenig bleibt vom Frost verschont, auch im Block (v0.56)", () => {
+pruefe("Der Koenig friert seit v0.80 MIT — kommt aber im Block noch vom Fleck", () => {
     /*
-     * Ein eingefrorener Koenig waere unantastbar UND bewegungslos — damit
-     * waere "Schachmatt" nicht mehr eindeutig. Dieselbe Ausnahme wie bei der
-     * Fessel, nur greift sie jetzt mitten im Block statt an der Auswahl.
+     * DIE AUFHEBUNG EINER EISERNEN REGEL, auf Nutzer-Ansage vom 18.08.: „Wenn
+     * im Frostbereich nur ein Koenig ist, kann er nicht raus, aber sich darin
+     * noch bewegen … kann bei richtigem Nutzen zu Schach fuehren."
+     *
+     * Bis v0.79 war der Koenig ganz ausgenommen (v0.56), damit „Schachmatt"
+     * eindeutig blieb. Begruendung der Aufhebung: `entschieden.md`.
      */
     let runde = faehigkeitenPartie();
     runde.stand = SCHACH.standNormalisieren({
@@ -3903,12 +3942,76 @@ pruefe("Der Koenig bleibt vom Frost verschont, auch im Block (v0.56)", () => {
 
     gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("c6")), true,
         "der Springer friert ein");
-    gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("d6")), false,
-        "der Koenig nicht");
+    gleich(SCHACH.eingefroren(kalt.stand, SCHACH.feldNummer("d6")), true,
+        "und der Koenig jetzt auch");
 
     const schwarzAmZug = Object.assign({}, kalt.stand, { amZug: "schwarz" });
-    wahr(SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("d6")).length > 0,
-        "und er zieht weiter");
+    const block = SCHACH.frostFelder(schwarzAmZug);
+    const zuege = SCHACH.zuege(schwarzAmZug, SCHACH.feldNummer("d6"));
+
+    wahr(zuege.length > 0, "er ist nicht bewegungslos");
+    wahr(zuege.every((zug) => block.indexOf(zug.nach) !== -1),
+        "aber jeder seiner Zuege endet IM Block");
+
+    /* Der Block ist c6/d6/c5/d5; c6 traegt den Springer und ist unantastbar,
+       bleiben c5 und d5. */
+    gleich(zuege.map((zug) => zug.nach).sort((a, b) => a - b).join(","),
+        [SCHACH.feldNummer("c5"), SCHACH.feldNummer("d5")]
+            .sort((a, b) => a - b).join(","),
+        "genau die zwei freien Felder des Blocks");
+});
+
+pruefe("Ein Koenig im Frost kann matt gesetzt werden (v0.80)", () => {
+    /*
+     * Die Folge, die der Nutzer selbst genannt hat. Damit sie ueberhaupt
+     * eintreten kann, muss zweierlei zusammenkommen:
+     *
+     *   - Der Koenig kommt aus dem Block nicht heraus (seit v0.80).
+     *   - Er steht trotzdem im Schach. Das haengt daran, dass `imSchach` ueber
+     *     `_feldBedroht` rein geometrisch rechnet und den Frost NICHT fragt —
+     *     sonst waere ein eingefrorener Koenig durch „unantastbar" unangreifbar
+     *     geworden, und der Wunsch haette das Gegenteil bewirkt.
+     */
+    let runde = faehigkeitenPartie();
+
+    /*
+     * Schwarzer Koenig auf b7. Der Turm auf h7 gibt Schach und deckt a7 und
+     * c7, der Turm auf h8 deckt die ganze achte Reihe. Fliehen kann der Koenig
+     * deshalb nur nach UNTEN — a6, b6, c6 sind frei.
+     *
+     * Genau diese drei Felder liegen AUSSERHALB des Frost-Blocks a8/b8/a7/b7.
+     * Der Frost nimmt sie ihm also, ohne selbst ein einziges Feld zu decken.
+     */
+    runde.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: ".......T"
+            + ".k.....T"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const schwarzVorher = Object.assign({}, runde.stand, { amZug: "schwarz" });
+    wahr(SCHACH.alleZuege(schwarzVorher).length > 0,
+        "ohne Frost hat Schwarz noch Zuege");
+
+    /* Der Frost auf den Block a8/b8/a7/b7 sperrt genau seinen Fluchtraum. */
+    const kalt = einsetzen(runde, "frost", SCHACH.feldNummer("a8"));
+    wahr(kalt !== null, "der Frost laesst sich setzen");
+
+    const schwarzNachher = Object.assign({}, kalt.stand, { amZug: "schwarz" });
+    const zuege = SCHACH.zuege(schwarzNachher, SCHACH.feldNummer("b7"));
+
+    /* Alle Felder des Blocks sind von der Dame gedeckt — es bleibt nichts. */
+    gleich(zuege.length, 0, "im Block ist kein Feld mehr sicher");
+    wahr(SCHACH.imSchach(schwarzNachher, "schwarz"),
+        "und im Schach steht er auch — der Frost verdeckt das nicht");
+    gleich(SCHACH.alleZuege(schwarzNachher).length, 0, "kein Zug mehr uebrig");
 });
 
 pruefe("Ein Stand von vor v0.56 kennt den Frost noch als Einzelfeld", () => {

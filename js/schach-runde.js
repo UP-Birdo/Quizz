@@ -2434,8 +2434,9 @@ const SCHACH_RUNDE = {
          * sonst hunderte gültiger Ziele.
          *
          * Eingefroren wird alles im Block, auch eigene Figuren
-         * (Nutzer-Entscheidung 08.08.). Könige bleiben verschont — das
-         * entscheidet `SCHACH.eingefroren`, nicht die Auswahl hier.
+         * (Nutzer-Entscheidung 08.08.) und seit v0.80 auch Könige. WAS das für
+         * eine Figur bedeutet, entscheidet `SCHACH.eingefroren` und nicht die
+         * Auswahl hier: nicht heraus, aber im Block beweglich.
          */
         if (art === "frost") {
             const gegner = SCHACH.gegner(farbe);
@@ -2445,10 +2446,21 @@ const SCHACH_RUNDE = {
                 return null;
             }
 
-            const trifft = block.filter((platz) => {
-                const figur = SCHACH.figurAuf(runde.stand, platz);
-                return figur !== "." && SCHACH.artVon(figur) !== "K";
-            });
+            /*
+             * SEIT v0.80 ZÄHLT AUCH EIN KÖNIG ALS TREFFER.
+             *
+             * Bis v0.79 stand hier `artVon(figur) !== "K"` — Könige konnten
+             * nicht einfrieren, ein Block mit nur einem König war deshalb kein
+             * gültiges Ziel. Genau diesen Fall hat der Nutzer verlangt: „Wenn
+             * im Frostbereich nur ein König ist, kann er nicht raus." Ohne
+             * diese Zeile wäre die Regel in `SCHACH.eingefroren` gebaut und
+             * hier trotzdem nicht anwählbar gewesen.
+             *
+             * Ein LEERER Block bleibt draussen: Er friert nichts ein und wäre
+             * eine verschenkte Lootbox — dafür gibt es die Mauer.
+             */
+            const trifft = block.filter(
+                (platz) => SCHACH.figurAuf(runde.stand, platz) !== ".");
 
             if (trifft.length === 0) {
                 return null;

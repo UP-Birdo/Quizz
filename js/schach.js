@@ -1024,13 +1024,27 @@ const SCHACH = {
      * Zeile wäre er beides gewesen: eine Mauer, die man auch noch über den
      * Gegner legen kann.
      */
+    /*
+     * SEIT v0.80 GILT DER FROST AUCH FÜR KÖNIGE (Nutzer-Ansage 18.08.).
+     *
+     * Bis v0.79 war der König ausgenommen — genau damit „Schachmatt" eindeutig
+     * blieb (eiserne Regel: „König und Matt bleiben unangetastet von
+     * Fähigkeiten"). Der Nutzer hat die Aufhebung verlangt und die Folge selbst
+     * genannt: „kann bei richtigem Nutzen zu Schach führen." Die Begründung
+     * steht in `docs\entscheidungen\entschieden.md`.
+     *
+     * DASS DAS ÜBERHAUPT AUFGEHT, hängt an einer Feinheit: `imSchach` rechnet
+     * über `_feldBedroht` rein geometrisch und fragt den Frost nicht. Ein
+     * eingefrorener König steht also weiterhin im Schach — sonst wäre er durch
+     * „eingefroren heisst unantastbar" unangreifbar geworden, und der Wunsch
+     * hätte genau das Gegenteil bewirkt.
+     */
     eingefroren(stand, feld) {
         if (SCHACH.frostFelder(stand).indexOf(feld) === -1) {
             return false;
         }
 
-        const art = SCHACH.artVon(SCHACH.figurAuf(stand, feld));
-        return art !== "" && art !== "K";
+        return SCHACH.artVon(SCHACH.figurAuf(stand, feld)) !== "";
     },
 
     /* Ist diese Figur gefesselt? Anders als der Frost hängt das an der FARBE:
@@ -1299,20 +1313,38 @@ const SCHACH = {
         }
 
         /*
-         * Fessel und Frost: Diese Figur darf gerade nicht ziehen.
-         *
-         * Der Unterschied steckt in den beiden Funktionen: Die Fessel trifft
-         * eine FARBE, der Frost eine FLÄCHE — seit v0.56 also auch die eigenen
-         * Figuren im Block. Beide lassen Könige stehen.
+         * Die Fessel: Diese Figur darf gerade gar nicht ziehen. Sie trifft eine
+         * FARBE und lässt Könige stehen — anders als der Frost, der seit v0.56
+         * eine FLÄCHE trifft und seit v0.80 auch Könige (siehe unten).
          */
         if (SCHACH.gefesselt(stand, von)) {
             return [];
         }
-        if (SCHACH.eingefroren(stand, von)) {
-            return [];
-        }
 
         let roh = SCHACH._rohzuege(stand, von);
+
+        /*
+         * DER FROST IST SEIT v0.80 EINE MAUER UM DEN BLOCK, KEIN ANKER
+         * (Nutzer-Ansage 18.08.: „sie können sich dennoch in dem Frostbereich
+         * bewegen … also wie eine Mauer wie am Rand").
+         *
+         * Bis v0.79 stand hier `return []` — wer eingefroren war, zog gar
+         * nicht. Jetzt bleiben die Züge übrig, die INNERHALB des Blocks enden.
+         *
+         * Daraus fällt das, was der Nutzer wollte: Ein König allein im Block
+         * kann nicht heraus, sich darin aber noch bewegen. Sind alle Felder
+         * des Blocks besetzt oder bedroht, bleibt ihm nichts — und das ist
+         * dann Matt oder Patt, gerechnet von `alleZuege` wie immer.
+         *
+         * Der Filter steht VOR den anderen: Was danach kommt (Sperren,
+         * Schild, „eingefroren heisst unantastbar"), gilt genauso. Insbesondere
+         * schlägt im Block niemanden, wer dort steht — die Zielfelder mit
+         * Figuren fallen unten wieder heraus.
+         */
+        if (SCHACH.eingefroren(stand, von)) {
+            const block = SCHACH.frostFelder(stand);
+            roh = roh.filter((zug) => block.indexOf(zug.nach) !== -1);
+        }
 
         /*
          * Auf eine Mauer zieht niemand — auch kein Springer.

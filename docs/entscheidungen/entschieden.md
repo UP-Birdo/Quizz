@@ -2112,6 +2112,84 @@ haben soll.
 Beschreibungstext, den der Nutzer liest). Das ist genau die Art Dopplung, die
 auseinanderläuft; ein Test hält beide zusammen.
 
+## Der Frost darf matt setzen (v0.80) — **hebt eine eiserne Regel auf**
+
+Bis v0.79 galt ohne Ausnahme: „König und Matt bleiben unangetastet — von
+FÄHIGKEITEN." Der Frost verschonte den König deshalb komplett
+(`SCHACH.eingefroren` lieferte für `K` immer `false`), und ein Block, in dem nur
+ein König stand, war gar kein gültiges Ziel.
+
+Der Nutzer hat die Aufhebung am 18.08. verlangt und die Folge selbst
+ausgesprochen: „Wenn im Frostbereich nur ein König ist, kann er nicht raus, aber
+sich darin noch bewegen … kann bei richtigem Nutzen zu Schach führen." Auf die
+Rückfrage, ob das wirklich so gemeint sei, kam „todos einbauen".
+
+**Die Abwägung, offen benannt.** Es gibt einen Präzedenzfall für so eine
+Aufhebung — seit v0.73 darf eine Unglücks-Lootbox eine Partie beenden. Der
+Unterschied wurde damals ausdrücklich als das Entscheidende festgehalten: *Ein
+Unglück trifft einen, eine Fähigkeit wählt man.* Genau diese Trennlinie fällt
+hier. Wer den Frost gezielt um einen eingeengten König legt, gewinnt durch eine
+Lootbox statt durch Schach.
+
+Dagegen steht, dass die Regel spielerisch schlüssig ist: Der Frost war die
+einzige Sperre, die eine willkürliche Ausnahme kannte. „Alles im Block ausser
+dem König" ist schwerer zu erklären als „was im Block steht, kommt nicht
+heraus". Und der Preis ist hoch — ein 2×2-Block muss genau dort liegen, wo dem
+König ohnehin fast nichts mehr bleibt.
+
+### Zwei Halbheiten, die zusammengehören
+
+Der Wunsch besteht aus zwei Teilen, und nur beide zusammen ergeben ihn:
+
+1. **Im Block darf man sich bewegen** (`SCHACH.zuege`). Bis v0.79 stand dort
+   `return []` — eingefroren hiess bewegungslos. Jetzt bleiben die Züge übrig,
+   die innerhalb des Blocks enden. Der Frost ist damit eine Mauer aussen herum,
+   kein Anker.
+2. **Der König zählt mit** (`SCHACH.eingefroren` UND `_zielWirkung`, Fall
+   `frost`). Die zweite Stelle ist leicht zu übersehen: Dort wurde geprüft, ob
+   der Block überhaupt etwas trifft, und Könige zählten dabei nicht. Ohne diese
+   Änderung wäre die Regel gebaut, aber der Fall des Nutzers — ein Block mit nur
+   einem König — nicht anwählbar gewesen.
+
+### Warum das überhaupt funktioniert — die Feinheit, die den Wunsch trägt
+
+„Eingefroren heisst auch unantastbar" (v0.56) bleibt. Ein eingefrorener König
+kann also gar nicht geschlagen werden. Man könnte meinen, damit sei Matt
+unmöglich geworden — das Gegenteil des Gewünschten.
+
+Es geht auf, weil **`imSchach` über `_feldBedroht` rein geometrisch rechnet und
+den Frost nicht fragt**. Der eingefrorene König steht also weiterhin im Schach;
+matt ist er, wenn ihm im Block kein Feld mehr bleibt. Diese zwei Stellen hängen
+zusammen — wer an einer schraubt, prüft die andere mit. Ein Test hält den Fall
+fest.
+
+**Nicht angetastet** wurde die Fessel: Sie nagelt eine Figur wirklich fest und
+lässt Könige weiterhin aus. Sie ist damit das Gegenstück zum Frost, und der
+Unterschied zwischen beiden (v0.56 mühsam erarbeitet) bleibt erhalten.
+
+## Warum das Nudelholz sein Pluszeichen verloren hat (v0.80)
+
+Nutzer-Ansage vom 18.08.: „Nudelholz soll kein Plus mehr haben, also als ein Zug
+gelten."
+
+Das ist der zweite Anwendungsfall der Regel von v0.47 — **wird eine Fähigkeit zu
+stark, nimmt man ihr das Pluszeichen; die Stufe bleibt, wo sie ist.** Der erste
+war der Bauernschub (v0.56), und die Begründung ist wörtlich dieselbe: Er
+verschiebt bis zu acht Figuren, und mit dem Zug obendrauf sind das zwei Züge für
+eine Fähigkeit. Das Nudelholz rollt eine ganze Doppelspalte.
+
+**Überfällig war es ausserdem.** In v0.78 hat es Zuwachs bekommen: Es rollt
+seither auch Könige, und vorher hielt ein König alles auf, was hinter ihm stand.
+Der Preis zog damals nicht mit — das war beim Bau als Beobachtung vermerkt
+worden und wird hier nachgeholt.
+
+**Eine Folge, die leicht zu übersehen war:** Die Bildanleitung zeigte ein drittes
+Bild mit dem Zug, den man „noch übrig" hatte. Das ist jetzt eine Lüge und wurde
+entfernt. Dass es auffiel, lag an einem Test, der die Liste der Fähigkeiten mit
+Pluszeichen bis dahin als feste Namen führte — er rechnet sie seither aus
+`zeigtPlus` aus. Beim Umstellen kam heraus, dass Schubs und Platztausch (v0.79)
+dieses dritte Bild von Anfang an gefehlt hatte; sie haben es jetzt.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

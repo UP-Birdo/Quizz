@@ -227,10 +227,15 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 14,
             ziel: 14,
+            /* Das dritte Bild zeigt, was das Pluszeichen wert ist: Der Zug ist
+               noch da, und der Weg ist jetzt frei (seit v0.80). */
+            nachspiel: [20, 14],
             vorher: "Der schwarze Bauer steht deinem Bauern direkt im Weg — keiner "
                 + "von beiden kommt vorbei.",
             nachher: "Ein Schubs, und er steht ein Feld weiter hinten. Geschlagen "
-                + "wird dabei nichts, und dein Zug gehört immer noch dir."
+                + "wird dabei nichts.",
+            nachsatz: "Und dein Zug gehört immer noch dir: Der Bauer rückt sofort "
+                + "in die Lücke nach."
         },
 
         /*
@@ -250,11 +255,16 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 32,
             ziel: 32,
+            /* Das dritte Bild zeigt, was das Pluszeichen wert ist (seit v0.80):
+               Der Läufer schlägt im selben Zug, für den er eben erst frei
+               geworden ist. */
+            nachspiel: [26, 12],
             vorher: "Dein Läufer steht hinter dem eigenen Bauern und sieht keine "
                 + "einzige Diagonale.",
-            nachher: "Die beiden tauschen die Plätze: Der Läufer steht vorn und "
-                + "nimmt den Turm ins Visier, der Bauer rückt nach hinten. Dein Zug "
-                + "bleibt dir."
+            nachher: "Die beiden tauschen die Plätze: Der Läufer steht vorn, der "
+                + "Bauer rückt nach hinten.",
+            nachsatz: "Und dein Zug bleibt dir — der Läufer holt sich den Turm "
+                + "gleich selbst."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ---- */
@@ -333,15 +343,17 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: 32,
-            nachspiel: [14, 9],
+            /* KEIN `nachspiel` MEHR (seit v0.80): Das Nudelholz beendet den
+               Zug, danach ist der Gegner dran — ein eigener Zug im Anschluss
+               wäre eine Lüge im Bild. Bis v0.79 zeigte das dritte Bild genau
+               das, was die Fähigkeit jetzt nicht mehr hergibt. */
             vorher: "Angetippt wird ein Feld deiner eigenen Grundreihe — unten am "
                 + "Brett. Gerollt werden die beiden Spalten darüber, über die "
                 + "ganze Höhe.",
             nachher: "Jede Figur in diesen beiden Spalten rückt ein Feld nach "
                 + "vorn, von dir weg — die eigenen wie die fremden, vom "
-                + "untersten bis zum obersten Feld.",
-            nachsatz: "Das Nudelholz kostet dich keinen Zug: Der geschobene Bauer "
-                + "schlägt gleich noch den gegnerischen Bauern."
+                + "untersten bis zum obersten Feld. Das Nudelholz IST dein Zug: "
+                + "Danach ist der Gegner dran."
         },
 
         /*
@@ -418,9 +430,11 @@ const SCHACH_VORSCHAU = {
             nachspiel: [34, 16],
             vorher: "Springer und Läufer haben beide deine Dame im Visier — einer "
                 + "von ihnen holt sie.",
-            nachher: "Der Frost sperrt ein 2-mal-2-Feld: Beide sind einen Zug lang "
-                + "festgefroren und in dieser Zeit auch nicht zu schlagen. Die "
-                + "blaue Linie zeigt, wer eingesperrt ist.",
+            nachher: "Der Frost sperrt ein 2-mal-2-Feld: Beide kommen einen Zug "
+                + "lang nicht heraus und sind in dieser Zeit auch nicht zu "
+                + "schlagen. Innerhalb des Blocks dürfen sie sich bewegen — er "
+                + "ist eine Mauer aussen herum, kein Anker. Die blaue Linie zeigt, "
+                + "wer eingesperrt ist.",
             nachsatz: "Und weil er dich keinen Zug kostet, holt sich dein Turm "
                 + "derweil den Bauern, auf den er die ganze Zeit gezielt hat."
         },

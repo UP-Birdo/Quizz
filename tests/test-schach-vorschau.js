@@ -245,7 +245,23 @@ pruefe("Wo eine Faehigkeit den Zug laesst, zieht das Beispiel danach (v0.58)", (
      * sehen. Jede dieser Faehigkeiten fuehrt jetzt im letzten Bild den Zug vor,
      * den sie einem laesst — und der bringt etwas ein.
      */
-    const mitNachspiel = ["mauer", "nudelholz", "schutzschild", "fessel", "frost"];
+    /*
+     * DIE LISTE WIRD GERECHNET, NICHT HINGESCHRIEBEN (seit v0.80).
+     *
+     * Bis dahin standen hier fuenf Namen als feste Liste — und als das
+     * Nudelholz sein Pluszeichen verlor, schlug der Test an, obwohl genau das
+     * gewollt war. Gefragt wird jetzt dieselbe Quelle, aus der auch das
+     * Pluszeichen am Bildschirm kommt: `zeigtPlus`.
+     *
+     * Faehigkeiten mit `zugmuster` bleiben draussen: Bei ihnen IST der
+     * anschliessende Zug die Wirkung, sie brauchen kein zusaetzliches Bild.
+     */
+    const mitNachspiel = Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
+        .filter((art) => SCHACH_VARIANTEN.zeigtPlus(art)
+            && SCHACH_VARIANTEN.FAEHIGKEITEN[art].art === "ziel")
+        .sort();
+
+    wahr(mitNachspiel.length > 0, "es gibt ueberhaupt solche Faehigkeiten");
 
     for (const art of mitNachspiel) {
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);

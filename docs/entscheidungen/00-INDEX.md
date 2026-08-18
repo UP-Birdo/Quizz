@@ -161,6 +161,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Zwei neue gewöhnliche Fähigkeiten — und warum genau diese zwei (v0.79) —
   **Grün hatte nach v0.78 kein Pluszeichen mehr**
 - Warum die Halluzination halb so lang dauert (v0.79)
+- Der Frost darf matt setzen (v0.80) — **hebt eine eiserne Regel auf; erste
+  FÄHIGKEIT, die Schachmatt herbeiführen darf**
+- Warum das Nudelholz sein Pluszeichen verloren hat (v0.80)
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 
