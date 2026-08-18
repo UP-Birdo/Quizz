@@ -2234,6 +2234,42 @@ Nachbarn über `_feldZuAnzeige` geholt, also über dieselbe Umrechnung, mit der
 das Feld überhaupt an seinen Platz kommt. **Merksatz: Was der Spieler SIEHT,
 wird in der Ansicht gerechnet, nicht im Stand.**
 
+## Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
+
+Der Nutzer hat am 18.08. die offene Frage zum begrenzten Item-Vorrat
+beantwortet: „Es kann eine Seltenheitsstufe leer bleiben. Baue es so, dass
+diese nicht gewählt werden kann und die Chancen bei allen anderen gleich
+bleiben. Wenn halt die leere gewählt wird, soll erneut gewürfelt werden, so
+lange bis eine vorhandene Seltenheit kommt — oder wie würdest du das aus
+Programmierer-Sicht bauen?"
+
+**Die Antwort: Neu-Würfeln und Gewichte-Neu-Normieren sind dasselbe Ergebnis.**
+Wer so lange würfelt, bis er eine nicht-leere Stufe trifft, erhält exakt die
+bedingte Verteilung — jede verbliebene Stufe behält ihr Verhältnis zu den
+anderen, und die Wahrscheinlichkeitsmasse der leeren verteilt sich anteilig auf
+sie. Genau das rechnet eine Normierung in einem Schritt aus.
+
+**Gebaut wird deshalb die Normierung**, und zwar aus zwei Gründen:
+
+1. **Im Modell wird nicht gewürfelt, sondern gerechnet** (eiserne Regel seit
+   v0.8). `_zufallsWert` ist eine Streufunktion über Partie-Kennung und
+   Zugzähler; alle Geräte müssen dasselbe Ergebnis bekommen. Eine Schleife
+   „würfle noch einmal" bräuchte für jeden Versuch eine eigene Saat und wäre
+   im Grenzfall unbeschränkt.
+2. **Die Maschinerie steht schon.** `SCHACH_VARIANTEN.stufeZiehen(wert,
+   gewichte)` nimmt seit v0.41 (Abklingzeit für Grün) Gewichte entgegen und
+   teilt am Ende durch deren Summe. Eine leere Stufe bekommt schlicht das
+   Gewicht 0 — der Rest passiert von allein, ohne eine Zeile neuer
+   Verteilungslogik.
+
+Zu bauen bleibt damit nur: `_stufenGewichte` liefert 0 für eine Stufe, aus der
+im Vorrat der Partie keine Fähigkeit mehr übrig ist.
+
+**Die Formulierung „die Chancen bei allen anderen bleiben gleich" ist dabei
+präzisiert worden:** Ihre VERHÄLTNISSE bleiben gleich, ihre absoluten Chancen
+steigen. Anders ginge es nicht — die Prozente müssen zusammen 100 ergeben. Beim
+Neu-Würfeln wäre es genauso.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das

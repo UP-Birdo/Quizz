@@ -3,6 +3,21 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.83.0 — 2026-08-18
+
+**Die Spielart-Kacheln sagen jetzt mehr.**
+
+- **Unter jeder Kachel steht, wie viele Figuren je Seite antreten.** Gezählt
+  wird aus dem Bild, das die Kachel wirklich zeigt — nicht aus einer zweiten
+  Liste, die irgendwann davon abweicht. Sind die Seiten unterschiedlich stark,
+  stehen beide Zahlen da („4 gegen 3 Figuren").
+
+- **Mit dem Haken „Zufallsarmee" zeigt jede Kachel ein echtes Beispiel.** Vorher
+  sah man die volle Aufstellung, obwohl gleich etwas ganz anderes auf dem Brett
+  stehen würde. Das Beispiel wird mit derselben Funktion gerechnet, die auch die
+  echte Partie aufstellt — und es steht still: Beim Neuzeichnen kommt dasselbe
+  Bild, es flackert nicht. Der Haken „Unterschiedliche Armeen" wirkt mit.
+
 ## v0.82.0 — 2026-08-18
 
 **Zwei Fehler beim Erdrutsch und ein etwas ruhigerer Regen.**

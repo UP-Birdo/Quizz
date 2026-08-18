@@ -167,6 +167,7 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
   FÄHIGKEIT, die Schachmatt herbeiführen darf**
 - Warum das Nudelholz sein Pluszeichen verloren hat (v0.80)
 - Warum die Lage der Mauer nirgends gespeichert wird (v0.81)
+- Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

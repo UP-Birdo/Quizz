@@ -883,6 +883,85 @@ pruefe("Nach einem Zug laeuft die Bewegung — und nur einmal", () => {
     }
 });
 
+
+pruefe("Die Spielart-Kachel nennt die Zahl der Figuren (v0.83)", () => {
+    /*
+     * NUTZER-WUNSCH 18.08.: „Die Vorschau der Spielfelder soll schon die Anzahl
+     * anzeigen." Gezaehlt wird aus dem Brett, das die Kachel WIRKLICH zeigt —
+     * mit Zufallsarmee also die gewuerfelte Zahl, nicht die der vollen
+     * Aufstellung.
+     */
+    const klassisch = SCHACH_VARIANTEN.holen("standard");
+
+    const soll = (brett, erwartet) => {
+        const ist = TEAM_SCHACH._figurenText(brett);
+        if (ist !== erwartet) {
+            throw new Error("erwartet <" + erwartet + ">, war <" + ist + ">");
+        }
+    };
+
+    soll(klassisch.aufstellung, "16 Figuren je Seite");
+
+    /* Ungleiche Seiten werden beide genannt — eine Zahl waere gelogen. */
+    soll("TTT...ttt", "3 Figuren je Seite");
+    soll("TTTT..ttt", "4 gegen 3 Figuren");
+    soll("........", "0 Figuren je Seite");
+});
+
+pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
+    /*
+     * „Bei Zufall auch gleich ein Beispiel zeigen, wie es sein kann."
+     *
+     * Gerechnet wird es mit derselben Funktion, die auch die echte Partie
+     * aufstellt (`SCHACH_RUNDE.armeeAufstellen`) — ein gemaltes Beispiel waere
+     * die zweite Wahrheit, die beim ersten Umbau abweicht.
+     */
+    const variante = SCHACH_VARIANTEN.holen("standard");
+    const gemerkt = TEAM_SCHACH.neueRegeln.zufallsArmee;
+
+    const zaehlen = (brett) => brett.split("").filter((z) => z !== ".").length;
+
+    try {
+        /* 1. Ohne Haken: die feste Aufstellung, unveraendert. */
+        TEAM_SCHACH.neueRegeln.zufallsArmee = false;
+        if (TEAM_SCHACH._vorschauBrett(variante) !== variante.aufstellung) {
+            throw new Error("ohne Haken muss die gewohnte Aufstellung kommen");
+        }
+
+        /* 2. Mit Haken: ein anderes Brett, und zwar ein duenner besetztes. */
+        TEAM_SCHACH.neueRegeln.zufallsArmee = true;
+        const beispiel = TEAM_SCHACH._vorschauBrett(variante);
+
+        if (beispiel === variante.aufstellung) {
+            throw new Error("mit Haken muss ein anderes Brett kommen");
+        }
+        if (beispiel.length !== variante.aufstellung.length) {
+            throw new Error("die Brettgroesse darf sich nicht aendern");
+        }
+        if (zaehlen(beispiel) >= zaehlen(variante.aufstellung)) {
+            throw new Error("die Zufallsarmee muss kleiner sein als die volle ("
+                + zaehlen(beispiel) + " gegen " + zaehlen(variante.aufstellung) + ")");
+        }
+
+        /*
+         * 3. UND ES STEHT STILL: Zweimal gefragt kommt dasselbe Bild. Die Saat
+         * haengt an der Spielart — sonst wuerfelte die Kachel bei jedem
+         * Neuzeichnen neu und flackerte vor den Augen.
+         */
+        if (TEAM_SCHACH._vorschauBrett(variante) !== beispiel) {
+            throw new Error("zweimal gefragt muss dasselbe Beispiel kommen");
+        }
+
+        /* 4. Jede Spielart bekommt ihr eigenes Beispiel. */
+        const andere = TEAM_SCHACH._vorschauBrett(SCHACH_VARIANTEN.holen("kreuzKlein"));
+        if (andere.length === beispiel.length) {
+            throw new Error("eine andere Spielart braucht ihr eigenes Brett");
+        }
+    } finally {
+        TEAM_SCHACH.neueRegeln.zufallsArmee = gemerkt;
+    }
+});
+
 pruefe("Was sich geaendert hat, wird erkannt — und beim ersten Anblick nichts (v0.77)", () => {
     /*
      * `_veraenderungen` ist die Grundlage der vier stillen Animationen

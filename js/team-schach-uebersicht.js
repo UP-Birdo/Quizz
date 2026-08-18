@@ -358,7 +358,19 @@ Object.assign(TEAM_SCHACH, {
         kachel.className = "spielart-kachel";
         kachel.addEventListener("click", () => TEAM_SCHACH.spielartGewaehlt(variante.id));
 
-        kachel.appendChild(TEAM_SCHACH._vorschauBauen(variante));
+        /*
+         * MIT ZUFALLSARMEE ZEIGT DIE KACHEL EIN BEISPIEL (seit v0.83,
+         * Nutzer-Wunsch 18.08.: „bei Zufall auch gleich ein Beispiel zeigen,
+         * wie es sein kann").
+         *
+         * Gerechnet mit derselben Funktion, die auch die echte Partie
+         * aufstellt — ein gemaltes Beispiel wäre die zweite Wahrheit, die
+         * beim ersten Umbau abweicht. Die Saat hängt an der Spielart, das
+         * Bild bleibt deshalb beim Neuzeichnen stehen und flackert nicht.
+         */
+        const brett = TEAM_SCHACH._vorschauBrett(variante);
+
+        kachel.appendChild(TEAM_SCHACH._vorschauBauen(variante, brett));
 
         const kopf = TEAM_SCHACH._element("div", "spielart-kopf");
         kopf.appendChild(TEAM_SCHACH._element("span", "spielart-titel", variante.titel));
@@ -366,9 +378,69 @@ Object.assign(TEAM_SCHACH, {
             variante.breite + " mal " + variante.hoehe));
         kachel.appendChild(kopf);
 
+        /*
+         * WIE VIELE FIGUREN JE SEITE (seit v0.83, „die Vorschau soll schon die
+         * Anzahl anzeigen"). Gezählt wird aus dem Brett, das die Kachel WIRKLICH
+         * zeigt — mit Zufallsarmee steht dort also die gewürfelte Zahl, nicht
+         * die der vollen Aufstellung.
+         *
+         * Sind beide Seiten gleich stark, steht eine Zahl da; das ist der
+         * Normalfall. Nur wenn sie sich unterscheiden (Haken „unterschiedliche
+         * Armeen"), werden beide genannt — sonst wäre die eine Zahl gelogen.
+         */
+        kachel.appendChild(TEAM_SCHACH._element("span", "spielart-anzahl",
+            TEAM_SCHACH._figurenText(brett)));
+
         kachel.appendChild(TEAM_SCHACH._element("span", "spielart-text", variante.beschreibung));
 
         return kachel;
+    },
+
+    /*
+     * Das Brett, das die Kachel zeigt: die feste Aufstellung — oder ein
+     * gewürfeltes Beispiel, wenn der Haken „Zufallsarmee" gesetzt ist.
+     *
+     * Gebaut wird das Beispiel über `SCHACH_RUNDE.armeeAufstellen`, also über
+     * den öffentlichen Weg, den auch die echte Partie geht. Damit stimmt es
+     * auch auf dem Kreuz (dort stellt `_armeeStandKreuz` seit v0.76 je
+     * Startseite auf) und beim Haken „unterschiedliche Armeen".
+     */
+    _vorschauBrett(variante) {
+        if (TEAM_SCHACH.neueRegeln.zufallsArmee !== true) {
+            return variante.aufstellung;
+        }
+
+        let runde = SCHACH_RUNDE.leereRunde(0, variante.id,
+            "vorschau-" + variante.id, "");
+
+        runde.regeln.zufallsArmee = true;
+        runde.regeln.armeeUnterschiedlich =
+            (TEAM_SCHACH.neueRegeln.armeeUnterschiedlich === true);
+
+        runde = SCHACH_RUNDE.armeeAufstellen(runde, "");
+        return runde.stand.brett;
+    },
+
+    /* „12 Figuren je Seite" — oder beide Zahlen, wenn sie sich unterscheiden. */
+    _figurenText(brett) {
+        let weiss = 0;
+        let schwarz = 0;
+
+        for (const zeichen of brett) {
+            if (zeichen === ".") {
+                continue;
+            }
+            if (zeichen === zeichen.toUpperCase()) {
+                weiss++;
+            } else {
+                schwarz++;
+            }
+        }
+
+        if (weiss === schwarz) {
+            return weiss + " Figuren je Seite";
+        }
+        return weiss + " gegen " + schwarz + " Figuren";
     },
 
     /*
@@ -378,7 +450,11 @@ Object.assign(TEAM_SCHACH, {
      * je Spielart wäre die zweite Wahrheit, die irgendwann von der ersten
      * abweicht.
      */
-    _vorschauBauen(variante) {
+    _vorschauBauen(variante, brett) {
+        /* `brett` ist wahlfrei — ohne Angabe die feste Aufstellung der
+           Spielart (seit v0.83; davor gab es nur diese eine Quelle). */
+        const stellung = brett || variante.aufstellung;
+
         const vorschau = TEAM_SCHACH._element("div", "vorschau");
         vorschau.style.setProperty("--vorschau-spalten", String(variante.breite));
 
@@ -399,7 +475,7 @@ Object.assign(TEAM_SCHACH, {
                 zelle.classList.add("feld-riss");
             }
 
-            const figur = variante.aufstellung[feld];
+            const figur = stellung[feld];
             if (figur !== ".") {
                 zelle.appendChild(TEAM_SCHACH._element("span",
                     "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz"),

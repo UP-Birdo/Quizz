@@ -2357,6 +2357,18 @@ body {
     white-space: nowrap;
 }
 
+/*
+ * Wie viele Figuren je Seite (seit v0.83). Sie steht unter dem Kopf und nicht
+ * daneben: In der Kopfzeile drängelt sie sich mit dem Titel um den Platz, und
+ * auf dem Handy bricht dann der Titel um.
+ */
+.spielart-anzahl {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+    color: var(--schrift-leise);
+}
+
 .spielart-text {
     font-size: 0.85rem;
     color: var(--schrift-leise);
