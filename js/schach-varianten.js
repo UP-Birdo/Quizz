@@ -233,7 +233,9 @@ const SCHACH_VARIANTEN = {
         vollesGlas: {
             titel: "Halluzination",
             stufe: "gruen",
-            beschreibung: "Wer ihn einsammelt, sieht die gegnerischen Figuren 8 "
+            /* Die Zahl muss zu `SCHACH_RUNDE.GLAS_HALBZUEGE` passen (seit
+               v0.79 vier statt acht) — ein Test hält beide zusammen. */
+            beschreibung: "Wer sie einsammelt, sieht die gegnerischen Figuren 4 "
                 + "Halbzüge lang falsch: Sie ziehen wie immer, sehen aber aus wie "
                 + "etwas anderes. Nur die eigene Ansicht ist betroffen — der Gegner "
                 + "merkt nichts."
@@ -747,6 +749,54 @@ const SCHACH_VARIANTEN = {
                 + "setzt auf ein FREIES Feld im Umkreis von zwei, über alles hinweg "
                 + "— geschlagen wird dabei nicht. Der Teleport IST dein Zug; normal "
                 + "ziehen kannst du danach nicht mehr, es ist der Gegner dran."
+        },
+
+        /* ------------------------------------------------------------ *
+         * ZWEI NEUE GEWÖHNLICHE (seit v0.79)
+         *
+         * ANLASS: Nachdem Ausweichen in v0.78 versteckt wurde, standen in der
+         * gewöhnlichen Stufe nur noch Sprung und Teleport — beide `istDerZug`,
+         * beide „eine Figur bewegt sich anders als sonst", und bei 52 Prozent
+         * Stufenchance je 26 Prozent. Jede zweite Lootbox war damit ein
+         * Münzwurf zwischen zwei sehr ähnlichen Dingen, und Grün hatte KEIN
+         * Pluszeichen mehr: Es hiess nur noch „dein Zug wird ein anderer", nie
+         * „du bekommst etwas obendrauf". Der Sprung nach Blau (Mauer,
+         * Nudelholz, Schutzschild — alle drei zusätzlich zum Zug) war dadurch
+         * kein Schritt mehr, sondern eine Stufe.
+         *
+         * DIE ANTWORT: zwei Fähigkeiten MIT Pluszeichen, beide rein
+         * positionell. Kein Material, keine geschlagene Figur — genau die
+         * Bedingung, unter der eine Fähigkeit den Zug behalten darf (v0.47).
+         *
+         * DIE LEITER BLEIBT, und daran wurden sie gemessen: Grün wirkt auf EIN
+         * Feld, Blau auf drei Felder oder zwei Spalten, Lila sperrt den Gegner
+         * über mehrere Züge, Gelb schenkt Material. Der Schubs ist die
+         * Ein-Feld-Fassung des Nudelholzes, der Platztausch die
+         * Ein-Feld-Fassung von gar nichts — er bewegt nur eigene Figuren und
+         * verändert die Materiallage überhaupt nicht.
+         * ------------------------------------------------------------ */
+
+        schubs: {
+            titel: "Schubs",
+            stufe: "gruen",
+            art: "ziel",
+            zielArt: "gegnerFigurSchubsbar",
+            beschreibung: "Tippe eine gegnerische Figur an, die neben einer deiner "
+                + "Figuren steht: Sie wird ein Feld von dieser weggeschoben. Nur auf "
+                + "ein freies Feld — geschlagen wird nicht, und Könige bleiben stehen. "
+                + "Stehen mehrere deiner Figuren daneben, zeigt dir der Vorschau-Kasten "
+                + "vorher, wohin es geht. Dein Zug bleibt dir."
+        },
+
+        platztausch: {
+            titel: "Platztausch",
+            stufe: "gruen",
+            art: "ziel",
+            zielArt: "eigeneFigurTauschbar",
+            beschreibung: "Tippe eine eigene Figur an: Sie tauscht den Platz mit "
+                + "deiner eigenen Figur direkt davor — so kommt der Läufer hinter dem "
+                + "Bauern hervor. Nur zwischen zwei eigenen Figuren, und der König "
+                + "tauscht nicht. Dein Zug bleibt dir."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ----

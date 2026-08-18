@@ -206,6 +206,57 @@ const SCHACH_VORSCHAU = {
                 + "Springer ins Visier."
         },
 
+        /*
+         * SCHUBS (seit v0.79). Die Szene beantwortet „wozu?" mit der
+         * häufigsten Lage überhaupt: Der gegnerische Bauer steht genau vor dem
+         * eigenen und hält ihn auf. Ein Schubs räumt ihn weg, und der Zug
+         * bleibt trotzdem übrig.
+         *
+         * Der schwarze Turm oben gibt Schwarz eine ziehfähige Figur, die Dame
+         * unten Weiss — ohne das endet die Beispielpartie durch Patt, und
+         * `bilder()` liefert gar nichts mehr (Hausregel, seit v0.58).
+         */
+        schubs: {
+            brett: [
+                "..t...",
+                "......",
+                "..b...",
+                "..B...",
+                "......",
+                "...D.."
+            ],
+            figur: 14,
+            ziel: 14,
+            vorher: "Der schwarze Bauer steht deinem Bauern direkt im Weg — keiner "
+                + "von beiden kommt vorbei.",
+            nachher: "Ein Schubs, und er steht ein Feld weiter hinten. Geschlagen "
+                + "wird dabei nichts, und dein Zug gehört immer noch dir."
+        },
+
+        /*
+         * PLATZTAUSCH (seit v0.79). Der klassische Ärger: Der Läufer steht
+         * hinter dem eigenen Bauern und sieht nichts. Nach dem Tausch steht er
+         * vorn und nimmt den Turm ins Visier — ohne dass es einen Zug gekostet
+         * hat.
+         */
+        platztausch: {
+            brett: [
+                "..t...",
+                "......",
+                "t.....",
+                "......",
+                "..B...",
+                "..L..."
+            ],
+            figur: 32,
+            ziel: 32,
+            vorher: "Dein Läufer steht hinter dem eigenen Bauern und sieht keine "
+                + "einzige Diagonale.",
+            nachher: "Die beiden tauschen die Plätze: Der Läufer steht vorn und "
+                + "nimmt den Turm ins Visier, der Bauer rückt nach hinten. Dein Zug "
+                + "bleibt dir."
+        },
+
         /* ---- Ungewöhnlich: verändert die Stellung ---- */
 
         /*

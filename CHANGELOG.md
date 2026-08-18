@@ -3,6 +3,42 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.79.0 — 2026-08-18
+
+**Zwei neue gewöhnliche Fähigkeiten, und die Halluzination ist halb so lang.**
+
+Nachdem Ausweichen raus ist, standen in der gewöhnlichen Stufe nur noch Sprung
+und Teleport. Beide **sind** dein Zug, beide machen dasselbe — eine Figur
+bewegt sich anders als sonst. Bei 52 Prozent Stufenchance war jede zweite
+Lootbox ein Münzwurf zwischen zwei sehr ähnlichen Dingen, und Grün hatte kein
+Pluszeichen mehr: nie etwas, das zum Zug **dazu** kommt.
+
+- **Schubs** (gewöhnlich, Pluszeichen). Tippe eine gegnerische Figur an, die
+  neben einer deiner Figuren steht — sie weicht ein Feld zurück. Nur auf ein
+  freies Feld, geschlagen wird nichts, und Könige bleiben stehen. Stehen
+  mehrere deiner Figuren daneben, zeigt der Vorschau-Kasten vorher, wohin es
+  geht. **Dein Zug bleibt dir.** Der kleine Bruder des Nudelholzes: eine Figur,
+  ein Feld, statt zweier ganzer Spalten.
+
+- **Platztausch** (gewöhnlich, Pluszeichen). Tippe eine eigene Figur an: Sie
+  tauscht den Platz mit deiner eigenen Figur direkt davor. So kommt der Läufer
+  hinter dem Bauern hervor, ohne dass es einen Zug kostet. Nur zwischen zwei
+  eigenen Figuren, und der König tauscht nicht.
+
+- **Die Halluzination dauert nur noch 4 statt 8 Halbzüge** — zwei eigene Züge
+  blind statt vier. Sie war für das häufigste Unglück auf der harmlosesten
+  Stufe deutlich zu lang.
+
+**Was sich an den Zahlen ändert:** Gewöhnlich hat jetzt vier Fähigkeiten zu je
+13 Prozent statt zweier zu je 26. Zwei davon **sind** dein Zug (Sprung,
+Teleport), zwei kommen **obendrauf** (Schubs, Platztausch). Die Leiter über die
+Stufen bleibt und ist sogar deutlicher geworden: 13 Prozent je gewöhnliche,
+6,6 je ungewöhnliche, 2,4 je epische, 0,8 je legendäre.
+
+**Verschoben wurde nichts.** Alle vier Stufen sind dabei durchgesehen worden:
+Grün wirkt auf ein Feld, Blau auf drei Felder oder zwei Spalten, Lila sperrt
+den Gegner über mehrere Züge, Gelb schenkt Material. Das passt so.
+
 ## v0.78.0 — 2026-08-18
 
 **Ausweichen ist raus.** Es erscheint in keiner neuen Lootbox mehr und steht

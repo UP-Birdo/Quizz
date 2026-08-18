@@ -49,8 +49,20 @@ const SCHACH_RUNDE = {
     /* So viele Züge bleiben im Verlauf stehen. */
     VERLAUF_LAENGE: 40,
 
-    /* Wie lange das volle Glas die Sicht trübt (in Halbzügen). */
-    GLAS_HALBZUEGE: 8,
+    /*
+     * Wie lange die Halluzination die Sicht trübt (in Halbzügen).
+     *
+     * SEIT v0.79 VIER STATT ACHT (Nutzer-Ansage 18.08.: „verschwommene Sicht
+     * kürzer, ist ja schon stark"). Acht Halbzüge hiessen VIER eigene Züge
+     * blind — für das häufigste Unglück auf der harmlosesten Stufe zu viel.
+     * Jetzt sind es zwei eigene Züge: spürbar unangenehm, aber man verliert die
+     * Partie nicht daran.
+     *
+     * Die Zahl steht auch im Beschreibungstext der Halluzination
+     * (`SCHACH_VARIANTEN.PECH.vollesGlas`). Ein Test hält beide zusammen —
+     * zwei Quellen für dieselbe Zahl laufen sonst auseinander.
+     */
+    GLAS_HALBZUEGE: 4,
 
     /*
      * Wie lange auf die Zustimmung des Teams gewartet wird (in Sekunden), je
@@ -2454,6 +2466,16 @@ const SCHACH_RUNDE = {
 
         if (art === "spiegel") {
             return SCHACH.spiegel(runde.stand, farbe, feld);
+        }
+
+        /* Die zwei gewöhnlichen von v0.79 — die Regel steht bei ihnen selbst
+           in `schach.js`, hier wird nur durchgereicht. */
+        if (art === "schubs") {
+            return SCHACH.schubs(runde.stand, farbe, feld);
+        }
+
+        if (art === "platztausch") {
+            return SCHACH.platztausch(runde.stand, farbe, feld);
         }
 
         if (art === "nudelholz") {

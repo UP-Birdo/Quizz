@@ -158,6 +158,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum das Nudelholz jetzt auch Könige rollt (v0.77)
 - Warum Ausweichen versteckt wurde, obwohl es funktioniert (v0.78) —
   **erste versteckte FÄHIGKEIT, nicht nur Spielart**
+- Zwei neue gewöhnliche Fähigkeiten — und warum genau diese zwei (v0.79) —
+  **Grün hatte nach v0.78 kein Pluszeichen mehr**
+- Warum die Halluzination halb so lang dauert (v0.79)
 - Warum es von Anfang an Tabs gibt
 - Warum das Ändern der PIN die alte verlangt
 

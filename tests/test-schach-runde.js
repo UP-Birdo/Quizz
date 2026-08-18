@@ -2282,7 +2282,10 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
         "wiedergeburt", "wiederbelebung", "friedhof", "haendler", "nachschub"];
     /* Das Erdbeben steht seit v0.54 bei den Unglueckswuerfeln. */
     const behaeltDenZug = ["ausweichen", "schutzschild",
-        "nudelholz", "mauer", "fessel", "frost", "doppelzug"];
+        "nudelholz", "mauer", "fessel", "frost", "doppelzug",
+        /* Die zwei gewoehnlichen von v0.79: rein positionell, kein Material
+           und keine geschlagene Figur - genau die Bedingung dieser Gruppe. */
+        "schubs", "platztausch"];
 
     /* Die dritte Gruppe seit v0.48: Die Faehigkeit IST der Zug. Man bleibt am
        Zug, macht ihn sofort — und kann sonst nichts mehr. */
@@ -4735,6 +4738,231 @@ pruefe("Nudelholz schlaegt nicht — es schiebt nur (v0.77)", () => {
         "bis zum Rand zugestellt bewegt sich nichts — geschlagen wird erst recht nicht");
 });
 
+
+/* ------------------------------------------------------------------ *
+ * Die zwei neuen gewöhnlichen Fähigkeiten (v0.79)
+ * ------------------------------------------------------------------ */
+
+pruefe("Schubs: eine gegnerische Figur weicht ein Feld zurueck (v0.79)", () => {
+    /*
+     * ANLASS: Nach dem Verstecken von Ausweichen (v0.78) standen in der
+     * gewoehnlichen Stufe nur noch Sprung und Teleport — beide `istDerZug`,
+     * beide „eine Figur bewegt sich anders". Gruen hatte kein Pluszeichen mehr.
+     * Der Schubs ist die Ein-Feld-Fassung des Nudelholzes und behaelt den Zug.
+     */
+    const runde = faehigkeitenPartie();
+
+    /* Ein schwarzer Bauer auf a3, direkt vor dem eigenen auf a2. */
+    runde.stand.brett = SCHACH._brettMit(runde.stand.brett,
+        SCHACH.feldNummer("a3"), "b");
+
+    const nachher = einsetzen(runde, "schubs", SCHACH.feldNummer("a3"));
+    wahr(nachher !== null, "eingesetzt");
+
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("a3")), ".",
+        "a3 ist frei geworden");
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("a4")), "b",
+        "der Bauer steht ein Feld weiter zurueck");
+    gleich(SCHACH.figurAuf(nachher.stand, SCHACH.feldNummer("a2")), "B",
+        "der eigene Bauer steht unveraendert");
+
+    /* DER ZUG BLEIBT — das ist der Kern: Gruen hat wieder ein Pluszeichen. */
+    gleich(nachher.stand.amZug, "weiss", "Weiss ist weiterhin am Zug");
+});
+
+pruefe("Schubs schlaegt nicht und schiebt keine Koenige (v0.79)", () => {
+    const zaehlen = (brett) => brett.split("").filter((z) => z !== ".").length;
+
+    /* 1. Ist das Feld dahinter besetzt, geht es gar nicht. */
+    const zu = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "t......."
+            + "b......."
+            + "B......."
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH.schubs(zu, "weiss", SCHACH.feldNummer("a4")), null,
+        "hinter dem Bauern steht der Turm — nichts geht");
+
+    /* 2. Geht es doch, verschwindet trotzdem keine Figur. */
+    const frei = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "b......."
+            + "B......."
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const wirkung = SCHACH.schubs(frei, "weiss", SCHACH.feldNummer("a4"));
+    wahr(wirkung !== null, "hier geht es");
+    gleich(zaehlen(wirkung.stand.brett), zaehlen(frei.brett),
+        "keine Figur ist verschwunden — geschlagen wird nicht");
+    gleich(SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer("a5")), "b",
+        "der Bauer steht ein Feld weiter weg");
+
+    /*
+     * 3. Koenige bleiben stehen. Anders als beim Nudelholz (v0.78, rollt
+     * Koenige mit): Das Nudelholz trifft eine ganze Spalte und den Koenig
+     * nebenbei, der Schubs sucht sich sein Ziel aus. Einen Koenig gezielt und
+     * ohne Zugverlust zu verschieben waere fuer Gruen zu stark.
+     */
+    const mitKoenig = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "........"
+            + "........"
+            + "........"
+            + "........"
+            + "k......."
+            + "B......."
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH.schubs(mitKoenig, "weiss", SCHACH.feldNummer("a4")), null,
+        "der gegnerische Koenig wird nicht geschoben");
+});
+
+pruefe("Platztausch: der Springer kommt hinter dem Bauern hervor (v0.79)", () => {
+    const runde = faehigkeitenPartie();
+
+    /* Grundstellung: Springer b1, eigener Bauer b2 direkt davor. */
+    const springer = SCHACH.feldNummer("b1");
+    const bauer = SCHACH.feldNummer("b2");
+
+    gleich(SCHACH.figurAuf(runde.stand, springer), "S", "der Springer steht auf b1");
+    gleich(SCHACH.figurAuf(runde.stand, bauer), "B", "der Bauer auf b2");
+
+    const nachher = einsetzen(runde, "platztausch", springer);
+    wahr(nachher !== null, "eingesetzt");
+
+    gleich(SCHACH.figurAuf(nachher.stand, bauer), "S", "der Springer steht jetzt vorn");
+    gleich(SCHACH.figurAuf(nachher.stand, springer), "B", "der Bauer dahinter");
+    gleich(nachher.stand.amZug, "weiss", "und der Zug bleibt Weiss");
+});
+
+pruefe("Platztausch: nur eigene Figuren, nie der Koenig (v0.79)", () => {
+    const runde = faehigkeitenPartie();
+
+    /* 1. Vor dem Turm auf a1 steht der eigene Bauer — das geht. */
+    wahr(SCHACH.platztausch(runde.stand, "weiss", SCHACH.feldNummer("a1")) !== null,
+        "Turm und Bauer tauschen");
+
+    /* 2. Der Koenig tauscht nicht — weder als Angetippter … */
+    gleich(SCHACH.platztausch(runde.stand, "weiss", SCHACH.feldNummer("e1")), null,
+        "der eigene Koenig tauscht nicht");
+
+    /* … noch als der, mit dem getauscht wird. */
+    const koenigDavor = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "K......."
+            + "T......."
+            + "........",
+        amZug: "weiss",
+        rochade: ""
+    });
+    gleich(SCHACH.platztausch(koenigDavor, "weiss", SCHACH.feldNummer("a2")), null,
+        "und auch nicht als Vordermann");
+
+    /* 3. Eine gegnerische Figur davor ist kein Tauschpartner. */
+    const gegnerDavor = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "t......."
+            + "T......."
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    gleich(SCHACH.platztausch(gegnerDavor, "weiss", SCHACH.feldNummer("a2")), null,
+        "mit dem Gegner wird nicht getauscht");
+
+    /* 4. Ohne Vordermann ebenfalls nicht. */
+    const allein = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "T......."
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    gleich(SCHACH.platztausch(allein, "weiss", SCHACH.feldNummer("a2")), null,
+        "vor dem Turm steht niemand");
+});
+
+pruefe("Gruen hat wieder eine Auswahl UND ein Pluszeichen (v0.79)", () => {
+    /*
+     * Der eigentliche Grund fuer die zwei neuen: Nach v0.78 war jede zweite
+     * Lootbox (52 Prozent Stufenchance) ein Muenzwurf zwischen zwei sehr
+     * aehnlichen Faehigkeiten, und keine davon kam zum Zug DAZU.
+     */
+    const gruen = SCHACH_VARIANTEN.faehigkeitenDerStufe("gruen");
+
+    wahr(gruen.length >= 4, "mindestens vier erreichbare (sind " + gruen.length + ")");
+
+    const mitPlus = gruen.filter((art) => {
+        const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        return !eintrag.beendetZug && !eintrag.istDerZug;
+    });
+
+    wahr(mitPlus.length >= 2, "davon mindestens zwei mit Pluszeichen (sind "
+        + mitPlus.length + ": " + mitPlus.join(", ") + ")");
+
+    /*
+     * UND DIE LEITER STIMMT NOCH: Keine einzelne gewoehnliche Faehigkeit darf
+     * haeufiger sein als eine ungewoehnliche — sonst waere die Stufe keine
+     * Aussage mehr.
+     */
+    for (const art of gruen) {
+        for (const blau of SCHACH_VARIANTEN.faehigkeitenDerStufe("blau")) {
+            wahr(SCHACH_VARIANTEN.chanceVon(art) > SCHACH_VARIANTEN.chanceVon(blau),
+                art + " ist haeufiger als " + blau);
+        }
+    }
+});
+
+pruefe("Die Halluzination dauert so lange, wie sie sagt (v0.79)", () => {
+    /*
+     * ZWEI QUELLEN FUER DIESELBE ZAHL: die Konstante und der Beschreibungstext,
+     * den der Nutzer liest. Als sie am 18.08. von 8 auf 4 Halbzuege gekuerzt
+     * wurde, war genau das die Gefahr — der Text haette stehenbleiben koennen.
+     */
+    const dauer = SCHACH_RUNDE.GLAS_HALBZUEGE;
+
+    gleich(dauer, 4, "vier Halbzuege, also zwei eigene Zuege blind");
+
+    const text = SCHACH_VARIANTEN.pechBeschreibung("vollesGlas");
+    wahr(text.indexOf(String(dauer) + " Halbzüge") !== -1,
+        "der Beschreibungstext nennt dieselbe Zahl: " + text);
+});
 /* ------------------------------------------------------------------ *
  * Unglückswürfel
  * ------------------------------------------------------------------ */
@@ -5079,7 +5307,16 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
         nudelholz: "a1",
         /* Der neue Bauer braucht ein FREIES Feld der eigenen Grundreihe —
            in der Grundstellung ist keines frei, der Test raeumt b1. */
-        nachschub: "b1"
+        nachschub: "b1",
+
+        /* Geschubst wird eine GEGNERISCHE Figur neben einer eigenen. In der
+           Grundstellung beruehren sich die Armeen nicht, der Test setzt eine
+           auf a3 — der eigene Bauer auf a2 schiebt sie nach a4. */
+        schubs: "a3",
+
+        /* Getauscht wird mit der eigenen Figur DAVOR: Springer b1 mit dem
+           Bauern b2. In der Grundstellung steht das schon so. */
+        platztausch: "b1"
     };
 
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
@@ -5112,6 +5349,10 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
                hat. */
             runde.stand.brett = SCHACH._brettMit(runde.stand.brett,
                 SCHACH.feldNummer("a5"), "b");
+        }
+        if (art === "schubs") {
+            /* Der gegnerische Bauer, der geschoben werden soll. */
+            runde.stand.brett = SCHACH._brettMit(runde.stand.brett, feld, "b");
         }
 
         /* Ausweichen geht seit v0.58 NUR im Gegenzug — sonst waere es hier

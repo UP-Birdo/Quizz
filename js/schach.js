@@ -2976,6 +2976,157 @@ const SCHACH = {
     },
 
     /*
+     * DIE ACHT NACHBARRICHTUNGEN, in fester Reihenfolge (seit v0.79).
+     *
+     * Feste Reihenfolge heisst: Jedes Gerät rechnet dasselbe aus. Dieselbe
+     * Überlegung wie beim Spiegel, der sein Nachbarfeld ebenso der Reihe nach
+     * sucht — mit `Math.random()` sähe jede Seite ein anderes Brett.
+     */
+    NACHBARN: [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]],
+
+    /*
+     * SCHUBS (seit v0.79): Eine gegnerische Figur, die neben einer eigenen
+     * steht, wird ein Feld von dieser weggeschoben.
+     *
+     * Der kleine Bruder des Nudelholzes — eine Figur, ein Feld, statt zweier
+     * ganzer Spalten. Das ist der Grund, warum er gewöhnlich (grün) ist und
+     * das Nudelholz ungewöhnlich (blau).
+     *
+     * GESCHLAGEN WIRD NICHT. Geschoben wird nur auf ein Feld, das LEER und
+     * nicht gesperrt ist — dieselbe Bedingung wie beim Nudelholz seit v0.59.
+     * Eine Fähigkeit, die Material bringt, müsste den Zug kosten (Hausregel
+     * v0.47); so bleibt sie rein positionell und darf den Zug behalten.
+     *
+     * KÖNIGE WERDEN NICHT GESCHOBEN — anders als beim Nudelholz seit v0.78.
+     * Der Unterschied ist Absicht: Das Nudelholz rollt eine ganze Spalte und
+     * trifft den König nebenbei; der Schubs sucht sich sein Ziel aus. Einen
+     * König gezielt aus einem Mattnetz oder in ein Schach zu schieben, und das
+     * auch noch, ohne den Zug herzugeben, wäre für die häufigste Stufe viel zu
+     * stark.
+     *
+     * WELCHE EIGENE FIGUR SCHIEBT, wenn mehrere danebenstehen: die erste in
+     * `NACHBARN`. Das ist auf jedem Gerät dieselbe, und man muss es nicht im
+     * Kopf haben — der Vorschau-Kasten zeigt vor dem Einsetzen genau die
+     * Felder, die sich ändern (seit v0.57). Kommt die erste nicht durch, weil
+     * das Feld dahinter besetzt oder gesperrt ist, wird die nächste probiert.
+     */
+    schubs(stand, farbe, feld) {
+        const figur = SCHACH.figurAuf(stand, feld);
+
+        if (SCHACH.farbeVon(figur) !== SCHACH.gegner(farbe)
+            || SCHACH.artVon(figur) === "K") {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(stand);
+        const reihe = SCHACH.reiheVon(feld, breite);
+        const spalte = SCHACH.spalteVon(feld, breite);
+
+        for (const richtung of SCHACH.NACHBARN) {
+            const schieberReihe = reihe + richtung[0];
+            const schieberSpalte = spalte + richtung[1];
+
+            if (!SCHACH._imBrett(stand, schieberReihe, schieberSpalte)) {
+                continue;
+            }
+            const schieber = SCHACH._feld(stand, schieberReihe, schieberSpalte);
+            if (SCHACH.farbeVon(SCHACH.figurAuf(stand, schieber)) !== farbe) {
+                continue;
+            }
+
+            /* Genau gegenüber dem Schieber — von ihm weg. */
+            const zielReihe = reihe - richtung[0];
+            const zielSpalte = spalte - richtung[1];
+
+            if (!SCHACH._imBrett(stand, zielReihe, zielSpalte)) {
+                continue;
+            }
+            const ziel = SCHACH._feld(stand, zielReihe, zielSpalte);
+            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.gesperrt(stand, ziel)) {
+                continue;
+            }
+
+            let brett = SCHACH._brettMit(stand.brett, feld, ".");
+            brett = SCHACH._brettMit(brett, ziel, figur);
+
+            return {
+                stand: Object.assign({}, stand, { brett: brett, enPassant: "" }),
+                /* Der Schieber gehört ins Bild: Sonst sieht man am Umriss
+                   nicht, WARUM die Figur in diese Richtung geht. */
+                felder: [schieber, feld, ziel],
+                wege: [{ von: feld, nach: ziel }],
+                text: SCHACH.artName(SCHACH.artVon(figur)) + " geschoben"
+            };
+        }
+
+        return null;
+    },
+
+    /*
+     * PLATZTAUSCH (seit v0.79): Eine eigene Figur tauscht den Platz mit der
+     * eigenen Figur direkt VOR ihr.
+     *
+     * Holt den Läufer hinter dem eigenen Bauern hervor, ohne einen Zug zu
+     * kosten. Rein positionell, kein Material, keine Figur des Gegners
+     * berührt — deshalb behält sie den Zug (Hausregel v0.47).
+     *
+     * „VOR" IST DIE LAUFRICHTUNG DER EIGENEN BAUERN (`bauernRichtung`). Damit
+     * stimmt es auch auf dem Kreuz für jede Armee, die von einer anderen Seite
+     * kommt: Steht auf dem angetippten Feld ein Bauer, liefert
+     * `SCHACH.bauernSeite` seine echte Startseite; steht dort etwas anderes,
+     * fällt die Rechnung auf die Farbregel zurück (Weiss unten, Schwarz oben).
+     * Dieselbe Vereinfachung macht das Nudelholz seit v0.46 — für die Flügel
+     * einer Kreuz-Armee ist „vorn" damit die Richtung der Hauptarmee.
+     *
+     * KÖNIGE TAUSCHEN NICHT, in keiner der beiden Rollen. Ein König, der sich
+     * gratis aus dem Schach tauscht und dabei seinen Zug behält, wäre ein
+     * Freifahrtschein — und „Schachmatt" wäre nicht mehr eindeutig. Dieselbe
+     * Linie wie beim Schild, bei der Fessel und beim Spiegel.
+     */
+    platztausch(stand, farbe, feld) {
+        const figur = SCHACH.figurAuf(stand, feld);
+
+        if (SCHACH.farbeVon(figur) !== farbe || SCHACH.artVon(figur) === "K") {
+            return null;
+        }
+
+        const breite = SCHACH.breiteVon(stand);
+        const richtung = SCHACH.bauernRichtung(stand, feld, farbe);
+        const reihe = SCHACH.reiheVon(feld, breite) + richtung.dr;
+        const spalte = SCHACH.spalteVon(feld, breite) + richtung.ds;
+
+        if (!SCHACH._imBrett(stand, reihe, spalte)) {
+            return null;
+        }
+
+        const davor = SCHACH._feld(stand, reihe, spalte);
+        const andere = SCHACH.figurAuf(stand, davor);
+
+        if (SCHACH.farbeVon(andere) !== farbe || SCHACH.artVon(andere) === "K") {
+            return null;
+        }
+
+        /* Auf einem gesperrten Feld steht ohnehin niemand — die Abfrage ist
+           die Zusicherung, dass der Tausch keins von beiden dorthin bringt. */
+        if (SCHACH.gesperrt(stand, feld) || SCHACH.gesperrt(stand, davor)) {
+            return null;
+        }
+
+        let brett = SCHACH._brettMit(stand.brett, feld, andere);
+        brett = SCHACH._brettMit(brett, davor, figur);
+
+        return {
+            stand: Object.assign({}, stand, { brett: brett, enPassant: "" }),
+            felder: [feld, davor],
+            /* Beide Wege, damit `bauernSeitenVerschieben` die Startseite jedes
+               getauschten Bauern mitnimmt und der Bildschirm beide zeichnet. */
+            wege: [{ von: feld, nach: davor }, { von: davor, nach: feld }],
+            text: SCHACH.artName(SCHACH.artVon(figur)) + " tauscht mit "
+                + SCHACH.artName(SCHACH.artVon(andere))
+        };
+    },
+
+    /*
      * Den Zug abgeben, ohne zu ziehen (seit v3.3).
      *
      * Gebraucht für Fähigkeiten mit `beendetZug`: Sie wirken aufs Brett und

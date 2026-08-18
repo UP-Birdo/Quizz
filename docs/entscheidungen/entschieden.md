@@ -2037,6 +2037,81 @@ dadurch je 50 statt 33 Prozent — die Zahlen hinter dem i-Knopf rechnen es
 mit, weil sie aus derselben Liste kommen. Wer eine dritte gewöhnliche Fähigkeit
 ergänzt, stellt das Verhältnis von selbst wieder her.
 
+## Zwei neue gewöhnliche Fähigkeiten — und warum genau diese zwei (v0.79)
+
+Nach dem Verstecken von Ausweichen (v0.78) war die gewöhnliche Stufe kaputt,
+und zwar auf zwei Arten gleichzeitig:
+
+- **Sie war ein Münzwurf.** Zwei Fähigkeiten bei 52 Prozent Stufenchance heisst
+  je 26 Prozent. Jede zweite Lootbox trug eine von zweien — und Sprung und
+  Teleport machen im Kern dasselbe: Eine Figur bewegt sich anders als sonst.
+- **Sie hatte kein Pluszeichen mehr.** Beide sind `istDerZug`. Grün hiess damit
+  ausschliesslich „dein Zug wird ein anderer", nie „du bekommst etwas
+  obendrauf". Ausweichen war das einzige grüne Plus gewesen. Der Übergang nach
+  Blau (Mauer, Nudelholz, Schutzschild — alle drei zusätzlich zum Zug) war
+  dadurch kein Schritt mehr, sondern eine Stufe.
+
+Der Nutzer hat am 18.08. beides benannt („damit es wieder ein Ausgleich gibt …
+dass es spürbar stärker wird mit jeder Farbe, aber alle fair bleiben") und die
+Wahl zwischen neuen Fähigkeiten und einer Verschiebung offengelassen.
+
+**Verschoben wurde nichts.** Alle vier Stufen sind durchgesehen worden. Der
+naheliegende Kandidat für eine Verschiebung nach unten wäre das Schutzschild
+gewesen — es kostet keinen Zug und verändert kein Material. Aber es rettet in
+der Praxis oft eine Dame, und das IST Material. Nach der Hausregel von v0.47
+gehört es nicht nach Grün. Frost und Fessel sind die stärksten Gratis-
+Fähigkeiten im Spiel, sitzen mit Lila aber richtig: Sie sperren den Gegner über
+mehrere Züge, und genau das trennt Lila von Blau.
+
+**Gebaut wurden stattdessen zwei neue, und die Anforderung an sie stand vorher
+fest:** beide mit Pluszeichen (das war die Lücke), beide rein positionell (nur
+so dürfen sie den Zug behalten), beide auf EIN Feld begrenzt (das ist die
+Grösse, die Grün von Blau trennt).
+
+- **Schubs** ist die Ein-Feld-Fassung des Nudelholzes. Eine gegnerische Figur
+  neben einer eigenen weicht ein Feld zurück. Kein Schlag — sonst wäre es
+  Material und müsste den Zug kosten.
+- **Platztausch** bewegt ausschliesslich eigene Figuren und verändert die
+  Materiallage überhaupt nicht. Er löst ein Problem, das jeder kennt: Der
+  Läufer steht hinter dem eigenen Bauern und sieht nichts.
+
+### Warum der Schubs keine Könige schiebt, das Nudelholz aber schon
+
+Das sieht nach einem Widerspruch aus — das Nudelholz rollt seit v0.78
+ausdrücklich auch Könige. Der Unterschied ist die ZIELWAHL: Das Nudelholz rollt
+eine ganze Spalte und trifft den König nebenbei; wer es einsetzt, nimmt in
+Kauf, was in der Spalte steht. Der Schubs sucht sich sein Ziel aus. Einen König
+gezielt aus einem Mattnetz oder in ein Schach zu schieben, und das auch noch,
+ohne den Zug herzugeben, wäre für die häufigste Stufe im Spiel viel zu stark.
+
+### Warum die Reihenfolge beim Schubs nicht gewürfelt wird
+
+Stehen mehrere eigene Figuren neben dem Ziel, ist nicht von vornherein klar,
+welche schiebt. Entschieden wird das über eine feste Richtungsliste
+(`SCHACH.NACHBARN`) — dieselbe Bauweise wie beim Spiegel, der sein freies
+Nachbarfeld ebenso der Reihe nach sucht. `Math.random()` wäre hier der bekannte
+Fehler aus v0.8: Jedes Gerät sähe ein anderes Brett.
+
+Dass man die Liste nicht im Kopf haben muss, liegt am Vorschau-Kasten (v0.57):
+Er zeigt vor dem Einsetzen genau die Felder, die sich ändern — und der Schubs
+markiert dabei absichtlich auch die schiebende eigene Figur, sonst sähe man
+nicht, WARUM es in diese Richtung geht.
+
+## Warum die Halluzination halb so lang dauert (v0.79)
+
+Acht Halbzüge hiessen VIER eigene Züge blind. Für das häufigste Unglück auf der
+harmlosesten Stufe war das die härteste Wirkung im ganzen Spiel — härter als
+manches Epische. Der Nutzer hat es am 18.08. so benannt: „verschwommene Sicht
+kürzer, ist ja schon stark."
+
+Jetzt sind es vier Halbzüge, also zwei eigene Züge. Spürbar unangenehm, aber
+man verliert die Partie nicht daran — das ist die Rolle, die ein grünes Unglück
+haben soll.
+
+**Die Zahl steht an zwei Stellen** (`SCHACH_RUNDE.GLAS_HALBZUEGE` und im
+Beschreibungstext, den der Nutzer liest). Das ist genau die Art Dopplung, die
+auseinanderläuft; ein Test hält beide zusammen.
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
