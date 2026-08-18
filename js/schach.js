@@ -1086,16 +1086,29 @@ const SCHACH = {
     },
 
     /*
-     * Eine Mauer legen: Das angetippte Feld ist ihr LINKES Ende, sie läuft von
-     * dort nach rechts über `MAUER_LAENGE` Felder derselben Reihe.
+     * Eine Mauer legen: `MAUER_LAENGE` Felder in einer Linie, das angetippte
+     * Feld ist die MITTE.
      *
-     * Warum das linke Ende und nicht die Mitte: Am Rand gäbe es für die Mitte
-     * keine gültige Lage, und eine Fähigkeit, die je nach Feld etwas anderes
-     * tut, ist nicht vorhersagbar. So zeigen die angebotenen Zielfelder genau
-     * die möglichen Startpunkte — was man antippt, bekommt man auch.
+     * DAS ANGETIPPTE FELD IST DIE MITTE (seit v0.46). Bis v0.45 war es das
+     * LINKE ENDE, und die Mauer wuchs von dort nach rechts. Am Bildschirm sah
+     * das aus wie ein Fehler: Man tippt ein Feld an, und die Sperre erscheint
+     * daneben. Wer eine Mauer legt, meint das Feld, das er anfasst — links und
+     * rechts davon ist Zugabe.
+     *
+     * SEIT v0.80 GEHT SIE AUCH SENKRECHT (Nutzer-Wunsch 18.08.: „ein
+     * Dreh-Knopf bei der Mauer, dass man sie auch vertikal platzieren kann").
+     * `senkrecht` ist wahlfrei — ohne Angabe liegt sie waagerecht wie bisher,
+     * und damit rechnet jeder alte Aufruf unverändert weiter.
+     *
+     * Die RICHTUNG steht nirgends im gespeicherten Stand, und das ist Absicht:
+     * `stand.mauern` ist eine Feldliste (`[{felder, bis}]`). Eine senkrechte
+     * Mauer passt dort ohne jede Änderung am Datenvertrag hinein — sie ist
+     * einfach eine andere Liste. Gebraucht wird die Richtung nur, solange man
+     * platziert.
      */
-    mauerLegen(stand, feld) {
+    mauerLegen(stand, feld, senkrecht) {
         const breite = SCHACH.breiteVon(stand);
+        const hoehe = SCHACH.hoeheVon(stand);
         const reihe = SCHACH.reiheVon(feld, breite);
         const spalte = SCHACH.spalteVon(feld, breite);
 
@@ -1103,23 +1116,27 @@ const SCHACH = {
             return null;
         }
 
-        /*
-         * DAS ANGETIPPTE FELD IST DIE MITTE (seit v0.46).
-         *
-         * Bis v0.45 war es das LINKE ENDE, und die Mauer wuchs von dort nach
-         * rechts. Am Bildschirm sah das aus wie ein Fehler: Man tippt ein Feld
-         * an, und die Sperre erscheint daneben. Wer eine Mauer legt, meint das
-         * Feld, das er anfasst — links und rechts davon ist Zugabe.
-         */
-        const links = spalte - Math.floor((SCHACH.MAUER_LAENGE - 1) / 2);
+        /* Ein Schritt entlang der Mauer: senkrecht eine Reihe, sonst eine
+           Spalte. Damit ist die Rechnung darunter für beide Lagen dieselbe. */
+        const dr = senkrecht ? 1 : 0;
+        const ds = senkrecht ? 0 : 1;
+        const halb = Math.floor((SCHACH.MAUER_LAENGE - 1) / 2);
 
-        if (links < 0 || links + SCHACH.MAUER_LAENGE > breite) {
+        const startReihe = reihe - halb * dr;
+        const startSpalte = spalte - halb * ds;
+        const endReihe = startReihe + (SCHACH.MAUER_LAENGE - 1) * dr;
+        const endSpalte = startSpalte + (SCHACH.MAUER_LAENGE - 1) * ds;
+
+        /* Am äussersten Rand geht sie nicht: Dort fehlt der Nachbar, den sie
+           auf einer Seite braucht. Gilt jetzt für beide Achsen. */
+        if (startReihe < 0 || startSpalte < 0 || endReihe >= hoehe || endSpalte >= breite) {
             return null;
         }
 
         const felder = [];
         for (let schritt = 0; schritt < SCHACH.MAUER_LAENGE; schritt++) {
-            const ziel = SCHACH._feld(stand, reihe, links + schritt);
+            const ziel = SCHACH._feld(stand,
+                startReihe + schritt * dr, startSpalte + schritt * ds);
 
             /* Frei heisst: keine Figur UND keine andere Mauer. */
             if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.gesperrt(stand, ziel)) {

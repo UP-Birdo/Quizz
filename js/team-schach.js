@@ -165,6 +165,21 @@ const TEAM_SCHACH = {
     zielVorschau: -1,
     zielUmriss: [],
 
+    /*
+     * DIE LAGE DER MAUER (seit v0.80): "waagerecht" oder "senkrecht".
+     *
+     * Reiner Bildschirm-Zustand — im gespeicherten Stand steht sie NICHT.
+     * `stand.mauern` ist eine Feldliste; ob die drei Felder neben- oder
+     * übereinander liegen, sieht man ihnen an. Gebraucht wird die Angabe nur,
+     * solange man platziert, und sie wird beim Abbrechen zurückgesetzt.
+     *
+     * Sie muss bis ins MODELL durchgereicht werden (`zielFelder`,
+     * `zielUmriss`, `faehigkeitEinsetzen`): Sonst probiert `zielFelder` die
+     * waagerechte Lage durch, während der Vorschau-Kasten die senkrechte zeigt
+     * — und man tippt auf ein Feld, das gar nicht angeboten war.
+     */
+    mauerRichtung: "waagerecht",
+
     /* Bis zu welchem Zugzähler die Wirkung einer Fähigkeit gezeigt wurde. */
     wirkungBis: {},
 
@@ -823,13 +838,15 @@ const TEAM_SCHACH = {
              * der gewohnte Doppeltipp weiter durchgeht.
              */
             if (TEAM_SCHACH.zielVorschau === feld) {
-                TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit, feld);
+                TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit,
+                    feld, undefined, TEAM_SCHACH.mauerRichtung);
                 return;
             }
 
             TEAM_SCHACH.zielVorschau = feld;
             TEAM_SCHACH.zielUmriss = SCHACH_RUNDE.zielUmriss(
-                partie, person.id, TEAM_SCHACH.zielFaehigkeit, feld);
+                partie, person.id, TEAM_SCHACH.zielFaehigkeit, feld,
+                TEAM_SCHACH.mauerRichtung);
 
             TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
@@ -885,6 +902,7 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.zielFelder = [];
         TEAM_SCHACH.zielVorschau = -1;
         TEAM_SCHACH.zielUmriss = [];
+        TEAM_SCHACH.mauerRichtung = "waagerecht";
         TEAM_SCHACH.auswahlZaehler = -1;
     },
 
@@ -898,7 +916,33 @@ const TEAM_SCHACH = {
         }
 
         TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit,
-            TEAM_SCHACH.zielVorschau);
+            TEAM_SCHACH.zielVorschau, undefined, TEAM_SCHACH.mauerRichtung);
+    },
+
+    /*
+     * DIE MAUER DREHEN (seit v0.80, Nutzer-Wunsch 18.08.).
+     *
+     * Nach dem Drehen ist der bisherige Vorschau-Platz meistens ungültig — an
+     * einer Stelle, wo drei Felder nebeneinander frei sind, müssen nicht auch
+     * drei übereinander frei sein. Deshalb wird die Vorschau geleert und die
+     * Liste der möglichen Felder neu gerechnet: Man sieht sofort, wohin die
+     * gedrehte Mauer überhaupt noch passt.
+     */
+    drehenMauer(partie) {
+        const person = TEAM_SCHACH._ich();
+        if (!person || TEAM_SCHACH.zielFaehigkeit !== "mauer") {
+            return;
+        }
+
+        TEAM_SCHACH.mauerRichtung =
+            (TEAM_SCHACH.mauerRichtung === "senkrecht") ? "waagerecht" : "senkrecht";
+
+        TEAM_SCHACH.zielVorschau = -1;
+        TEAM_SCHACH.zielUmriss = [];
+        TEAM_SCHACH.zielFelder = SCHACH_RUNDE.zielFelder(
+            partie, person.id, "mauer", TEAM_SCHACH.mauerRichtung);
+
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
 
     /* „Abbrechen": Die Fähigkeit bleibt im Vorrat. */
@@ -1522,7 +1566,8 @@ const TEAM_SCHACH = {
         }
 
         if (beschreibung.art === "ziel") {
-            const felder = SCHACH_RUNDE.zielFelder(partie, person.id, art);
+            const felder = SCHACH_RUNDE.zielFelder(partie, person.id, art,
+                TEAM_SCHACH.mauerRichtung);
 
             if (felder.length === 0) {
                 await DIALOG.hinweis("Kein Ziel möglich",
@@ -1637,7 +1682,7 @@ const TEAM_SCHACH = {
      * `umwandlung` braucht bisher nur der Bauernschub (seit v0.56) und ist
      * wahlfrei; ohne Angabe werden umgewandelte Bauern zu Damen.
      */
-    async faehigkeitAusfuehren(partie, art, zielFeld, umwandlung) {
+    async faehigkeitAusfuehren(partie, art, zielFeld, umwandlung, wahl) {
         const person = TEAM_SCHACH._ich();
         if (!person) {
             return;
@@ -1667,9 +1712,9 @@ const TEAM_SCHACH = {
            vorgeschlagen — genau wie ein Zug. */
         const neu = SCHACH_RUNDE.brauchtEinigkeit(partie)
             ? SCHACH_RUNDE.faehigkeitVorschlagen(
-                partie, person.id, art, zielFeld, person.name, undefined, umwandlung)
+                partie, person.id, art, zielFeld, person.name, undefined, umwandlung, wahl)
             : SCHACH_RUNDE.faehigkeitEinsetzen(
-                partie, person.id, art, zielFeld, person.name, undefined, umwandlung);
+                partie, person.id, art, zielFeld, person.name, undefined, umwandlung, wahl);
 
         TEAM_SCHACH._auswahlAufheben();
 

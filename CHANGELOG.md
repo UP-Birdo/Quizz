@@ -3,6 +3,29 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.81.0 — 2026-08-18
+
+**Die Mauer lässt sich drehen.** Beim Platzieren steht jetzt ein Knopf
+„Senkrecht legen" im Vorschau-Kasten — damit legst du die drei Felder
+übereinander statt nebeneinander. Ein zweiter Tipp dreht sie zurück.
+
+Nach dem Drehen wird die Auswahl neu gerechnet: Wo drei Felder nebeneinander
+frei sind, müssen nicht auch drei übereinander frei sein. Du siehst also sofort,
+wohin die gedrehte Mauer überhaupt noch passt, und der bisherige Vorschau-Platz
+wird geleert statt stillschweigend ungültig zu werden.
+
+Der Rand gilt jetzt für beide Achsen: Waagerecht ging sie am linken und rechten
+Rand nicht, senkrecht geht sie in der obersten und untersten Reihe nicht — es
+fehlt jeweils der Nachbar, den sie auf einer Seite braucht.
+
+**Auch wenn dein Team sich einig sein muss**, stimmt ihr jetzt über die richtige
+Mauer ab: Die Lage steht mit im Vorschlag. Vorher hätte das Team über eine
+waagerechte abgestimmt und eine senkrechte bekommen.
+
+**Nebenbei behoben:** Auf einem gedrehten Brett (Kreuz-Spielarten) sassen die
+runden Enden der Mauer an den falschen Seiten — die Zeichnung rechnete mit der
+Lage im Spielstand statt mit der Lage vor deinen Augen.
+
 ## v0.80.0 — 2026-08-18
 
 **Zwei Punkte aus dem Eingangskorb: Der Frost sperrt jetzt auch Könige ein, und

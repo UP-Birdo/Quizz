@@ -2113,6 +2113,162 @@ pruefe("Eine Mauer ohne Lootbox darunter frisst nichts (v0.77)", () => {
         "kein Zusatz im Verlauf: " + letzter.text);
 });
 
+pruefe("Die Mauer laesst sich senkrecht legen (v0.80)", () => {
+    /*
+     * NUTZER-WUNSCH 18.08.: „Ein Dreh-Knopf bei der Mauer, dass man sie auch
+     * vertikal platzieren kann."
+     *
+     * Die Richtung steht NICHT im gespeicherten Stand: `stand.mauern` ist eine
+     * Feldliste, und ob die drei Felder neben- oder uebereinander liegen, sieht
+     * man ihnen an. Gebraucht wird sie nur beim Platzieren — und muss deshalb
+     * durch die ganze Kette gereicht werden.
+     */
+    const runde = faehigkeitenPartie();
+    const mitte = SCHACH.feldNummer("d4");
+    const breite = SCHACH.breiteVon(runde.stand);
+
+    /* Waagerecht: c4, d4, e4 — eine Reihe. */
+    const quer = SCHACH.mauerLegen(runde.stand, mitte);
+    wahr(quer !== null, "waagerecht geht");
+    gleich(quer.felder.map((f) => SCHACH.feldName(f)).sort().join(","), "c4,d4,e4",
+        "drei Felder nebeneinander");
+
+    /* Senkrecht: d3, d4, d5 — eine Spalte. */
+    const hoch = SCHACH.mauerLegen(runde.stand, mitte, true);
+    wahr(hoch !== null, "senkrecht geht auch");
+    gleich(hoch.felder.map((f) => SCHACH.feldName(f)).sort().join(","), "d3,d4,d5",
+        "drei Felder uebereinander");
+
+    /* Die Felder liegen wirklich in EINER Spalte. */
+    const spalten = hoch.felder
+        .map((f) => SCHACH.spalteVon(f, breite))
+        .filter((s, stelle, alle) => alle.indexOf(s) === stelle);
+    gleich(spalten.length, 1, "alle in derselben Spalte");
+});
+
+pruefe("Senkrecht gilt der Rand fuer die andere Achse (v0.80)", () => {
+    /*
+     * Waagerecht geht die Mauer am linken und rechten Rand nicht — dort fehlt
+     * der Nachbar, den sie auf einer Seite braucht. Senkrecht muss dasselbe
+     * fuer OBEN und UNTEN gelten, sonst ragt sie aus dem Brett.
+     */
+    const runde = faehigkeitenPartie();
+    const breite = SCHACH.breiteVon(runde.stand);
+    const hoehe = SCHACH.hoeheVon(runde.stand);
+
+    /* Ein leeres Brett, damit nur der Rand entscheidet und keine Figur. */
+    const leer = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: runde.stand.brett.split("").map(() => ".").join(""),
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const feld = (reihe, spalte) => reihe * breite + spalte;
+
+    /* Oberste und unterste Reihe: senkrecht unmoeglich, waagerecht moeglich. */
+    gleich(SCHACH.mauerLegen(leer, feld(0, 3), true), null, "in der obersten Reihe nicht");
+    gleich(SCHACH.mauerLegen(leer, feld(hoehe - 1, 3), true), null,
+        "in der untersten auch nicht");
+    wahr(SCHACH.mauerLegen(leer, feld(0, 3)) !== null, "waagerecht geht dort sehr wohl");
+
+    /* Und umgekehrt: ganz links geht waagerecht nicht, senkrecht schon. */
+    gleich(SCHACH.mauerLegen(leer, feld(3, 0)), null, "ganz links waagerecht nicht");
+    wahr(SCHACH.mauerLegen(leer, feld(3, 0), true) !== null,
+        "senkrecht am linken Rand aber schon");
+});
+
+pruefe("Die Lage reicht bis in die Zielfelder und in den Einsatz (v0.80)", () => {
+    /*
+     * DER PUNKT, AN DEM ES SONST AUSEINANDERLAEUFT: `zielFelder` probiert jedes
+     * Feld gegen `_zielWirkung` durch. Kennt es die Lage nicht, bietet es die
+     * waagerechten Plaetze an, waehrend der Vorschau-Kasten die senkrechte
+     * Mauer zeigt — man tippt dann auf ein Feld, das gar nicht gemeint war.
+     */
+    const runde = faehigkeitenPartie();
+    const hoehe = SCHACH.hoeheVon(runde.stand);
+    const breite = SCHACH.breiteVon(runde.stand);
+
+    const querFelder = SCHACH_RUNDE.zielFelder(runde, "id-anna", "mauer");
+    const hochFelder = SCHACH_RUNDE.zielFelder(runde, "id-anna", "mauer", "senkrecht");
+
+    wahr(querFelder.length > 0, "waagerecht gibt es Plaetze");
+    wahr(hochFelder.length > 0, "senkrecht auch");
+    wahr(querFelder.join(",") !== hochFelder.join(","),
+        "und es sind nicht dieselben");
+
+    /* In der Grundstellung sind die Reihen 3 bis 6 frei. Senkrecht braucht es
+       drei freie Reihen uebereinander — die Randreihen fallen weg. */
+    for (const feld of hochFelder) {
+        const reihe = SCHACH.reiheVon(feld, breite);
+        wahr(reihe > 0 && reihe < hoehe - 1,
+            "kein senkrechter Platz in der aeussersten Reihe");
+    }
+
+    /* Der Umriss zeigt dasselbe, was danach passiert — beide Male. */
+    const platz = hochFelder[0];
+    const umriss = SCHACH_RUNDE.zielUmriss(runde, "id-anna", "mauer", platz, "senkrecht");
+    gleich(umriss.length, SCHACH.MAUER_LAENGE, "der Umriss ist so lang wie die Mauer");
+
+    const spalten = umriss
+        .map((f) => SCHACH.spalteVon(f, breite))
+        .filter((s, stelle, alle) => alle.indexOf(s) === stelle);
+    gleich(spalten.length, 1, "und er steht senkrecht");
+
+    /* Und eingesetzt kommt genau diese Mauer heraus. */
+    const vorbereitet = SCHACH_RUNDE.kopieren(runde);
+    vorbereitet.faehigkeiten.weiss.push("mauer");
+
+    const gelegt = SCHACH_RUNDE.faehigkeitEinsetzen(vorbereitet, "id-anna", "mauer",
+        platz, "Anna", 3000, undefined, "senkrecht");
+
+    wahr(gelegt !== null, "senkrecht eingesetzt");
+    for (const f of umriss) {
+        wahr(SCHACH.mauerAuf(gelegt.stand, f),
+            "die Mauer steht auf " + SCHACH.feldName(f));
+    }
+});
+
+pruefe("Auch die Abstimmung traegt die Lage der Mauer (v0.80)", () => {
+    /*
+     * Sonst stimmt das Team ueber eine waagerechte Mauer ab und bekommt eine
+     * senkrechte. Der Vorschlag speichert die Wahl deshalb mit — genau wie die
+     * Umwandlung beim Bauernschub.
+     */
+    let runde = faehigkeitenPartie();
+    runde.teams.weiss.push("id-clara");
+    runde.regeln.einigkeit = true;
+    runde.faehigkeiten.weiss.push("mauer");
+
+    const platz = SCHACH_RUNDE.zielFelder(runde, "id-anna", "mauer", "senkrecht")[0];
+
+    const vorgeschlagen = SCHACH_RUNDE.faehigkeitVorschlagen(runde, "id-anna", "mauer",
+        platz, "Anna", 3000, undefined, "senkrecht");
+
+    wahr(vorgeschlagen !== null, "vorgeschlagen");
+    wahr(vorgeschlagen.vorschlag !== null, "es wird wirklich abgestimmt");
+    gleich(vorgeschlagen.vorschlag.wahl, "senkrecht", "die Lage steht im Vorschlag");
+
+    /* Nach dem Speichern und Laden ist sie noch da. */
+    const geladen = SCHACH_RUNDE.normalisieren(
+        JSON.parse(JSON.stringify(vorgeschlagen)));
+    gleich(geladen.vorschlag.wahl, "senkrecht", "und ueberlebt das Laden");
+
+    /* Und wenn der zweite zustimmt, entsteht die SENKRECHTE Mauer. */
+    const fertig = SCHACH_RUNDE.zugMittragen(geladen, "id-clara", 3100);
+    wahr(fertig !== null, "mitgetragen");
+    gleich(fertig.vorschlag, null, "der Vorschlag ist abgearbeitet");
+
+    const gelegt = SCHACH.mauern(fertig.stand);
+    gleich(gelegt.length, 1, "eine Mauer steht");
+
+    const breite = SCHACH.breiteVon(fertig.stand);
+    const spalten = gelegt[0].felder
+        .map((f) => SCHACH.spalteVon(f, breite))
+        .filter((s, stelle, alle) => alle.indexOf(s) === stelle);
+    gleich(spalten.length, 1, "und sie steht senkrecht");
+});
+
 pruefe("Ohne Gefallene laesst sich gar nicht erst einsetzen (v0.59, Wunsch #19)", () => {
     /*
      * Drei Faehigkeiten holen Gefallene zurueck und VERBRAUCHEN dabei ihren

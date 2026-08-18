@@ -386,18 +386,63 @@ Object.assign(TEAM_SCHACH, {
              * erscheinen und nicht als drei Kästchen.
              */
             if (SCHACH.mauerAuf(stand, feld)) {
-                const spalte = SCHACH.spalteVon(feld, breite);
-                const reihe = SCHACH.reiheVon(feld, breite);
+                /*
+                 * GEFRAGT WIRD IN DER ANSICHT, NICHT IN DER LOGIK (seit v0.80).
+                 *
+                 * Seit die Mauer auch senkrecht liegen darf, muss der
+                 * Bildschirm wissen, wie herum sie VOR DEM SPIELER liegt — und
+                 * das ist nicht dasselbe wie ihre Lage im Stand: Das Brett
+                 * wird in vier Lagen gezeichnet (v0.72), auf einer
+                 * Vierteldrehung erscheint eine senkrechte Mauer waagerecht.
+                 *
+                 * Deshalb werden die Nachbarn über `_feldZuAnzeige` geholt,
+                 * also über dieselbe Umrechnung, mit der auch dieses Feld hier
+                 * gelandet ist. Nebenbei behebt das einen alten Schönheitsfehler:
+                 * Bis v0.79 rechnete die Kantenlogik mit den LOGISCHEN Spalten,
+                 * auf einem gedrehten Brett sassen die runden Enden deshalb an
+                 * den falschen Seiten.
+                 */
+                const zeile = Math.floor(anzeige / zeigeSpalten);
+                const spalteAnzeige = anzeige % zeigeSpalten;
+                const zeigeZeilen = felder / zeigeSpalten;
+
+                const nachbarMauer = (dz, ds) => {
+                    const z = zeile + dz;
+                    const s = spalteAnzeige + ds;
+
+                    if (z < 0 || s < 0 || z >= zeigeZeilen || s >= zeigeSpalten) {
+                        return false;
+                    }
+                    const nachbar = TEAM_SCHACH._feldZuAnzeige(stand, drehung, z, s);
+                    return nachbar >= 0 && SCHACH.mauerAuf(stand, nachbar);
+                };
+
+                const linksMauer = nachbarMauer(0, -1);
+                const rechtsMauer = nachbarMauer(0, 1);
+                const obenMauer = nachbarMauer(-1, 0);
+                const untenMauer = nachbarMauer(1, 0);
 
                 zelle.classList.add("feld-mauer");
 
-                if (spalte === 0
-                    || !SCHACH.mauerAuf(stand, SCHACH._feld(stand, reihe, spalte - 1))) {
-                    zelle.classList.add("mauer-anfang");
-                }
-                if (spalte + 1 >= breite
-                    || !SCHACH.mauerAuf(stand, SCHACH._feld(stand, reihe, spalte + 1))) {
-                    zelle.classList.add("mauer-ende");
+                /* Steht sie senkrecht vor mir? Nur dann, wenn sie senkrechte
+                   Nachbarn hat und keine waagerechten — eine einzeln stehende
+                   Mauer bleibt der gewohnte waagerechte Riegel. */
+                if ((obenMauer || untenMauer) && !linksMauer && !rechtsMauer) {
+                    zelle.classList.add("mauer-senkrecht");
+
+                    if (!obenMauer) {
+                        zelle.classList.add("mauer-anfang");
+                    }
+                    if (!untenMauer) {
+                        zelle.classList.add("mauer-ende");
+                    }
+                } else {
+                    if (!linksMauer) {
+                        zelle.classList.add("mauer-anfang");
+                    }
+                    if (!rechtsMauer) {
+                        zelle.classList.add("mauer-ende");
+                    }
                 }
 
                 zelle.title = "Mauer: hier zieht niemand hindurch";
@@ -654,6 +699,25 @@ Object.assign(TEAM_SCHACH, {
             leiste.appendChild(TEAM_SCHACH._knopf("Einsetzen", "knopf-haupt",
                 () => TEAM_SCHACH.zielBestaetigen(partie)));
         }
+
+        /*
+         * DER DREH-KNOPF DER MAUER (seit v0.80). Er steht nur bei ihr, weil
+         * sie die einzige Fähigkeit mit einer Lage ist — ein Frost-Block und
+         * ein Friedhof sind quadratisch, da gibt es nichts zu drehen.
+         *
+         * Beschriftet wird mit dem ZIEL, nicht mit dem Zustand: „Senkrecht
+         * legen" sagt, was der Tipp bewirkt. Ein Knopf, der den Ist-Zustand
+         * nennt, liest sich am Handy wie eine Anzeige.
+         */
+        if (TEAM_SCHACH.zielFaehigkeit === "mauer") {
+            const senkrecht = (TEAM_SCHACH.mauerRichtung === "senkrecht");
+
+            leiste.appendChild(TEAM_SCHACH._knopf(
+                senkrecht ? "Waagerecht legen" : "Senkrecht legen",
+                "knopf-still",
+                () => TEAM_SCHACH.drehenMauer(partie)));
+        }
+
         leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still",
             () => TEAM_SCHACH.zielVerwerfen()));
 

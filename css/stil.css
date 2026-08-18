@@ -1584,6 +1584,30 @@ body {
     pointer-events: none;
 }
 
+/* ------------------------------------------------------------------ *
+ * DIE SENKRECHTE MAUER (seit v0.80)
+ *
+ * Dieselbe Leiste, um 90 Grad gekippt: Der Balken läuft von oben nach unten
+ * statt von links nach rechts, und die runden Enden sitzen oben und unten.
+ * Gesetzt wird `mauer-senkrecht` in `team-schach-brett.js`, und zwar nach der
+ * Lage IN DER ANSICHT — auf einem gedrehten Brett erscheint eine senkrechte
+ * Mauer waagerecht.
+ *
+ * Die Regeln stehen VOR `mauer-anfang`/`mauer-ende`, damit die waagerechten
+ * Enden sie nicht überschreiben; die senkrechten Fassungen weiter unten
+ * gewinnen dann über die höhere Spezifität.
+ * ------------------------------------------------------------------ */
+.feld-mauer.mauer-senkrecht::after {
+    left: 22%;
+    right: 22%;
+    top: 0;
+    bottom: -1px;
+    background: linear-gradient(90deg, #4a8fd6 0%, #2f7fd0 55%, #1f5fa8 100%);
+    box-shadow:
+        inset 1px 0 0 var(--mauer-licht),
+        inset -1px 0 0 var(--mauer-licht);
+}
+
 .feld-mauer.mauer-anfang::after {
     left: 8%;
     border-top-left-radius: 6px;
@@ -1613,6 +1637,38 @@ body {
         inset 0 -1px 0 var(--mauer-licht),
         inset 1px 0 0 var(--mauer-licht),
         inset -1px 0 0 var(--mauer-licht);
+}
+
+/* Die senkrechten Enden — dieselben drei Regeln, um 90 Grad gedreht. Sie
+   stehen NACH den waagerechten und gewinnen über die höhere Spezifität. */
+.feld-mauer.mauer-senkrecht.mauer-anfang::after {
+    left: 22%;
+    right: 22%;
+    top: 8%;
+    border-radius: 6px 6px 0 0;
+    box-shadow:
+        inset 1px 0 0 var(--mauer-licht),
+        inset -1px 0 0 var(--mauer-licht),
+        inset 0 1px 0 var(--mauer-licht);
+}
+
+.feld-mauer.mauer-senkrecht.mauer-ende::after {
+    left: 22%;
+    right: 22%;
+    bottom: 8%;
+    border-radius: 0 0 6px 6px;
+    box-shadow:
+        inset 1px 0 0 var(--mauer-licht),
+        inset -1px 0 0 var(--mauer-licht),
+        inset 0 -1px 0 var(--mauer-licht);
+}
+
+.feld-mauer.mauer-senkrecht.mauer-anfang.mauer-ende::after {
+    box-shadow:
+        inset 1px 0 0 var(--mauer-licht),
+        inset -1px 0 0 var(--mauer-licht),
+        inset 0 1px 0 var(--mauer-licht),
+        inset 0 -1px 0 var(--mauer-licht);
 }
 
 /*

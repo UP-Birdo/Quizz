@@ -897,6 +897,7 @@ const SCHACH_RUNDE = {
                     von: Number.isInteger(roher.von) ? roher.von : -1,
                     nach: Number.isInteger(roher.nach) ? roher.nach : -1,
                     umwandlung: (typeof roher.umwandlung === "string") ? roher.umwandlung : "D",
+                    wahl: (typeof roher.wahl === "string") ? roher.wahl : "",
                     wer: (typeof roher.wer === "string") ? roher.wer : "",
                     name: (typeof roher.name === "string") ? roher.name : "",
                     zugZaehler: Number.isInteger(roher.zugZaehler) ? roher.zugZaehler : 0,
@@ -1508,7 +1509,7 @@ const SCHACH_RUNDE = {
      * steht als LETZTER Parameter und ist wahlfrei — jeder Aufruf von vorher
      * bleibt damit gültig und bekommt wie bisher Damen.
      */
-    faehigkeitEinsetzen(runde, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung) {
+    faehigkeitEinsetzen(runde, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung, wahl) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
 
@@ -1559,7 +1560,7 @@ const SCHACH_RUNDE = {
             }
 
         } else if (beschreibung.art === "ziel") {
-            const wirkung = SCHACH_RUNDE._zielWirkung(neu, art, farbe, ziel);
+            const wirkung = SCHACH_RUNDE._zielWirkung(neu, art, farbe, ziel, wahl);
             if (!wirkung) {
                 return null;
             }
@@ -2169,7 +2170,7 @@ const SCHACH_RUNDE = {
      * abweichen — es gibt keine zweite Liste von Bedingungen, die veralten
      * könnte. Geprüft wird auf Kopien, damit nichts hängen bleibt.
      */
-    zielFelder(runde, spielerId, art) {
+    zielFelder(runde, spielerId, art, wahl) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
         const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
@@ -2180,7 +2181,7 @@ const SCHACH_RUNDE = {
 
         const liste = [];
         for (let feld = 0; feld < SCHACH.felderVon(alt.stand); feld++) {
-            if (SCHACH_RUNDE._zielWirkung(SCHACH_RUNDE.kopieren(alt), art, farbe, feld)) {
+            if (SCHACH_RUNDE._zielWirkung(SCHACH_RUNDE.kopieren(alt), art, farbe, feld, wahl)) {
                 liste.push(feld);
             }
         }
@@ -2202,7 +2203,7 @@ const SCHACH_RUNDE = {
      *
      * Liefert eine leere Liste, wenn die Wirkung dort nicht zustande kommt.
      */
-    zielUmriss(runde, spielerId, art, feld) {
+    zielUmriss(runde, spielerId, art, feld, wahl) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
         const farbe = SCHACH_RUNDE.teamVon(alt, spielerId);
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
@@ -2212,7 +2213,7 @@ const SCHACH_RUNDE = {
         }
 
         const wirkung = SCHACH_RUNDE._zielWirkung(
-            SCHACH_RUNDE.kopieren(alt), art, farbe, feld);
+            SCHACH_RUNDE.kopieren(alt), art, farbe, feld, wahl);
 
         return (wirkung && Array.isArray(wirkung.felder)) ? wirkung.felder.slice() : [];
     },
@@ -2241,7 +2242,7 @@ const SCHACH_RUNDE = {
     },
 
     /* Die Fähigkeiten, die ein angetipptes Feld brauchen. */
-    _zielWirkung(runde, art, farbe, feld) {
+    _zielWirkung(runde, art, farbe, feld, wahl) {
         if (feld < 0 || feld >= SCHACH.felderVon(runde.stand)) {
             return null;
         }
@@ -2271,7 +2272,7 @@ const SCHACH_RUNDE = {
            Zielfeld mehr — es steht in `_pechAusloesen`. */
 
         if (art === "mauer") {
-            const wirkung = SCHACH.mauerLegen(runde.stand, feld);
+            const wirkung = SCHACH.mauerLegen(runde.stand, feld, wahl === "senkrecht");
 
             if (!wirkung) {
                 return null;
@@ -3509,7 +3510,7 @@ const SCHACH_RUNDE = {
      * Schlägt den Einsatz einer Fähigkeit vor. Wie beim Zug: allein im Team
      * wird sofort eingesetzt, sonst wird abgestimmt.
      */
-    faehigkeitVorschlagen(runde, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung) {
+    faehigkeitVorschlagen(runde, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung, wahl) {
         const alt = SCHACH_RUNDE.normalisieren(runde);
 
         if (!SCHACH_RUNDE.darfEinsetzen(alt, spielerId, art)) {
@@ -3530,12 +3531,12 @@ const SCHACH_RUNDE = {
         if (!SCHACH_RUNDE.brauchtEinigkeit(alt) || alt.teams[farbe].length <= 1
             || beschreibung.imGegenzug) {
             return SCHACH_RUNDE.faehigkeitEinsetzen(
-                alt, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung);
+                alt, spielerId, art, zielFeld, wer, zeitpunkt, umwandlung, wahl);
         }
 
         /* Erst prüfen, ob sie überhaupt einsetzbar wäre. */
         if (!SCHACH_RUNDE.faehigkeitEinsetzen(alt, spielerId, art, zielFeld, wer,
-            zeitpunkt, umwandlung)) {
+            zeitpunkt, umwandlung, wahl)) {
             return null;
         }
 
@@ -3553,6 +3554,14 @@ const SCHACH_RUNDE = {
                stimmt über die fertige Handlung ab, nicht über die halbe. */
             umwandlung: (SCHACH.UMWANDLUNGEN.indexOf(umwandlung) !== -1)
                 ? umwandlung : "D",
+
+            /*
+             * Und die zweite Zusatzwahl (seit v0.80): heute nur die Lage der
+             * Mauer („senkrecht"), sonst leer. Sie gehoert aus demselben Grund
+             * in den Vorschlag wie die Umwandlung — sonst stimmt das Team ueber
+             * eine waagerechte Mauer ab und bekommt eine senkrechte.
+             */
+            wahl: (typeof wahl === "string") ? wahl : "",
 
             wer: spielerId,
             name: wer || "",
@@ -3640,7 +3649,8 @@ const SCHACH_RUNDE = {
 
         const ergebnis = (vorschlag.art === "faehigkeit")
             ? SCHACH_RUNDE.faehigkeitEinsetzen(runde, vorschlag.wer, vorschlag.faehigkeit,
-                vorschlag.zielFeld, vorschlag.name, zeitpunkt, vorschlag.umwandlung)
+                vorschlag.zielFeld, vorschlag.name, zeitpunkt, vorschlag.umwandlung,
+                vorschlag.wahl)
             : SCHACH_RUNDE.ziehen(runde, vorschlag.wer, vorschlag.von, vorschlag.nach,
                 vorschlag.umwandlung, vorschlag.name, zeitpunkt);
 

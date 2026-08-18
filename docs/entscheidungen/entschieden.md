@@ -2190,6 +2190,50 @@ Pluszeichen bis dahin als feste Namen führte — er rechnet sie seither aus
 `zeigtPlus` aus. Beim Umstellen kam heraus, dass Schubs und Platztausch (v0.79)
 dieses dritte Bild von Anfang an gefehlt hatte; sie haben es jetzt.
 
+## Warum die Lage der Mauer nirgends gespeichert wird (v0.81)
+
+Die Mauer darf seit v0.81 auch senkrecht liegen (Nutzer-Wunsch 18.08.). Der
+naheliegende Weg wäre gewesen, die Richtung zur Mauer in den Stand zu schreiben
+— `{ felder, bis, senkrecht }`. Das ist nicht nötig und wäre schlechter.
+
+**`stand.mauern` ist eine FELDLISTE.** Ob die drei Felder neben- oder
+übereinander liegen, sieht man ihnen an. Eine senkrechte Mauer passt damit ohne
+jede Änderung am Datenvertrag hinein, und jede laufende Partie versteht sie
+sofort. Ein zusätzliches Feld hätte nur eine zweite Wahrheit geschaffen, die
+irgendwann von der Liste abweicht.
+
+Gebraucht wird die Richtung **nur, solange man platziert** — und dort ist sie
+Bildschirm-Zustand (`TEAM_SCHACH.mauerRichtung`), der beim Abbrechen zurück auf
+waagerecht fällt.
+
+### Sie muss trotzdem bis ins Modell durchgereicht werden
+
+Das ist der Teil, der beim Einordnen unterschätzt wurde. `zielFelder` probiert
+JEDES Feld gegen `_zielWirkung` durch — das ist die Hausregel, damit Anzeige und
+Regel nicht auseinanderlaufen können. Kennt diese Rechnung die Lage nicht, bietet
+sie die waagerechten Plätze an, während der Vorschau-Kasten die senkrechte Mauer
+zeigt. Man tippt dann auf ein Feld, das gar nicht gemeint war.
+
+Die Lage reist deshalb als **zweite Zusatzwahl neben `umwandlung`** durch
+dieselbe Kette: `zielFelder`, `zielUmriss`, `_zielWirkung`,
+`faehigkeitEinsetzen`, `faehigkeitVorschlagen` — und in den **Vorschlag** im
+Stand. Ohne den letzten Schritt stimmt ein Team über eine waagerechte Mauer ab
+und bekommt eine senkrechte.
+
+**Warum eine zweite Angabe und nicht `umwandlung` mitbenutzt:** Die trägt beim
+Bauernschub die gewählte Figur. Zwei Bedeutungen in einem Feld sind der Anfang
+jedes Datenvertrags-Bruchs; die zusätzliche Angabe ist additiv und kostet nichts.
+
+### Der Schönheitsfehler, der dabei auffiel
+
+Die Zeichnung der Mauer rechnete mit den LOGISCHEN Spalten (`spalte - 1`,
+`spalte + 1`), um die runden Enden zu setzen. Das Brett wird aber seit v0.72 in
+vier Lagen gezeichnet: Auf einer Vierteldrehung erscheint eine waagerechte Mauer
+senkrecht — und die Enden sassen an den falschen Seiten. Jetzt werden die
+Nachbarn über `_feldZuAnzeige` geholt, also über dieselbe Umrechnung, mit der
+das Feld überhaupt an seinen Platz kommt. **Merksatz: Was der Spieler SIEHT,
+wird in der Ansicht gerechnet, nicht im Stand.**
+
 ## Warum es von Anfang an Tabs gibt
 
 Ursprünglicher Wunsch: ein Tab **Würfel Quizz** als „derzeit einziger". Das
