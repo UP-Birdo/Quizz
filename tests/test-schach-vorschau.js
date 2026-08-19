@@ -46,9 +46,22 @@ function wahr(bedingung, was) {
     }
 }
 
-/* Alle Fähigkeiten und alle Unglückswürfel, jeweils mit ihrem Titel. */
+/*
+ * Alle Fähigkeiten und alle Unglückswürfel, jeweils mit ihrem Titel.
+ *
+ * VERSTECKTE UNGLÜCKE sind ausgenommen (seit v0.84): Sie werden weder gezogen
+ * noch in der Bibliothek gezeigt, und `normalisieren` räumt eine liegende Box
+ * dieser Art vom Brett — die Szene einer Bildanleitung liesse sich also gar
+ * nicht mehr aufbauen. Eine versteckte FÄHIGKEIT bleibt dagegen drin: Wer eine
+ * hat, darf sie aufbrauchen, also braucht sie weiter ihre Anleitung.
+ * Kommen die beiden nach der Überarbeitung zurück, verlangt dieser Test von
+ * selbst wieder eine Anleitung.
+ */
+const sichtbaresPech = Object.keys(SCHACH_VARIANTEN.PECH)
+    .filter((art) => !SCHACH_VARIANTEN.PECH[art].versteckt);
+
 const alleArten = Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
-    .concat(Object.keys(SCHACH_VARIANTEN.PECH));
+    .concat(sichtbaresPech);
 
 /* ------------------------------------------------------------------ *
  * Vollständigkeit
@@ -169,7 +182,7 @@ pruefe("Der Vorrat-Knopf steht in JEDEM Bild, der Finger nur in einem (v0.58)", 
         gleich(gedrueckt[0].tipp, -1, art + ": und dabei keinen Finger auf dem Brett");
     }
 
-    for (const art of Object.keys(SCHACH_VARIANTEN.PECH)) {
+    for (const art of sichtbaresPech) {
         for (const schritt of SCHACH_VORSCHAU.schritte(art)) {
             gleich(schritt.knopf, "", art + ": ein Unglueckswuerfel wird nicht gedrueckt");
             gleich(schritt.knopfTipp, false, art + ": und nicht angetippt");
@@ -637,6 +650,19 @@ pruefe("Mauer: das Nachher-Bild traegt drei gesperrte Felder", () => {
 });
 
 pruefe("Ausdehnung: das Brett im Nachher-Bild ist groesser", () => {
+    /*
+     * SOLANGE DIE AUSDEHNUNG AUS DEM SPIEL IST (v0.84, `versteckt`), gibt es
+     * keine Szene: `normalisieren` raeumt die liegende Box weg, und
+     * `bilder()` liefert nichts. Der Test bleibt trotzdem stehen und prueft
+     * dann genau diese Abwesenheit — kommt sie nach der Ueberarbeitung
+     * zurueck, greift von selbst wieder die eigentliche Pruefung.
+     */
+    if (SCHACH_VARIANTEN.PECH.ausdehnung.versteckt) {
+        gleich(SCHACH_VORSCHAU.bilder("ausdehnung"), null,
+            "aus dem Spiel genommen, also keine Bildanleitung");
+        return;
+    }
+
     const bilder = SCHACH_VORSCHAU.bilder("ausdehnung");
     const vorher = bilder.vorher.runde.stand;
     const nachher = bilder.nachher.runde.stand;

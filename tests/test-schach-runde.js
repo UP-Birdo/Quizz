@@ -3785,17 +3785,33 @@ pruefe("Der Ungluecks-Anteil haengt am Fuellstand (v0.77)", () => {
         }
     }
 
-    /* 6. Was IN einem Unglueck steckt, hat sich nicht geaendert: gruen bleibt
-       klar am haeufigsten. Das war der zweite Teil des Wunsches. */
+    /* 6. Was IN einem Unglueck steckt, hat sich nicht geaendert: die Leiter
+       der Stufen bleibt, gruen am haeufigsten. Das war der zweite Teil des
+       Wunsches. Seit v0.84 wird sie unter den BELEGTEN Stufen geprueft — eine
+       leere Stufe (Blau, seit Ausdehnung und Einsturz aus dem Spiel sind) kommt
+       gar nicht mehr vor, und ihre Chance verteilt sich auf die uebrigen. */
     const gezogen = {};
     for (let schritt = 0; schritt < 1000; schritt++) {
         const art = SCHACH_VARIANTEN.pechZiehen(schritt / 1000);
         const stufe = SCHACH_VARIANTEN.pechStufeVon(art).id;
         gezogen[stufe] = (gezogen[stufe] || 0) + 1;
     }
-    wahr(gezogen.gruen > gezogen.blau, "gruen kommt oefter als blau");
-    wahr(gezogen.blau > gezogen.lila, "blau oefter als lila");
-    wahr(gezogen.lila > gezogen.gelb, "lila oefter als gelb");
+
+    const wieOft = (id) => gezogen[id] || 0;
+    const belegt = SCHACH_VARIANTEN.STUFEN
+        .filter((stufe) => SCHACH_VARIANTEN.pechDerStufe(stufe.id).length > 0);
+
+    wahr(belegt.length > 1, "es gibt mehr als eine belegte Stufe");
+    for (let stelle = 1; stelle < belegt.length; stelle++) {
+        wahr(wieOft(belegt[stelle - 1].id) > wieOft(belegt[stelle].id),
+            belegt[stelle - 1].id + " kommt oefter als " + belegt[stelle].id);
+    }
+
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        if (SCHACH_VARIANTEN.pechDerStufe(stufe.id).length === 0) {
+            gleich(wieOft(stufe.id), 0, "die leere Stufe " + stufe.id + " kommt nie");
+        }
+    }
 });
 
 pruefe("Eine Partie merkt sich, mit welcher Version sie angelegt wurde (v0.77)", () => {
@@ -5275,20 +5291,70 @@ function pechEinsammeln(runde, art, von, nach) {
         SCHACH.feldNummer(von), SCHACH.feldNummer(nach), "D", "Anna", 4000);
 }
 
-pruefe("Jede Stufe hat mindestens einen Unglueckswuerfel", () => {
-    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
-        wahr(SCHACH_VARIANTEN.pechDerStufe(stufe.id).length > 0, "Stufe " + stufe.id);
-    }
+pruefe("Die Ziehung erreicht jeden sichtbaren Unglueckswuerfel", () => {
+    /*
+     * Bis v0.83 stand hier „jede Stufe hat mindestens einen" — seit v0.84
+     * DARF eine Stufe leer sein (Blau ist es, seit Ausdehnung und Einsturz
+     * versteckt sind). Verlangt ist stattdessen: Es gibt ueberhaupt etwas zu
+     * ziehen, und jeder sichtbare Eintrag wird auch wirklich erreicht.
+     */
+    const sichtbar = Object.keys(SCHACH_VARIANTEN.PECH)
+        .filter((art) => !SCHACH_VARIANTEN.PECH[art].versteckt);
+    wahr(sichtbar.length > 0, "es gibt sichtbare Unglueckswuerfel");
 
-    /* Und die Ziehung erreicht auch den zweiten Eintrag einer Stufe. */
     const gezogen = new Set();
     for (let schritt = 0; schritt < 1000; schritt++) {
         gezogen.add(SCHACH_VARIANTEN.pechZiehen(schritt / 1000));
     }
 
-    for (const art of Object.keys(SCHACH_VARIANTEN.PECH)) {
+    for (const art of sichtbar) {
         wahr(gezogen.has(art), "wird gezogen: " + art);
     }
+});
+
+pruefe("Ausdehnung und Einsturz sind aus dem Spiel (v0.84)", () => {
+    /*
+     * NUTZER-ANSAGE 19.08.: „nimm aus dem Spiel das Vergroessern und das
+     * Verkleinern, das fuehrt zu riesigen Bugs". Beide bleiben als Eintrag
+     * stehen (Verlauf und Bildanleitung sollen lesbar bleiben), duerfen aber
+     * weder gezogen werden noch in der Bibliothek auftauchen.
+     */
+    for (const art of ["ausdehnung", "schrumpfung"]) {
+        wahr(!!SCHACH_VARIANTEN.PECH[art], art + ": Eintrag steht noch da");
+        wahr(SCHACH_VARIANTEN.PECH[art].versteckt === true, art + ": versteckt");
+        wahr(SCHACH_VARIANTEN.pechDerStufe("blau").indexOf(art) === -1,
+            art + ": nicht in der Stufenliste");
+    }
+
+    /* Ueber die ganze Breite der Ziehung kommt keines von beiden. */
+    for (let schritt = 0; schritt < 2000; schritt++) {
+        const gezogen = SCHACH_VARIANTEN.pechZiehen(schritt / 2000);
+        wahr(gezogen !== "", "die Ziehung liefert immer eine Art");
+        wahr(gezogen !== "ausdehnung" && gezogen !== "schrumpfung",
+            "gezogen wurde " + gezogen);
+    }
+
+    /* Die leere Stufe Blau darf keine Ziehung verschlucken. */
+    gleich(SCHACH_VARIANTEN.pechDerStufe("blau").length, 0, "Blau ist leer");
+});
+
+pruefe("Eine liegende Ausdehnung fliegt beim Laden vom Brett (v0.84)", () => {
+    /*
+     * Laufende Partien sollen den Fehler nicht weiter treffen: Was schon auf
+     * dem Brett liegt, wird beim Normalisieren entfernt — gerechnet, also auf
+     * jedem Geraet dieselbe Box.
+     */
+    const runde = faehigkeitenPartie();
+    runde.bonus = [
+        { feld: 20, art: "ausdehnung", pech: true },
+        { feld: 21, art: "stolperstein", pech: true }
+    ];
+
+    const wieder = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+    const arten = wieder.bonus.map((eintrag) => eintrag.art);
+
+    wahr(arten.indexOf("ausdehnung") === -1, "die Ausdehnung ist weg");
+    wahr(arten.indexOf("stolperstein") !== -1, "der Stolperstein bleibt liegen");
 });
 
 pruefe("Volles Glas truebt die Sicht, ohne das Brett zu aendern", () => {

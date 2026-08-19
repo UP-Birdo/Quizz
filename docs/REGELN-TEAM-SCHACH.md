@@ -121,7 +121,12 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   Deshalb wandert `koenigeAlsLeben` beim Aufstellen in den Stand (v0.51). Wer
   einen Haken erfindet, den eine Regel braucht, macht es genauso.
 - **Die Brettgröße kann sich mitten in der Partie ändern** — größer
-  („Ausdehnung") wie kleiner („Einsturz", seit v0.54). Wer Feldnummern
+  („Ausdehnung") wie kleiner („Einsturz", seit v0.54).
+  **SEIT v0.84 SIND BEIDE AUS DEM SPIEL GENOMMEN** (`versteckt: true`,
+  Nutzer-Ansage „führt zu riesigen Bugs, erst überarbeiten") — die Regeln
+  darunter bleiben trotzdem gültig und sind beim Zurückholen zu erfüllen; was
+  die Überarbeitung angehen muss, steht in `entscheidungen\entschieden-ab-v0-41.md`.
+  Wer Feldnummern
   speichert, rechnet sie mit um, und zwar **alle**:
   `SCHACH._feldnummernUmrechnen` bedient Rochade, Schild, Fessel, Frost,
   Mauern, geliehene Figuren und Risse an EINER Stelle. Die Würfel liegen in der

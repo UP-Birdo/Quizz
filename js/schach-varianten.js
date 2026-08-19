@@ -188,9 +188,26 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Die Figur, die die Lootbox eingesammelt hat, wird ein Feld "
                 + "zurückgeworfen — zurück in Richtung der eigenen Grundreihe."
         },
+        /*
+         * AUSDEHNUNG UND EINSTURZ SIND SEIT v0.84 AUS DEM SPIEL GENOMMEN
+         * (Nutzer-Ansage 19.08.: „das führt zu riesigen Bugs, das müssen wir
+         * erst überarbeiten").
+         *
+         * Sie bleiben mit `versteckt: true` stehen statt gelöscht zu werden —
+         * genau wie eine versteckte Fähigkeit: So behalten laufende Partien
+         * ihren Verlauf lesbar („Ausdehnung" im Zugverlauf löst weiter auf),
+         * die Bildanleitungen bleiben gültig, und die Überarbeitung braucht
+         * später nur diesen einen Schalter zurückzunehmen.
+         *
+         * Beide sind die EINZIGEN Unglücke der Stufe „blau" — die Stufe ist
+         * damit leer. Das ist erlaubt und bekommt Gewicht 0 (`pechZiehen`
+         * normiert von selbst), genau nach der Nutzer-Entscheidung vom 18.08.
+         * zur leeren Seltenheitsstufe.
+         */
         ausdehnung: {
             titel: "Ausdehnung",
             stufe: "blau",
+            versteckt: true,
             beschreibung: "Das Spielfeld wächst um eine Reihe oder Spalte — oben, "
                 + "unten, links oder rechts, jede Seite mit derselben Chance von "
                 + "einem Viertel. Alle Wege werden länger."
@@ -204,6 +221,7 @@ const SCHACH_VARIANTEN = {
         schrumpfung: {
             titel: "Einsturz",
             stufe: "blau",
+            versteckt: true,
             beschreibung: "Eine ganze Reihe oder Spalte bricht weg — zufällig eine "
                 + "der vier Seiten, aber nie eine, auf der ein König steht. Was "
                 + "dort steht, stürzt mit: Figuren wie Lootboxen."
@@ -285,30 +303,49 @@ const SCHACH_VARIANTEN = {
             || SCHACH_VARIANTEN.STUFEN[0];
     },
 
-    /* Alle Unglückswürfel einer Stufe, in fester Reihenfolge. */
+    /*
+     * Alle Unglückswürfel einer Stufe, in fester Reihenfolge — VERSTECKTE
+     * ausgenommen (seit v0.84, wie bei `faehigkeitenDerStufe`). Das ist die
+     * EINE Stelle, die filtert: Damit fällt ein verstecktes Unglück zugleich
+     * aus der Ziehung und aus der Bibliothek.
+     */
     pechDerStufe(stufeId) {
         return Object.keys(SCHACH_VARIANTEN.PECH)
-            .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufeId)
+            .filter((art) => SCHACH_VARIANTEN.PECH[art].stufe === stufeId
+                && !SCHACH_VARIANTEN.PECH[art].versteckt)
             .sort();
     },
 
     /*
      * Zieht einen Unglückswürfel — dieselbe Rechnung wie bei den Fähigkeiten:
      * erst die Stufe nach ihrer Chance, dann innerhalb der Stufe gleichverteilt.
+     *
+     * EINE LEERE STUFE BEKOMMT GEWICHT 0 (seit v0.84, Nutzer-Entscheidung vom
+     * 18.08. zur leeren Seltenheitsstufe). Seit „Ausdehnung" und „Einsturz"
+     * versteckt sind, ist Blau leer — vorher gab dieselbe Lage eine leere
+     * Kennung zurück, und der Würfel wäre wirkungslos liegen geblieben. Jetzt
+     * verteilt sich ihre Chance auf die übrigen Stufen, genau wie beim
+     * Neuwürfeln, aber in einem Schritt.
      */
     pechZiehen(wert) {
-        let rest = Math.min(Math.max(wert, 0), 0.999999) * 100;
+        const chancen = SCHACH_VARIANTEN.STUFEN.map((stufe) =>
+            (SCHACH_VARIANTEN.pechDerStufe(stufe.id).length > 0 ? stufe.chance : 0));
 
-        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
-            if (rest < stufe.chance) {
-                const arten = SCHACH_VARIANTEN.pechDerStufe(stufe.id);
-                if (arten.length === 0) {
-                    return "";
-                }
-                const anteil = rest / stufe.chance;
+        const summe = chancen.reduce((teil, einzeln) => teil + einzeln, 0);
+        if (summe <= 0) {
+            return "";
+        }
+
+        let rest = Math.min(Math.max(wert, 0), 0.999999) * summe;
+
+        for (let stelle = 0; stelle < SCHACH_VARIANTEN.STUFEN.length; stelle++) {
+            if (rest < chancen[stelle]) {
+                const arten = SCHACH_VARIANTEN.pechDerStufe(
+                    SCHACH_VARIANTEN.STUFEN[stelle].id);
+                const anteil = rest / chancen[stelle];
                 return arten[Math.min(Math.floor(anteil * arten.length), arten.length - 1)];
             }
-            rest -= stufe.chance;
+            rest -= chancen[stelle];
         }
 
         return "stolperstein";

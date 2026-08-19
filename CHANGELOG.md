@@ -3,6 +3,22 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.84.0 — 2026-08-19
+
+**Ausdehnung und Einsturz sind vorerst aus dem Spiel.**
+
+- **Das Brett wächst und schrumpft nicht mehr.** Die beiden Unglücks-Lootboxen
+  „Ausdehnung" und „Einsturz" kommen nicht mehr vor — sie haben zu viele
+  Fehler verursacht und werden erst überarbeitet, bevor sie zurückkehren.
+  **Auch in laufenden Partien:** Liegt so eine Box noch auf dem Brett,
+  verschwindet sie beim nächsten Laden, damit sie niemanden mehr trifft.
+  In der Bibliothek werden beide nicht mehr aufgeführt; im Zugverlauf einer
+  alten Partie bleiben sie lesbar.
+
+- Damit ist die blaue Stufe der Unglücks-Lootboxen derzeit leer. Ihre Chance
+  verteilt sich auf die übrigen Stufen — es kommt also genauso oft ein
+  Unglück wie vorher, nur eben keins der beiden ausgebauten.
+
 ## v0.83.1 — 2026-08-19
 
 **Zwei Fehler behoben — ein Item mit Pluszeichen ist jetzt wirklich gratis.**

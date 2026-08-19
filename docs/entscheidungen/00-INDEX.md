@@ -186,6 +186,8 @@ nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
 - Warum das Nudelholz sein Pluszeichen verloren hat (v0.80)
 - Warum die Lage der Mauer nirgends gespeichert wird (v0.81)
 - Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
+- Ausdehnung und Einsturz aus dem Spiel genommen (v0.84) — **auf Zeit**;
+  versteckt statt gelöscht, liegende Boxen fliegen vom Brett, Stufe Blau leer
 
 ## offen-und-abgelehnt.md - Offen, Nutzer-Entscheidungen noetig, bewusst abgelehnt
 

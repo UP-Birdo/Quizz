@@ -976,3 +976,39 @@ präzisiert worden:** Ihre VERHÄLTNISSE bleiben gleich, ihre absoluten Chancen
 steigen. Anders ginge es nicht — die Prozente müssen zusammen 100 ergeben. Beim
 Neu-Würfeln wäre es genauso.
 
+
+## Ausdehnung und Einsturz aus dem Spiel genommen (v0.84) — **auf Zeit, nicht endgültig**
+
+**Nutzer-Ansage 19.08.2026:** „Nimm aus dem Spiel das Vergrössern und das
+Verkleinern, das führt zu riesigen Bugs — das müssen wir erst überarbeiten."
+
+**Warum versteckt statt gelöscht.** Beide Einträge bleiben in `PECH` stehen und
+tragen nur `versteckt: true`. Gelöscht wäre billiger zu lesen, aber teurer:
+Der Zugverlauf einer alten Partie löst „Ausdehnung" dann nicht mehr auf, die
+Bildanleitungen fielen weg, und die Überarbeitung müsste alles neu schreiben.
+So ist die Rückkehr ein einziger Schalter. Es ist derselbe Weg wie bei den
+Fähigkeiten seit v0.78 (Ausweichen) — gefiltert wird an EINER Stelle,
+`pechDerStufe`, und damit zugleich in Ziehung und Bibliothek.
+
+**Der Unterschied zur versteckten FÄHIGKEIT.** Dort gilt: Wer eine hat, darf
+sie aufbrauchen. Für ein liegendes Unglück gilt das ausdrücklich NICHT — es
+ist keine Habe, sondern eine Gefahr. `normalisieren` räumt deshalb liegende
+Boxen einer versteckten Art vom Brett; sonst hiesse „aus dem Spiel genommen"
+nicht, dass laufende Partien aufhören, den Fehler zu treffen.
+
+**Die leere Stufe.** Beide waren die einzigen Unglücke der Stufe Blau, die
+damit leer ist. `pechZiehen` gab in dieser Lage bisher eine leere Kennung
+zurück — der Würfel wäre wirkungslos liegen geblieben. Jetzt bekommt eine leere
+Stufe **Gewicht 0** und ihre Chance verteilt sich auf die übrigen: dieselbe
+Rechnung, die der Nutzer am 18.08. für die leere Seltenheitsstufe entschieden
+hat, und dieselbe, die `stufeZiehen` seit v0.41 macht. Ein Unglück kommt also
+genauso oft wie vorher.
+
+**Was die Überarbeitung angehen muss** (bevor der Schalter zurückgeht): Die
+Brettgrösse mitten in der Partie zu ändern berührt jede gespeicherte
+Feldnummer — Rochade, Schild, Fessel, Frost, Mauern, Leihgaben, Risse und die
+liegenden Würfel. `SCHACH._feldnummernUmrechnen` bedient das an einer Stelle,
+und v0.77.1 hat gezeigt, dass zusätzlich die FORM mitgeführt werden muss
+(`_eckenFortsetzen`), sonst frisst sich ein Kreuz von den Rändern auf. Wer die
+beiden zurückholt, prüft sie als PAAR: Hin und zurück muss dasselbe Brett
+ergeben.

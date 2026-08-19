@@ -1617,10 +1617,19 @@ pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () =
             throw new Error(stufe.id + ": " + eintraege.length + " Eintraege statt " + erwartet);
         }
 
+        /*
+         * Ein Unglueckswuerfel gehoert in die Karte — sofern die Stufe noch
+         * einen SICHTBAREN hat. Seit v0.84 darf eine Stufe leer sein (Blau
+         * ist es, seit Ausdehnung und Einsturz aus dem Spiel sind); dann darf
+         * dort auch nichts stehen.
+         */
         const pech = eintraege.find(
             (kind) => String(kind.className || "").indexOf("stufen-pech") !== -1);
-        if (!pech) {
+        if (SCHACH_VARIANTEN.pechDerStufe(stufe.id).length > 0 && !pech) {
             throw new Error(stufe.id + ": kein Unglueckswuerfel");
+        }
+        if (SCHACH_VARIANTEN.pechDerStufe(stufe.id).length === 0 && pech) {
+            throw new Error(stufe.id + ": leere Stufe zeigt trotzdem ein Unglueck");
         }
     }
 

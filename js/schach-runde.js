@@ -949,7 +949,18 @@ const SCHACH_RUNDE = {
                 .filter((eintrag) => eintrag && Number.isInteger(eintrag.feld)
                     && eintrag.feld >= 0
                     && (eintrag.pech
-                        ? SCHACH_VARIANTEN.PECH[eintrag.art]
+                        /*
+                         * Ein VERSTECKTES Unglück fliegt vom Brett (seit
+                         * v0.84). Anders als eine versteckte Fähigkeit, die
+                         * man aufbrauchen darf, ist eine liegende
+                         * Unglücks-Lootbox keine Habe, sondern eine Gefahr:
+                         * „Aus dem Spiel genommen" hiesse sonst nicht, dass
+                         * sie in laufenden Partien aufhört zu treffen.
+                         * Gerechnet, nicht gewürfelt — jedes Gerät wirft
+                         * dieselbe Box weg.
+                         */
+                        ? (SCHACH_VARIANTEN.PECH[eintrag.art]
+                            && !SCHACH_VARIANTEN.PECH[eintrag.art].versteckt)
                         : (SCHACH_VARIANTEN.FAEHIGKEITEN[eintrag.art]
                             || SCHACH_VARIANTEN.STUFEN.some(
                                 (stufe) => stufe.id === eintrag.stufe))))
