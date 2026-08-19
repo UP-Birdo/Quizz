@@ -800,3 +800,38 @@ Diese Fallen aus anderen Projekten des Hauses gelten hier von Anfang an:
   muss null Fehler liefern.
 - **OneDrive synchronisiert im Hintergrund.** Größere Dateien vor dem Editieren
   sichern und den geänderten Bereich danach erneut lesen.
+
+## Zwei Uhren, und die eine Funktion nahm die falsche (v0.83, behoben v0.83.1)
+
+**Symptom (Meldung T1):** Nach dem Einsetzen der Mauer — ein Item mit
+Pluszeichen, der Zug bleibt einem — erschienen Lootboxen; das Item wirkte wie
+ein Teilzug.
+
+**Ursache:** Die Partie führt zwei Zähler, die man leicht verwechselt:
+
+- `zugZaehler` ist die SPERR-SICHERUNG gegen gleichzeitige Züge. Er steigt
+  bei JEDER Änderung am Spielgeschehen — auch bei jeder Fähigkeit, ausdrücklich
+  auch bei denen mit Pluszeichen (`faehigkeitEinsetzen`).
+- `stand.takt` ist die EHRLICHE UHR (seit v3.3): Er steigt nur bei echten
+  Zügen. Mauern, Fessel und Leihgaben laufen an ihm ab.
+
+`_bonusNachziehen` hängte Kadenz und Saat der Lootbox-Ziehung an den
+`zugZaehler`. Ein Plus-Item verschob damit den Fahrplan um einen Halbzug: Auf
+der Stufe „wenig" (wirft nur nach vollen Zügen) rutschte der eigene Folgezug
+auf „voller Zug abgeschlossen" und warf aus, und die Saat aller folgenden
+Ziehungen verschob sich.
+
+**Fix (v0.83.1):** Kadenz am `takt`; in der Saat stehen BEIDE Zähler — der
+`zugZaehler` bleibt als Eindeutigkeit drin, weil ein Zug und eine direkt
+folgende Zug-beendende Fähigkeit beim SELBEN Takt ziehen und nicht dieselbe
+Saat teilen dürfen.
+
+**Merksatz:** Wer irgendetwas am SPIELVERLAUF taktet (Fristen, Kadenzen,
+Erscheinen), nimmt `stand.takt`. Der `zugZaehler` ist nur für die
+Schreib-Sicherung und für Eindeutigkeit da.
+
+**Nebenbefund, bewusst NICHT mitgefixt:** Das volle Glas ist die letzte
+Frist am `zugZaehler` (`glasBis`) — jedes eingesetzte Item verkürzt es um
+einen Halbzug. Der Umbau auf `takt` braucht eine Umstiegsregel für laufende
+Partien (gespeicherte `glasBis`-Werte sind in zugZaehler-Einheiten) und steht
+in der ROADMAP, Bündel T.

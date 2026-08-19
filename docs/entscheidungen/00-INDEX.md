@@ -38,13 +38,23 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Zwei richtige Regeln, die sich gegenseitig auffrassen (v0.77.1)
     - Die eine Funktion, die man beim Aufraeumen vergisst (v0.82) — dritte
       Wiederholung von „Richtung aus der Farbe rechnet auf dem Kreuz falsch"
+    - Zwei Uhren, und die eine Funktion nahm die falsche (v0.83, behoben
+      v0.83.1) — zugZaehler ist Sperr-Sicherung, stand.takt die Spiel-Uhr
 
 ## entschieden.md - Entschieden - und warum
 
-- Nutzer-Entscheidungen
+Seit 19.08.2026 aufgeteilt: `entschieden.md` selbst enthaelt nur noch die
+Nutzer-Entscheidungen und den Wegweiser; die Abschnitte liegen unveraendert in
+drei Themendateien (unten je Datei aufgefuehrt). Gezielt lesen: Abschnitt hier
+nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
+
+- Nutzer-Entscheidungen *(stehen weiter in `entschieden.md` selbst)*
     - Beim Anlegen (2026-07-31)
     - Der eigentliche Zweck (2026-07-31, kurz nach v0.1)
     - Aufdecken und Verstecken (2026-07-31, zu v0.3)
+
+### entschieden-grundlagen.md - Wuerfel Quizz, Technik, Grundsaetzliches
+
 - Warum das Aufdecken je Person eine Tipp-Sperre erzwingt
 - Warum das Auge standardmäßig zu ist und nichts speichert
 - Warum ein gezeichnetes Auge statt eines Emojis
@@ -68,6 +78,11 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum „letzter gewinnt" beim gleichzeitigen Arbeiten?
 - Warum das App-Zeichen so aussieht
 - Warum der Wert „Stern" als Wort erscheint
+- Warum es von Anfang an Tabs gibt
+- Warum das Ändern der PIN die alte verlangt
+
+### entschieden-bis-v3.md - Team Schach und Imposter bis v3.8 (08/2026)
+
 - Team Schach — die Entscheidungen (v1.0)
 - Team Schach — der Ausbau (2026-08-01, v1.3 bis v1.5)
     - Warum die laufende Partie nicht umzieht, sondern bleibt
@@ -124,6 +139,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum selbst angelegte Themen auf der Tafel liegen (v3.7)
 - Warum der Bibliotheks-Knopf verschwindet statt zu fragen (v3.7)
 - Erst anzeigen, dann senden (v3.8)
+
+### entschieden-ab-v0-41.md - Team Schach seit v0.41 (SemVer-Zeit)
+
 - Warum Grün eine Abklingzeit bekommen hat (v0.41)
 - Warum Rot und Blau und nicht Grün und Gelb (v0.41)
 - Warum die Bildanleitung gerechnet und nicht gezeichnet wird (v0.41)
@@ -168,8 +186,6 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
 - Warum das Nudelholz sein Pluszeichen verloren hat (v0.80)
 - Warum die Lage der Mauer nirgends gespeichert wird (v0.81)
 - Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
-- Warum es von Anfang an Tabs gibt
-- Warum das Ändern der PIN die alte verlangt
 
 ## offen-und-abgelehnt.md - Offen, Nutzer-Entscheidungen noetig, bewusst abgelehnt
 

@@ -1385,7 +1385,15 @@ Object.assign(TEAM_SCHACH, {
         zeichen.textContent = "?";
 
         if (pech) {
-            zeichen.setAttribute("transform", "rotate(180 70 72)");
+            /*
+             * Gedreht wird um die OPTISCHE Mitte des Zeichens, nicht um einen
+             * Punkt darunter: Die Grundlinie liegt bei y=80, das Zeichen reicht
+             * bei Schriftgröße 34 bis etwa y=56 hinauf — Mitte also y=68. Mit
+             * der alten Achse (y=72) rutschte das gespiegelte Fragezeichen um
+             * acht Einheiten nach unten und hing aus der Würfelfläche heraus
+             * (Meldung T1/T2 vom 18.08.).
+             */
+            zeichen.setAttribute("transform", "rotate(180 70 68)");
         }
         svg.appendChild(zeichen);
 

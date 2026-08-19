@@ -3598,6 +3598,9 @@ pruefe("Im Regen erscheinen mehr Wuerfel als auf der untersten Stufe", () => {
             runde.regeln.faehigkeiten = true;
             runde.regeln.lootboxMenge = menge;
             runde.zugZaehler = nummer;
+            /* Im Spiel laufen Takt und Zugzähler bei echten Zügen gemeinsam —
+               der Takt steuert seit T1 die Kadenz, also führt ihn der Test mit. */
+            runde.stand.takt = nummer;
 
             SCHACH_RUNDE._bonusNachziehen(runde);
             gesamt += runde.bonus.length;
@@ -3611,6 +3614,41 @@ pruefe("Im Regen erscheinen mehr Wuerfel als auf der untersten Stufe", () => {
 
     wahr(viel > wenig * 2, "der Regen wirft deutlich mehr aus ("
         + viel + " gegen " + wenig + ")");
+});
+
+pruefe("Ein Plus-Item verschiebt den Lootbox-Fahrplan nicht (T1, v0.83.1)", () => {
+    /*
+     * DIE MELDUNG VOM 18.08.: Nach dem Einsetzen der Mauer (Pluszeichen, der
+     * Zug bleibt einem) kamen Items, die ohne sie nicht gekommen waeren.
+     * Ursache: Die Kadenz der untersten Stufe hing am zugZaehler, den auch
+     * jede Faehigkeit erhoeht (Sperr-Sicherung). Massgeblich ist der TAKT —
+     * er steigt nur bei echten Zuegen.
+     */
+    const gerade = SCHACH_RUNDE.leereRunde(1000, "standard", "p-t1", "R");
+    gerade.regeln.faehigkeiten = true;
+    gerade.regeln.lootboxMenge = "wenig";
+
+    /* Takt ungerade (kein voller Zug abgeschlossen), zugZaehler durch eine
+       eingesetzte Faehigkeit gerade — die alte, falsche Uhr wuerde werfen. */
+    gerade.stand.takt = 3;
+    gerade.zugZaehler = 4;
+    SCHACH_RUNDE._bonusNachziehen(gerade);
+    gleich(gerade.bonus.length, 0, "bei ungeradem Takt kommt nichts");
+
+    /* Umgekehrt (Takt gerade, zugZaehler ungerade) darf die Sperre nicht
+       greifen: Ueber genug Versuche muss wenigstens eine Box erscheinen —
+       WANN genau, ist Sache des gerechneten Zufalls, nicht dieses Tests. */
+    let gekommen = 0;
+    for (let schritt = 0; schritt < 60 && gekommen === 0; schritt++) {
+        const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-t1-" + schritt, "R");
+        runde.regeln.faehigkeiten = true;
+        runde.regeln.lootboxMenge = "wenig";
+        runde.stand.takt = 2 * schritt;
+        runde.zugZaehler = 2 * schritt + 1;
+        SCHACH_RUNDE._bonusNachziehen(runde);
+        gekommen = runde.bonus.length;
+    }
+    wahr(gekommen > 0, "bei geradem Takt sperrt der zugZaehler nicht");
 });
 
 /* ------------------------------------------------------------------ *
@@ -3790,12 +3828,14 @@ pruefe("Eine Partie merkt sich, mit welcher Version sie angelegt wurde (v0.77)",
 pruefe("Die unterste Stufe wirft nur nach vollen Zuegen aus (v0.71)", () => {
     /*
      * „wenig" heisst: hoechstens einmal je vollem Zug. Gezaehlt wird in
-     * Halbzuegen (`zugZaehler`), also darf auf jedem zweiten nichts kommen.
+     * echten Halbzuegen — dem TAKT: Seit v0.83.1 (T1) haengt die Kadenz
+     * nicht mehr am zugZaehler, den auch jede Faehigkeit erhoeht.
      */
     const werfen = (menge, zaehler) => {
         const runde = SCHACH_RUNDE.leereRunde(1000, "standard", "p-halb", "R");
         runde.regeln.faehigkeiten = true;
         runde.regeln.lootboxMenge = menge;
+        runde.stand.takt = zaehler;
         runde.zugZaehler = zaehler;
 
         SCHACH_RUNDE._bonusNachziehen(runde);

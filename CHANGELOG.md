@@ -3,6 +3,21 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.83.1 — 2026-08-19
+
+**Zwei Fehler behoben — ein Item mit Pluszeichen ist jetzt wirklich gratis.**
+
+- **Ein Item mit Pluszeichen (etwa die Mauer) zählt nicht mehr heimlich als
+  Teilzug.** Vorher verschob das Einsetzen den Lootbox-Fahrplan um einen
+  Halbzug — der eigene nächste Zug konnte dadurch Lootboxen bringen, die ohne
+  das Item nicht gekommen wären, und auf der Stufe „wenig" kamen sie zum
+  falschen Zeitpunkt. Jetzt richtet sich der Fahrplan nur noch nach echten
+  Zügen; das Einsetzen eines Items ändert daran nichts mehr.
+
+- **Das umgedrehte Fragezeichen der Unglücks-Lootbox sitzt wieder in der
+  Box.** Es war beim Spiegeln nach unten gerutscht und hing aus der
+  Würfelfläche heraus.
+
 ## v0.83.0 — 2026-08-18
 
 **Die Spielart-Kacheln sagen jetzt mehr.**

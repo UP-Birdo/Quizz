@@ -1373,26 +1373,38 @@ const SCHACH_RUNDE = {
         /*
          * DIE UNTERSTE STUFE WIRFT NUR NACH EINEM VOLLEN ZUG AUS (seit v0.71).
          *
-         * `zugZaehler` zählt Halbzüge und steht hier schon auf dem Wert NACH
-         * dem Zug; jeder zweite schliesst also einen vollen Zug ab. Auf den
-         * drei anderen Stufen kommt wie bisher nach jedem Halbzug etwas in
-         * Frage.
+         * Massgeblich ist der TAKT — die ehrliche Uhr, die nur bei echten
+         * Zügen steigt und hier schon auf dem Wert NACH dem Zug steht; jeder
+         * zweite schliesst einen vollen Zug ab. Bis v0.83 hing die Sperre am
+         * `zugZaehler`, doch den erhöht auch jede Fähigkeit (das ist die
+         * Sicherung gegen gleichzeitige Züge) — eine Mauer mit Pluszeichen
+         * verschob damit den Lootbox-Fahrplan um einen Halbzug, und der
+         * eigene Folgezug warf Boxen, die ohne sie nicht gekommen wären
+         * (Meldung T1, siehe erkenntnisse.md „Zwei Uhren").
          */
         if (!SCHACH_VARIANTEN.mengeVon(menge).jederHalbzug
-            && (runde.zugZaehler % 2) !== 0) {
+            && (runde.stand.takt % 2) !== 0) {
             return;
         }
 
-        /* Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr, und seit
-           v3.3 auch keine Höchstzahl (siehe SCHACH_VARIANTEN.BONUS_CHANCE). */
+        /*
+         * Nach jedem Halbzug neu gewürfelt — kein fester Takt mehr, und seit
+         * v3.3 auch keine Höchstzahl (siehe SCHACH_VARIANTEN.BONUS_CHANCE).
+         * In der Saat stehen BEIDE Zähler: der Takt als Fahrplan, der
+         * `zugZaehler` als Eindeutigkeit — ein Zug und eine direkt folgende
+         * Zug-beendende Fähigkeit ziehen beim SELBEN Takt und dürfen nicht
+         * dieselbe Saat teilen (sonst fielen ihre Ziehungen immer gleich aus).
+         */
         const wuerfelt = SCHACH_RUNDE._zufallsWert(
-            (runde.id || "partie") + "|" + runde.zugZaehler + "|ob") * 100;
+            (runde.id || "partie") + "|" + runde.stand.takt + "|"
+            + runde.zugZaehler + "|ob") * 100;
 
         if (wuerfelt >= SCHACH_VARIANTEN.mengenChance(menge, freie.length, alleFelder)) {
             return;
         }
 
-        const basis = (runde.id || "partie") + "|" + runde.zugZaehler;
+        const basis = (runde.id || "partie") + "|" + runde.stand.takt + "|"
+            + runde.zugZaehler;
 
         /*
          * Meist einer, manchmal zwei, sehr selten drei — und auf den drei
