@@ -1096,6 +1096,12 @@ die es wirklich gibt: der gewohnten Breite (`anteil`) und der ganzen Reihe
 (`zurVollenBreite`). `armeeAnzahl` liest dieselbe Funktion, damit die Zahl unter
 der Kachel nie wieder etwas anderes sagt als das Brett.
 
+*(Nachtrag v0.104: Die beiden Felder `anteil` und `zurVollenBreite` gibt es
+nicht mehr — seit die Stufen auch in die TIEFE wachsen, beschreibt jede Stufe
+ihre Form selbst (`volleBreite`, `tiefe`), und die eine Quelle heisst
+`armeeFelderBlock`. Der Merksatz unten gilt unverändert und wurde beim Umbau
+genau so angewandt.)*
+
 **Merksatz:** Wer eine Einstellung baut, die eine ZAHL verspricht, prüft, ob
 der Platz sie hält — und lässt Versprechen und Wirklichkeit aus DERSELBEN
 Funktion kommen. Ein `Math.min` gegen eine Obergrenze ist kein Schutz, sondern
