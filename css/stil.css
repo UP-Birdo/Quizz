@@ -1356,6 +1356,16 @@ body {
     padding: 8px 0;
 }
 
+/*
+ * DIE FRAGE LINKS, DAS i RECHTS (seit v0.105). Der Erklärsatz, der bis v0.104
+ * unter jeder Reihe stand, sitzt jetzt dahinter — siehe `_leistenKopfBauen`.
+ */
+.leisten-kopf {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .mengen-leiste,
 .vorrat-leiste,
 .armee-leiste {
@@ -1371,6 +1381,26 @@ body {
     min-width: 70px;
 }
 
+/*
+ * DIE DREI MENGEN STEHEN NEBENEINANDER (seit v0.105, Nutzer-Ansage): gleiche
+ * Breite, kein Umbruch. Sie tragen je ein kurzes Wort, das passt auch auf ein
+ * schmales Handy — anders als bei den vier Stufen davor, wo „selbst wählen"
+ * die Reihe sprengte. Die eigene Wahl steht deshalb als eigener Knopf darunter.
+ */
+.vorrat-leiste {
+    flex-wrap: nowrap;
+}
+
+.vorrat-leiste .vorrat-knopf {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.vorrat-eigene {
+    width: 100%;
+    margin-top: 6px;
+}
+
 .mengen-knopf-aktiv,
 .vorrat-knopf-aktiv,
 .armee-knopf-aktiv {
@@ -1380,22 +1410,19 @@ body {
 }
 
 /*
- * DIE ANKREUZLISTE DER ITEMS (seit v0.100) — sichtbar nur unter dem Knopf
- * „selbst wählen". Sie kann zwanzig Einträge haben und darf den
- * Anlege-Bildschirm trotzdem nicht sprengen: Deshalb fliesst sie in Spalten
- * und bekommt eine eigene Höhe mit Rollbalken.
+ * DIE ANKREUZLISTE DER ITEMS (seit v0.100) — seit v0.105 im Popup.
+ *
+ * Bis v0.104 hing sie im Anlege-Bildschirm und brauchte dort eine feste Höhe
+ * mit eigenem Rollbalken: zwei Rollbalken ineinander, und die Spielart-Kacheln
+ * waren aus dem Bild geschoben. Im Dialog rollt der Kasten selbst (90 vh,
+ * siehe `.dialog-kasten`), also darf die Liste hier so hoch sein, wie sie ist.
  */
 .item-auswahl {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
-    max-height: 220px;
-    overflow-y: auto;
-    padding: 8px;
-    margin-top: 6px;
-    border: 1px solid var(--rand);
-    border-radius: 8px;
+    margin-top: 4px;
 }
 
 /* Die Stufen-Überschrift bricht die Reihe um: Sie nimmt die ganze Breite,

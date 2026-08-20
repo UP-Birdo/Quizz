@@ -1043,6 +1043,24 @@ oder aus, `null` = die Spielart entscheidet), `seltenheitZeigen`, `pechZeigen`
 und `einigkeit`. Die Vorgaben im MODELL entsprechen dem Verhalten von vor v2.5 —
 eine Partie ohne dieses Feld verhält sich also unverändert.
 
+**JEDE ERKLÄRUNG STEHT HINTER EINEM i (seit v0.105, Nutzer-Ansage 21.08.:
+„generell zu viel Texte überall").** Am Bildschirm steht nur noch der Titel
+einer Einstellung; der Satz dazu kommt über `_infoZeichenBauen` als Dialog.
+Bei den drei Knopfreihen (Lootbox-Menge, Item-Vorrat, Figurenzahl) baut
+`_leistenKopfBauen` das i und setzt die `hinweis`-Texte ALLER Stufen
+hintereinander — wer sie liest, will vergleichen. Die Texte selbst stehen
+weiterhin im Modell, der Bildschirm denkt sich keine Regeln aus.
+
+**Der Item-Vorrat: drei Mengen in einer Reihe, die eigene Wahl darunter.**
+`_vorratLeisteBauen` überspringt die Stufe mit `eigeneWahl` und zeigt sie als
+eigenen Knopf (`_eigeneWahlKnopfBauen`), der den STAND trägt („Selbst gewählt:
+12 von 19"). Die Ankreuzliste öffnet seit v0.105 ein Popup
+(`_itemAuswahlOeffnen`, `DIALOG.hinweis` mit der Liste als `zusatz`-Element);
+die Kästchen zeichnen nur sich selbst neu (`_itemAuswahlFuellen`), weil ein
+`TEAM_SCHACH.zeichnen` den Bildschirm hinter dem offenen Dialog neu aufbauen
+würde. Ein Test hält fest, dass die Reihe genau drei Knöpfe trägt: Sie bricht
+im CSS nicht mehr um, eine vierte Menge würde sie quetschen.
+
 **`einigkeit` ist seit v0.76 am Bildschirm umgedreht.** Der Haken beim Anlegen
 heisst „Wer zuerst zieht, hat gezogen" und ist aus; Abstimmung ist damit die
 Vorgabe. Umgedreht sind nur zwei Dinge: `TEAM_SCHACH.neueRegeln.einigkeit`

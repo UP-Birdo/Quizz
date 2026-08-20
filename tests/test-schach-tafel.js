@@ -265,7 +265,7 @@ pruefe("JEDE Einstellung aus der Auswahl kommt in der Partie an (v0.91)", () => 
         zufallsArmee: true,
         armeeUnterschiedlich: true,
         armeeStaerke: "wenig",
-        itemVorrat: "zehn",
+        itemVorrat: "viele",
         einigkeit: false
     };
 
@@ -280,8 +280,12 @@ pruefe("JEDE Einstellung aus der Auswahl kommt in der Partie an (v0.91)", () => 
     }
 
     /* Und die Auswirkung, nicht nur der Wert: Der Item-Vorrat wurde
-       ausgelost, weil `itemVorrat` angekommen ist. */
-    gleich(partie.regeln.itemPool.length, 10,
+       ausgelost, weil `itemVorrat` angekommen ist. Verglichen wird gegen die
+       Zahl der STUFE, nicht gegen eine getippte — sonst haengt der Test an
+       einer Menge, die sich jederzeit aendern darf (v0.105: die Stufe „10"
+       ist entfallen, und dieser Vergleich stand noch auf 10). */
+    gleich(partie.regeln.itemPool.length,
+        SCHACH_VARIANTEN.itemVorratVon(regeln.itemVorrat).anzahl,
         "der Vorrat wurde mit der gewaehlten Groesse ausgelost");
 });
 

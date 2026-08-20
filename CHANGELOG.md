@@ -3,6 +3,39 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.105.0 — 2026-08-21
+
+**Der Anlege-Bildschirm ist aufgeräumt: weniger Text, mehr Übersicht.**
+
+- **Die Erklärungen sind nicht weg, sie stehen hinter dem i.** Neben jeder
+  Einstellung sitzt ein kleines i — antippen, und der Satz dazu erscheint.
+  Beim normalen Anlegen sieht man nur noch die Titel und die Knöpfe, also das,
+  was man antippen will. Bei den drei Knopfreihen (Lootboxen, Items, Figuren)
+  erklärt ein i gleich ALLE Stufen auf einmal, damit man vergleichen kann.
+
+- **Alle Texte sind gekürzt** — die Erklärsätze der Einstellungen und die
+  Beschreibungen auf den Spielart-Kacheln. Die Masse des Bretts standen dort
+  doppelt (einmal als Zahl, einmal im Text); jetzt nur noch einmal.
+
+- **„Welche Items kommen vor?" hat die Stufe „10" verloren.** Übrig bleiben
+  **wenig / viele / alle**, und die drei stehen jetzt nebeneinander in einer
+  Reihe statt umgebrochen.
+
+- **„Selbst wählen" öffnet ein Popup.** Die Ankreuzliste hing bisher mitten im
+  Bildschirm, in einem Kasten mit eigenem Rollbalken — im Popup ist Platz für
+  alle Items auf einmal, und die Spielart-Kacheln bleiben sichtbar. Der Knopf
+  selbst zeigt, wie viele angehakt sind („Selbst gewählt: 12 von 19 — ändern").
+
+**Laufende Partien merken nichts davon.** Wer eine Partie mit der Stufe „10"
+angelegt hat, behält genau seine zehn Items — welche es sind, steht seit dem
+Anlegen fest.
+
+Nebenbei berichtigt: Die Beschreibung des 12er-Kreuzes versprach an den Flügeln
+„Offiziere" — dort stehen seit v0.65 volle Armeen mit Bauern.
+
+Tests: 1529 Prüfungen, 0 Fehler.
+
+
 ## v0.104.0 — 2026-08-21
 
 **Der Regler „Wie viele Figuren je Seite?" hat eine neue Leiter — und zwei

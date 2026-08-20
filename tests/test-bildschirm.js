@@ -1007,6 +1007,112 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
     }
 });
 
+pruefe("Item-Vorrat: drei Mengen in einer Reihe, die eigene Wahl im Popup (v0.105)", () => {
+    /*
+     * NUTZER-ANSAGE 21.08.: „bei welche Items kommen vor die 10 rausnehmen und
+     * die drei uebrigen Punkte nebeneinander; bei selbst waehlen soll statt
+     * dieser scrollbaren Liste ein Popup-Menue kommen."
+     *
+     * Geprueft wird der ECHTE Aufbau der Zeile, nicht der Stil: dass die Reihe
+     * drei Knoepfe traegt, dass die eigene Wahl daneben steht statt darin, und
+     * dass ihr Druck den Dialog mit der Liste als ELEMENT oeffnet — nicht als
+     * Text.
+     */
+    const gemerkterVorrat = TEAM_SCHACH.neueRegeln.itemVorrat;
+    const gemerkteAuswahl = TEAM_SCHACH.neueRegeln.itemAuswahl;
+    const echterHinweis = umgebung.DIALOG.hinweis;
+
+    try {
+        TEAM_SCHACH.neueRegeln.itemVorrat = "alle";
+        TEAM_SCHACH.neueRegeln.itemAuswahl = [];
+
+        const zeile = TEAM_SCHACH._vorratLeisteBauen();
+        const leiste = zeile.querySelector(".vorrat-leiste");
+
+        if (!leiste) {
+            throw new Error("die Mengen-Reihe fehlt");
+        }
+        if (leiste.kinder.length !== 3) {
+            throw new Error("drei Mengen nebeneinander, gezaehlt: "
+                + leiste.kinder.length);
+        }
+
+        const eigene = zeile.querySelector(".vorrat-eigene");
+        if (!eigene) {
+            throw new Error("der Knopf fuer die eigene Wahl fehlt");
+        }
+
+        /* Der Erklaersatz ist nicht weg, er steht hinter dem i (v0.105). */
+        if (zeile.querySelector(".schalter-hinweis")) {
+            throw new Error("der Erklaersatz soll nicht mehr offen dastehen");
+        }
+        if (!zeile.querySelector(".info-knopf")) {
+            throw new Error("ohne i waere die Erklaerung verschwunden");
+        }
+
+        let zusatz = null;
+        umgebung.DIALOG.hinweis = async (titel, text, element) => {
+            zusatz = element;
+            return true;
+        };
+
+        eigene.ausloesen("click");
+
+        if (TEAM_SCHACH.neueRegeln.itemVorrat !== "auswahl") {
+            throw new Error("der Knopf muss auf die eigene Wahl stellen");
+        }
+        if (TEAM_SCHACH.neueRegeln.itemAuswahl.length === 0) {
+            throw new Error("beim ersten Mal ist alles angehakt");
+        }
+        if (!zusatz || !zusatz.kinder || zusatz.kinder.length === 0) {
+            throw new Error("das Popup bekommt die Liste als Element");
+        }
+    } finally {
+        umgebung.DIALOG.hinweis = echterHinweis;
+        TEAM_SCHACH.neueRegeln.itemVorrat = gemerkterVorrat;
+        TEAM_SCHACH.neueRegeln.itemAuswahl = gemerkteAuswahl;
+    }
+});
+
+pruefe("Die Einstellungen tragen keinen offenen Erklaertext mehr (v0.105)", () => {
+    /*
+     * NUTZER-ANSAGE 21.08.: „Generell zu viel Texte ueberall — kuerze die Infos
+     * so, dass man sie noch versteht, und verstecke sie so, dass sie beim
+     * normalen Nutzen nicht sichtbar sind, aber nicht VERSCHWINDEN."
+     *
+     * Beides wird geprueft, und das zweite ist das wichtigere: Zu jeder
+     * Haken-Zeile muss weiterhin ein i gehoeren. Ein Text, der nur geloescht
+     * wird, waere die halbe Ansage.
+     */
+    const karte = TEAM_SCHACH._regelSchalterBauen();
+
+    const suchen = (element, klasse, treffer) => {
+        for (const kind of element.kinder || []) {
+            if (typeof kind.className === "string"
+                && kind.className.split(" ").indexOf(klasse) !== -1) {
+                treffer.push(kind);
+            }
+            suchen(kind, klasse, treffer);
+        }
+        return treffer;
+    };
+
+    const hinweise = suchen(karte, "schalter-hinweis", []);
+    const titel = suchen(karte, "schalter-titel", []);
+    const infos = suchen(karte, "info-knopf", []);
+
+    if (hinweise.length !== 0) {
+        throw new Error("kein offener Erklaersatz mehr, gezaehlt: " + hinweise.length);
+    }
+    if (titel.length === 0) {
+        throw new Error("die Titel der Einstellungen muessen bleiben");
+    }
+    if (infos.length < titel.length) {
+        throw new Error("jede Zeile braucht ihr i (" + infos.length + " i zu "
+            + titel.length + " Titeln)");
+    }
+});
+
 pruefe("Was sich geaendert hat, wird erkannt — und beim ersten Anblick nichts (v0.77)", () => {
     /*
      * `_veraenderungen` ist die Grundlage der vier stillen Animationen

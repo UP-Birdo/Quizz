@@ -381,10 +381,48 @@ pruefe("Der Vorrat hat die verlangte Groesse und wird GERECHNET (v0.87)", () => 
             groesse.id + ": dieselbe Kennung, derselbe Vorrat");
     }
 
-    /* Verschiedene Partien bekommen verschiedene Vorraete. */
-    const eine = vorratPartie("zehn", "p-v-eins").regeln.itemPool.join(",");
-    const andere = vorratPartie("zehn", "p-v-zwei").regeln.itemPool.join(",");
+    /* Verschiedene Partien bekommen verschiedene Vorraete. Genommen wird eine
+       Stufe, die wirklich ZIEHT (seit v0.105 ist das „wenig" oder „viele" —
+       die Stufe „10" gibt es nicht mehr). */
+    const eine = vorratPartie("viele", "p-v-eins").regeln.itemPool.join(",");
+    const andere = vorratPartie("viele", "p-v-zwei").regeln.itemPool.join(",");
     wahr(eine !== andere, "zwei Partien, zwei Vorraete");
+});
+
+pruefe("Der Item-Vorrat hat drei Mengen und eine eigene Wahl (v0.105)", () => {
+    /*
+     * NUTZER-ANSAGE 21.08.: „Bei „welche Items kommen vor" die 10 rausnehmen
+     * und die drei uebrigen Punkte nebeneinander."
+     *
+     * Die DREI ist keine Geschmacksfrage, sondern die Bedingung der Anzeige:
+     * Die Reihe im Anlege-Bildschirm bricht seit v0.105 nicht mehr um
+     * (`.vorrat-leiste { flex-wrap: nowrap }`). Eine vierte Menge wuerde die
+     * Knoepfe quetschen, statt sich unter sie zu setzen. Wer eine ergaenzen
+     * will, aendert also beides — Modell und Stil — und faellt hier darueber.
+     */
+    const mengen = SCHACH_VARIANTEN.ITEM_VORRAETE.filter(
+        (eintrag) => !eintrag.eigeneWahl);
+    const eigene = SCHACH_VARIANTEN.ITEM_VORRAETE.filter(
+        (eintrag) => eintrag.eigeneWahl);
+
+    gleich(mengen.length, 3, "drei Mengen nebeneinander");
+    gleich(eigene.length, 1, "genau eine eigene Wahl, und sie steht darunter");
+
+    /*
+     * UMSTIEG: Eine Partie von frueher kann „zehn" gespeichert haben. Sie muss
+     * eine gueltige Stufe zurueckbekommen — ihr Vorrat selbst steht ohnehin
+     * fertig in `itemPool` und wird nie neu gezogen.
+     */
+    gleich(SCHACH_VARIANTEN.itemVorratVon("zehn").id, "alle",
+        "eine entfallene Stufe faellt auf alle zurueck");
+
+    const alt = vorratPartie("wenig", "p-v-alt");
+    alt.regeln.itemVorrat = "zehn";
+
+    const geladen = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(alt)));
+
+    gleich(geladen.regeln.itemPool.join(","), alt.regeln.itemPool.join(","),
+        "der ausgeloste Vorrat bleibt unangetastet");
 });
 
 pruefe("Die Dauer-Schaetzung lernt aus echten Partien (v0.93)", () => {

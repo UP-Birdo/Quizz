@@ -1638,7 +1638,7 @@ const SCHACH_VARIANTEN = {
             id: "standard",
             titel: "Klassisch",
             form: "klassisch",
-            beschreibung: "Das gewohnte Brett mit 8 mal 8 Feldern und allen Regeln.",
+            beschreibung: "Das gewohnte Brett mit allen Regeln.",
             breite: 8,
             hoehe: 8,
             aufstellung:
@@ -1658,7 +1658,7 @@ const SCHACH_VARIANTEN = {
             id: "klein",
             titel: "Kleines Brett",
             form: "klassisch",
-            beschreibung: "6 mal 6 Felder, ohne Läufer — kurze, scharfe Partien.",
+            beschreibung: "Ohne Läufer — kurze, scharfe Partien.",
             breite: 6,
             hoehe: 6,
             aufstellung:
@@ -1676,8 +1676,7 @@ const SCHACH_VARIANTEN = {
             id: "gross",
             titel: "Großes Brett",
             form: "rechteckig",
-            beschreibung: "10 mal 8 Felder mit je zwei Läuferpaaren — mehr Platz, "
-                + "längere Partien, lange Diagonalen.",
+            beschreibung: "Je zwei Läuferpaare, mehr Platz zur Seite, lange Diagonalen.",
             breite: 10,
             hoehe: 8,
             aufstellung:
@@ -1697,10 +1696,8 @@ const SCHACH_VARIANTEN = {
             id: "doppelbrett",
             titel: "Doppelbrett",
             form: "rechteckig",
-            beschreibung: "Zwei Bretter nebeneinander (16 mal 8), zwei Armeen je Seite. "
-                + "Die Figuren dürfen überall hinziehen. Zwei Könige sind zwei "
-                + "Leben: Den ersten schlägt der Gegner wie jede andere Figur, "
-                + "beim letzten gelten wieder Schach und Matt.",
+            beschreibung: "Zwei Bretter nebeneinander, zwei Armeen je Seite. Zwei Könige "
+                + "heissen zwei Leben — erst der letzte kann mattgesetzt werden.",
             breite: 16,
             hoehe: 8,
             aufstellung:
@@ -1875,8 +1872,7 @@ const SCHACH_VARIANTEN = {
             id: "grossQuadrat",
             titel: "Großes Brett (quadratisch)",
             form: "klassisch",
-            beschreibung: "10 mal 10 Felder mit je zwei Läuferpaaren — so viel "
-                + "Platz wie auf dem großen Brett, dazu vier Reihen Anlauf.",
+            beschreibung: "Je zwei Läuferpaare, dazu vier Reihen Anlauf.",
             breite: 10,
             hoehe: 10,
             aufstellung:
@@ -1898,8 +1894,7 @@ const SCHACH_VARIANTEN = {
             id: "kreuzKlein",
             titel: "Kleines Kreuz",
             form: "kreuz",
-            beschreibung: "10 mal 10 mit einem 6er-Feld in der Mitte. Vier Armeen "
-                + "auf engem Raum — die Flügel sind sofort im Spiel.",
+            beschreibung: "Vier Armeen auf engem Raum — die Flügel sind sofort im Spiel.",
             breite: 10,
             hoehe: 10,
             kreuz: true,
@@ -1912,9 +1907,8 @@ const SCHACH_VARIANTEN = {
             id: "kreuz",
             titel: "Kreuz",
             form: "kreuz",
-            beschreibung: "12 mal 12 mit dem gewohnten 8er-Feld in der Mitte. An "
-                + "jeder Seite eine Armee: oben und unten die Front mit Bauern, "
-                + "links und rechts ein Flügel aus Offizieren.",
+            beschreibung: "An jeder der vier Seiten eine volle Armee, in der Mitte das "
+                + "gewohnte Feld.",
             breite: 12,
             hoehe: 12,
             kreuz: true,
@@ -1927,8 +1921,7 @@ const SCHACH_VARIANTEN = {
             id: "kreuzGross",
             titel: "Großes Kreuz",
             form: "kreuz",
-            beschreibung: "14 mal 14 mit einem 10er-Feld in der Mitte. Das grösste "
-                + "Brett im Spiel — lange Wege, lange Partien.",
+            beschreibung: "Das grösste Brett im Spiel — lange Wege, lange Partien.",
             breite: 14,
             hoehe: 14,
             kreuz: true,
@@ -1954,9 +1947,8 @@ const SCHACH_VARIANTEN = {
             id: "kreuzKleinEinzeln",
             titel: "Kleines Kreuz-Duell",
             form: "kreuz",
-            beschreibung: "10 mal 10, aber nur eine Armee je Team. Auf welcher "
-                + "Seite ihr startet, wird gezogen; die beiden anderen Streifen "
-                + "bleiben leer.",
+            beschreibung: "Nur eine Armee je Team; die beiden anderen Streifen bleiben "
+                + "leer. Die Startseite wird gezogen.",
             breite: 10,
             hoehe: 10,
             kreuz: true,
@@ -1986,9 +1978,8 @@ const SCHACH_VARIANTEN = {
             id: "kreuzGrossEinzeln",
             titel: "Großes Kreuz-Duell",
             form: "kreuz",
-            beschreibung: "14 mal 14 mit einer Armee je Team. Viel Platz, weite "
-                + "Wege — und zwei leere Flügel, über die man den Gegner umgehen "
-                + "kann. Die Startseite wird gezogen.",
+            beschreibung: "Weite Wege und zwei leere Flügel, über die man den Gegner "
+                + "umgehen kann. Die Startseite wird gezogen.",
             breite: 14,
             hoehe: 14,
             kreuz: true,
@@ -2590,15 +2581,17 @@ const SCHACH_VARIANTEN = {
             id: "wenig",
             titel: "wenig",
             anzahl: 5,
-            hinweis: "Nur fünf verschiedene Items in dieser Partie — man lernt "
-                + "sie schnell und kann mit ihnen rechnen."
+            hinweis: "Fünf Items — man lernt sie schnell."
         },
-        {
-            id: "zehn",
-            titel: "10",
-            anzahl: 10,
-            hinweis: "Zehn verschiedene Items."
-        },
+        /*
+         * ES GAB EINE STUFE „10" (v0.87 bis v0.104). Sie ist auf Nutzer-Ansage
+         * vom 21.08.2026 raus: Zwischen „wenig" (5) und „viele" (15) war sie
+         * eine Zahl ohne eigenen Charakter, und vier Knöpfe passten nicht
+         * nebeneinander. Laufende Partien merken davon nichts — ihr Vorrat
+         * steht als fertige Liste in `regeln.itemPool`, gezogen wird er nur
+         * einmal beim Anlegen. Ein gespeichertes „zehn" liest
+         * `itemVorratVon` als „alle"; das ändert an ihrem Brett nichts.
+         */
         {
             id: "viele",
             titel: "viele",
@@ -2610,7 +2603,7 @@ const SCHACH_VARIANTEN = {
              * dass jede Stufe weniger liefert als die darüber.
              */
             anzahl: 15,
-            hinweis: "Fünfzehn verschiedene Items — Abwechslung, aber nicht alles."
+            hinweis: "Fünfzehn Items — Abwechslung, aber nicht alles."
         },
         /*
          * SELBST WÄHLEN (seit v0.100, Nutzer-Wunsch: „und selbst auswählen,
@@ -2629,8 +2622,7 @@ const SCHACH_VARIANTEN = {
             id: "alle",
             titel: "alle",
             anzahl: 0,
-            hinweis: "Alles, was es gibt. Am Anfang wird nichts ausgelost, und "
-                + "es wird auch nichts angezeigt."
+            hinweis: "Alles, was es gibt — nichts wird ausgelost."
         },
         {
             id: "auswahl",

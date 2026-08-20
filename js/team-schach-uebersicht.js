@@ -157,36 +157,33 @@ Object.assign(TEAM_SCHACH, {
             {
                 schluessel: "seltenheitZeigen",
                 titel: "Seltenheit anzeigen",
-                hinweis: "Die Lootbox trägt schon auf dem Brett die Farbe ihrer Stufe. "
-                    + "Aus heißt: Alle Lootboxen sehen gleich aus, und man weiß erst "
+                hinweis: "An heisst: Die Lootbox trägt schon auf dem Brett die Farbe "
+                    + "ihrer Stufe. Aus sehen alle gleich aus, und man weiss erst "
                     + "beim Einsammeln, wie selten es war.",
                 nurMitWuerfeln: true
             },
             {
                 schluessel: "pechZeigen",
                 titel: "Unglücks-Lootboxen anzeigen",
-                hinweis: "Eine schlechte Lootbox trägt ihr Fragezeichen auf dem Kopf, "
-                    + "man erkennt sie also von weitem. Aus heißt: Sie sieht aus wie "
-                    + "jede andere — gleiche Farbe, Fragezeichen richtig herum. "
-                    + "Dann ist jede Lootbox ein Wagnis.",
+                hinweis: "An heisst: Eine schlechte Lootbox trägt ihr Fragezeichen "
+                    + "auf dem Kopf, man erkennt sie von weitem. Aus sieht sie aus "
+                    + "wie jede andere — dann ist jede ein Wagnis.",
                 nurMitWuerfeln: true
             },
             {
                 schluessel: "zufallsArmee",
                 titel: "Zufallsarmee",
-                hinweis: "Jede Seite bekommt gewürfelt die halbe Armee statt der "
-                    + "gewohnten Aufstellung — beim klassischen Brett 8 Figuren, "
-                    + "König inbegriffen. Selten sind es ZWEI Könige: Dann hast du "
-                    + "zwei Leben. Der erste wird geschlagen wie jede Figur, den "
-                    + "letzten muss der Gegner schachmatt setzen."
+                hinweis: "Gewürfelte Figuren statt der gewohnten Aufstellung. Wie "
+                    + "viele es sind, sagt allein der Regler oben. Selten sind es "
+                    + "ZWEI Könige: Dann hast du zwei Leben — der erste fällt wie "
+                    + "jede Figur, den letzten muss der Gegner mattsetzen."
             },
             {
                 schluessel: "armeeUnterschiedlich",
                 titel: "Unterschiedliche Armeen",
-                hinweis: "Jede Mannschaft würfelt für sich — dann kann eine Seite zwei "
-                    + "Türme und eine Dame haben und die andere fast nur Bauern. Aus "
-                    + "heißt: Es wird einmal gewürfelt, und beide bekommen dieselben "
-                    + "Einheiten, spiegelbildlich aufgestellt.",
+                hinweis: "An würfelt jede Mannschaft für sich — dann kann eine Seite "
+                    + "zwei Türme und eine Dame haben und die andere fast nur Bauern. "
+                    + "Aus bekommen beide dieselben Figuren, spiegelbildlich.",
                 nurMitArmee: true
             },
             /*
@@ -204,12 +201,10 @@ Object.assign(TEAM_SCHACH, {
                 schluessel: "einigkeit",
                 umgekehrt: true,
                 titel: "Wer zuerst zieht, hat gezogen",
-                hinweis: "Aus heisst: Ein Zug oder eine Fähigkeit wird erst "
-                    + "vorgeschlagen und ausgeführt, wenn alle aus dem Team "
-                    + "zugestimmt haben — oder die Frist abläuft. Das ist die "
-                    + "Vorgabe. Angehakt zieht jeder sofort für sein ganzes Team, "
-                    + "ohne zu fragen. Zur Abstimmung: Der Vorschlag steht im "
-                    + "gemeinsamen Stand, der Gegner kann ihn mitlesen."
+                hinweis: "Aus (Vorgabe) wird jeder Zug erst vorgeschlagen und "
+                    + "ausgeführt, wenn das Team zustimmt oder die Frist abläuft. "
+                    + "An zieht jeder sofort für sein ganzes Team. Der Vorschlag "
+                    + "steht im gemeinsamen Stand — der Gegner liest ihn mit."
             }
         ];
 
@@ -269,9 +264,14 @@ Object.assign(TEAM_SCHACH, {
             });
             zeile.appendChild(kasten);
 
+            /*
+             * NUR DER TITEL STEHT DA (seit v0.105). Der Erklärsatz sitzt hinter
+             * dem i daneben — siehe `_leistenKopfBauen`, dieselbe Ansage vom
+             * 21.08. Sieben Haken mit je zwei bis vier Zeilen Text waren eine
+             * Wand, durch die man sich zu den Kacheln durchscrollen musste.
+             */
             const text = TEAM_SCHACH._element("span", "schalter-text");
             text.appendChild(TEAM_SCHACH._element("span", "schalter-titel", eintrag.titel));
-            text.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis", eintrag.hinweis));
             zeile.appendChild(text);
 
             /*
@@ -282,11 +282,15 @@ Object.assign(TEAM_SCHACH, {
             const halter = TEAM_SCHACH._element("div", "schalter-halter");
             halter.appendChild(zeile);
 
-            if (eintrag.bibliothek) {
-                halter.appendChild(TEAM_SCHACH._infoKnopfBauen());
-            } else if (eintrag.mehr) {
-                halter.appendChild(TEAM_SCHACH._infoZeichenBauen(eintrag.titel, eintrag.mehr));
-            }
+            /*
+             * EIN i JE ZEILE, und es zeigt immer den Erklärsatz dieser Zeile.
+             * Beim Lootbox-Haken führt es zusätzlich in die Bibliothek: Wer
+             * dort mehr wissen will, will die Fähigkeiten sehen, nicht noch
+             * einen Absatz (seit v0.55 war das der ganze Zweck dieses i).
+             */
+            halter.appendChild(eintrag.bibliothek
+                ? TEAM_SCHACH._bibliothekZeichenBauen(eintrag)
+                : TEAM_SCHACH._infoZeichenBauen(eintrag.titel, eintrag.hinweis));
 
             karte.appendChild(halter);
 
@@ -320,16 +324,10 @@ Object.assign(TEAM_SCHACH, {
     _mengenLeisteBauen() {
         const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt mengen-zeile");
 
-        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-titel",
-            "Wie viele Lootboxen?"));
+        zeile.appendChild(TEAM_SCHACH._leistenKopfBauen("Wie viele Lootboxen?",
+            SCHACH_VARIANTEN.LOOTBOX_MENGEN));
 
         const leiste = TEAM_SCHACH._element("div", "mengen-leiste");
-        const satz = TEAM_SCHACH._element("span", "schalter-hinweis", "");
-
-        const beschriften = () => {
-            satz.textContent = SCHACH_VARIANTEN
-                .mengeVon(TEAM_SCHACH.neueRegeln.lootboxMenge).hinweis;
-        };
 
         for (const menge of SCHACH_VARIANTEN.LOOTBOX_MENGEN) {
             const aktiv = (menge.id === TEAM_SCHACH.neueRegeln.lootboxMenge);
@@ -345,9 +343,7 @@ Object.assign(TEAM_SCHACH, {
             leiste.appendChild(knopf);
         }
 
-        beschriften();
         zeile.appendChild(leiste);
-        zeile.appendChild(satz);
 
         return zeile;
     },
@@ -359,6 +355,73 @@ Object.assign(TEAM_SCHACH, {
      * Fähigkeiten-Bibliothek. Dieses hier trägt seinen Text bei sich und ist
      * überall einsetzbar, wo ein Absatz den Bildschirm aufbläht.
      */
+    /*
+     * DER KOPF EINER KNOPFREIHE: Frage links, i rechts (seit v0.105).
+     *
+     * NUTZER-ANSAGE 21.08.: „Generell zu viel Texte überall — kürze die Infos
+     * so, dass man sie noch versteht, und verstecke sie so, dass sie beim
+     * normalen Nutzen nicht sichtbar sind, aber nicht verschwinden."
+     *
+     * Bis v0.104 stand unter jeder der drei Reihen ein ganzer Satz zur gerade
+     * gewählten Stufe. Drei Reihen mal ein Satz, dazu sieben Haken mit je einem
+     * Satz — der Anlege-Bildschirm war zu zwei Dritteln Text, und die Kacheln,
+     * die man antippen will, standen ganz unten. Jetzt steht die Erklärung
+     * hinter dem i, und zwar für ALLE Stufen auf einmal: Wer sie liest, will
+     * ohnehin vergleichen, und ein Text, der nur die gewählte Stufe erklärt,
+     * musste bei jedem Knopfdruck neu gelesen werden.
+     *
+     * Die Texte kommen aus dem Modell (`hinweis` je Stufe) — der Bildschirm
+     * denkt sich keine Regeln aus (eiserne Regel).
+     */
+    /*
+     * Das i des Lootbox-Hakens: erst der Erklärsatz, dann der Weg in die
+     * Bibliothek. `DIALOG.frage` statt `hinweis`, weil es zwei Knöpfe braucht —
+     * „Verstanden" und „Alle Fähigkeiten ansehen".
+     */
+    _bibliothekZeichenBauen(eintrag) {
+        const knopf = document.createElement("button");
+
+        knopf.type = "button";
+        knopf.className = "info-knopf";
+        knopf.textContent = "i";
+        knopf.setAttribute("aria-label", eintrag.titel);
+        knopf.title = eintrag.titel;
+        knopf.addEventListener("click", (ereignis) => {
+            /* Sonst schaltet der Klick zusätzlich den Haken der Zeile um. */
+            if (ereignis && ereignis.preventDefault) {
+                ereignis.preventDefault();
+            }
+
+            DIALOG.frage(eintrag.titel, eintrag.hinweis,
+                "Alle Fähigkeiten ansehen").then((weiter) => {
+                    if (weiter) {
+                        TEAM_SCHACH.faehigkeitenOeffnen();
+                    }
+                });
+        });
+
+        return knopf;
+    },
+
+    _leistenKopfBauen(titel, stufen, nachsatz) {
+        const kopf = TEAM_SCHACH._element("div", "leisten-kopf");
+
+        kopf.appendChild(TEAM_SCHACH._element("span", "schalter-titel", titel));
+
+        const zeilen = stufen
+            .filter((stufe) => !!stufe.hinweis)
+            .map((stufe) => stufe.titel + ": " + stufe.hinweis);
+
+        if (nachsatz) {
+            zeilen.push("");
+            zeilen.push(nachsatz);
+        }
+
+        kopf.appendChild(TEAM_SCHACH._infoZeichenBauen(titel, zeilen.join("\n")));
+
+        return kopf;
+    },
+
     _infoZeichenBauen(titel, text) {
         const knopf = document.createElement("button");
 
@@ -399,32 +462,36 @@ Object.assign(TEAM_SCHACH, {
      * hängt an der Partie-Kennung — hier steht deshalb nur, WIE VIELE es sein
      * sollen. Die Liste selbst zeigt die Partie danach oben an.
      */
+    /*
+     * DREI MENGEN IN EINER REIHE, DIE EIGENE WAHL DARUNTER (seit v0.105,
+     * Nutzer-Ansage 21.08.: „bei welche Items kommen vor die 10 rausnehmen und
+     * die drei übrigen Punkte nebeneinander").
+     *
+     * Die Reihe zeigt nur noch die MENGEN (`wenig`, `viele`, `alle`) — sie
+     * beantworten dieselbe Frage und passen damit zu dritt nebeneinander. Die
+     * eigene Wahl ist keine Menge, sondern eine Liste; sie bekommt einen
+     * eigenen Knopf darunter, der das Popup öffnet. Erkannt wird sie an
+     * `eigeneWahl`, nicht am Namen.
+     */
     _vorratLeisteBauen() {
         const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt vorrat-zeile");
 
-        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-titel",
-            "Welche Items kommen vor?"));
+        zeile.appendChild(TEAM_SCHACH._leistenKopfBauen("Welche Items kommen vor?",
+            SCHACH_VARIANTEN.ITEM_VORRAETE));
 
         const leiste = TEAM_SCHACH._element("div", "vorrat-leiste");
 
         for (const groesse of SCHACH_VARIANTEN.ITEM_VORRAETE) {
+            if (groesse.eigeneWahl) {
+                continue;
+            }
+
             const aktiv = (groesse.id === TEAM_SCHACH.neueRegeln.itemVorrat);
 
             const knopf = TEAM_SCHACH._knopf(groesse.titel,
                 "knopf-klein vorrat-knopf" + (aktiv ? " vorrat-knopf-aktiv" : " knopf-still"),
                 () => {
                     TEAM_SCHACH.neueRegeln.itemVorrat = groesse.id;
-
-                    /* Beim ersten Wechsel auf „selbst wählen" ist alles
-                       angehakt: Man streicht weg, was man nicht will — das ist
-                       weniger Arbeit als zwanzigmal anhaken, und die Liste ist
-                       nie leer. */
-                    if (groesse.eigeneWahl
-                        && TEAM_SCHACH.neueRegeln.itemAuswahl.length === 0) {
-
-                        TEAM_SCHACH.neueRegeln.itemAuswahl = TEAM_SCHACH._alleItems();
-                    }
-
                     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
                 });
 
@@ -433,27 +500,46 @@ Object.assign(TEAM_SCHACH, {
         }
 
         zeile.appendChild(leiste);
-
-        const gewaehlt = SCHACH_VARIANTEN.itemVorratVon(TEAM_SCHACH.neueRegeln.itemVorrat);
-        let hinweis = gewaehlt.hinweis;
-
-        /*
-         * DIE ANKREUZLISTE (seit v0.100). Sie steht nur unter dem Knopf
-         * „selbst wählen" — sonst wäre der Anlege-Bildschirm eine Wand aus
-         * zwanzig Kästchen, die fast niemand braucht.
-         */
-        if (gewaehlt.eigeneWahl) {
-            const anzahl = TEAM_SCHACH.neueRegeln.itemAuswahl.length;
-
-            zeile.appendChild(TEAM_SCHACH._itemAuswahlBauen());
-            hinweis = anzahl + (anzahl === 1 ? " Item" : " Items") + " angehakt. "
-                + "Die Chancen verteilen sich auf diese Liste — was nicht "
-                + "angehakt ist, kommt in dieser Partie nicht vor.";
-        }
-
-        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis", hinweis));
+        zeile.appendChild(TEAM_SCHACH._eigeneWahlKnopfBauen());
 
         return zeile;
+    },
+
+    /*
+     * DER KNOPF FÜR DIE EIGENE WAHL — und was er anzeigt.
+     *
+     * Er trägt den STAND (wie viele von wie vielen), nicht die Erklärung: Das
+     * ist die einzige Angabe, die man beim Anlegen wirklich sehen muss. Der
+     * erste Druck hakt alles an und öffnet das Popup; man streicht weg, was man
+     * nicht will — das ist weniger Arbeit als zwanzigmal anhaken, und die Liste
+     * ist nie leer.
+     */
+    _eigeneWahlKnopfBauen() {
+        const stufe = SCHACH_VARIANTEN.ITEM_VORRAETE.find(
+            (eintrag) => eintrag.eigeneWahl);
+        const aktiv = (TEAM_SCHACH.neueRegeln.itemVorrat === stufe.id);
+        const gewaehlt = TEAM_SCHACH.neueRegeln.itemAuswahl.length;
+        const alle = TEAM_SCHACH._alleItems().length;
+
+        const knopf = TEAM_SCHACH._knopf(
+            aktiv
+                ? ("Selbst gewählt: " + gewaehlt + " von " + alle + " — ändern")
+                : (stufe.titel + " ..."),
+            "knopf-klein vorrat-eigene"
+                + (aktiv ? " vorrat-knopf-aktiv" : " knopf-still"),
+            () => {
+                TEAM_SCHACH.neueRegeln.itemVorrat = stufe.id;
+
+                if (TEAM_SCHACH.neueRegeln.itemAuswahl.length === 0) {
+                    TEAM_SCHACH.neueRegeln.itemAuswahl = TEAM_SCHACH._alleItems();
+                }
+
+                TEAM_SCHACH._itemAuswahlOeffnen();
+            });
+
+        knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+
+        return knopf;
     },
 
     /*
@@ -481,8 +567,37 @@ Object.assign(TEAM_SCHACH, {
         return liste;
     },
 
-    _itemAuswahlBauen() {
+    /*
+     * DIE AUSWAHL STEHT IM POPUP (seit v0.105, Nutzer-Ansage 21.08.: „bei
+     * selbst wählen soll statt dieser scrollbaren Liste ein Popup-Menü
+     * kommen").
+     *
+     * Bis v0.104 hing die Ankreuzliste mitten im Anlege-Bildschirm, in einem
+     * Kasten mit eigener Höhe und eigenem Rollbalken — zwei Rollbalken
+     * ineinander, und die Kacheln darunter waren weg. Der Dialog bringt seinen
+     * eigenen mit (`dialog-kasten`, 90 vh), also braucht die Liste hier keinen:
+     * Sie darf so hoch werden, wie sie ist.
+     *
+     * Die Kästchen schreiben direkt in `neueRegeln.itemAuswahl` und zeichnen
+     * NUR sich selbst neu (`_itemAuswahlFuellen`). Ein `TEAM_SCHACH.zeichnen`
+     * bei jedem Haken würde den Bildschirm HINTER dem offenen Dialog neu
+     * aufbauen — der Dialog bliebe stehen, aber sein Auslöser wäre ein anderes
+     * Element als das, was man gerade sieht. Neu gezeichnet wird deshalb erst
+     * beim Schliessen; dann stimmt auch die Zahl auf dem Knopf wieder.
+     */
+    _itemAuswahlOeffnen() {
         const halter = TEAM_SCHACH._element("div", "item-auswahl");
+
+        TEAM_SCHACH._itemAuswahlFuellen(halter);
+
+        DIALOG.hinweis("Welche Items kommen vor?",
+            "Angehakt ist, was in dieser Partie vorkommen kann. Mindestens eins "
+            + "bleibt stehen.",
+            halter).then(() => TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten));
+    },
+
+    _itemAuswahlFuellen(halter) {
+        halter.innerHTML = "";
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
             const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
@@ -494,14 +609,14 @@ Object.assign(TEAM_SCHACH, {
                 "item-auswahl-stufe stufe-" + stufe.id, stufe.titel));
 
             for (const art of arten) {
-                halter.appendChild(TEAM_SCHACH._itemHakenBauen(art));
+                halter.appendChild(TEAM_SCHACH._itemHakenBauen(art, halter));
             }
         }
 
         return halter;
     },
 
-    _itemHakenBauen(art) {
+    _itemHakenBauen(art, halter) {
         const gewaehlt = TEAM_SCHACH.neueRegeln.itemAuswahl;
         const drin = (gewaehlt.indexOf(art) !== -1);
 
@@ -511,20 +626,18 @@ Object.assign(TEAM_SCHACH, {
             () => {
                 if (!drin) {
                     gewaehlt.push(art);
-                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    TEAM_SCHACH._itemAuswahlFuellen(halter);
                     return;
                 }
 
                 if (gewaehlt.length <= 1) {
                     DIALOG.hinweis("Mindestens ein Item",
-                        "Eine Partie mit Lootboxen braucht wenigstens ein Item — "
-                        + "sonst wäre jede Lootbox leer. Hake erst ein anderes an, "
-                        + "dann kannst du dieses abwählen.");
+                        "Sonst wäre jede Lootbox leer. Hake erst ein anderes an.");
                     return;
                 }
 
                 gewaehlt.splice(gewaehlt.indexOf(art), 1);
-                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                TEAM_SCHACH._itemAuswahlFuellen(halter);
             });
 
         knopf.setAttribute("aria-pressed", drin ? "true" : "false");
@@ -543,11 +656,12 @@ Object.assign(TEAM_SCHACH, {
          */
         const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt armee-zeile");
 
-        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-titel",
-            "Wie viele Figuren je Seite?"));
+        zeile.appendChild(TEAM_SCHACH._leistenKopfBauen("Wie viele Figuren je Seite?",
+            SCHACH_VARIANTEN.ARMEE_STAERKEN,
+            "Ohne den Haken „Zufallsarmee“ bleibt die Aufstellung der Spielart "
+            + "stehen, nur eben schmaler oder tiefer."));
 
         const leiste = TEAM_SCHACH._element("div", "armee-leiste");
-        const satz = TEAM_SCHACH._element("span", "schalter-hinweis", "");
 
         for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
             const aktiv = (staerke.id === TEAM_SCHACH.neueRegeln.armeeStaerke);
@@ -563,20 +677,7 @@ Object.assign(TEAM_SCHACH, {
             leiste.appendChild(knopf);
         }
 
-        /*
-         * SEIT v0.100 GILT DIE REIHE IMMER, mit Haken wie ohne — der Haken
-         * entscheidet nur noch, WELCHE Figuren stehen. Der zweite Satz von
-         * früher („gilt für die Zufallsarmee") war damit falsch geworden.
-         */
-        satz.textContent = SCHACH_VARIANTEN
-            .armeeStaerkeVon(TEAM_SCHACH.neueRegeln.armeeStaerke).hinweis
-            + (TEAM_SCHACH.neueRegeln.zufallsArmee
-                ? ""
-                : " Ohne den Haken bleibt die Aufstellung der Spielart stehen, "
-                    + "nur eben schmaler.");
-
         zeile.appendChild(leiste);
-        zeile.appendChild(satz);
 
         return zeile;
     },
