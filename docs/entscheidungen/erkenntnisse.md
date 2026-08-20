@@ -1001,6 +1001,42 @@ Bequemlichkeit einbaut, die etwas WEGNIMMT, fragt vorher nach.** Der Bericht
 lautete deshalb auch nicht „der Dieb ist grau", sondern „der Dieb ist
 verschwunden": Was man nicht anfassen darf, ist für den Spieler nicht da.
 
+## Die Pflichtlektüre wuchs schneller, als sie genutzt wurde (gemessen v0.103)
+
+**Was zu sehen war:** In EINER Sitzung — sechs Auslieferungen von v0.98 bis
+v0.103 — wuchs die Datei, die jede Schach-Sitzung als Erstes vollständig liest,
+von 29 auf 36 KB. Die `STATUS.md` von 27,6 auf 29,7 KB. Zusammen mit der
+`CLAUDE.md` waren das 72 KB, bevor die erste Frage überhaupt gelesen war.
+
+**Die Ursache ist kein Fehler, sondern eine Gewohnheit:** Nach jeder Runde kam
+eine Regel dazu — und zwar zu Recht, jede einzelne war teuer erkauft. Nur wurde
+nie etwas kürzer. Die Regel-Doku war ausserdem als EIN Stück Pflichtlektüre
+angelegt, also wurde sie ganz gelesen, auch die neun Zehntel, die das jeweilige
+Vorhaben nichts angingen.
+
+**Und sie enthielt zwei verschiedene Textsorten.** Neben der Regel („kein Item
+führt zu Matt") stand jedes Mal die Fallgeschichte („bis v0.94 war das anders,
+dann fiel im Spieltest auf …"). Die Geschichte ist wertvoll — aber sie gehört
+hierher, nicht in etwas, das jede Sitzung ganz liest.
+
+**Was jetzt anders ist:** Die Regeln stehen in `docs\regeln\` mit einem Index,
+der die vier immer geltenden Sätze und den Wegweiser trägt; die drei
+Themendateien werden einzeln geöffnet. Die `STATUS.md` ist wieder ein Stand und
+kein Archiv (Richtwert unter 12 KB). Pflichtlektüre beim Sitzungsbeginn: **27
+statt 72 KB, also 62 Prozent weniger** — bei unverändertem Inhalt.
+
+**Die Lehre, und sie gilt über dieses Projekt hinaus:** Was bei JEDEM Anfang
+gelesen wird, ist die teuerste Zeile im Projekt. Wer dort etwas ergänzt, kürzt
+an derselben Stelle etwas anderes — oder verschiebt es dorthin, wo es nur bei
+Bedarf gelesen wird. Doku, die nur wächst, wird irgendwann nicht mehr gelesen,
+und dann nützt die beste Regel nichts mehr.
+
+**Beim Eindampfen wäre fast etwas verlorengegangen** — die Spielgefühl-Fragen
+(„fühlt sich der Frost fair an?") standen NUR in der `STATUS.md`. Sie sind aus
+`Backup\Quizz\v0.100.0` wiederhergestellt und nach `offen-und-abgelehnt.md`
+umgezogen. **Zweite Lehre:** Vor dem Kürzen prüfen, ob der Inhalt anderswo
+wirklich steht — und genau dafür ist der Meilenstein-Abzug da.
+
 ## Eine aufgehobene Regel lebt in ihrem Erklärtext weiter (v0.95, gefunden v0.100)
 
 **Was zu sehen war:** Der Beschreibungstext des Frostes versprach: „Er gilt auch

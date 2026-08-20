@@ -16,6 +16,18 @@ wird im Kopf der Seite angezeigt.
   laufende Partien merken nichts davon, die Kennung im Hintergrund bleibt
   unverändert.
 
+**Dazu eine Aufräum-Runde an Doku und Werkzeugen.** An der App ändert sich dabei
+kein Byte — nach der Haus-Regel bekommt so eine Runde keine eigene Nummer und
+geht hier mit:
+
+- Die eisernen Regeln des Team Schach stehen jetzt in `docs\regeln\` mit einem
+  Wegweiser, und die `STATUS.md` ist wieder ein Stand statt eines Archivs. Eine
+  neue Sitzung liest damit 27 statt 72 KB, bevor die erste Frage beantwortet
+  wird — bei unverändertem Inhalt.
+- `tools\Test-Quizz.ps1` hat einen Schalter `-NurFazit`: eine Zeile statt der
+  vollen Ausgabe, im Fehlerfall jede fehlgeschlagene Prüfung mit ihrer
+  Testdatei.
+
 ## v0.102.0 — 2026-08-20
 
 **Schild und Fessel hängen jetzt an der Figur, nicht am Feld.**

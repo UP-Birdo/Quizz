@@ -60,6 +60,11 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       kein Fehler war, sondern eine Regel, die sich wie einer anfühlte.
       Merksatz: Wer eine Bequemlichkeit einbaut, die etwas WEGNIMMT, fragt
       vorher nach
+    - **Die Pflichtlektuere wuchs schneller, als sie genutzt wurde**
+      (gemessen v0.103) - 72 KB Pflicht beim Sitzungsbeginn, weil nach jeder
+      Runde eine Regel dazukam und nie etwas kuerzer wurde. Merksatz: Was bei
+      JEDEM Anfang gelesen wird, ist die teuerste Zeile im Projekt - wer dort
+      ergaenzt, kuerzt an derselben Stelle. Jetzt 27 KB
     - **Eine aufgehobene Regel lebt in ihrem Erklärtext weiter** (v0.95,
       gefunden v0.100) — der Frost-Text versprach noch fünf Versionen lang das
       Mattsetzen, das v0.95 zurückgenommen hatte. Merksatz: Wer eine Regel
@@ -255,6 +260,11 @@ nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
 - Warum die Abstimmung eine Frist braucht
 - Bewusst abgelehnt
 - Braucht eine Nutzer-Entscheidung (nicht ungefragt bauen)
+- **Was sich nur am Geraet beurteilen laesst** (Stand 20.08.2026) — die
+  Spielgefuehl-Fragen, die keine Tabelle beantwortet: Kreuz-Bretter, die
+  Regeln aus v0.56 bis v0.60, Anleitungs-Timing, Zufallsarmee, wie sich die
+  Item-Regel im Endspiel anfuehlt. Standen bis v0.103 in der `STATUS.md` und
+  sind beim Eindampfen hierher umgezogen — **nichts davon blockiert etwas**
 
 ## historie.md - Versions-Historie
 
