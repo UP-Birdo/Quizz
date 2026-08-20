@@ -232,12 +232,31 @@ const SCHACH_VARIANTEN = {
          * neuer Wirkung. Vorher schob es drei Reihen zur Seite; jetzt bricht
          * der Boden auf.
          */
+        /*
+         * „SPALT" HEISST SIE SEIT v0.103 (Nutzer-Ansage 20.08.: „Erdbeben soll
+         * es doch nicht mehr heissen, sondern Spalt oder Riss oder so").
+         *
+         * ZWEI UMBENENNUNGEN, EIN GRUND. In v0.92 hiess sie schon einmal um:
+         * von „Erdbeben" auf „Riss". Damit trugen aber ZWEI Dinge denselben
+         * Namen — die Lootbox und das gesperrte Feld, das sie hinterlässt
+         * (`SCHACH.risse`, seit v0.54). „Der Riss reisst Risse" ist keine
+         * Erklärung, sondern ein Rätsel.
+         *
+         * Jetzt sind es zwei Wörter für zwei Dinge: **Der Spalt** ist die
+         * Lootbox, **die Risse** sind die Löcher, die sie hinterlässt. Genau
+         * so steht es auch in der Beschreibung.
+         *
+         * DIE KENNUNG BLEIBT `erdbeben` — sie steckt in jeder laufenden Partie
+         * und in den Firebase-Daten; ein Umbenennen wäre ein Bruch des
+         * additiven Datenvertrags ohne jeden Gewinn (dieselbe Regel wie bei
+         * „Lootbox" und bei der Halluzination).
+         */
         erdbeben: {
-            titel: "Riss",
+            titel: "Spalt",
             stufe: "lila",
             beschreibung: "Der Boden reisst auf: Drei freie Felder brechen weg und "
                 + "sind ab sofort gesperrt — niemand zieht hindurch, nur Springer "
-                + "setzen darüber hinweg. Anders als eine Mauer bleiben die Risse "
+                + "setzen darüber hinweg. Anders als eine Mauer bleiben diese Risse "
                 + "die ganze Partie. Und sie reissen SOFORT auf: Wer die Lootbox im "
                 + "Vorbeiziehen mitnimmt und danach vor einem Loch steht, bleibt "
                 + "davor stehen — der Zug endet dort."

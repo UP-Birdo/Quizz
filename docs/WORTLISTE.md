@@ -81,7 +81,13 @@ Umbenennen würde die Fähigkeit aus jedem Vorrat entfernen.
 | Der Nutzer liest | Im Code | Seit |
 |---|---|---|
 | **Nekromant** | `friedhof` | v0.92 |
-| **Riss** (Unglückswürfel) | `erdbeben` | v0.92 |
+| **Spalt** (Unglücks-Lootbox) | `erdbeben` | v0.103 |
+
+**Spalt und Riss sind zwei verschiedene Dinge** (seit v0.103): Der **Spalt** ist
+die Unglücks-Lootbox, die **Risse** sind die gesperrten Felder, die sie
+hinterlässt (`SCHACH.risse`). Von v0.92 bis v0.102 hiess beides „Riss" — das
+war der Anlass für die zweite Umbenennung. Der Name „Erdbeben" (bis v0.92) ist
+nur noch die Kennung im Code.
 
 Ausgeblendet (nicht gelöscht, `versteckt: true` — wer sie im Vorrat hat, darf
 sie aufbrauchen): **Ausweichen** (v0.78), **Wiedergeburt** (v0.92).

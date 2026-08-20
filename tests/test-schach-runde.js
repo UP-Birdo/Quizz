@@ -529,8 +529,17 @@ pruefe("Die Umbenennungen aus v0.92 stehen fest", () => {
      */
     gleich(SCHACH_VARIANTEN.FAEHIGKEITEN.friedhof.titel, "Nekromant",
         "friedhof heisst sichtbar Nekromant");
-    gleich(SCHACH_VARIANTEN.PECH.erdbeben.titel, "Riss",
-        "erdbeben heisst sichtbar Riss");
+    /*
+     * SEIT v0.103 „Spalt", nicht mehr „Riss" (Nutzer-Ansage 20.08.). In v0.92
+     * war „Riss" der Ersatz fuer „Erdbeben" — damit hiessen aber die Lootbox
+     * UND das gesperrte Feld, das sie hinterlaesst, gleich. Jetzt sind es zwei
+     * Woerter fuer zwei Dinge: der SPALT ist die Lootbox, die RISSE sind die
+     * Loecher.
+     */
+    gleich(SCHACH_VARIANTEN.PECH.erdbeben.titel, "Spalt",
+        "erdbeben heisst sichtbar Spalt");
+    wahr(SCHACH_VARIANTEN.PECH.erdbeben.beschreibung.indexOf("Erdbeben") === -1,
+        "und der alte Name steht auch nicht mehr im Text");
     gleich(SCHACH_VARIANTEN.FAEHIGKEITEN.spiegel.stufe, "lila",
         "der Spiegel ist lila");
     gleich(SCHACH_VARIANTEN.FAEHIGKEITEN.wiedergeburt.versteckt, true,

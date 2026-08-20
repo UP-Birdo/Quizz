@@ -3,6 +3,19 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.103.0 — 2026-08-20
+
+**Die Unglücks-Lootbox heisst jetzt „Spalt".**
+
+- Sie hiess ursprünglich „Erdbeben" und seit v0.92 „Riss". Damit trugen aber
+  zwei Dinge denselben Namen: die Lootbox und das gesperrte Feld, das sie
+  hinterlässt. Jetzt sind es zwei Wörter für zwei Dinge — **der Spalt** ist die
+  Lootbox, **die Risse** sind die Löcher, die sie aufreisst.
+
+- Am Spiel selbst ändert sich nichts: dieselbe Stufe, dieselbe Wirkung. Auch
+  laufende Partien merken nichts davon, die Kennung im Hintergrund bleibt
+  unverändert.
+
 ## v0.102.0 — 2026-08-20
 
 **Schild und Fessel hängen jetzt an der Figur, nicht am Feld.**
