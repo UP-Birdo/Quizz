@@ -233,7 +233,7 @@ const SCHACH_VARIANTEN = {
          * der Boden auf.
          */
         erdbeben: {
-            titel: "Erdbeben",
+            titel: "Riss",
             stufe: "lila",
             beschreibung: "Der Boden reisst auf: Drei freie Felder brechen weg und "
                 + "sind ab sofort gesperrt — niemand zieht hindurch, nur Springer "
@@ -1060,9 +1060,22 @@ const SCHACH_VARIANTEN = {
          * Ort des Geschehens, der Friedhof bringt gleich vier). Auf der
          * legendären Stufe war sie die Enttäuschung unter fünf.
          */
+        /*
+         * WIEDERGEBURT IST SEIT v0.92 AUSGEBLENDET (Nutzer-Wunsch W5).
+         *
+         * `versteckt: true` — derselbe Weg wie beim Ausweichen (v0.78): Sie
+         * wird nicht mehr gezogen und steht nicht mehr in der Bibliothek, wer
+         * sie aber im Vorrat hat, darf sie aufbrauchen. Anders als bei einem
+         * Unglück ist das hier richtig: Eine Fähigkeit im Vorrat ist Besitz,
+         * keine Gefahr (siehe die Entscheidung zu Ausdehnung und Einsturz).
+         *
+         * Der Eintrag bleibt vollständig stehen, damit der Zugverlauf alter
+         * Partien lesbar bleibt und die Rückkehr ein einziger Schalter ist.
+         */
         wiedergeburt: {
             titel: "Wiedergeburt",
             stufe: "lila",
+            versteckt: true,
             art: "ziel",
             zielArt: "eigeneGrundreihe",
             beendetZug: true,
@@ -1071,7 +1084,7 @@ const SCHACH_VARIANTEN = {
         },
         spiegel: {
             titel: "Spiegel",
-            stufe: "gelb",
+            stufe: "lila",
             art: "ziel",
             zielArt: "eigeneFigurKopierbar",
             beendetZug: true,
@@ -1218,7 +1231,7 @@ const SCHACH_VARIANTEN = {
          * da sind.
          */
         friedhof: {
-            titel: "Friedhof",
+            titel: "Nekromant",
             stufe: "gelb",
             art: "ziel",
             zielArt: "friedhofsplatz",

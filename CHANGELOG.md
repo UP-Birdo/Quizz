@@ -3,6 +3,22 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.92.0 — 2026-08-20
+
+**Vier Änderungen an den Fähigkeiten.**
+
+- **„Friedhof" heisst jetzt „Nekromant".**
+- **Der Unglückswürfel „Erdbeben" heisst jetzt „Riss"** — passend dazu, was er
+  tut und wie die Felder danach heissen.
+- **Der „Spiegel" ist jetzt lila** statt gelb: Er kommt damit etwas häufiger
+  vor.
+- **Die „Wiedergeburt" ist ausgeblendet.** Sie erscheint nicht mehr in
+  Lootboxen und steht nicht mehr in der Bibliothek. **Wer sie noch im Vorrat
+  hat, darf sie aufbrauchen** — sie wird niemandem weggenommen.
+
+Bei allen vieren ändert sich nur, was du siehst: In laufenden Partien bleiben
+Vorrat und Zugverlauf vollständig erhalten.
+
 ## v0.91.0 — 2026-08-20
 
 **Zwei Einstellungen haben nichts getan — jetzt tun sie es.**

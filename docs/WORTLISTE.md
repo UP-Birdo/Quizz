@@ -47,8 +47,8 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Startseite eines Teams** | `stand.startSeiten` | Von welcher Seite eine FARBE gestartet ist (beim Kreuz zwei). Daran hängt die Lage der Ansicht. |
 | **Kreuz-Duell** | `variante.kreuzEinzeln` | Ein Kreuz mit nur einer Armee je Team, Startseite ausgelost (seit v0.72). |
 | **Startseite** | `stand.bauernSeiten` | Von welcher Seite ein Bauer kommt. Er läuft geradewegs zur gegenüberliegenden; dort wandelt er um. Ohne Eintrag gilt die Farbregel (Weiss unten, Schwarz oben). |
-| **Gefallen** | `runde.gefallen` | Merkt sich **wo** eine Figur starb (`{art, feld}`). Dafür der Friedhof und die Wiederbelebung. |
-| **Verloren** | `runde.verloren` | Merkt sich nur **was** verloren ging. Dafür die Wiedergeburt und die Bilanz. |
+| **Gefallen** | `runde.gefallen` | Merkt sich **wo** eine Figur starb (`{art, feld}`). Dafür der Nekromant (Kennung `friedhof`) und die Wiederbelebung. |
+| **Verloren** | `runde.verloren` | Merkt sich nur **was** verloren ging. Dafür die Wiedergeburt (seit v0.92 ausgeblendet) und die Bilanz. |
 | **Zwei Leben** | `koenigeAlsLeben` | Wer mehr als einen König hat, dessen Könige sind gewöhnliche Figuren; beim letzten gelten wieder Schach und Matt. |
 | **Saat** | `_zufallsWert(saat)` | Der Text, aus dem der gerechnete Zufall entsteht. Statt `Math.random()` — sonst sähe jedes Gerät ein anderes Brett. Was sich unterscheidet, gehört an den ANFANG der Saat. |
 
@@ -65,3 +65,19 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Figurenzähler** | `materialVorsprung` | Das `+N` unter dem Brett. Gerechnet aus der STELLUNG, nicht aus den Verlusten; nur die führende Seite trägt eine Zahl (seit v0.76). |
 | **Wer zuerst zieht, hat gezogen** | `regeln.einigkeit` (umgekehrt) | Der Haken beim Anlegen. **Aus** heisst: Das Team stimmt ab — das ist seit v0.76 die Vorgabe. Im Stand steht weiter `einigkeit`, unverändert in seiner Bedeutung. |
 | **Abschluss** | `TEAM_SCHACH.abschluss` | Der Bildschirm am Ende einer Partie, in drei Schritten: Rückschau, Ergebnis, Punktestand. |
+
+## Umbenannte Fähigkeiten — Anzeigename gegen Kennung
+
+Vier Namen sind seit v0.92 anders, als sie im Code heissen. Die KENNUNG bleibt
+in allen Fällen unverändert: Sie steht in gespeicherten Partien, und ein
+Umbenennen würde die Fähigkeit aus jedem Vorrat entfernen.
+
+| Der Nutzer liest | Im Code | Seit |
+|---|---|---|
+| **Nekromant** | `friedhof` | v0.92 |
+| **Riss** (Unglückswürfel) | `erdbeben` | v0.92 |
+
+Ausgeblendet (nicht gelöscht, `versteckt: true` — wer sie im Vorrat hat, darf
+sie aufbrauchen): **Ausweichen** (v0.78), **Wiedergeburt** (v0.92).
+Ganz aus dem Spiel, auch aus laufenden Partien: **Ausdehnung** und
+**Einsturz** (v0.84, Unglückswürfel — siehe `entschieden-ab-v0-41.md`).

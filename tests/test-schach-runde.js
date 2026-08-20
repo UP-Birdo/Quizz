@@ -387,6 +387,47 @@ pruefe("Der Vorrat hat die verlangte Groesse und wird GERECHNET (v0.87)", () => 
     wahr(eine !== andere, "zwei Partien, zwei Vorraete");
 });
 
+pruefe("Die Umbenennungen aus v0.92 stehen fest", () => {
+    /*
+     * VIER NUTZER-ENTSCHEIDUNGEN VOM 20.08. Der Test haelt sie fest, damit
+     * niemand sie beilaeufig zurueckdreht — und er haelt vor allem fest, dass
+     * nur der TITEL sich aendert: Die KENNUNG steht in jeder gespeicherten
+     * Partie, ein Umbenennen wuerde die Faehigkeit aus jedem Vorrat werfen
+     * (`normalisieren` behaelt nur, was es in der Tabelle gibt).
+     */
+    gleich(SCHACH_VARIANTEN.FAEHIGKEITEN.friedhof.titel, "Nekromant",
+        "friedhof heisst sichtbar Nekromant");
+    gleich(SCHACH_VARIANTEN.PECH.erdbeben.titel, "Riss",
+        "erdbeben heisst sichtbar Riss");
+    gleich(SCHACH_VARIANTEN.FAEHIGKEITEN.spiegel.stufe, "lila",
+        "der Spiegel ist lila");
+    gleich(SCHACH_VARIANTEN.FAEHIGKEITEN.wiedergeburt.versteckt, true,
+        "die Wiedergeburt ist ausgeblendet");
+
+    /* Die Kennungen selbst bleiben — sonst verlieren laufende Partien ihren
+       Vorrat. */
+    for (const art of ["friedhof", "spiegel", "wiedergeburt"]) {
+        wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[art], art + ": Kennung steht noch");
+    }
+    wahr(!!SCHACH_VARIANTEN.PECH.erdbeben, "erdbeben: Kennung steht noch");
+
+    /* Ausgeblendet heisst: nicht mehr ziehbar, aber aufbrauchbar. */
+    wahr(SCHACH_VARIANTEN.faehigkeitenDerStufe("lila").indexOf("wiedergeburt") === -1,
+        "die Wiedergeburt wird nicht mehr gezogen");
+
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.weiss.push("wiedergeburt");
+    const wieder = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(runde)));
+    wahr(wieder.faehigkeiten.weiss.indexOf("wiedergeburt") !== -1,
+        "wer sie im Vorrat hat, behaelt sie");
+
+    /* Und keine Stufe ist durch den Umbau leer geworden. */
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        wahr(SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length > 0,
+            "Stufe " + stufe.id + " hat noch Faehigkeiten");
+    }
+});
+
 pruefe("Enttarnen gibt es nur, wenn die Seltenheit verborgen ist (v0.88)", () => {
     /*
      * R4, die erste Faehigkeit mit einer BEDINGUNG. Sie darf in einer Partie
