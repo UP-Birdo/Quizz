@@ -540,10 +540,10 @@ const SCHACH_RUNDE = {
      * der Spielart (seit v0.51) — auf dem klassischen Brett sind das vier
      * Spalten mit je zwei freien daneben, auf dem Doppelbrett acht mit je vier.
      */
-    _armeeFelder(variante, farbe) {
+    _armeeFelder(variante, farbe, staerke) {
         const breite = variante.breite;
         const hoehe = variante.hoehe;
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, staerke);
         const reihen = (farbe === SCHACH.WEISS) ? [hoehe - 1, hoehe - 2] : [0, 1];
         const felder = [];
 
@@ -571,9 +571,9 @@ const SCHACH_RUNDE = {
      * rechts derselbe freie Rand wie überall — beides steckt schon in
      * `SCHACH_VARIANTEN.armeeSpalten`.
      */
-    _armeeFelderKreuz(variante, seite) {
+    _armeeFelderKreuz(variante, seite, staerke) {
         const kante = variante.breite;
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, staerke);
         const felder = [];
 
         /* Aussen zuerst, dann die innere Linie — in Brett-Koordinaten. */
@@ -721,7 +721,7 @@ const SCHACH_RUNDE = {
         }
 
         for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
-            const felder = SCHACH_RUNDE._armeeFelder(variante, farbe);
+            const felder = SCHACH_RUNDE._armeeFelder(variante, farbe, staerke);
             const arten = SCHACH_RUNDE._armeeFiguren(
                 id, farbe, variante, getrennt, undefined, staerke, felder.length);
             const anzahl = Math.min(felder.length, arten.length);
@@ -778,7 +778,7 @@ const SCHACH_RUNDE = {
 
         for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
             for (const seite of SCHACH.startSeitenVon(stand, farbe)) {
-                const felder = SCHACH_RUNDE._armeeFelderKreuz(variante, seite);
+                const felder = SCHACH_RUNDE._armeeFelderKreuz(variante, seite, staerke);
                 const arten = SCHACH_RUNDE._armeeFiguren(
                     id, farbe, variante, getrennt, seite, staerke, felder.length);
                 const anzahl = Math.min(felder.length, arten.length);
@@ -3817,7 +3817,27 @@ const SCHACH_RUNDE = {
      * Für alle anderen Fähigkeiten liefert sie `true`.
      */
     _etwasZuHolen(runde, spielerId, art) {
-        if (art !== "dieb" && art !== "haendler") {
+        /*
+         * DER DIEB STEHT SEIT v0.99 NICHT MEHR HIER (Nutzer-Entscheidung
+         * 20.08.: „Dieb und die neuen Items sollen so wie alle anderen auch
+         * eingesammelt werden und dann, wann man will, genutzt werden").
+         *
+         * Von v0.94 bis v0.98 wurde seine Marke grau, sobald der Gegner nichts
+         * im Vorrat hatte — gedacht als Ersparnis (im Spieltest 861 Griffe ins
+         * Leere), erlebt als „das Item funktioniert nicht wie ein Item". Der
+         * Nutzer hat den Preis anders gewichtet als der Spieltest: Ein Item,
+         * das man nicht anfassen darf, fühlt sich kaputt an; ein Fenster, das
+         * „gerade nichts zu holen" sagt, ist nur eine Auskunft.
+         *
+         * VERLOREN GEHT DABEI NICHTS: `TEAM_SCHACH.diebstahlAnbieten` fängt
+         * den leeren Fall seit jeher ab, sagt es und lässt die Fähigkeit im
+         * Vorrat. Es ist ein Tipp zu viel, kein verbrauchtes Item.
+         *
+         * DER HÄNDLER BLEIBT, wo er ist: Bei ihm hängt die Absage nicht am
+         * Vorrat des Gegners, sondern daran, ob sich aus den EIGENEN Figuren
+         * überhaupt ein Tausch bilden lässt — und er wurde nicht gemeldet.
+         */
+        if (art !== "haendler") {
             return true;
         }
 
@@ -3827,9 +3847,6 @@ const SCHACH_RUNDE = {
             return true;
         }
 
-        if (art === "dieb") {
-            return (stand.faehigkeiten[SCHACH.gegner(farbe)] || []).length > 0;
-        }
         return !!SCHACH_RUNDE.handelsAngebot(stand, farbe);
     },
 

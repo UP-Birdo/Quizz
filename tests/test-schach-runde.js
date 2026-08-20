@@ -3748,6 +3748,68 @@ pruefe("Eine Partie ohne Staerke-Angabe spielt weiter wie vor v0.86", () => {
         "unbekannte Stufe wird normal");
 });
 
+pruefe("Jede Armee-Staerke stellt MEHR auf als die darunter (v0.99)", () => {
+    /*
+     * SONST IST EIN KNOPF WIRKUNGSLOS — dieselbe Pruefung wie beim Item-Vorrat
+     * (v0.87), und aus demselben Anlass. Bis v0.98 war genau das der Fall:
+     * `armeeAnzahl` multiplizierte den Anteil, waehrend die Zahl der
+     * STARTFELDER fest blieb. Alles ueber „normal" wurde deshalb abgeschnitten
+     * — „viel" und „voll" stellten auf jedem Brett dieselbe Armee auf wie
+     * „normal". Gemeldet am 20.08. als „die Vorschau bei den Maps aendert sich
+     * nicht, wenn man die Figurenzahl aendert".
+     *
+     * Geprueft wird ueber JEDE waehlbare Spielart und am WIRKLICH aufgestellten
+     * Brett, nicht an der angekuendigten Zahl: Genau zwischen diesen beiden
+     * lief der Fehler.
+     */
+    for (const variante of SCHACH_VARIANTEN.zurAuswahl()) {
+        let vorher = 0;
+
+        for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
+            let runde = SCHACH_RUNDE.leereRunde(1000, variante.id,
+                "p-staerke-" + variante.id, "Staerke");
+
+            runde.regeln.zufallsArmee = true;
+            runde.regeln.armeeStaerke = staerke.id;
+            runde = SCHACH_RUNDE.kreuzAufstellen(runde, "");
+            runde = SCHACH_RUNDE.armeeAufstellen(runde, "");
+
+            const gezaehlt = figurenZaehlen(runde.stand, "weiss");
+            const summe = Object.keys(gezaehlt)
+                .reduce((wert, art) => wert + gezaehlt[art], 0);
+
+            if (staerke.id !== "wenig") {
+                wahr(summe > vorher, variante.id + "/" + staerke.id
+                    + ": mehr als die Stufe davor (" + summe + " gegen " + vorher + ")");
+            }
+            vorher = summe;
+        }
+    }
+});
+
+pruefe("Die angekuendigte Zahl stimmt mit den Startfeldern ueberein (v0.99)", () => {
+    /*
+     * `armeeAnzahl` und `_armeeFelder` muessen dieselbe Rechnung sein — sonst
+     * verspricht die Kachel eine Zahl, die das Brett nicht haelt. Seit v0.99
+     * kommen beide aus `armeeSpalten`; dieser Test haelt sie zusammen.
+     *
+     * Auf dem KREUZ ist die Zahl die je STARTSEITE (seit v0.76), deshalb wird
+     * dort gegen die Felder EINER Seite verglichen.
+     */
+    for (const variante of SCHACH_VARIANTEN.zurAuswahl()) {
+        for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
+            const gesagt = SCHACH_VARIANTEN.armeeAnzahl(variante, staerke.id);
+
+            const felder = variante.kreuz
+                ? SCHACH_RUNDE._armeeFelderKreuz(variante, "unten", staerke.id)
+                : SCHACH_RUNDE._armeeFelder(variante, "weiss", staerke.id);
+
+            gleich(felder.length, gesagt, variante.id + "/" + staerke.id
+                + ": angekuendigte Zahl gleich Zahl der Startfelder");
+        }
+    }
+});
+
 pruefe("Die Zufallsarmee stellt die halbe Armee mittig auf", () => {
     const regel = SCHACH_VARIANTEN.ARMEE;
 
@@ -7334,20 +7396,40 @@ pruefe("Ohne Schach bietet dieselbe Faehigkeit ihre Felder an (v0.94)", () => {
  * Dieb und Haendler sagen vorher ab (seit v0.94)
  * ------------------------------------------------------------------ */
 
-pruefe("Der Dieb laesst sich nicht einsetzen, wenn der Gegner nichts hat (v0.94)", () => {
+pruefe("Der Dieb bleibt einsetzbar, auch wenn der Gegner nichts hat (v0.99)", () => {
+    /*
+     * DIESER TEST STAND BIS v0.98 AUF DEM KOPF: Damals (v0.94) sollte die
+     * Marke GRAU werden, sobald beim Gegner nichts zu holen war — gedacht als
+     * Ersparnis, denn im Spieltest gab es 861 Griffe ins Leere.
+     *
+     * NUTZER-ENTSCHEIDUNG 20.08.2026: „Dieb und die neuen Items sollen so wie
+     * alle anderen auch eingesammelt werden und dann, wann man will, genutzt
+     * werden." Ein Item, das man nicht anfassen darf, fuehlt sich kaputt an —
+     * das wog schwerer als der gesparte Tipp. Verloren geht nichts: Das
+     * Fenster sagt „beim Gegner ist nichts zu holen" und laesst die Faehigkeit
+     * im Vorrat.
+     *
+     * Der HAENDLER bleibt bei der alten Regel (siehe der Test weiter unten) —
+     * bei ihm haengt die Absage an den EIGENEN Figuren, und er wurde nicht
+     * gemeldet.
+     */
     const runde = faehigkeitenPartie();
     const mitVorrat = SCHACH_RUNDE.kopieren(runde);
 
     mitVorrat.faehigkeiten.weiss.push("dieb");
     mitVorrat.faehigkeiten.schwarz = [];
 
-    gleich(SCHACH_RUNDE.darfEinsetzen(mitVorrat, "id-anna", "dieb"), false,
-        "leerer gegnerischer Vorrat: die Marke bleibt grau");
-    gleich(SCHACH_RUNDE._etwasZuHolen(mitVorrat, "id-anna", "dieb"), false,
-        "und der Grund steht im Modell");
+    gleich(SCHACH_RUNDE.darfEinsetzen(mitVorrat, "id-anna", "dieb"), true,
+        "leerer gegnerischer Vorrat: die Marke bleibt trotzdem bedienbar");
+    gleich(SCHACH_RUNDE._etwasZuHolen(mitVorrat, "id-anna", "dieb"), true,
+        "das Modell haelt ihn nicht mehr zurueck");
+
+    /* Und die Beute ist ehrlich leer — daran haengt der Text im Fenster. */
+    gleich(SCHACH_RUNDE.diebesBeute(mitVorrat, "weiss"), null,
+        "zu holen gibt es aber wirklich nichts");
 });
 
-pruefe("Mit gegnerischem Vorrat geht der Dieb wieder (v0.94)", () => {
+pruefe("Mit gegnerischem Vorrat holt der Dieb etwas (v0.94)", () => {
     const runde = faehigkeitenPartie();
     const mitVorrat = SCHACH_RUNDE.kopieren(runde);
 
@@ -7356,6 +7438,8 @@ pruefe("Mit gegnerischem Vorrat geht der Dieb wieder (v0.94)", () => {
 
     gleich(SCHACH_RUNDE.darfEinsetzen(mitVorrat, "id-anna", "dieb"), true,
         "jetzt gibt es etwas zu holen");
+    wahr(SCHACH_RUNDE.diebesBeute(mitVorrat, "weiss") !== null,
+        "und die Beute steht fest");
 });
 
 pruefe("Der Haendler laesst sich nicht einsetzen, wenn der Tausch nicht aufgeht (v0.94)", () => {

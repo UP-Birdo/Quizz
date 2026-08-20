@@ -55,9 +55,17 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       vergleicht jetzt die SCHLÜSSEL vorher/nachher und muss nie gepflegt
       werden. Merksatz: Wo ein Datensatz neu aufgebaut statt kopiert wird,
       ist die Feldliste eine Schnittstelle — und gehört abgesichert
-    - **Was zur Meldung #36 schon gemessen wurde** — Liste dessen, was für die
-      noch offene DIEB-Hälfte bereits AUSGESCHLOSSEN ist. **Vor jeder weiteren
-      Suche lesen**
+    - **Was zur Meldung #36 schon gemessen wurde** (erledigt mit v0.99) —
+      die Liste des Ausgeschlossenen und der Nachtrag, warum die Dieb-Hälfte
+      kein Fehler war, sondern eine Regel, die sich wie einer anfühlte.
+      Merksatz: Wer eine Bequemlichkeit einbaut, die etwas WEGNIMMT, fragt
+      vorher nach
+    - **Eine Einstellung, die eine Zahl verspricht, die das Brett nicht halten
+      kann** (v0.86, gefunden v0.99) — „viel" und „voll" stellten dieselbe
+      Armee auf wie „normal", weil `armeeAnzahl` den Anteil multiplizierte,
+      während die Startfelder fest blieben. Merksatz: Versprechen und
+      Wirklichkeit kommen aus DERSELBEN Funktion; ein `Math.min` gegen eine
+      Obergrenze ist eine stille Absage, kein Schutz
     - **Zwei Wege zum Partieende, aber nur einer wurde geprueft** (v3.6,
       gefunden v0.94) — Matt und Patt wurden nur nach einem ZUG geprueft; eine
       Faehigkeit konnte mattsetzen, ohne die Partie zu beenden. Dazu derselbe

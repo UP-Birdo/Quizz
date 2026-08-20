@@ -984,6 +984,56 @@ sieht, nicht wo es herkommt. „Die Fähigkeit ist weg" und „die Fähigkeit tu
 nichts mehr" sehen am Brett gleich aus — die zweite Lesart war nie geprüft
 worden.
 
+**NACHTRAG v0.99 — DAMIT IST #36 GANZ BEANTWORTET.** Die Dieb-Hälfte war kein
+Fehler, sondern eine **Regel, die sich wie einer anfühlte**: die graue Marke
+aus v0.94. Nachgemessen mit einem Wegwerf-Skript über den ganzen Weg
+(Einsammeln → eigener Zug → Gegnerzug → Speichern → Laden) blieben Dieb,
+Enttarnen und Verstecken jedes Mal vollständig im Vorrat; einzig
+`darfEinsetzen("dieb")` lieferte `false`, sobald der Gegner nichts hatte. Der
+Nutzer hat daraufhin die Regel zurückgenommen („sollen … wann man will genutzt
+werden").
+
+**Und das ist die eigentliche Lehre dieser Meldung:** Eine Sperre, die einen
+nutzlosen Griff spart, kostet den Eindruck, das Item gehöre einem. Der
+Spieltest hatte recht mit der Zahl (861 Griffe ins Leere) und unrecht mit dem
+Schluss — er konnte nicht messen, wie sich eine graue Marke anfühlt. **Wer eine
+Bequemlichkeit einbaut, die etwas WEGNIMMT, fragt vorher nach.** Der Bericht
+lautete deshalb auch nicht „der Dieb ist grau", sondern „der Dieb ist
+verschwunden": Was man nicht anfassen darf, ist für den Spieler nicht da.
+
+## Eine Einstellung, die eine Zahl verspricht, die das Brett nicht halten kann (v0.86, gefunden v0.99)
+
+**Symptom:** Die Knopfreihe „Wie viele Figuren je Seite?" hatte vier Stufen,
+aber nur zwei Wirkungen. „viel" und „voll" stellten auf JEDEM Brett dieselbe
+Armee auf wie „normal" — gemeldet als „die Vorschau bei den Maps ändert sich
+nicht, wenn man die Figurenzahl ändert".
+
+**Die Ursache — zwei Rechnungen für dieselbe Sache.**
+`SCHACH_VARIANTEN.armeeAnzahl` multiplizierte eine Grundzahl mit dem Anteil der
+Stärke (1,5 bzw. 2). Die STARTFELDER dagegen kamen aus `armeeSpalten` und waren
+von der Stärke unabhängig — genau so viele, wie „normal" braucht. Beim
+Aufstellen gewann die kleinere Zahl (`Math.min(felder.length, arten.length)`).
+Jede Stufe über „normal" lief also gegen eine Wand, die niemand sah.
+
+**Warum es v0.86 nicht auffiel:** Damals fiel derselben Sache schon einmal
+etwas zum Opfer — der König rutschte beim Kürzen aus der Liste (siehe oben,
+„Wer eine gerechnete Liste kürzt"). Behoben wurde der KÖNIG. Dass überhaupt
+gekürzt werden musste, blieb stehen und galt als normal. **Ein Symptom, das
+man behebt, ohne zu fragen, warum es entstehen konnte, lässt die Ursache
+liegen.**
+
+**Der Fix:** Die Stärke wirkt jetzt in `armeeSpalten` — sie verbreitert den
+Block, statt eine Zahl zu vergrössern, die nirgends hinpasst. Weil ein Faktor
+über den Brettrand hinauszeigen kann, spannen die Stufen zwischen zwei Punkten,
+die es wirklich gibt: der gewohnten Breite (`anteil`) und der ganzen Reihe
+(`zurVollenBreite`). `armeeAnzahl` liest dieselbe Funktion, damit die Zahl unter
+der Kachel nie wieder etwas anderes sagt als das Brett.
+
+**Merksatz:** Wer eine Einstellung baut, die eine ZAHL verspricht, prüft, ob
+der Platz sie hält — und lässt Versprechen und Wirklichkeit aus DERSELBEN
+Funktion kommen. Ein `Math.min` gegen eine Obergrenze ist kein Schutz, sondern
+eine stille Absage.
+
 ## Zwei Wege zum Partieende, aber nur einer wurde geprüft (v3.6, gefunden v0.94)
 
 **Was zu sehen war:** Eine Partie stand still. Der Gegner war am Zug, die

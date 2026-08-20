@@ -114,6 +114,20 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   (Wunsch #17: der erste König fällt normal, beim letzten gelten wieder Schach
   und Matt). Der Schalter bleibt trotzdem: Er ist die einzige Möglichkeit, ein
   Brett ganz ohne Schachbegriff zu bauen.
+- **DIE STÄRKE DER ZUFALLSARMEE VERBREITERT DEN STARTFELD-BLOCK, sie
+  multipliziert keine Zahl** (seit v0.99). `SCHACH_VARIANTEN.armeeSpalten`
+  nimmt die Stärke entgegen und liefert daraus Spalten UND Rand;
+  `armeeAnzahl`, `_armeeFelder` und `_armeeFelderKreuz` rechnen alle daraus.
+  **Bis v0.98 taten sie das nicht:** `armeeAnzahl` multiplizierte den Anteil,
+  die Feldzahl blieb fest — alles über „normal" wurde beim Aufstellen
+  abgeschnitten, und „viel" wie „voll" stellten auf JEDEM Brett dieselbe Armee
+  auf wie „normal". Zwei von vier Knöpfen taten nichts.
+  **Die Regel dahinter:** Wer eine Einstellung baut, die eine ZAHL verspricht,
+  prüft, ob das Brett sie halten kann — und rechnet beide aus derselben
+  Funktion. Zwei Rechnungen für dieselbe Sache laufen auseinander; hier taten
+  sie es ab dem ersten Knopfdruck. Zwei Tests halten es fest: Jede Stufe stellt
+  mehr auf als die darunter, und die angekündigte Zahl gleicht der Zahl der
+  Startfelder.
 - **Die Zufallsarmee ist ein HAKEN der Partie** (`regeln.zufallsArmee`, seit
   v0.51 — vorher eine eigene Spielart). Das echte Brett baut
   `SCHACH_RUNDE._armeeStand` aus der Partie-Kennung — gerechnet, nicht
@@ -383,11 +397,21 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   dieselbe `SCHACH.lage` wie `ziehen` und setzt Ergebnis und `laeuft`. Bis
   v0.93 fehlte diese Zeile ganz, und eine mattsetzende Wirkung hielt die Partie
   an, statt sie zu beenden.
-- **Was am Brett nicht zu sehen ist, prüft `darfEinsetzen` vorher.** Drei
-  Fähigkeiten hängen an gefallenen Figuren (`_gefalleneVorhanden`, seit v0.59),
-  zwei an einem fremden oder eigenen Vorrat (`_etwasZuHolen`, seit v0.94: Dieb
-  und Händler). Ist dort nichts, bleibt die Marke grau und nennt beim Antippen
-  den Grund — statt den Spieler erst im Fenster danach abzuweisen.
+- **Was am Brett nicht zu sehen ist, prüft `darfEinsetzen` vorher — aber nicht
+  um jeden Preis.** Drei Fähigkeiten hängen an gefallenen Figuren
+  (`_gefalleneVorhanden`, seit v0.59), eine am eigenen Material
+  (`_etwasZuHolen`: der Händler). Ist dort nichts, bleibt die Marke grau und
+  nennt beim Antippen den Grund.
+  **DER DIEB GEHÖRT SEIT v0.99 NICHT MEHR DAZU** (Nutzer-Entscheidung 20.08.:
+  „Dieb und die neuen Items sollen so wie alle anderen auch eingesammelt werden
+  und dann, wann man will, genutzt werden"). Von v0.94 bis v0.98 wurde seine
+  Marke grau, sobald der Gegner nichts im Vorrat hatte — im Spieltest sparte
+  das 861 Griffe ins Leere, am Tisch fühlte es sich an wie ein kaputtes Item.
+  **Die Lehre gilt allgemein:** Eine Sperre, die einen Griff ins Leere spart,
+  kostet den Eindruck, das Item gehöre einem. Wo die Fähigkeit dabei nicht
+  verbraucht wird — und beim Dieb wird sie es nicht, `diebstahlAnbieten` sagt
+  ab und lässt sie liegen —, ist die Auskunft im Fenster die bessere Antwort
+  als die graue Marke.
 - **Zwei Fragen an einen Weg, zwei Funktionen.** `SCHACH.wegFelder` sagt, welche
   Felder man ZEICHNET (beim Springer das L), `SCHACH.betreteneFelder`, welche
   die Figur wirklich BETRITT (beim Springer nur das Ziel). An der zweiten hängt,

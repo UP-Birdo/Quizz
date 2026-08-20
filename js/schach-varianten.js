@@ -2048,15 +2048,45 @@ const SCHACH_VARIANTEN = {
      *     Kleines Kreuz (10)  Mitte 6 → 2 Spalten, Rand 4  →  4 Figuren je Seite
      *     Kreuz (12)          Mitte 8 → 4 Spalten, Rand 4  →  8 Figuren je Seite
      *     Großes Kreuz (14)   Mitte 10 → 6 Spalten, Rand 4 → 12 Figuren je Seite
+     *
+     * DIE STÄRKE VERBREITERT DEN BLOCK (seit v0.99) — vorher tat sie es nicht,
+     * und genau daran lag der gemeldete Fehler.
+     *
+     * Bis v0.98 war die Zahl der Startfelder FEST (`spalten * 2`), während
+     * `armeeAnzahl` sie mit dem Anteil der Stärke multiplizierte. Alles über
+     * „normal" lief deshalb gegen die Feldzahl und wurde abgeschnitten: „viel"
+     * und „voll" stellten dieselbe Armee auf wie „normal", auf jedem Brett.
+     * Zwei der vier Knöpfe taten nichts — gemeldet am 20.08. als „die Vorschau
+     * bei den Maps ändert sich nicht, wenn man die Figurenzahl ändert".
+     *
+     * ZWEI ANKER STATT EINES FAKTORS. Ein Faktor allein kann das nicht lösen:
+     * Er zeigt über die Brettbreite hinaus, und dort ist kein Platz. Deshalb
+     * spannt die Stärke zwischen zwei Punkten, die es wirklich gibt:
+     *
+     *     `anteil`           die gewohnte Breite (`normal`) und darunter
+     *     `zurVollenBreite`  wie weit von dort bis an den Rand der Reihe
+     *
+     * Damit heisst „voll" wörtlich, was es sagt — die beiden Grundreihen ganz
+     * ausgefüllt —, und „viel" liegt sauber dazwischen. Auf dem klassischen
+     * Brett sind das 2, 4, 6 und 8 Spalten, also 4, 8, 12 und 16 Figuren.
+     *
+     * `normal` und `wenig` rechnen unverändert wie vorher: Jede laufende
+     * Partie und jeder Test von früher kommt auf dieselbe Aufstellung.
      */
-    armeeSpalten(variante) {
+    armeeSpalten(variante, staerkeId) {
         const rand = SCHACH_VARIANTEN.ARMEE.randBreite;
         const ecke = variante.kreuz ? SCHACH_VARIANTEN.KREUZ.rand : 0;
         const nutzbar = variante.breite - 2 * ecke;
 
         /* Mindestens eine Spalte, sonst stünde auf einem sehr schmalen Brett
            gar nichts — dann schrumpft eben der Rand. */
-        const spalten = Math.max(1, nutzbar - 2 * rand);
+        const grund = Math.max(1, nutzbar - 2 * rand);
+        const staerke = SCHACH_VARIANTEN.armeeStaerkeVon(staerkeId);
+
+        const gedehnt = grund * staerke.anteil
+            + (nutzbar - grund) * (staerke.zurVollenBreite || 0);
+
+        const spalten = Math.max(1, Math.min(nutzbar, Math.round(gedehnt)));
 
         return {
             spalten: spalten,
@@ -2093,11 +2123,19 @@ const SCHACH_VARIANTEN = {
      * `_armeeFiguren` mischt, ein nachträgliches Abschneiden könnte also den
      * König treffen.
      */
+    /*
+     * SEIT v0.99 IST DAS DIESELBE RECHNUNG WIE DIE FELDER — und das ist der
+     * ganze Punkt: Die Stärke wirkt jetzt in `armeeSpalten`, also dort, wo
+     * auch die Startfelder herkommen. Vorher rechnete diese Funktion mit dem
+     * Anteil weiter, während die Feldzahl fest blieb; was nicht hinpasste,
+     * fiel beim Aufstellen weg, und die Zahl unter der Kachel log.
+     *
+     * Zwei Zahlen für dieselbe Sache laufen auseinander — hier taten sie es
+     * ab dem ersten Knopfdruck über „normal".
+     */
     armeeAnzahl(variante, staerkeId) {
-        const grund = SCHACH_VARIANTEN.armeeSpalten(variante).spalten * 2;
-        const anteil = SCHACH_VARIANTEN.armeeStaerkeVon(staerkeId).anteil;
-
-        return Math.max(2, Math.round(grund * anteil));
+        return Math.max(2,
+            SCHACH_VARIANTEN.armeeSpalten(variante, staerkeId).spalten * 2);
     },
 
     /*
@@ -2122,18 +2160,28 @@ const SCHACH_VARIANTEN = {
             anteil: 1,
             hinweis: "Die übliche Zahl: so breit wie die Aufstellung."
         },
+        /*
+         * `zurVollenBreite` seit v0.99 (siehe `armeeSpalten`): Diese zwei
+         * Stufen werden nicht mehr aus dem Anteil gerechnet, sondern aus dem
+         * Abstand zur ganzen Reihe. Mit einem Anteil von 1,5 und 2 zeigten sie
+         * über den Brettrand hinaus und wurden abgeschnitten — beide stellten
+         * dieselbe Armee auf wie „normal".
+         */
         {
             id: "viel",
             titel: "viel",
-            anteil: 1.5,
-            hinweis: "Die Hälfte mehr — das Brett wird enger."
+            anteil: 1,
+            zurVollenBreite: 0.5,
+            hinweis: "Deutlich mehr — der Block reicht halb bis an den Rand, "
+                + "das Brett wird enger."
         },
         {
             id: "voll",
             titel: "voll",
-            anteil: 2,
-            hinweis: "So viele, wie auf die Startfelder passen. Mehr geht nicht: "
-                + "Was keinen Platz findet, bleibt weg."
+            anteil: 1,
+            zurVollenBreite: 1,
+            hinweis: "Die beiden Grundreihen ganz ausgefüllt — mehr passt nicht "
+                + "auf die Startfelder."
         }
     ],
 

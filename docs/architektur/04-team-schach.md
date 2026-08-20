@@ -218,6 +218,26 @@ Spielart nennt eine Zahl.** (v0.51 hatte es andersherum versucht — erst die
 halbe Armee, dann den Rand daraus; auf dem kleinen Brett blieb nur eine Spalte
 Rand übrig.)
 
+**Die STÄRKE verbreitert diesen Block** (`regeln.armeeStaerke`, seit v0.86 —
+richtig erst seit v0.99). `armeeSpalten(variante, staerke)` bekommt sie als
+wahlfreien zweiten Parameter, und alles andere rechnet daraus: `armeeAnzahl`,
+`_armeeFelder`, `_armeeFelderKreuz`. Die vier Stufen spannen zwischen zwei
+Punkten, die es auf jedem Brett wirklich gibt — der gewohnten Breite (`anteil`)
+und der ganzen Reihe (`zurVollenBreite`):
+
+| Klassisches Brett | wenig | normal | viel | voll |
+|---|---|---|---|---|
+| Spalten | 2 | 4 | 6 | 8 |
+| Figuren je Seite | 4 | 8 | 12 | 16 |
+
+**Bis v0.98 stand die Stärke NUR in `armeeAnzahl`** und multiplizierte dort
+einen Anteil (1,5 bzw. 2), während die Feldzahl fest blieb. Beim Aufstellen
+gewann die kleinere Zahl — „viel" und „voll" stellten deshalb auf jedem Brett
+dieselbe Armee auf wie „normal". Zwei Tests halten das jetzt fest: Jede Stufe
+stellt mehr auf als die darunter, und die angekündigte Zahl gleicht der Zahl
+der Startfelder (`erkenntnisse.md`, „Eine Einstellung, die eine Zahl
+verspricht").
+
 **Auf dem Kreuz zählt die MITTE, nicht die Brettbreite** (seit v0.76): Ein
 Streifen ist nur so breit wie `breite - 2 * KREUZ.rand`, die toten Ecken
 gehören nicht dazu. `armeeSpalten` rechnet deshalb mit der Mitte und gibt in

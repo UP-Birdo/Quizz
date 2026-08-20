@@ -3,6 +3,32 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.99.0 — 2026-08-20
+
+**Zwei Meldungen vom selben Tag: der Dieb und die Figurenzahl.**
+
+- **Der Dieb lässt sich wieder jederzeit einsetzen.** Seit v0.94 wurde seine
+  Marke grau, sobald der Gegner nichts im Vorrat hatte — gedacht als Ersparnis,
+  erlebt als „das Item funktioniert nicht wie ein Item". Jetzt liegt er im
+  Vorrat wie jede andere Fähigkeit und wird benutzt, wann du willst. Ist beim
+  Gegner gerade nichts zu holen, sagt das Fenster es dir, und du behältst ihn.
+
+- **Die Knöpfe „viel" und „voll" tun endlich etwas.** Bisher stellten sie
+  dieselbe Armee auf wie „normal" — auf jedem Brett. Der Grund: Die Zahl der
+  Startfelder war fest, alles darüber wurde einfach abgeschnitten. Jetzt wächst
+  der Block mit:
+
+  | Klassisches Brett | wenig | normal | viel | voll |
+  |---|---|---|---|---|
+  | Figuren je Seite | 4 | 8 | 12 | 16 |
+
+  „voll" heisst damit wörtlich, was es sagt: die beiden Grundreihen ganz
+  ausgefüllt. „wenig" und „normal" stellen unverändert dasselbe auf wie vorher.
+
+- Und weil beides zusammenhängt: Die Zahl unter der Spielart-Kachel stimmt
+  jetzt in jedem Fall mit dem überein, was die Partie hinterher wirklich
+  aufstellt. Ein Test hält beide Rechnungen zusammen.
+
 ## v0.98.0 — 2026-08-20
 
 **Neue Fähigkeit „Verstecken" — und vier Meldungen aus dem Wunsch-Knopf.**
