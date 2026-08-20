@@ -3,6 +3,22 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.93.0 — 2026-08-20
+
+**Unter jeder Spielart steht jetzt, wie lange eine Runde ungefähr dauert.**
+
+- Beim Anlegen zeigt jede Kachel neben der Figurenzahl eine Zeile
+  **„Dauer: etwa 25 Minuten"**. Sie geht mit, sobald du an den Einstellungen
+  drehst — mehr Figuren, ein grösseres Brett oder mehr Lootboxen heissen mehr
+  Zeit.
+
+- **Die Schätzung lernt mit.** Sie rechnet nicht nur mit einer Faustformel,
+  sondern zieht heran, wie lange in euren bisherigen Partien tatsächlich
+  gespielt wurde. Je mehr ihr spielt, desto besser trifft sie.
+
+- Es bleibt ausdrücklich ein **Anhaltspunkt**, keine Zusage — deshalb steht
+  „etwa" davor und wird auf fünf Minuten gerundet.
+
 ## v0.92.0 — 2026-08-20
 
 **Vier Änderungen an den Fähigkeiten.**

@@ -158,6 +158,13 @@ const SCHACH_RUNDE = {
             bonusFassung: SCHACH_RUNDE.BONUS_FASSUNG,
 
             /*
+             * Sekunden, die an dieser Partie gespielt wurde (seit v0.93).
+             * Wird NIE angezeigt — sie ist allein die Grundlage der
+             * Dauer-Schätzung unter den Spielart-Kacheln.
+             */
+            spielzeit: 0,
+
+            /*
              * Bei welchem TAKT zuletzt ein Würfel einer Stufe erschienen ist:
              * { gruen: 12, … }. Daraus rechnet `_bonusNachziehen` die
              * Abklingzeit (seit v0.41, siehe SCHACH_VARIANTEN.stufenGewichte).
@@ -846,6 +853,14 @@ const SCHACH_RUNDE = {
             runde.zugZaehler = Math.floor(roh.zugZaehler);
         }
 
+        /* Die gemessene Spielzeit (seit v0.93). Eine Partie von früher hat
+           keine — dann bleibt es bei 0, und sie zählt für die Schätzung
+           einfach nicht mit. */
+        if (typeof roh.spielzeit === "number" && isFinite(roh.spielzeit)
+            && roh.spielzeit > 0) {
+            runde.spielzeit = Math.floor(roh.spielzeit);
+        }
+
         for (const farbe of ["weiss", "schwarz"]) {
             const liste = (roh.teams && Array.isArray(roh.teams[farbe])) ? roh.teams[farbe] : [];
             runde.teams[farbe] = liste
@@ -1262,6 +1277,143 @@ const SCHACH_RUNDE = {
             },
             wendepunkte: wendepunkte
         };
+    },
+
+    /*
+     * DIE GEMESSENE SPIELZEIT EINER PARTIE (seit v0.93, Wunsch W10).
+     *
+     * `partie.spielzeit` sind die Sekunden, die insgesamt an dieser Partie
+     * gespielt wurde — aufaddiert von allen Geräten, die sie offen hatten.
+     * Sie dient EINEM Zweck: der Dauer-Schätzung unter den Spielart-Kacheln.
+     * Angezeigt wird sie nirgends.
+     */
+    spielzeitErgaenzen(runde, sekunden) {
+        if (!Number.isFinite(sekunden) || sekunden <= 0) {
+            return runde;
+        }
+
+        const neu = SCHACH_RUNDE.kopieren(runde);
+        neu.spielzeit = (neu.spielzeit || 0) + Math.floor(sekunden);
+        return neu;
+    },
+
+    /*
+     * WIE LANGE DAUERT EINE RUNDE MIT DIESEN EINSTELLUNGEN? (seit v0.93)
+     *
+     * Gerechnet aus zwei Teilen:
+     *
+     *   1. WIE VIELE HALBZÜGE zu erwarten sind — das hängt am Material und an
+     *      der Brettgrösse: Mehr Figuren und mehr Platz heissen mehr Züge, bis
+     *      eine Seite matt ist. Diese Zahl wird geschätzt, nicht gemessen.
+     *   2. WIE LANGE EIN HALBZUG DAUERT — das wird GEMESSEN, aus echten
+     *      Partien (`sekundenJeHalbzug`). Genau dafür läuft die stille
+     *      Zeitmessung.
+     *
+     * Warum diese Zweiteilung: Die Zahl der Züge folgt den Regeln und ist
+     * rechenbar; wie schnell Menschen ziehen, ist es nicht. Nur der zweite
+     * Teil braucht Beobachtung — und er ist auch der, der sich zwischen
+     * Runden am stärksten unterscheidet.
+     *
+     * Das Ergebnis ist ausdrücklich ein GROBER Indikator. Es wird deshalb auf
+     * fünf Minuten gerundet angezeigt und nie als Zusage formuliert.
+     */
+    SEKUNDEN_JE_HALBZUG_VORGABE: 20,
+
+    /*
+     * Ab wann die Messung die Vorgabe ablöst. Unter fünf beendeten Partien
+     * ist der Durchschnitt Zufall, kein Wert — dann bleibt die Vorgabe stehen,
+     * und die Messung schiebt sie nur langsam beiseite.
+     */
+    MESSUNG_AB_PARTIEN: 5,
+
+    sekundenJeHalbzug(partien) {
+        const liste = Array.isArray(partien) ? partien : [];
+
+        let sekunden = 0;
+        let halbzuege = 0;
+        let gezaehlt = 0;
+
+        for (const partie of liste) {
+            const zeit = partie && partie.spielzeit;
+            const takt = partie && partie.stand && partie.stand.takt;
+
+            /* Nur Partien, die wirklich gespielt wurden: Ohne Züge oder ohne
+               gemessene Zeit sagt ein Eintrag nichts. */
+            if (!Number.isFinite(zeit) || zeit <= 0
+                || !Number.isFinite(takt) || takt < 5) {
+                continue;
+            }
+
+            sekunden += zeit;
+            halbzuege += takt;
+            gezaehlt++;
+        }
+
+        if (gezaehlt < SCHACH_RUNDE.MESSUNG_AB_PARTIEN || halbzuege <= 0) {
+            return SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE;
+        }
+
+        return sekunden / halbzuege;
+    },
+
+    /*
+     * Die erwartete Zahl der Halbzüge für ein Brett mit dieser Besetzung.
+     *
+     * Die Formel ist eine Faustregel, keine Wissenschaft: Jede Figur, die
+     * geschlagen werden muss, kostet Züge, und auf einem grösseren Brett
+     * laufen die Figuren länger, bis sie sich treffen. Beides steckt drin,
+     * beides linear — mehr Genauigkeit würde eine Schätzung vortäuschen, die
+     * es nicht gibt.
+     */
+    erwarteteHalbzuege(figurenJeSeite, felder) {
+        const figuren = Math.max(2, figurenJeSeite || 2);
+        const flaeche = Math.max(16, felder || 64);
+
+        return Math.round(figuren * 3.5 + flaeche / 8);
+    },
+
+    /*
+     * Die Schätzung in SEKUNDEN. `partien` sind die bereits gespielten
+     * Partien der Tafel, aus denen die Messung kommt.
+     */
+    dauerSchaetzung(figurenJeSeite, felder, regeln, partien) {
+        const halbzuege = SCHACH_RUNDE.erwarteteHalbzuege(figurenJeSeite, felder);
+        let sekunden = halbzuege * SCHACH_RUNDE.sekundenJeHalbzug(partien);
+
+        /*
+         * Fähigkeiten verlängern eine Partie spürbar: Es gibt mehr zu
+         * überlegen, Figuren kommen zurück, und Mauern halten auf. Der
+         * Zuschlag steigt mit der Lootbox-Menge — ohne Fähigkeiten gibt es
+         * ihn gar nicht.
+         */
+        if (regeln && regeln.faehigkeiten) {
+            const menge = SCHACH_VARIANTEN.mengeVon(regeln.lootboxMenge);
+            sekunden *= (1.2 + 0.1 * (menge.stufe || 0));
+        }
+
+        return Math.round(sekunden);
+    },
+
+    /*
+     * Derselbe Wert als Satz, wie er unter der Kachel steht. Gerundet auf
+     * fünf Minuten und mit „etwa" davor — es ist ein Anhaltspunkt.
+     */
+    dauerText(figurenJeSeite, felder, regeln, partien) {
+        const minuten = SCHACH_RUNDE.dauerSchaetzung(
+            figurenJeSeite, felder, regeln, partien) / 60;
+
+        if (minuten < 8) {
+            return "etwa 5 Minuten";
+        }
+
+        const gerundet = Math.round(minuten / 5) * 5;
+
+        if (gerundet >= 60) {
+            const stunden = Math.round(gerundet / 30) / 2;
+            return "etwa " + String(stunden).replace(".", ",") + " Stunden";
+        }
+
+        return "etwa " + gerundet + " Minuten";
     },
 
     /* Der Figurenwert dessen, was eine Seite geschlagen hat. */

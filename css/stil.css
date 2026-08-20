@@ -2370,7 +2370,8 @@ body {
  * daneben: In der Kopfzeile drängelt sie sich mit dem Titel um den Platz, und
  * auf dem Handy bricht dann der Titel um.
  */
-.spielart-anzahl {
+.spielart-anzahl,
+.spielart-dauer {
     display: block;
     margin-bottom: 4px;
     font-size: 0.8rem;

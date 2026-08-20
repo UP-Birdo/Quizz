@@ -496,6 +496,24 @@ Object.assign(TEAM_SCHACH, {
         kachel.appendChild(TEAM_SCHACH._element("span", "spielart-anzahl",
             TEAM_SCHACH._figurenText(brett)));
 
+        /*
+         * WIE LANGE DAUERT DAS? (seit v0.93, Wunsch W10.)
+         *
+         * Der einzige sichtbare Teil der stillen Zeitmessung — und ihr ganzer
+         * Zweck. Gerechnet wird im Modell (`SCHACH_RUNDE.dauerText`) aus den
+         * gewählten Einstellungen und dem, was in bisherigen Partien wirklich
+         * gemessen wurde; der Bildschirm rechnet nichts selbst.
+         *
+         * Die Zahl steht bewusst unter der Figurenzahl: Beides beantwortet
+         * dieselbe Frage — worauf lasse ich mich hier ein?
+         */
+        kachel.appendChild(TEAM_SCHACH._element("span", "spielart-dauer",
+            "Dauer: " + SCHACH_RUNDE.dauerText(
+                TEAM_SCHACH._figurenJeSeite(brett),
+                variante.breite * variante.hoehe,
+                TEAM_SCHACH.neueRegeln,
+                TEAM_SCHACH._gespieltePartien())));
+
         kachel.appendChild(TEAM_SCHACH._element("span", "spielart-text", variante.beschreibung));
 
         return kachel;
@@ -528,6 +546,35 @@ Object.assign(TEAM_SCHACH, {
 
         runde = SCHACH_RUNDE.armeeAufstellen(runde, "");
         return runde.stand.brett;
+    },
+
+    /*
+     * Die Figurenzahl EINER Seite — die Grundlage der Dauer-Schätzung. Genommen
+     * wird Weiss; unterscheiden sich die Seiten (Haken „unterschiedliche
+     * Armeen"), ist das nah genug für einen groben Anhaltspunkt.
+     */
+    _figurenJeSeite(brett) {
+        let anzahl = 0;
+
+        for (const zeichen of brett) {
+            if (zeichen !== "." && zeichen === zeichen.toUpperCase()) {
+                anzahl++;
+            }
+        }
+
+        return anzahl;
+    },
+
+    /*
+     * Die Partien, aus denen die Zeitmessung lernt: alles, was auf der Tafel
+     * liegt. Beendete wie laufende — beide tragen echte Sekunden und echte
+     * Züge bei, und `sekundenJeHalbzug` verwirft von selbst, was zu kurz ist.
+     */
+    _gespieltePartien() {
+        const daten = TEAM_SCHACH.abgleich && TEAM_SCHACH.abgleich.daten;
+        const partien = (daten && Array.isArray(daten.partien)) ? daten.partien : [];
+
+        return partien;
     },
 
     /* „12 Figuren je Seite" — oder beide Zahlen, wenn sie sich unterscheiden. */

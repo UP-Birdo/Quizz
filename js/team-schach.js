@@ -426,8 +426,13 @@ const TEAM_SCHACH = {
             : null;
 
         if (offene) {
+            /* Die stille Zeitmessung läuft nur, solange eine Partie offen ist
+               (v0.93) — siehe `_zeitMessungStarten`. */
+            TEAM_SCHACH._zeitMessungStarten(offene.id);
             TEAM_SCHACH._partieZeichnen(wurzel, offene, person);
         } else {
+            TEAM_SCHACH._zeitMessungStoppen();
+
             /* Die Partie kann inzwischen gelöscht worden sein. */
             TEAM_SCHACH.offeneId = "";
             TEAM_SCHACH._uebersichtZeichnen(wurzel, tafel, person);
@@ -1117,8 +1122,78 @@ const TEAM_SCHACH = {
      * inzwischen woanders angelegt wurden (dieselbe Lehre wie beim
      * Würfel-Quizz, siehe docs\DECISIONS.md).
      */
+    /*
+     * DIE STILLE ZEITMESSUNG (seit v0.93, Wunsch W10).
+     *
+     * Sie hat EINEN Zweck: die geschätzte Rundendauer unter den
+     * Spielart-Kacheln. Der Nutzer sieht nur diese Schätzung — die Messung
+     * selbst taucht nirgends auf.
+     *
+     * WARUM SIE NICHTS KOSTET: Gezählt wird lokal, solange eine Partie offen
+     * und die Seite im Vordergrund ist. Geschrieben wird NIE für sich, sondern
+     * nur als Beifahrer im nächsten Zug (`_sendenMitPruefung`). Damit gibt es
+     * keinen zusätzlichen Netzaufruf, keinen neuen Schreibweg und keine neue
+     * Firebase-Regel — und die eiserne Regel „jeder Schreibvorgang meldet sich
+     * mit `eigenerVorgangBeginnt` an" bleibt unberührt, weil kein neuer
+     * hinzukommt.
+     *
+     * WARUM IM VORDERGRUND: Ein Handy, das in der Tasche steckt, spielt nicht.
+     * Die Abfrage ruht dort ohnehin schon (`abgleich`), die Messung folgt
+     * derselben Linie.
+     */
+    _zeitMessungStarten(partieId) {
+        if (TEAM_SCHACH._zeitPartie === partieId) {
+            return;
+        }
+
+        TEAM_SCHACH._zeitPartie = partieId;
+        TEAM_SCHACH._zeitSeit = TEAM_SCHACH._jetzt();
+        TEAM_SCHACH._zeitOffen = TEAM_SCHACH._zeitOffen || 0;
+    },
+
+    _zeitMessungStoppen() {
+        TEAM_SCHACH._zeitOffen = TEAM_SCHACH._offeneSekunden();
+        TEAM_SCHACH._zeitSeit = 0;
+        TEAM_SCHACH._zeitPartie = "";
+    },
+
+    /* Wie viele ganze Sekunden sind seit dem letzten Abholen zusammengekommen? */
+    _offeneSekunden() {
+        const offen = TEAM_SCHACH._zeitOffen || 0;
+
+        if (!TEAM_SCHACH._zeitSeit) {
+            return offen;
+        }
+        /* Im Hintergrund zählt nichts. */
+        if (typeof document !== "undefined" && document.hidden) {
+            return offen;
+        }
+
+        return offen + Math.max(0,
+            Math.floor((TEAM_SCHACH._jetzt() - TEAM_SCHACH._zeitSeit) / 1000));
+    },
+
+    _jetzt() {
+        return (typeof Date === "function" && Date.now) ? Date.now() : 0;
+    },
+
     async _sendenMitPruefung(neuePartie, erwarteterZaehler) {
         const abgleich = TEAM_SCHACH.abgleich;
+
+        /*
+         * Die stillen Sekunden fahren im Zug mit (v0.93) — nur, wenn sie zu
+         * DIESER Partie gehören. Danach ist der Zähler leer; was zwischen
+         * zwei Zügen zusammenkommt, wird beim nächsten mitgenommen.
+         */
+        if (TEAM_SCHACH._zeitPartie === neuePartie.id) {
+            const sekunden = TEAM_SCHACH._offeneSekunden();
+
+            if (sekunden > 0) {
+                neuePartie = SCHACH_RUNDE.spielzeitErgaenzen(neuePartie, sekunden);
+                TEAM_SCHACH._zeitOffen = 0;
+                TEAM_SCHACH._zeitSeit = TEAM_SCHACH._jetzt();
+            }
+        }
 
         /*
          * ERST ANZEIGEN, DANN SENDEN (seit v3.8).

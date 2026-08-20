@@ -387,6 +387,83 @@ pruefe("Der Vorrat hat die verlangte Groesse und wird GERECHNET (v0.87)", () => 
     wahr(eine !== andere, "zwei Partien, zwei Vorraete");
 });
 
+pruefe("Die Dauer-Schaetzung lernt aus echten Partien (v0.93)", () => {
+    /*
+     * WOZU DAS GANZE: Der Nutzer soll unter jeder Spielart-Kachel einen
+     * groben Anhaltspunkt sehen, wie lange eine Runde mit SEINEN
+     * Einstellungen dauert. Die stille Zeitmessung ist nur das Mittel dazu —
+     * angezeigt wird sie nirgends.
+     */
+
+    /* Ohne Messwerte gilt die Vorgabe. */
+    gleich(SCHACH_RUNDE.sekundenJeHalbzug([]),
+        SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE, "ohne Partien die Vorgabe");
+
+    /* Zu wenige Partien sind Zufall, kein Wert — die Vorgabe bleibt. */
+    const wenige = [];
+    for (let n = 0; n < SCHACH_RUNDE.MESSUNG_AB_PARTIEN - 1; n++) {
+        wenige.push({ spielzeit: 600, stand: { takt: 20 } });
+    }
+    gleich(SCHACH_RUNDE.sekundenJeHalbzug(wenige),
+        SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE, "unter der Schwelle die Vorgabe");
+
+    /* Genug Partien: Jetzt zaehlt die Messung. 600 s auf 20 Halbzuege = 30. */
+    const genug = [];
+    for (let n = 0; n < SCHACH_RUNDE.MESSUNG_AB_PARTIEN; n++) {
+        genug.push({ spielzeit: 600, stand: { takt: 20 } });
+    }
+    gleich(SCHACH_RUNDE.sekundenJeHalbzug(genug), 30, "gemessen: 30 s je Halbzug");
+
+    /* Angefangene oder leere Partien verfaelschen nichts. */
+    const gemischt = genug.concat([
+        { spielzeit: 0, stand: { takt: 40 } },
+        { spielzeit: 900, stand: { takt: 0 } },
+        { stand: { takt: 30 } }
+    ]);
+    gleich(SCHACH_RUNDE.sekundenJeHalbzug(gemischt), 30,
+        "Partien ohne Zeit oder ohne Zuege zaehlen nicht mit");
+
+    /* Mehr Figuren und mehr Platz heissen mehr Zuege. */
+    wahr(SCHACH_RUNDE.erwarteteHalbzuege(16, 64)
+        > SCHACH_RUNDE.erwarteteHalbzuege(4, 64), "mehr Figuren, mehr Zuege");
+    wahr(SCHACH_RUNDE.erwarteteHalbzuege(8, 128)
+        > SCHACH_RUNDE.erwarteteHalbzuege(8, 36), "groesseres Brett, mehr Zuege");
+
+    /* Faehigkeiten verlaengern, und mehr Lootboxen verlaengern staerker. */
+    const ohne = SCHACH_RUNDE.dauerSchaetzung(8, 64, { faehigkeiten: false }, genug);
+    const mit = SCHACH_RUNDE.dauerSchaetzung(8, 64,
+        { faehigkeiten: true, lootboxMenge: "wenig" }, genug);
+    const viel = SCHACH_RUNDE.dauerSchaetzung(8, 64,
+        { faehigkeiten: true, lootboxMenge: "regen" }, genug);
+
+    wahr(mit > ohne, "mit Faehigkeiten dauert es laenger");
+    wahr(viel > mit, "mit mehr Lootboxen noch laenger");
+
+    /* Der Satz ist ein Anhaltspunkt, kein Versprechen. */
+    const satz = SCHACH_RUNDE.dauerText(8, 64, { faehigkeiten: false }, genug);
+    wahr(satz.indexOf("etwa") === 0, "der Satz beginnt mit \"etwa\": " + satz);
+});
+
+pruefe("Die Spielzeit wird still ergaenzt und ueberlebt das Laden (v0.93)", () => {
+    const runde = faehigkeitenPartie();
+    gleich(runde.spielzeit, 0, "eine neue Partie startet bei 0");
+
+    const nach = SCHACH_RUNDE.spielzeitErgaenzen(
+        SCHACH_RUNDE.spielzeitErgaenzen(runde, 90), 30);
+    gleich(nach.spielzeit, 120, "die Sekunden addieren sich");
+
+    /* Unsinn aendert nichts. */
+    gleich(SCHACH_RUNDE.spielzeitErgaenzen(nach, 0).spielzeit, 120, "0 aendert nichts");
+    gleich(SCHACH_RUNDE.spielzeitErgaenzen(nach, -5).spielzeit, 120, "negativ auch nicht");
+
+    /* Additiver Datenvertrag: Eine Partie von frueher kennt das Feld nicht. */
+    const roh = JSON.parse(JSON.stringify(nach));
+    delete roh.spielzeit;
+    gleich(SCHACH_RUNDE.normalisieren(roh).spielzeit, 0, "ohne Angabe 0");
+    gleich(SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(nach))).spielzeit,
+        120, "mit Angabe bleibt sie stehen");
+});
+
 pruefe("Die Umbenennungen aus v0.92 stehen fest", () => {
     /*
      * VIER NUTZER-ENTSCHEIDUNGEN VOM 20.08. Der Test haelt sie fest, damit
