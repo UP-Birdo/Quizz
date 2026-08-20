@@ -1163,6 +1163,38 @@ const SCHACH_VARIANTEN = {
          * andere Beute, und der erste Schreibvorgang würde die anderen
          * überstimmen.
          */
+        /*
+         * ENTTARNEN (seit v0.88, Wunsch R4) — die erste Fähigkeit, die es nur
+         * unter einer bestimmten EINSTELLUNG gibt.
+         *
+         * `nurOhneSeltenheit: true` heisst: Sie kommt ausschliesslich in
+         * Partien vor, die die Seltenheit der Lootboxen verbergen
+         * (`regeln.seltenheitZeigen === false`). Wo die Farbe ohnehin zu sehen
+         * ist, wäre sie wirkungslos — eine Fähigkeit, die nichts tut, ist
+         * schlimmer als keine.
+         *
+         * Gefiltert wird an EINER Stelle: `SCHACH_RUNDE.erlaubteFaehigkeiten`
+         * baut die Liste für die Partie, `faehigkeitenDerStufe` nimmt sie
+         * entgegen. Sie greift damit in Ziehung, Prozentrechnung und
+         * Erklärtext gleichzeitig.
+         *
+         * KEIN BRUCH DER EISERNEN REGEL „die Oberfläche verrät nie, was in
+         * einer Lootbox steckt": Gezeigt wird die FARBE (wie selten?), nicht
+         * der Inhalt. Das ist dieselbe Auskunft, die eine Partie mit
+         * `seltenheitZeigen` dauerhaft gibt — hier eben auf Zeit und nur für
+         * eine Seite.
+         */
+        enttarnen: {
+            titel: "Enttarnen",
+            stufe: "blau",
+            art: "sicht",
+            nurOhneSeltenheit: true,
+            beschreibung: "Nur in Partien, die die Seltenheit verbergen: Du allein "
+                + "siehst 6 Halbzüge lang, wie selten die liegenden Lootboxen sind — "
+                + "ihre Farbe. WAS drin steckt, verrät sie weiterhin nicht, und der "
+                + "Gegner merkt nichts. Du bleibst am Zug."
+        },
+
         dieb: {
             titel: "Dieb",
             stufe: "lila",

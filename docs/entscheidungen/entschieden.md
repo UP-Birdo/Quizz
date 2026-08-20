@@ -76,3 +76,34 @@ es braucht keinen neuen Schreibweg.
 „Punktzahl" zählt. Vorschlag ist die Material-Bilanz — sie ist im Spiel
 sichtbar und braucht keine neue Regel; bei Gleichstand endet die Partie
 unentschieden.
+
+## Der Timer entscheidet nach dem FRIEDHOF, nicht nach dem Brett (Ansage 2026-08-20)
+
+**Nutzer-Ansage, im Anschluss an die Timer-Regel:** „Mach das Gewinnen anhand
+der vorliegenden Zahl abhängig aus dem Friedhof — das ist der Ablagestapel,
+die Figuren die du wiederholen kannst. Daran soll dann entschieden werden, ob
+gewonnen wird oder nicht."
+
+Damit ist mein Vorschlag (Material-Bilanz auf dem Brett) **überholt**. Es
+zählt der Friedhof.
+
+**Warum das nicht dasselbe ist.** Die Bilanz zählt, was noch STEHT; der
+Friedhof zählt, was GEFALLEN ist. In einem normalen Schachspiel wäre das
+dieselbe Aussage von zwei Seiten — hier nicht: Es gibt Wiederbelebung,
+Wiedergeburt, Beschwörung und geliehene Figuren. Eine Seite kann Figuren
+verloren und wiederbelebt haben; auf dem Brett sieht sie dann heil aus,
+im Friedhof nicht. Der Nutzer wählt also ausdrücklich die Sicht auf den
+VERLAUF der Partie, nicht auf ihren Augenblick.
+
+**KEINE Rückfrage nötig — der Code beantwortet es.** Kurz sah es nach einem
+Widerspruch aus („höhere Punktzahl" gegen „voller eigener Friedhof heisst viel
+verloren"). Am Code nachgemessen löst er sich auf: Der FRIEDHOF zeigt einer
+Seite die Gräber des GEGNERS — `_grabAuf` nimmt `gefallen[gegner(meinTeam)]`,
+nur die Wiederbelebung greift auf die eigenen zu. „Die Figuren, die du
+wiederholen kannst" sind also die, die du dem Gegner ABGENOMMEN hast. Eine
+grosse Zahl heisst „ich habe viel geschlagen", und die höhere Zahl gewinnt —
+genau wie in der ersten Ansage.
+
+**Gebaut wird es mit `SCHACH_RUNDE.beuteWert(runde, farbe)`**, das es seit
+langem gibt: Figurenwert dessen, was eine Seite geschlagen hat. Bei
+Gleichstand endet die Partie unentschieden.

@@ -667,6 +667,25 @@ const SCHACH_VORSCHAU = {
          * erklärt, wo es stattfindet. Ein erfundenes Bild wäre hier
          * irreführender als keines.
          */
+        enttarnen: {
+            brett: [
+                ".....t",
+                "......",
+                "..s...",
+                ".B....",
+                "TT..L.",
+                "....D."
+            ],
+            figur: -1,
+            ziel: -1,
+            vorher: "Diese Partie verbirgt die Seltenheit: Jede liegende Lootbox "
+                + "sieht aus wie jede andere, man weiss nie, ob sich das Einsammeln "
+                + "lohnt.",
+            nachher: "Enttarnt: Für 6 Halbzüge trägt jede Lootbox ihre Farbe — du "
+                + "siehst, wie SELTEN sie ist. Was drin steckt, verrät sie weiter "
+                + "nicht, und der Gegner sieht davon nichts. Du bleibst am Zug."
+        },
+
         dieb: {
             brett: [
                 ".....t",

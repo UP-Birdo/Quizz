@@ -348,6 +348,16 @@ const SCHACH = {
             glasBis: 0,
 
             /*
+             * ENTTARNT (seit v0.88): Wer die Seltenheit der liegenden
+             * Lootboxen gerade sehen darf, obwohl die Partie sie verbirgt —
+             * und bis wann. Dasselbe Muster wie das volle Glas: seitenbezogen
+             * und befristet, und es ändert NICHTS am Brett, nur daran, wie
+             * eine Seite es sieht.
+             */
+            enttarntFarbe: "",
+            enttarntBis: 0,
+
+            /*
              * Mauern auf dem Brett (seit v3.3): [{ felder: [a, b, c], bis }].
              *
              * `bis` ist ein Wert von `halbzuege` — die Mauer gilt, solange
@@ -603,6 +613,13 @@ const SCHACH = {
             && roh.glasBis > 0) {
             stand.glasFarbe = roh.glasFarbe;
             stand.glasBis = roh.glasBis;
+        }
+
+        /* Enttarnt (seit v0.88) — wie das Glas, nur mit umgekehrter Wirkung. */
+        if (farben.indexOf(roh.enttarntFarbe) !== -1
+            && Number.isInteger(roh.enttarntBis) && roh.enttarntBis > 0) {
+            stand.enttarntFarbe = roh.enttarntFarbe;
+            stand.enttarntBis = roh.enttarntBis;
         }
 
         if (Array.isArray(roh.mauern)) {

@@ -467,6 +467,7 @@ const TEAM_SCHACH = {
         /* Erst wenn das Brett im Bildschirm steht, lässt sich die Feldgröße
            messen — deshalb stehen Größe und Bewegung ganz am Ende. */
         TEAM_SCHACH._figurGroesseSetzen();
+        TEAM_SCHACH._groessenWaechterStarten();
         TEAM_SCHACH._zugAnimieren(halter, partie, person);
         TEAM_SCHACH._wirkungAnimieren(halter, partie);
 

@@ -342,7 +342,18 @@ Object.assign(TEAM_SCHACH, {
                  * was gemeint war: Farbe ja, Warnung nein — dann ist jeder
                  * Würfel ein Wagnis, sieht aber weiter nach seiner Stufe aus.
                  */
-                const zeigen = (partie.regeln.seltenheitZeigen !== false);
+                /*
+                 * ENTTARNEN (seit v0.88): Wer sie eingesetzt hat, sieht die
+                 * Farbe für ein paar Halbzüge auch dann, wenn die Partie sie
+                 * sonst verbirgt. Nur die eigene Ansicht — der Gegner merkt
+                 * nichts, deshalb steht die Prüfung hier im Bildschirm und
+                 * nicht in den Regeln (wie beim vollen Glas).
+                 */
+                const enttarnt = !!meinTeam
+                    && partie.stand.enttarntFarbe === meinTeam
+                    && partie.zugZaehler < partie.stand.enttarntBis;
+
+                const zeigen = (partie.regeln.seltenheitZeigen !== false) || enttarnt;
                 const pechZeigen = (partie.regeln.pechZeigen === true)
                     && !!bonusHier.pech;
                 const stufe = SCHACH_RUNDE.bonusStufe(bonusHier);
@@ -1528,6 +1539,67 @@ Object.assign(TEAM_SCHACH, {
             brett.style.setProperty("--figur-groesse",
                 Math.round(breite * TEAM_SCHACH.FIGUR_ANTEIL) + "px");
         }
+    },
+
+    /*
+     * DIE SCHWARZEN STREIFEN BEIM DREHEN (Meldung #34, behoben v0.88).
+     *
+     * Gemeldet als „schwarze Streifen manchmal, wenn man sein Display dreht".
+     *
+     * URSACHE: `_figurGroesseSetzen` misst die Feldbreite und schreibt sie als
+     * PIXELWERT nach `--figur-groesse`. Gemessen wurde aber nur beim Zeichnen.
+     * Dreht man das Gerät, rechnet die Stildatei mit der neuen Fensterbreite
+     * weiter (`88vw` im Rückfall), der geschriebene Pixelwert bleibt jedoch auf
+     * dem alten Stand. Raster und Inhalt passen dann nicht mehr zusammen, und
+     * die 2-Pixel-Fugen des `.brett-rahmen` blitzen als dunkle Streifen durch.
+     *
+     * WARUM EIN WÄCHTER UND KEIN NEUZEICHNEN: Neu zu zeichnen wäre teurer und
+     * würde laufende Animationen abschneiden. Gebraucht wird nur die neue Zahl.
+     *
+     * WARUM NUR EINMAL ANGEMELDET: `zeichnen` läuft bei jeder Änderung, auch
+     * mehrmals je Sekunde. Ohne die Sperre sammelten sich Hunderte Zuhörer an,
+     * die alle dasselbe tun — der klassische Weg, eine Seite langsam zu machen.
+     *
+     * WARUM ÜBER `requestAnimationFrame`: Beim Drehen meldet sich das Ereignis,
+     * BEVOR der Browser neu gesetzt hat. Sofort gemessen käme die alte Breite
+     * heraus — also genau der Fehler, den wir beheben wollen.
+     */
+    _groessenWaechterStarten() {
+        if (TEAM_SCHACH._groessenWaechterLaeuft) {
+            return;
+        }
+
+        /*
+         * Ohne echtes Fenster gibt es nichts anzumelden — so läuft der
+         * Bildschirm-Test gegen sein nachgebautes DOM, das keine Ereignisse
+         * kennt. Der Wächter ist reine Anzeige-Politur; fehlt er, stimmt nur
+         * die Figurengrösse nach dem Drehen nicht, und genau das prüft der
+         * Test auch gar nicht.
+         */
+        if (typeof window === "undefined"
+            || typeof window.addEventListener !== "function") {
+            return;
+        }
+
+        TEAM_SCHACH._groessenWaechterLaeuft = true;
+
+        const nachmessen = () => {
+            if (typeof requestAnimationFrame === "function") {
+                requestAnimationFrame(() => TEAM_SCHACH._figurGroesseSetzen());
+            } else {
+                TEAM_SCHACH._figurGroesseSetzen();
+            }
+        };
+
+        window.addEventListener("resize", nachmessen);
+
+        /*
+         * `orientationchange` ZUSÄTZLICH, nicht ersatzweise: Auf älteren
+         * iPhones kommt beim Drehen nur dieses Ereignis zuverlässig, auf
+         * neueren nur `resize`. Doppelt gemessen schadet nichts — es wird
+         * derselbe Wert geschrieben.
+         */
+        window.addEventListener("orientationchange", nachmessen);
     },
 
     /*

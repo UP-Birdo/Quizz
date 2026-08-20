@@ -64,6 +64,11 @@ const SCHACH_RUNDE = {
      */
     GLAS_HALBZUEGE: 4,
 
+    /* Wie lange das Enttarnen wirkt (seit v0.88). Die Zahl muss zum Text in
+       `SCHACH_VARIANTEN.FAEHIGKEITEN.enttarnen` passen — ein Test hält beide
+       zusammen, wie beim vollen Glas. */
+    ENTTARNT_HALBZUEGE: 6,
+
     /*
      * Wie lange auf die Zustimmung des Teams gewartet wird (in Sekunden), je
      * nachdem wie oft jemand schon nicht mitgestimmt hat.
@@ -1390,7 +1395,7 @@ const SCHACH_RUNDE = {
          * Einsammeln leer. Es ist dieselbe Rechnung wie bei den Unglücken seit
          * v0.84: Die Chance verteilt sich auf die übrigen Stufen.
          */
-        const erlaubt = SCHACH_RUNDE.itemVorrat(runde);
+        const erlaubt = SCHACH_RUNDE.erlaubteFaehigkeiten(runde);
 
         if (erlaubt) {
             for (const stufe of SCHACH_VARIANTEN.STUFEN) {
@@ -1424,6 +1429,66 @@ const SCHACH_RUNDE = {
     },
 
     /*
+     * PASST DIESE FÄHIGKEIT ZU DEN REGELN DIESER PARTIE? (seit v0.88, R4)
+     *
+     * Bisher hing die Existenz einer Fähigkeit nur an der Tabelle. Enttarnen
+     * ist die erste, die von einer EINSTELLUNG abhängt: Sie gibt es nur, wo
+     * die Seltenheit verborgen ist — sonst zeigte sie etwas, das ohnehin zu
+     * sehen ist.
+     *
+     * Absichtlich EINE Funktion mit Schaltern statt einer Sonderabfrage je
+     * Fähigkeit: Die zweite dieser Art (Verstecken, das Gegenstück) braucht
+     * dann nur noch ihren Schalter, keine neue Mechanik.
+     */
+    bedingungPasst(art, runde) {
+        const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
+        if (!eintrag) {
+            return false;
+        }
+
+        const regeln = (runde && runde.regeln) ? runde.regeln : {};
+        const seltenheitAn = (regeln.seltenheitZeigen !== false);
+
+        if (eintrag.nurOhneSeltenheit && seltenheitAn) {
+            return false;
+        }
+        if (eintrag.nurMitSeltenheit && !seltenheitAn) {
+            return false;
+        }
+
+        return true;
+    },
+
+    /*
+     * WAS ES IN DIESER PARTIE ÜBERHAUPT GIBT (seit v0.88).
+     *
+     * Führt beides zusammen: den ausgelosten Item-Vorrat (v0.87) und die
+     * Bedingungen an den Regeln (v0.88). Das Ergebnis geht als `erlaubt` in
+     * `faehigkeitenDerStufe` — und damit in einem Zug in Ziehung,
+     * Prozentrechnung und Erklärtext.
+     *
+     * `null` heisst „keine Einschränkung" und lässt jeden Aufruf von früher
+     * unverändert. Das ist der Normalfall, solange nichts eingestellt ist und
+     * keine bedingte Fähigkeit betroffen wäre.
+     */
+    erlaubteFaehigkeiten(runde) {
+        const pool = SCHACH_RUNDE.itemVorrat(runde);
+
+        const grundliste = pool || Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
+            .filter((art) => !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt);
+
+        const erlaubt = grundliste.filter(
+            (art) => SCHACH_RUNDE.bedingungPasst(art, runde));
+
+        /* Nichts ausgeschlossen und kein Vorrat gesetzt: gar nicht filtern. */
+        if (!pool && erlaubt.length === grundliste.length) {
+            return null;
+        }
+
+        return erlaubt;
+    },
+
+    /*
      * LOST DEN VORRAT AUS — einmalig beim Anlegen.
      *
      * Gezogen wird MIT DENSELBEN CHANCEN wie im Spiel („es soll zufällig mit
@@ -1448,10 +1513,18 @@ const SCHACH_RUNDE = {
             return runde;
         }
 
+        /*
+         * Gezogen wird nur aus dem, was in DIESER Partie überhaupt vorkommen
+         * kann (seit v0.88): Eine Fähigkeit mit Bedingung — Enttarnen — darf
+         * gar nicht erst in den Vorrat geraten, sonst belegte sie dort einen
+         * Platz und käme trotzdem nie.
+         */
         const alle = [];
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
             for (const art of SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id)) {
-                alle.push(art);
+                if (SCHACH_RUNDE.bedingungPasst(art, runde)) {
+                    alle.push(art);
+                }
             }
         }
 
@@ -1472,7 +1545,8 @@ const SCHACH_RUNDE = {
             const art = SCHACH_VARIANTEN.faehigkeitAusStufe(
                 wahl.stufe.id,
                 SCHACH_RUNDE._zufallsWert(basis + "|art|" + schritt),
-                []);
+                [],
+                alle);
 
             if (art && gezogen.indexOf(art) === -1) {
                 gezogen.push(art);
@@ -1732,6 +1806,15 @@ const SCHACH_RUNDE = {
 
         } else if (beschreibung.art === "ablauf") {
             neu.stand.extraZug = farbe;
+
+        } else if (beschreibung.art === "sicht") {
+            /*
+             * Ändert nichts am Brett — nur daran, wie EINE Seite es sieht.
+             * Dasselbe Muster wie die Halluzination, nur mit umgekehrtem
+             * Vorzeichen: Die zeigt weniger, diese zeigt mehr.
+             */
+            neu.stand.enttarntFarbe = farbe;
+            neu.stand.enttarntBis = neu.zugZaehler + SCHACH_RUNDE.ENTTARNT_HALBZUEGE;
 
         } else if (beschreibung.art === "sofort") {
             const wirkung = SCHACH.bauernschub(neu.stand, farbe, umwandlung);
@@ -2123,7 +2206,7 @@ const SCHACH_RUNDE = {
                     + runde.zugZaehler + "|" + (runde.id || "partie")),
                 runde.faehigkeiten[farbe],
                 /* Nur, was es in dieser Partie gibt (seit v0.87). */
-                SCHACH_RUNDE.itemVorrat(runde));
+                SCHACH_RUNDE.erlaubteFaehigkeiten(runde));
 
             if (!art) {
                 continue;

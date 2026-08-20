@@ -3,6 +3,22 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.88.0 — 2026-08-20
+
+**Die schwarzen Streifen sind weg, und es gibt eine neue Fähigkeit.**
+
+- **Behoben: schwarze Streifen beim Drehen des Displays** (gemeldet als #34).
+  Die Feldgröße wurde nur beim Zeichnen gemessen — nach dem Drehen rechnete
+  die Seite mit der neuen Breite weiter, die gemessene Zahl blieb aber stehen.
+  Dadurch passte das Raster nicht mehr, und die Fugen wurden als dunkle
+  Streifen sichtbar. Jetzt wird beim Drehen neu gemessen.
+
+- **Neu: „Enttarnen".** Sie gibt es **nur in Partien, die die Seltenheit der
+  Lootboxen verbergen** — dort siehst du 6 Halbzüge lang, wie selten die
+  liegenden Lootboxen sind. **Was drin steckt, verrät sie weiterhin nicht**,
+  und der Gegner merkt nichts davon. Du bleibst am Zug. Ist die Seltenheit in
+  einer Partie ohnehin sichtbar, kommt die Fähigkeit dort gar nicht vor.
+
 ## v0.87.0 — 2026-08-20
 
 **Du bestimmst, welche Items es in einer Partie überhaupt gibt.**

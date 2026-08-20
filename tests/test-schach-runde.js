@@ -387,6 +387,79 @@ pruefe("Der Vorrat hat die verlangte Groesse und wird GERECHNET (v0.87)", () => 
     wahr(eine !== andere, "zwei Partien, zwei Vorraete");
 });
 
+pruefe("Enttarnen gibt es nur, wenn die Seltenheit verborgen ist (v0.88)", () => {
+    /*
+     * R4, die erste Faehigkeit mit einer BEDINGUNG. Sie darf in einer Partie
+     * mit sichtbarer Seltenheit nirgends auftauchen: nicht in der Ziehung,
+     * nicht in der Prozentrechnung, nicht im ausgelosten Vorrat.
+     */
+    const verborgen = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-e1", "Verborgen");
+    verborgen.regeln.faehigkeiten = true;
+    verborgen.regeln.seltenheitZeigen = false;
+
+    const offen = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-e2", "Offen");
+    offen.regeln.faehigkeiten = true;
+    offen.regeln.seltenheitZeigen = true;
+
+    wahr(SCHACH_RUNDE.bedingungPasst("enttarnen", verborgen), "verborgen: gibt es");
+    wahr(!SCHACH_RUNDE.bedingungPasst("enttarnen", offen), "offen: gibt es nicht");
+
+    /* In der Liste der Partie taucht sie entsprechend auf oder nicht. */
+    const inVerborgen = SCHACH_RUNDE.erlaubteFaehigkeiten(verborgen);
+    const inOffen = SCHACH_RUNDE.erlaubteFaehigkeiten(offen);
+
+    wahr(inOffen !== null && inOffen.indexOf("enttarnen") === -1,
+        "offen: nicht in der erlaubten Liste");
+    wahr(inVerborgen === null || inVerborgen.indexOf("enttarnen") !== -1,
+        "verborgen: in der erlaubten Liste");
+
+    /* Und die Ziehung liefert sie in einer offenen Partie nie. */
+    const stufe = SCHACH_VARIANTEN.stufeVon("enttarnen").id;
+    for (let schritt = 0; schritt < 300; schritt++) {
+        const art = SCHACH_VARIANTEN.faehigkeitAusStufe(
+            stufe, schritt / 300, [], inOffen);
+        wahr(art !== "enttarnen", "offen: wird nicht gezogen");
+    }
+
+    /* Auch nicht ueber den ausgelosten Vorrat. */
+    offen.regeln.itemVorrat = "viele";
+    const mitVorrat = SCHACH_RUNDE.itemVorratAuslosen(offen);
+    wahr(mitVorrat.regeln.itemPool.indexOf("enttarnen") === -1,
+        "offen: kommt auch nicht in den ausgelosten Vorrat");
+});
+
+pruefe("Enttarnen wirkt seitenbezogen und befristet (v0.88)", () => {
+    /*
+     * Wie das volle Glas: Es aendert NICHTS am Brett, nur den Blick EINER
+     * Seite, und es laeuft ab. Die Zahl im Beschreibungstext muss zur
+     * Konstanten passen — sonst verspricht die App etwas anderes, als sie tut.
+     */
+    wahr(SCHACH_VARIANTEN.FAEHIGKEITEN.enttarnen.beschreibung
+        .indexOf(String(SCHACH_RUNDE.ENTTARNT_HALBZUEGE) + " Halbzüge") !== -1,
+        "Text und Konstante nennen dieselbe Zahl");
+
+    const runde = faehigkeitenPartie();
+    runde.regeln.seltenheitZeigen = false;
+    runde.faehigkeiten.weiss.push("enttarnen");
+
+    const vorher = runde.stand.brett;
+    const nachher = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "enttarnen", -1);
+
+    wahr(nachher !== null, "laesst sich einsetzen");
+    gleich(nachher.stand.brett, vorher, "das Brett bleibt unberuehrt");
+    gleich(nachher.stand.enttarntFarbe, "weiss", "wirkt fuer Weiss");
+    wahr(nachher.stand.enttarntBis > nachher.zugZaehler, "und laeuft noch");
+
+    /* Der Datenvertrag: Ein Stand von frueher kennt die Felder nicht. */
+    const roh = JSON.parse(JSON.stringify(nachher));
+    delete roh.stand.enttarntFarbe;
+    delete roh.stand.enttarntBis;
+
+    const wieder = SCHACH_RUNDE.normalisieren(roh);
+    gleich(wieder.stand.enttarntFarbe, "", "ohne Angabe wirkt nichts");
+    gleich(wieder.stand.enttarntBis, 0, "und die Frist ist leer");
+});
+
 pruefe("Jede Vorrat-Stufe liefert WENIGER als die darueber (v0.87)", () => {
     /*
      * SONST IST EIN KNOPF WIRKUNGSLOS. Genau das war beim Bauen der Fall:
@@ -2618,7 +2691,11 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
         "mauer", "fessel", "frost", "doppelzug",
         /* Die zwei gewoehnlichen von v0.79: rein positionell, kein Material
            und keine geschlagene Figur - genau die Bedingung dieser Gruppe. */
-        "schubs", "platztausch"];
+        "schubs", "platztausch",
+        /* `enttarnen` (v0.88) nimmt kein Material und bewegt nichts — es
+           aendert nur, was EINE Seite sieht. Dieselbe Einordnung wie die
+           Halluzination, waere sie eine Faehigkeit. */
+        "enttarnen"];
 
     /* Die dritte Gruppe seit v0.48: Die Faehigkeit IST der Zug. Man bleibt am
        Zug, macht ihn sofort — und kann sonst nichts mehr. */

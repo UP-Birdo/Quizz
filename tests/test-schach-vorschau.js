@@ -102,6 +102,9 @@ for (const art of alleArten) {
         const wirkungImStand = !!(nachher.zusatzMuster || nachher.extraZug
             || nachher.schildFeld >= 0 || nachher.fesselFeld >= 0
             || nachher.frostFeld >= 0 || nachher.glasFarbe
+            /* Enttarnen (v0.88) wirkt wie das Glas: nicht aufs Brett, sondern
+               auf den Blick EINER Seite — und steht dafuer im Stand. */
+            || nachher.enttarntFarbe
             || SCHACH.mauern(nachher).length > 0
             || SCHACH.geliehene(nachher).length > 0);
 
