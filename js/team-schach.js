@@ -66,6 +66,17 @@ const TEAM_SCHACH = {
     /* Ist die Fähigkeiten-Übersicht offen (hinter dem i)? */
     infoOffen: false,
 
+    /* Ist die Schachregel-Anleitung offen (seit v0.96, „Schach lernen")?
+       Wie die Bibliothek hängt sie an keinem Spielstand — `grundlagenGezeichnet`
+       hält die regelmässige Abfrage davon ab, sie ständig neu zu bauen und
+       dabei jeden aufgeklappten Eintrag wieder zuzuklappen. */
+    grundlagenOffen: false,
+    grundlagenGezeichnet: false,
+
+    /* Welches Kapitel gerade aufgeklappt ist — es ist immer höchstens eines
+       (dasselbe Muster wie `infoOffenerEintrag`). */
+    grundlagenOffenerEintrag: null,
+
     /* Zeitgeber für den Countdown einer laufenden Abstimmung. */
     fristZeitgeber: null,
 
@@ -313,8 +324,11 @@ const TEAM_SCHACH = {
         }
 
         /* Die Bibliothek steht schon — sie hängt an keinem Spielstand (siehe
-           `infoGezeichnet`). */
+           `infoGezeichnet`). Für die Schachregel-Anleitung gilt dasselbe. */
         if (TEAM_SCHACH.infoOffen && TEAM_SCHACH.infoGezeichnet) {
+            return;
+        }
+        if (TEAM_SCHACH.grundlagenOffen && TEAM_SCHACH.grundlagenGezeichnet) {
             return;
         }
 
@@ -332,6 +346,14 @@ const TEAM_SCHACH = {
         if (TEAM_SCHACH.infoOffen) {
             TEAM_SCHACH._infoZeichnen(wurzel);
             TEAM_SCHACH.infoGezeichnet = true;
+            return;
+        }
+
+        /* Die Schachregeln stehen VOR der Auswahl und der Übersicht — wer
+           nachschlägt, will nicht zwischendurch eine Partie anlegen. */
+        if (TEAM_SCHACH.grundlagenOffen) {
+            TEAM_SCHACH._grundlagenZeichnen(wurzel);
+            TEAM_SCHACH.grundlagenGezeichnet = true;
             return;
         }
 

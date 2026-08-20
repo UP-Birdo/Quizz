@@ -328,7 +328,8 @@ umgebung.DIALOG = {
  * Test sie greifen kann.
  */
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
-    "SCHACH_TAFEL", "SCHACH_VORSCHAU", "TEAM_SCHACH", "IMPOSTER_WOERTER",
+    "SCHACH_TAFEL", "SCHACH_VORSCHAU", "SCHACH_GRUNDLAGEN", "TEAM_SCHACH",
+    "IMPOSTER_WOERTER",
     "IMPOSTER_RUNDE", "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam",
     /* Seit v0.76 auch der Abgleich: Sein Rennen mit der regelmaessigen Abfrage
        war der „Doppelzug-Fehler", und ohne Test kaeme es unbemerkt zurueck. */
@@ -339,8 +340,10 @@ const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
 const dateien = ["konfig.js", "modell.js", "speicher.js", "abgleich.js",
     "schach-varianten.js",
     "schach.js", "schach-runde.js", "schach-tafel.js", "schach-vorschau.js",
+    "schach-grundlagen.js",
     "team-schach.js",
     "team-schach-uebersicht.js", "team-schach-brett.js", "team-schach-auswertung.js",
+    "team-schach-grundlagen.js",
     "imposter-woerter.js", "imposter-runde.js", "imposter-tafel.js", "imposter.js",
     "rangliste.js"];
 
@@ -356,6 +359,7 @@ const SCHACH = umgebung.SCHACH;
 const SCHACH_VARIANTEN = umgebung.SCHACH_VARIANTEN;
 const SCHACH_RUNDE = umgebung.SCHACH_RUNDE;
 const SCHACH_TAFEL = umgebung.SCHACH_TAFEL;
+const SCHACH_GRUNDLAGEN = umgebung.SCHACH_GRUNDLAGEN;
 const TEAM_SCHACH = umgebung.TEAM_SCHACH;
 const IMPOSTER_RUNDE = umgebung.IMPOSTER_RUNDE;
 const IMPOSTER_TAFEL = umgebung.IMPOSTER_TAFEL;
@@ -1587,6 +1591,79 @@ pruefe("Abbrechen raeumt den Vorschau-Kasten wieder weg (v0.57)", () => {
     if (TEAM_SCHACH.zielFaehigkeit !== "" || TEAM_SCHACH.zielVorschau !== -1
         || TEAM_SCHACH.zielUmriss.length !== 0) {
         throw new Error("nach dem Abbrechen liegt noch etwas herum");
+    }
+});
+
+pruefe("Die Schachregel-Anleitung zeichnet jede Gruppe (v0.96)", () => {
+    /*
+     * Der Fehler, gegen den diese Datei ueberhaupt gebaut wurde, war ein Tab,
+     * der leer blieb (v1.2). Eine ganz neue Ansicht bekommt deshalb sofort
+     * ihren Test: Sie muss durchlaufen und sichtbar etwas erzeugen.
+     */
+    TEAM_SCHACH.grundlagenOeffnen();
+
+    if (!TEAM_SCHACH.grundlagenOffen) {
+        throw new Error("die Anleitung ist nicht offen");
+    }
+
+    const karten = TEAM_SCHACH.wurzelEl.kinder.filter(
+        (kind) => String(kind.className || "").indexOf("karte") !== -1);
+
+    /* Je Gruppe eine Karte, dazu die Abschluss-Karte „Was ist hier anders". */
+    if (karten.length !== SCHACH_GRUNDLAGEN.GRUPPEN.length + 1) {
+        throw new Error("es kommen " + karten.length + " Karten statt "
+            + (SCHACH_GRUNDLAGEN.GRUPPEN.length + 1));
+    }
+
+    /* Zugeklappt steht nur die Ueberschrift da — kein Brett. */
+    if (TEAM_SCHACH.wurzelEl.querySelector(".anleitung")) {
+        throw new Error("ein Brett steht schon da, bevor jemand aufklappt");
+    }
+
+    TEAM_SCHACH.grundlagenSchliessen();
+    if (TEAM_SCHACH.grundlagenOffen) {
+        throw new Error("die Anleitung laesst sich nicht schliessen");
+    }
+});
+
+pruefe("Ein Kapitel klappt sein Brett erst beim Antippen auf (v0.96)", () => {
+    TEAM_SCHACH.grundlagenOeffnen();
+
+    const eintrag = TEAM_SCHACH.wurzelEl.querySelector(".grundlagen-eintrag");
+    if (!eintrag) {
+        throw new Error("es gibt keinen aufklappbaren Eintrag");
+    }
+    if (eintrag.querySelector(".stufen-inhalt")) {
+        throw new Error("der Inhalt steht schon vor dem Aufklappen da");
+    }
+
+    eintrag.open = true;
+    eintrag.ausloesen("toggle");
+
+    if (!eintrag.querySelector(".anleitung")) {
+        throw new Error("nach dem Aufklappen fehlt das Brett");
+    }
+    if (!eintrag.querySelector(".stufen-text")) {
+        throw new Error("nach dem Aufklappen fehlt der Satz");
+    }
+
+    TEAM_SCHACH.grundlagenSchliessen();
+});
+
+pruefe("Die Werte-Tabelle nennt jede Figur mit ihrer Zahl (v0.96)", () => {
+    TEAM_SCHACH.grundlagenOeffnen();
+
+    const liste = TEAM_SCHACH.wurzelEl.querySelector(".werte-liste");
+    const anzahl = liste ? liste.kinder.length : 0;
+
+    TEAM_SCHACH.grundlagenSchliessen();
+
+    if (!liste) {
+        throw new Error("die Werte-Tabelle fehlt");
+    }
+    if (anzahl !== SCHACH_GRUNDLAGEN.werte().length) {
+        throw new Error("es stehen " + anzahl + " Zeilen statt "
+            + SCHACH_GRUNDLAGEN.werte().length);
     }
 });
 

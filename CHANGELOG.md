@@ -3,6 +3,37 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.96.0 — 2026-08-20
+
+**Neu: „Schach lernen" — die Grundregeln zum Nachschlagen, direkt in der App.**
+
+Der Knopf steht oben in der Partie-Übersicht, also dort, wo man ist, bevor man
+einem Team beitritt. Vier Abschnitte, jeder Punkt einzeln aufklappbar:
+
+- **Die Figuren und wie sie ziehen.** Für jede Figur ein Brett, auf dem
+  markiert ist, wohin sie von dort aus könnte. Beim Bauern sieht man in einem
+  Bild, worüber am Anfang jeder stolpert: Er zieht gerade, schlägt aber schräg
+  — das Feld direkt vor ihm ist besetzt und deshalb KEIN Zug, das schräge
+  daneben schon.
+
+- **Was ist wie viel wert.** Die Figuren nach Wert geordnet, mit denselben
+  Zahlen, mit denen die App am Ende der Partie eure Bilanz rechnet. Damit
+  weisst du, ob sich ein Tausch lohnt.
+
+- **Schach, Matt und Patt** — der Unterschied, der am häufigsten missverstanden
+  wird. Beim Schach siehst du die Züge, die noch retten; beim Matt, dass keiner
+  mehr da ist; beim Patt, dass der König NICHT angegriffen ist und trotzdem
+  nicht mehr ziehen kann. Dazu der Satz, der dich einen Sieg kosten kann: Wenn
+  dem Gegner fast nichts mehr bleibt, lass ihm ein Feld.
+
+- **Drei Züge, die anders sind:** Umwandlung, Rochade und das Schlagen im
+  Vorbeigehen — jeweils mit Vorher- und Nachher-Bild.
+
+**Jedes Bild ist gerechnet, nicht gemalt.** Wo dort steht „so zieht der
+Springer", hat dieselbe Regel die Felder geliefert, nach der auch euer echtes
+Brett arbeitet; wo „das ist Patt" steht, hat die Regel es gesagt. Die Anleitung
+kann deshalb nie etwas anderes zeigen als das Spiel.
+
 ## v0.95.0 — 2026-08-20
 
 **Items führen nie mehr direkt zu Schach oder Matt.**

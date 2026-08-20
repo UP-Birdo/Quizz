@@ -699,6 +699,17 @@ Object.assign(TEAM_SCHACH, {
         const kopf = TEAM_SCHACH._element("div", "phasen-leiste");
         kopf.appendChild(TEAM_SCHACH._element("span", "phasen-text",
             "Offene Partien: " + offene.length));
+
+        /*
+         * DER WEG ZU DEN SCHACHREGELN (seit v0.96).
+         *
+         * Er steht in der ÜBERSICHT und nicht erst in einer laufenden Partie:
+         * Wer Schach nicht kann, soll nachlesen können, BEVOR er einem Team
+         * beitritt. Die Fähigkeiten-Bibliothek erreicht man weiterhin über das
+         * i beim Anlegen und über den Vorrat — sie beantwortet die zweite
+         * Frage, nicht die erste.
+         */
+        kopf.appendChild(TEAM_SCHACH._grundlagenKnopfBauen());
         wurzel.appendChild(kopf);
 
         if (offene.length === 0) {

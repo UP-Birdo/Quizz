@@ -12,6 +12,7 @@ das es so nicht mehr gibt.
 | `test-schach-runde.js` | eine Partie: Teams, Spielarten, Fähigkeiten |
 | `test-schach-tafel.js` | Sammlung der Partien und der **Umstieg** von früher |
 | `test-schach-vorschau.js` | Bildanleitung: jede Fähigkeit hat ein Beispiel, und es geht auf |
+| `test-schach-grundlagen.js` | Schachregel-Anleitung: jedes Kapitel ist mit den echten Regeln gerechnet |
 | `test-rangliste.js` | Gesamtwertung über beide Spiele |
 | `test-bildschirm.js` | Bildschirm-Code gegen ein nachgebautes DOM |
 | `test-syntax.js` | Übersetzbarkeit, Einbindung, Aufrufe, Version |

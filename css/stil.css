@@ -2766,6 +2766,72 @@ body {
         inset 0 0 0 4px var(--ziel-kern);
 }
 
+/* ------------------------------------------------------------------ *
+ * Die Figurenwerte in der Schachregel-Anleitung (seit v0.96)
+ *
+ * Links das Zeichen, in der Mitte Name und Satz, rechts die Zahl. Die Zahl
+ * steht rechtsbündig und in gleichen Ziffernbreiten, damit die Spalte eine
+ * Spalte bleibt — daran liest man die Reihenfolge ab, und genau darum geht es.
+ * ------------------------------------------------------------------ */
+
+.werte-liste {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.werte-zeile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    background: var(--karte-leise);
+    border: 1px solid var(--rahmen);
+    border-radius: 8px;
+}
+
+.werte-figur {
+    flex: 0 0 auto;
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.werte-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.werte-name {
+    font-weight: 600;
+}
+
+.werte-satz {
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--schrift-leise);
+}
+
+.werte-zahl {
+    flex: 0 0 auto;
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--haupt);
+    min-width: 1.6em;
+    text-align: right;
+}
+
+/* Die Kapitel klappen auf wie die Eintraege der Fähigkeiten-Bibliothek und
+   teilen sich deren Stil (`stufen-eintrag`). Eigen ist nur der Abstand: Hier
+   stehen mehrere Kapitel direkt untereinander in EINER Karte. */
+.grundlagen-eintrag + .grundlagen-eintrag {
+    margin-top: 6px;
+}
+
 /*
  * DIE GANZE BESCHREIBUNG UNTER DEN BILDERN (seit v0.94).
  *
