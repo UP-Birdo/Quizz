@@ -169,8 +169,12 @@ Object.assign(TEAM_SCHACH, {
             const inhalt = TEAM_SCHACH._element("div", "stufen-inhalt");
 
             for (const bild of SCHACH_GRUNDLAGEN.bilder(kapitel.id)) {
+                /* `grundlagen-brett` gibt dem Bild mehr Breite als die
+                   Fähigkeits-Anleitung: Acht Spalten statt sechs, und ein Feld
+                   soll trotzdem gross genug zum Ansehen bleiben. */
                 const halter = TEAM_SCHACH._element("div", "anleitung anleitung-film");
-                const flaeche = TEAM_SCHACH._element("div", "anleitung-bild");
+                const flaeche = TEAM_SCHACH._element("div",
+                    "anleitung-bild grundlagen-brett");
 
                 flaeche.appendChild(TEAM_SCHACH._beispielBrettBauen(bild));
                 halter.appendChild(flaeche);

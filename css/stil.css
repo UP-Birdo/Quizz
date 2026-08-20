@@ -2833,6 +2833,20 @@ body {
 }
 
 /*
+ * DAS BRETT DER SCHACHREGELN IST BREITER (seit v0.97).
+ *
+ * Es hat acht Spalten statt sechs wie die Fähigkeits-Anleitung. Bei gleicher
+ * Breite wäre jedes Feld ein Viertel kleiner — und hier ist das Brett die
+ * Sache selbst, nicht der Rahmen für eine Wirkung. Nach oben begrenzt bleibt
+ * es trotzdem: Auf dem Handy soll neben ihm kein Rand entstehen, über den man
+ * waagerecht scrollen müsste.
+ */
+.grundlagen-brett {
+    flex: 0 1 360px;
+    max-width: min(360px, 100%);
+}
+
+/*
  * DIE GANZE BESCHREIBUNG UNTER DEN BILDERN (seit v0.94).
  *
  * Ein Aufklapper, zu wie jeder Aufklapper. Oben im Fenster steht ein Satz,

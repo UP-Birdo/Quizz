@@ -3,6 +3,22 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.97.0 — 2026-08-20
+
+**„Schach lernen" steht jetzt auf dem normalen Brett — und ohne Lootboxen.**
+
+- **Acht mal acht statt sechs mal sechs.** Wer Schach lernt, soll es auf dem
+  Brett lernen, das er nachher vor sich hat. Damit stimmen auch die Felder:
+  Die Rochade zeigt König e1 nach g1 und Turm h1 nach f1, also genau den Zug,
+  den man später macht.
+
+- **Die vier Lootboxen sind weg.** Auf jedem Bild der Anleitung lagen welche
+  herum, obwohl es dort um Schachregeln geht und nicht um Fähigkeiten. Sie
+  kamen aus der Spielart, mit der die Bilder gerechnet wurden.
+
+- Die Bretter sind ausserdem etwas grösser gezeichnet, damit ein Feld bei acht
+  Spalten nicht kleiner wird als vorher bei sechs.
+
 ## v0.96.0 — 2026-08-20
 
 **Neu: „Schach lernen" — die Grundregeln zum Nachschlagen, direkt in der App.**

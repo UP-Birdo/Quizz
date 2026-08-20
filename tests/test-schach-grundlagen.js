@@ -94,6 +94,66 @@ pruefe("Jedes Kapitel bringt mindestens ein Bild zustande", () => {
     }
 });
 
+pruefe("Auf keinem Bild liegt eine Lootbox (v0.97)", () => {
+    /*
+     * DER FEHLER AUS v0.96, vom Nutzer gemeldet: Auf jedem Brett der Anleitung
+     * lagen vier Lootboxen.
+     *
+     * Ursache war die gewaehlte Spielart. `SCHACH_RUNDE.normalisieren` legt die
+     * Startwuerfel der Spielart aufs Brett, WENN die Runde keine eigene Liste
+     * mitbringt — und die alte, versteckte Spielart `faehigkeiten` traegt aus
+     * Umstiegs-Gruenden vier solche Felder. Mit den Schachregeln hat das
+     * nichts zu tun. Behoben durch die Spielart `standard` UND eine
+     * ausdrueckliche leere Liste.
+     */
+    for (const kapitel of SCHACH_GRUNDLAGEN.KAPITEL) {
+        for (const bild of SCHACH_GRUNDLAGEN.bilder(kapitel.id)) {
+            gleich(bild.runde.bonus.length, 0, kapitel.id + ": keine Lootbox");
+            gleich(bild.runde.faehigkeiten.weiss.length, 0,
+                kapitel.id + ": kein Vorrat");
+            gleich(SCHACH_RUNDE.faehigkeitenAn(bild.runde), false,
+                kapitel.id + ": Faehigkeiten sind aus");
+        }
+    }
+});
+
+pruefe("Die Anleitung steht auf dem NORMALEN Brett (v0.97)", () => {
+    /*
+     * 8 mal 8, Spielart `standard` — der Nutzer soll das Brett sehen, das er
+     * nachher vor sich hat. Die Bildanleitung der Faehigkeiten nimmt weiterhin
+     * ein kleineres 6-mal-6; dort ist das Brett nur der Rahmen fuer eine
+     * Wirkung, hier ist es die Sache selbst.
+     */
+    gleich(SCHACH_GRUNDLAGEN.BREITE, 8, "acht Spalten");
+    gleich(SCHACH_GRUNDLAGEN.HOEHE, 8, "acht Reihen");
+
+    for (const kapitel of SCHACH_GRUNDLAGEN.KAPITEL) {
+        gleich(kapitel.brett.length, 8, kapitel.id + ": acht Zeilen geschrieben");
+        for (const zeile of kapitel.brett) {
+            gleich(zeile.length, 8, kapitel.id + ": jede Zeile acht Zeichen");
+        }
+
+        const bild = SCHACH_GRUNDLAGEN.bilder(kapitel.id)[0];
+        gleich(SCHACH.breiteVon(bild.runde.stand), 8, kapitel.id + ": Brett acht breit");
+        gleich(SCHACH.hoeheVon(bild.runde.stand), 8, kapitel.id + ": Brett acht hoch");
+    }
+});
+
+pruefe("Die Rochade steht auf den echten Feldern e1 und h1 (v0.97)", () => {
+    /*
+     * Auf dem normalen Brett ist die kurze Rochade die, die jeder kennt —
+     * Koenig e1 nach g1, Turm h1 nach f1. Genau das soll das Bild zeigen.
+     */
+    const bilder = SCHACH_GRUNDLAGEN.bilder("rochade");
+    const vorher = bilder[0].runde.stand;
+    const nachher = bilder[1].runde.stand;
+
+    gleich(SCHACH.figurAuf(vorher, SCHACH.feldNummer("e1")), "K", "Koenig auf e1");
+    gleich(SCHACH.figurAuf(vorher, SCHACH.feldNummer("h1")), "T", "Turm auf h1");
+    gleich(SCHACH.figurAuf(nachher, SCHACH.feldNummer("g1")), "K", "danach Koenig auf g1");
+    gleich(SCHACH.figurAuf(nachher, SCHACH.feldNummer("f1")), "T", "danach Turm auf f1");
+});
+
 pruefe("Ein unbekanntes Kapitel liefert nichts, statt zu stolpern", () => {
     gleich(SCHACH_GRUNDLAGEN.bilder("gibtesnicht").length, 0, "leere Liste");
     gleich(SCHACH_GRUNDLAGEN.kapitel("gibtesnicht"), null, "kein Eintrag");

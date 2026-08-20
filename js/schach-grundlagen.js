@@ -1,5 +1,6 @@
 /*
- * schach-grundlagen.js — die Schachregeln zum Nachlesen (seit v0.96).
+ * schach-grundlagen.js — die Schachregeln zum Nachlesen (seit v0.96,
+ * auf dem normalen 8-mal-8-Brett seit v0.97).
  *
  * Wozu: Team Schach wird von Leuten gespielt, die Schach nicht unbedingt
  * können. Die Fähigkeiten haben seit v0.41 ihre Bildanleitung; die GRUNDLAGEN
@@ -19,14 +20,18 @@
  * (`{ runde, marken, ziele, tipp, wege, text }`). Der Bildschirm baut damit
  * nichts Eigenes.
  *
- * Das Brett ist wie in der Bildanleitung 6 mal 6 Felder gross: klein genug
- * fürs Handy, gross genug für jede Gangart.
+ * DAS BRETT IST DAS NORMALE (seit v0.97): 8 mal 8 Felder, die Spielart
+ * `standard`. Die Bildanleitung der Fähigkeiten nimmt ein kleineres 6-mal-6,
+ * weil dort eine WIRKUNG gezeigt wird und das Brett nur der Rahmen ist. Hier
+ * ist das Brett die Sache selbst: Wer Schach lernt, soll es auf dem Brett
+ * lernen, das er nachher vor sich hat — mit acht Reihen, den echten Feldnamen
+ * und den Startfeldern, an denen Rochade und Umwandlung wirklich hängen.
  */
 
 const SCHACH_GRUNDLAGEN = {
 
-    BREITE: 6,
-    HOEHE: 6,
+    BREITE: 8,
+    HOEHE: 8,
 
     /* Feldnummer aus Reihe und Spalte, beide von 0 an — nur zum Schreiben der
        Stellungen unten. Im Spiel rechnet `SCHACH` selbst. */
@@ -72,12 +77,14 @@ const SCHACH_GRUNDLAGEN = {
              * Aufräumen glattzieht, nimmt dem Bild seinen Sinn.
              */
             brett: [
-                "......",
-                "......",
-                "..ss..",
-                "..B...",
-                "......",
-                "......"
+                "........",
+                "........",
+                "........",
+                "...ss...",
+                "...B....",
+                "........",
+                "........",
+                "........"
             ],
             text: "Er geht ein Feld nach vorn und nie zurück. Schlagen kann er "
                 + "nur SCHRÄG nach vorn — deshalb ist das Feld direkt vor ihm "
@@ -93,12 +100,14 @@ const SCHACH_GRUNDLAGEN = {
             art: "gangart",
             figur: "S",
             brett: [
-                "......",
-                "......",
-                "..S...",
-                "......",
-                "......",
-                "......"
+                "........",
+                "........",
+                "........",
+                "........",
+                "...S....",
+                "........",
+                "........",
+                "........"
             ],
             text: "Zwei Felder gerade, eines zur Seite — ein L. Er ist der "
                 + "einzige, der über andere Figuren HINWEGSETZT: Was dazwischen "
@@ -112,12 +121,14 @@ const SCHACH_GRUNDLAGEN = {
             art: "gangart",
             figur: "L",
             brett: [
-                "......",
-                "......",
-                "..L...",
-                "......",
-                "......",
-                "......"
+                "........",
+                "........",
+                "........",
+                "........",
+                "...L....",
+                "........",
+                "........",
+                "........"
             ],
             text: "Schräg, so weit er will. Er bleibt sein Leben lang auf "
                 + "seiner Farbe: Ein Läufer, der auf einem hellen Feld startet, "
@@ -130,12 +141,14 @@ const SCHACH_GRUNDLAGEN = {
             art: "gangart",
             figur: "T",
             brett: [
-                "......",
-                "......",
-                "..T...",
-                "......",
-                "......",
-                "......"
+                "........",
+                "........",
+                "........",
+                "........",
+                "...T....",
+                "........",
+                "........",
+                "........"
             ],
             text: "Gerade, so weit er will — quer und längs. Er kommt an jedes "
                 + "Feld des Bretts, braucht dafür aber freie Bahn."
@@ -147,12 +160,14 @@ const SCHACH_GRUNDLAGEN = {
             art: "gangart",
             figur: "D",
             brett: [
-                "......",
-                "......",
-                "..D...",
-                "......",
-                "......",
-                "......"
+                "........",
+                "........",
+                "........",
+                "........",
+                "...D....",
+                "........",
+                "........",
+                "........"
             ],
             text: "Turm und Läufer in einer Figur: gerade UND schräg, so weit "
                 + "sie will. Die stärkste Figur — und deshalb die, deren "
@@ -165,12 +180,14 @@ const SCHACH_GRUNDLAGEN = {
             art: "gangart",
             figur: "K",
             brett: [
-                "......",
-                "......",
-                "..K...",
-                "......",
-                "......",
-                "......"
+                "........",
+                "........",
+                "........",
+                "........",
+                "...K....",
+                "........",
+                "........",
+                "........"
             ],
             text: "Ein Feld in jede Richtung. Er zieht am wenigsten und "
                 + "entscheidet trotzdem alles: Geht er verloren, ist die Partie "
@@ -184,15 +201,17 @@ const SCHACH_GRUNDLAGEN = {
             gruppe: "ausgang",
             titel: "Schach",
             art: "lage",
-            /* Der schwarze König wird vom Turm angegriffen, hat aber noch
-               Felder — also Schach und nicht Matt. */
+            /* Der Turm auf e1 deckt die ganze e-Linie und greift den König auf
+               e8 an. Der hat noch Felder — also Schach und nicht Matt. */
             brett: [
-                "..k...",
-                "......",
-                "......",
-                "..T...",
-                "......",
-                ".....K"
+                "....k...",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........",
+                "K...T..."
             ],
             amZug: "schwarz",
             erwartet: "laeuft",
@@ -215,12 +234,14 @@ const SCHACH_GRUNDLAGEN = {
              * darunter. Zusammen bleibt nichts übrig.
              */
             brett: [
-                "T..k..",
-                "......",
-                "...K..",
-                "......",
-                "......",
-                "......"
+                "T...k...",
+                "........",
+                "....K...",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........"
             ],
             amZug: "schwarz",
             erwartet: "matt",
@@ -235,15 +256,20 @@ const SCHACH_GRUNDLAGEN = {
             gruppe: "ausgang",
             titel: "Patt — unentschieden",
             art: "lage",
-            /* Der schwarze König steht NICHT im Schach, hat aber kein Feld
-               mehr: Alle Nachbarfelder deckt die Dame. */
+            /*
+             * Die Standard-Pattstellung: Der König steht in der Ecke h8, die
+             * Dame auf g6 nimmt ihm g8, g7 und h7 — sein eigenes Feld greift
+             * sie aber NICHT an. Kein Schach, kein Zug.
+             */
             brett: [
-                "k.....",
-                "......",
-                ".D....",
-                "......",
-                "......",
-                ".....K"
+                ".......k",
+                "........",
+                "......D.",
+                "........",
+                "........",
+                "........",
+                "........",
+                "K......."
             ],
             amZug: "schwarz",
             erwartet: "patt",
@@ -260,16 +286,19 @@ const SCHACH_GRUNDLAGEN = {
             gruppe: "sonderzuege",
             titel: "Umwandlung",
             art: "zug",
+            /* Ein Bauer auf b7 — ein Feld vor der letzten Reihe. */
             brett: [
-                "......",
-                "..B...",
-                "......",
-                "......",
-                "k....K",
-                "......"
+                "........",
+                ".B......",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........"
             ],
-            von: [1, 2],
-            nach: [0, 2],
+            von: [1, 1],
+            nach: [0, 1],
             umwandlung: "D",
             text: "Erreicht ein Bauer die letzte Reihe, wird er sofort zu einer "
                 + "anderen Figur — du wählst welche. Fast immer nimmt man die "
@@ -291,18 +320,22 @@ const SCHACH_GRUNDLAGEN = {
              * Startfelder stehen in keiner Tabelle. Das Regelwerk liest die
              * Rechte ohnehin aus dem Stand — siehe `SCHACH._rochadeTuerme`.
              */
+            /* Die echten Felder: König e1, Turm h1, dazwischen frei. Auf dem
+               normalen Brett ist das die kurze Rochade, wie man sie kennt. */
             brett: [
-                "k.....",
-                "......",
-                "......",
-                "......",
-                "......",
-                "..K..T"
+                "........",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........",
+                "........",
+                "....K..T"
             ],
-            rochadeKoenige: [[5, 2]],
-            rochadeFelder: [[5, 5]],
-            von: [5, 2],
-            nach: [5, 4],
+            rochadeKoenige: [[7, 4]],
+            rochadeFelder: [[7, 7]],
+            von: [7, 4],
+            nach: [7, 6],
             text: "Der einzige Zug, bei dem sich ZWEI eigene Figuren bewegen: "
                 + "Der König geht zwei Felder auf den Turm zu, und der Turm "
                 + "springt auf die andere Seite. Sie bringt den König in "
@@ -322,17 +355,21 @@ const SCHACH_GRUNDLAGEN = {
              * Schwarz hier am Zug: Der Doppelschritt wird wirklich gezogen
              * (`vorzug`), nicht behauptet.
              */
+            /* Weisser Bauer auf e5, schwarzer auf d7: Der Doppelschritt d7-d5
+               stellt ihn direkt daneben — und genau dann geht der Sonderzug. */
             brett: [
-                "k.....",
-                "...b..",
-                "......",
-                "..B...",
-                ".....K",
-                "......"
+                "........",
+                "...b....",
+                "........",
+                "....B...",
+                "........",
+                "........",
+                "........",
+                "........"
             ],
             amZug: "schwarz",
             vorzug: { von: [1, 3], nach: [3, 3] },
-            von: [3, 2],
+            von: [3, 4],
             nach: [2, 3],
             text: "Zieht ein gegnerischer Bauer mit seinem Doppelschritt an "
                 + "deinem Bauern vorbei, darfst du ihn trotzdem schlagen — so, "
@@ -418,8 +455,24 @@ const SCHACH_GRUNDLAGEN = {
 
         return SCHACH_RUNDE.normalisieren({
             id: "grundlagen-" + kapitel.id,
-            variante: "faehigkeiten",
+            variante: "standard",
             regeln: { faehigkeiten: false },
+
+            /*
+             * KEINE LOOTBOXEN — und die leere Liste ist Absicht, kein Beiwerk.
+             *
+             * `normalisieren` legt die Startwürfel der Spielart auf das Brett,
+             * WENN die Runde gar keine Liste mitbringt. Die alte, versteckte
+             * Spielart `faehigkeiten` trägt aus Umstiegs-Gründen vier solche
+             * Felder — und genau die lagen bis v0.96 in jedem Bild dieser
+             * Anleitung, obwohl mit Schachregeln keine Lootbox etwas zu tun
+             * hat. Gemeldet vom Nutzer.
+             *
+             * Mit `standard` gäbe es sie ohnehin nicht; die leere Liste steht
+             * trotzdem hier, damit ein Wechsel der Spielart sie nicht
+             * zurückholt.
+             */
+            bonus: [],
             stand: {
                 brett: kapitel.brett.join(""),
                 breite: SCHACH_GRUNDLAGEN.BREITE,
