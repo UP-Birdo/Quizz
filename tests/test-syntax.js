@@ -169,5 +169,62 @@ pruefe("Version aus konfig.js steht in der STATUS.md", () => {
     }
 });
 
+pruefe("Die Pruefsummen-Zutaten heissen weiter quizz (v0.89)", () => {
+    /*
+     * SEIT v0.89 HEISST DIE APP SICHTBAR „Quiz" MIT EINEM z — im Code aber
+     * NICHT. Diese drei Zeichenketten sind keine Namen, sondern Zutaten einer
+     * Pruefsumme. Wer sie „vereinheitlicht", macht jede Spieler-PIN, das
+     * Verwaltungs-Passwort und jedes Siegel ungueltig, und zwar STILL: Es
+     * faellt erst auf, wenn sich jemand nicht mehr anmelden kann.
+     *
+     * Genau davor schuetzt dieser Test. Er ist die Gegenrichtung zu dem
+     * darunter: Der eine haelt den sichtbaren Namen sauber, dieser die
+     * technische Kennung stabil.
+     */
+    const versiegelung = dateisystem.readFileSync(
+        pfad.join(jsOrdner, "versiegelung.js"), "utf8");
+
+    for (const zutat of ["quizz-pin|", "quizz-admin|", "wuerfel-quizz|"]) {
+        if (versiegelung.indexOf(zutat) === -1) {
+            throw new Error("Die Pruefsummen-Zutat \"" + zutat + "\" fehlt in"
+                + " versiegelung.js — wurde sie umbenannt? Das macht PINs,"
+                + " Verwaltungs-Passwort und Siegel ungueltig."
+                + " Siehe docs/entscheidungen/entschieden-ab-v0-41.md.");
+        }
+    }
+
+    /* Und die Speicherpfade, die Adresse aller gespeicherten Daten. */
+    const konfig = dateisystem.readFileSync(pfad.join(jsOrdner, "konfig.js"), "utf8");
+
+    for (const schluessel of ["wuerfel-quizz", "quizz.team-schach", "quizz.imposter"]) {
+        if (konfig.indexOf(schluessel) === -1) {
+            throw new Error("Der Speicherpfad \"" + schluessel + "\" fehlt in"
+                + " konfig.js — neue Pfade lassen alle bisherigen Daten"
+                + " verwaisen. Siehe docs/entscheidungen/entschieden-ab-v0-41.md.");
+        }
+    }
+});
+
+pruefe("Der sichtbare Name ist Quiz mit EINEM z (v0.89)", () => {
+    /*
+     * Die Gegenrichtung: Was ein Mensch liest, heisst „Quiz". Geprueft wird
+     * dort, wo der Name wirklich sichtbar wird — Seitentitel, Kopfzeile und
+     * der Name auf dem Startbildschirm.
+     */
+    const seite = dateisystem.readFileSync(pfad.join(projekt, "index.html"), "utf8");
+    const anzeige = dateisystem.readFileSync(
+        pfad.join(projekt, "manifest.webmanifest"), "utf8");
+
+    for (const stelle of ["<title>Quiz</title>", "<h1>Quiz</h1>"]) {
+        if (seite.indexOf(stelle) === -1) {
+            throw new Error("index.html: " + stelle + " fehlt");
+        }
+    }
+
+    if (anzeige.indexOf("\"name\": \"Quiz\"") === -1) {
+        throw new Error("manifest.webmanifest: der Name heisst nicht Quiz");
+    }
+});
+
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
 process.exit(anzahlFehler === 0 ? 0 : 1);

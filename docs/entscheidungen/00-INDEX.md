@@ -191,6 +191,9 @@ nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
 - Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
 - Ausdehnung und Einsturz aus dem Spiel genommen (v0.84) — **auf Zeit**;
   versteckt statt gelöscht, liegende Boxen fliegen vom Brett, Stufe Blau leer
+- Sichtbarer Name und technische Kennung sind zweierlei (v0.89) — **wichtig
+  vor jedem Umbenennen**: sichtbar „Quiz", im Code bleibt „quizz", weil es
+  dort Zutat von PIN-, Passwort- und Siegel-Pruefsummen ist
 - Der begrenzte Item-Vorrat (v0.87) — Vorrat gehoert zur Partie und wird
   gerechnet; Filter an EINER Stelle (`faehigkeitenDerStufe`), leere Stufe
   bekommt Gewicht 0, Bibliothek bleibt bewusst ungefiltert

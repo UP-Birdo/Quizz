@@ -3,6 +3,21 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.89.0 — 2026-08-20
+
+**Die App heisst jetzt richtig: „Quiz" mit einem z.**
+
+- Seitentitel, Kopfzeile, der Name auf dem Startbildschirm, die
+  Tab-Beschriftung „Würfel Quiz" und die Ranglisten-Spalte sind korrigiert.
+  Wer die App schon auf dem Startbildschirm hat, sieht den neuen Namen nach
+  dem nächsten Laden.
+
+- **Für dich ändert sich sonst nichts:** Deine PIN, das Verwaltungs-Passwort,
+  laufende Runden, Partien und die Rangliste bleiben unverändert. Im
+  Hintergrund behält die App bewusst ihre bisherigen Kennungen — sie stecken
+  in den Prüfsummen der PINs und Siegel und in der Adresse aller
+  gespeicherten Daten.
+
 ## v0.88.0 — 2026-08-20
 
 **Die schwarzen Streifen sind weg, und es gibt eine neue Fähigkeit.**

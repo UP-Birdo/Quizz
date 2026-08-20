@@ -25,7 +25,7 @@
 const WUERFEL_QUIZZ = {
 
     id: "wuerfel-quizz",
-    titel: "Würfel Quizz",
+    titel: "Würfel Quiz",
 
     /* Wird von app.js gesetzt. */
     abgleich: null,

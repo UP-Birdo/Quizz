@@ -92,6 +92,6 @@ const WUNSCH = {
     /* Welcher Tab ist gerade offen? Hilft beim Einordnen des Wunsches. */
     _stelle() {
         const tab = TABS.liste.find((eintrag) => eintrag.id === TABS.aktiveId);
-        return tab ? tab.titel : "Quizz";
+        return tab ? tab.titel : "Quiz";
     }
 };

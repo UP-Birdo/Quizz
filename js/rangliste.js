@@ -410,7 +410,7 @@ const RANGLISTE = {
 
         if (liste.length === 0) {
             bereich.appendChild(RANGLISTE._element("p", "erklaerung",
-                "Noch niemand dabei. Melde dich im Tab Würfel Quizz an."));
+                "Noch niemand dabei. Melde dich im Tab Würfel Quiz an."));
             wurzel.appendChild(bereich);
             return;
         }
@@ -531,7 +531,7 @@ const RANGLISTE = {
 
         const aufteilung = RANGLISTE._element("div", "profil-summen");
         for (const teil of [
-            { titel: "Würfel Quizz", wert: person.quizz },
+            { titel: "Würfel Quiz", wert: person.quizz },
             { titel: "Team Schach", wert: person.schach },
             { titel: "Imposter", wert: person.imposter }
         ]) {
@@ -574,7 +574,7 @@ const RANGLISTE = {
          */
         if (person.quizz > 0) {
             karte.appendChild(RANGLISTE._element("p", "erklaerung",
-                "Die " + person.quizz + " Punkte aus dem Würfel Quizz stehen hier "
+                "Die " + person.quizz + " Punkte aus dem Würfel Quiz stehen hier "
                 + "nicht einzeln: Das Spiel kennt nur die laufende Runde, eine "
                 + "neue überschreibt die alte."));
         }

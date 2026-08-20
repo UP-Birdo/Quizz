@@ -1056,3 +1056,43 @@ stillschweigend dasselbe wie „alle" gewesen — ein Knopf ohne Wirkung. Sie st
 jetzt auf 15, und ein Test besteht darauf, dass jede Stufe wirklich mehr
 liefert als die darunter. Wer Fähigkeiten ergänzt, darf die Zahlen anheben; der
 Test sagt, wann es nötig wird.
+
+## Sichtbarer Name und technische Kennung sind zweierlei (v0.89)
+
+**Nutzer-Frage vom 20.08.:** „Kann es sein, dass überall Quizz falsch
+geschrieben ist?" — Ja. Richtig ist **Quiz** mit einem z; „Quizz" war von
+Anfang an durchgängig falsch geschrieben.
+
+**Entschieden: Nur der sichtbare Name wird geändert.** Seit v0.89 heisst die
+App überall dort „Quiz", wo ein Mensch sie liest — Seitentitel, Kopfzeile,
+Name auf dem Startbildschirm, Tab-Beschriftung, Ranglisten-Spalte. Alle
+technischen Kennungen behalten „quizz".
+
+**Warum nicht durchgängig? Drei Gründe, jeder für sich ausreichend:**
+
+1. **„quizz" ist an drei Stellen eine ZUTAT einer Prüfsumme**, kein Name:
+   `quizz-pin|…` (jede Spieler-PIN), `quizz-admin|…` (das
+   Verwaltungs-Passwort, dessen Prüfwert in `konfig.js` damit gerechnet wurde)
+   und `wuerfel-quizz|…` (jedes Siegel). Ein gestrichenes z macht sie alle
+   ungültig — und zwar still: Es fällt erst auf, wenn sich jemand nicht mehr
+   anmelden kann oder eine laufende Runde sich nicht auflösen lässt.
+2. **Die Speicherpfade** (`wuerfel-quizz`, `quizz.team-schach`,
+   `quizz.imposter` und die lokalen Schlüssel) sind die Adresse aller
+   gespeicherten Daten. Neue Pfade hiessen: Alles Bisherige liegt weiter in
+   der Datenbank, die App schaut nur nicht mehr hin — plus neue Regeln von
+   Hand in der Firebase-Konsole.
+3. **Die Firebase-Projektkennung `quizz-215bd` lässt sich gar nicht ändern.**
+   Sie ist bei Firebase dauerhaft. „Überall" wäre also selbst dann unmöglich,
+   wenn man die ersten beiden Punkte in Kauf nähme.
+
+**Was das für künftige Arbeit heisst:** Der Unterschied zwischen „Quiz" im
+Text und „quizz" im Code ist **Absicht, kein Flüchtigkeitsfehler.** Wer ihn
+„aufräumt", zerstört Daten. Im Code steht an der empfindlichsten Stelle
+(`versiegelung.js`) ein Warnblock; der Ordner heisst weiter `Apps\Quizz`, das
+Repo `up-birdo/Quizz`, und die Werkzeuge heissen weiter `Deploy-Quizz.ps1` und
+`Test-Quizz.ps1`.
+
+**Was der Nutzer tun müsste, wenn er es doch ganz will:** das Repo auf GitHub
+selbst umbenennen (dann ändert sich die Adresse der Seite und alte Lesezeichen
+gehen ins Leere) und in der Firebase-Konsole neue Regeln anlegen. Beides wurde
+am 20.08. bewusst NICHT gemacht.
