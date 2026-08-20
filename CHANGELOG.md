@@ -3,6 +3,44 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.104.0 — 2026-08-21
+
+**Der Regler „Wie viele Figuren je Seite?" hat eine neue Leiter — und zwei
+Stufen, die es so noch nicht gab.**
+
+- **Was du bisher als „normal" kanntest, heisst jetzt „wenig"**, und die
+  gewohnte volle Aufstellung (bis jetzt „voll") heisst jetzt **„normal"**. Neue
+  Partien starten unverändert mit dieser gewohnten Aufstellung — an der Vorgabe
+  ändert sich nichts, nur ihr Knopf hat den Platz gewechselt.
+
+- **„viel" stellt eine Reihe mehr auf.** Die Bauern rücken einen Schritt vor,
+  und dazwischen kommt eine neue Reihe mit Springern, Läufern und Türmen — sie
+  sieht aus wie die Grundreihe, nur ohne König und Dame. Auf dem klassischen
+  Brett sind das 24 Figuren je Seite statt 16.
+
+- **„voll" füllt das Brett bis auf die Mitte.** Frei bleibt nur noch ein
+  2-mal-2-Feld in der Brettmitte, alles andere steht voller Truppen: 30 Figuren
+  je Seite auf dem klassischen Brett, 62 auf dem Doppelbrett. Ein enges,
+  zähes Brett — gedacht zum Ausprobieren.
+
+- **Auf jedem Brett**, auch auf den Kreuzen: Dort füllt jeder Arm nach innen,
+  und wo zwei Fronten aufeinandertreffen, gehört ein Feld dem, der näher dran
+  ist. Beim Kreuz-Duell bleiben die beiden leeren Flügel leer wie bisher.
+
+- **Laufende Partien merken nichts davon.** Ihr Brett steht fest und wird nie
+  neu gerechnet. Wer eine laufende Partie ausdrücklich NEU AUFSTELLT, bekommt
+  die neue Bedeutung ihrer Stufe.
+
+**Dazu eine Änderung an der Zufallsarmee, die beim Bauen nötig wurde:** Ab drei
+Reihen stehen ihre Bauern jetzt vorn und die Offiziere hinten — gewürfelt wird
+weiterhin, WELCHE Figuren eine Seite bekommt. Ohne diese Ordnung sperrte sich
+ein tiefer Block selbst ein: Nachgemessen stand bei „voll" je nach Brett jede
+fünfte bis dritte Seite ohne einen einzigen gültigen Zug da. Bei „wenig" und
+„normal" bleibt die Aufstellung bunt gemischt wie bisher.
+
+Tests: 1527 Prüfungen, 0 Fehler.
+
+
 ## v0.103.0 — 2026-08-20
 
 **Die Unglücks-Lootbox heisst jetzt „Spalt".**

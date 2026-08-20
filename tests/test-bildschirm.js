@@ -928,20 +928,23 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
 
     try {
         /*
-         * 1. OHNE HAKEN UND AUF „voll": die feste Aufstellung, unveraendert.
+         * 1. OHNE HAKEN UND AUF „normal": die feste Aufstellung, unveraendert.
          *
          * SEIT v0.100 gehoert die Staerke dazu (Nutzer-Entscheidung 20.08.:
          * „Zufallsarmee hat keine Auswirkung mehr auf die Groesse, nur der
-         * Regler"). „voll" ist die Vorgabe und schneidet nichts weg.
+         * Regler"). Die Stufe, die nichts wegnimmt und nichts dazustellt,
+         * heisst seit der neuen Leiter in v0.104 „normal" — bis v0.103 hiess
+         * dieselbe Aufstellung „voll".
          */
         TEAM_SCHACH.neueRegeln.zufallsArmee = false;
-        TEAM_SCHACH.neueRegeln.armeeStaerke = "voll";
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "normal";
         if (TEAM_SCHACH._vorschauBrett(variante) !== variante.aufstellung) {
-            throw new Error("ohne Haken und auf voll muss die gewohnte Aufstellung kommen");
+            throw new Error("ohne Haken und auf normal muss die gewohnte "
+                + "Aufstellung kommen");
         }
 
         /* 1b. Und der Regler wirkt AUCH ohne Haken (neu in v0.100). */
-        TEAM_SCHACH.neueRegeln.armeeStaerke = "normal";
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "wenig";
         const schmal = TEAM_SCHACH._vorschauBrett(variante);
 
         if (zaehlen(schmal) >= zaehlen(variante.aufstellung)) {
@@ -952,9 +955,24 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
             throw new Error("beide Koenige muessen das Zuschneiden ueberstehen");
         }
 
+        /* 1c. Und nach OBEN stellt er ohne Haken Figuren DAZU (neu in v0.104):
+               „viel" fuellt eine dritte Reihe, „voll" bis zur Mitte. */
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "viel";
+        const dicht = TEAM_SCHACH._vorschauBrett(variante);
+
+        if (zaehlen(dicht) <= zaehlen(variante.aufstellung)) {
+            throw new Error("viel muss auch ohne Haken mehr aufstellen ("
+                + zaehlen(dicht) + " gegen " + zaehlen(variante.aufstellung) + ")");
+        }
+        if (dicht.split("").filter((z) => z === "K").length !== 1
+            || dicht.split("").filter((z) => z === "k").length !== 1) {
+            throw new Error("die zusaetzlichen Reihen duerfen keinen zweiten "
+                + "Koenig bringen");
+        }
+
         /* 2. Mit Haken: ein anderes Brett bei gleicher Groesse — der Haken
               entscheidet seit v0.100 nur noch, WELCHE Figuren stehen. */
-        TEAM_SCHACH.neueRegeln.armeeStaerke = "voll";
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "normal";
         TEAM_SCHACH.neueRegeln.zufallsArmee = true;
         const beispiel = TEAM_SCHACH._vorschauBrett(variante);
 
@@ -965,7 +983,7 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
             throw new Error("die Brettgroesse darf sich nicht aendern");
         }
         if (zaehlen(beispiel) !== zaehlen(variante.aufstellung)) {
-            throw new Error("auf voll stehen gleich viele Figuren wie sonst ("
+            throw new Error("auf normal stehen gleich viele Figuren wie sonst ("
                 + zaehlen(beispiel) + " gegen " + zaehlen(variante.aufstellung) + ")");
         }
 

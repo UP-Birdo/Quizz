@@ -561,28 +561,20 @@ const SCHACH_RUNDE = {
     },
 
     /*
-     * Die Felder, auf denen eine Seite aufgestellt wird: ihre beiden
-     * Grundreihen, mittig, mit freiem Rand links und rechts. Die hintere Reihe
-     * zuerst — dort landen die zuerst gezogenen Figuren.
+     * Die Felder, auf denen eine Seite aufgestellt wird — äussere Reihe zuerst,
+     * dort landen die zuerst gezogenen Figuren.
      *
-     * Wie breit die Armee steht, rechnet `SCHACH_VARIANTEN.armeeSpalten` aus
-     * der Spielart (seit v0.51) — auf dem klassischen Brett sind das vier
-     * Spalten mit je zwei freien daneben, auf dem Doppelbrett acht mit je vier.
+     * WO DER BLOCK LIEGT, RECHNET DIE SPIELART (`armeeFelderBlock`, seit
+     * v0.104). Diese Funktion übersetzt nur die FARBE in eine Seite: Weiss
+     * steht unten, Schwarz oben. Bis v0.103 rechnete sie die zwei Reihen selbst
+     * — seit die Stufen unterschiedlich TIEF stehen, gäbe das eine zweite
+     * Wahrheit neben der Spielart.
      */
     _armeeFelder(variante, farbe, staerke) {
-        const breite = variante.breite;
-        const hoehe = variante.hoehe;
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, staerke);
-        const reihen = (farbe === SCHACH.WEISS) ? [hoehe - 1, hoehe - 2] : [0, 1];
-        const felder = [];
+        const seite = (farbe === SCHACH.WEISS) ? "unten" : "oben";
 
-        for (const reihe of reihen) {
-            for (let schritt = 0; schritt < platz.spalten; schritt++) {
-                felder.push(reihe * breite + platz.rand + schritt);
-            }
-        }
-
-        return felder;
+        return SCHACH_VARIANTEN.armeeFelderBlock(variante, seite, staerke)
+            .map((eintrag) => eintrag.feld);
     },
 
     /*
@@ -593,43 +585,12 @@ const SCHACH_RUNDE = {
      * diese Funktion nach der SEITE, nicht nach der Farbe; wer welche Seite
      * bekommt, steht seit v0.72 als `startSeiten` im Stand.
      *
-     * Der Aufbau ist derselbe wie auf jedem anderen Brett, nur einmal
-     * gekippt: zuerst die äussere Linie (dort landen die zuerst gezogenen
-     * Figuren, wie sonst die hintere Grundreihe), dann die innere. Die zwei
-     * toten Ecken bleiben aussen vor, und im übrigen Streifen bleibt links und
-     * rechts derselbe freie Rand wie überall — beides steckt schon in
-     * `SCHACH_VARIANTEN.armeeSpalten`.
+     * Gerechnet wird sie seit v0.104 an derselben Stelle wie jede andere
+     * Aufstellung — die Kippung um eine Vierteldrehung steckt dort.
      */
     _armeeFelderKreuz(variante, seite, staerke) {
-        const kante = variante.breite;
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, staerke);
-        const felder = [];
-
-        /* Aussen zuerst, dann die innere Linie — in Brett-Koordinaten. */
-        const linien = {
-            oben: [0, 1],
-            unten: [kante - 1, kante - 2],
-            links: [0, 1],
-            rechts: [kante - 1, kante - 2]
-        }[seite];
-
-        if (!linien) {
-            return felder;
-        }
-
-        const senkrecht = (seite === "oben" || seite === "unten");
-
-        for (const linie of linien) {
-            for (let schritt = 0; schritt < platz.spalten; schritt++) {
-                const quer = platz.rand + schritt;
-
-                felder.push(senkrecht
-                    ? (linie * kante + quer)
-                    : (quer * kante + linie));
-            }
-        }
-
-        return felder;
+        return SCHACH_VARIANTEN.armeeFelderBlock(variante, seite, staerke)
+            .map((eintrag) => eintrag.feld);
     },
 
     /*
@@ -731,11 +692,37 @@ const SCHACH_RUNDE = {
             arten[ziel] = merken;
         }
 
+        /*
+         * AB DREI REIHEN STEHEN DIE BAUERN VORN (seit v0.104).
+         *
+         * NACHGEMESSEN, NICHT VERMUTET: Ohne diese Zeilen stand bei „voll" je
+         * nach Brett jede fünfte bis dritte Seite schon beim Anpfiff fest —
+         * kein einziger gültiger Zug —, und bis zu 36 Prozent der Seiten
+         * standen im Schach. Der Grund liegt an der Tiefe: Ab drei Reihen
+         * berühren sich die Armeen, und ein gemischter Block sperrt sich
+         * selbst ein. Türme und Läufer stehen dann vor der eigenen Mauer, die
+         * Bauern dahinter, und der König steht mitten in der Front.
+         *
+         * Gemischt wird trotzdem — nur eben INNERHALB der beiden Gruppen. WELCHE
+         * Figuren eine Seite bekommt, bleibt vollständig gewürfelt; WO sie
+         * stehen, folgt ab dieser Tiefe der gewohnten Ordnung: Offiziere
+         * hinten, Bauern vorn. Damit steht auch der König wieder in der
+         * äussersten Reihe, wo er hingehört.
+         *
+         * BIS ZWEI REIHEN BLEIBT ALLES, WIE ES WAR. Dort ist der Block frei
+         * genug, und dass ein Bauer auch mal ganz hinten steht, ist seit v0.49
+         * gewollt (er behält dort seinen Doppelschritt, siehe v0.52).
+         */
+        if (SCHACH_VARIANTEN.armeeTiefe(variante, staerke) > 2) {
+            return arten.filter((art) => art !== "B")
+                .concat(arten.filter((art) => art === "B"));
+        }
+
         return arten;
     },
 
     /*
-     * DIE FESTE AUFSTELLUNG AUF DEN REGLER ZUSCHNEIDEN (seit v0.100).
+     * DIE FESTE AUFSTELLUNG AUF DEN REGLER BRINGEN (seit v0.100).
      *
      * NUTZER-ENTSCHEIDUNG 20.08.2026: „Zufallsarmee hat keine Auswirkung mehr
      * auf die Grösse der Armee, nur der Regler hat es." Bis v0.99 tat der
@@ -744,26 +731,31 @@ const SCHACH_RUNDE = {
      * zusammen: Der Haken entscheidet, WELCHE Figuren stehen, der Regler, WIE
      * VIELE.
      *
-     * Zugeschnitten wird auf denselben Feld-Block, den auch die Zufallsarmee
-     * benutzt (`_armeeFelder`) — dieselbe Rechnung, dasselbe Ergebnis. Was
-     * ausserhalb steht, fällt weg.
+     * Gerechnet wird mit demselben Feld-Block, den auch die Zufallsarmee
+     * benutzt (`SCHACH_VARIANTEN.armeeFelderBlock`) — dieselbe Rechnung,
+     * dasselbe Ergebnis. Was ausserhalb steht, fällt weg.
      *
      * KÖNIGE BLEIBEN IMMER STEHEN, auch ausserhalb des Blocks. Sonst könnte
      * eine Spielart, die ihren König nicht in die Mitte stellt, ihn beim
-     * Zuschneiden verlieren — und eine Partie ohne König ist keine. Die eiserne
+     * Anpassen verlieren — und eine Partie ohne König ist keine. Die eiserne
      * Regel „König und Matt bleiben unangetastet" gilt hier genauso.
      *
      * MIT HAKEN passiert hier nichts: `_armeeStand` baut den Block ohnehin
      * selbst, und zwar aus derselben Funktion.
      *
-     * WICHTIG FÜR AUFRUFER: Diese Funktion nimmt weg, sie stellt nicht her.
-     * Sie darf deshalb nur auf ein FRISCHES Brett laufen, nie zweimal
-     * nacheinander mit verschiedenen Stärken — sonst schneidet der zweite
-     * Aufruf vom bereits beschnittenen Brett. Aufgerufen wird sie an den drei
-     * Stellen, an denen ein Brett neu entsteht und die Regeln feststehen:
+     * SEIT v0.104 NIMMT SIE NICHT NUR WEG, SIE FÜLLT AUCH AUF — deshalb heisst
+     * sie seit dieser Fassung `aufstellungAnpassen` und nicht mehr
+     * `aufstellungZuschneiden`. Die Stufen „viel" und „voll" stehen tiefer als
+     * die Spielart Figuren mitbringt: Was die Vorlage nicht hergibt, entsteht
+     * hier (siehe `_aufstellungArt`).
+     *
+     * WICHTIG FÜR AUFRUFER: Sie darf nur auf ein FRISCHES Brett laufen, nie
+     * zweimal nacheinander mit verschiedenen Stärken — der zweite Aufruf
+     * rechnete sonst auf dem Ergebnis des ersten. Aufgerufen wird sie an den
+     * drei Stellen, an denen ein Brett neu entsteht und die Regeln feststehen:
      * `partieAnlegen`, `neuAufstellen` und die Vorschau der Kachel.
      */
-    aufstellungZuschneiden(runde) {
+    aufstellungAnpassen(runde) {
         const regeln = runde.regeln || {};
 
         /* Eine Partie von vor v0.100 wird nicht angefasst — siehe
@@ -777,40 +769,120 @@ const SCHACH_RUNDE = {
 
         const variante = SCHACH_VARIANTEN.holen(runde.variante);
         const staerke = regeln.armeeStaerke;
-        const erlaubt = {};
+        const zeichen = runde.stand.brett.split("");
+        const gesetzt = {};
+        const bauernSeiten = [];
 
         for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
-            if (variante.kreuz) {
-                erlaubt[farbe] = [];
-                for (const seite of SCHACH.startSeitenVon(runde.stand, farbe)) {
-                    for (const feld of SCHACH_RUNDE._armeeFelderKreuz(
-                        variante, seite, staerke)) {
+            const seiten = variante.kreuz
+                ? SCHACH.startSeitenVon(runde.stand, farbe)
+                : [(farbe === SCHACH.WEISS) ? "unten" : "oben"];
 
-                        erlaubt[farbe].push(feld);
+            for (const seite of seiten) {
+                const block = SCHACH_VARIANTEN.armeeFelderBlock(
+                    variante, seite, staerke);
+
+                /*
+                 * ZWEI DINGE VORAB, BEIDE AUS DEM BLOCK SELBST: wie tief er
+                 * reicht (danach entscheidet sich, ob Reihe 1 Bauern oder
+                 * Offiziere trägt) und was in der Grundreihe steht (daraus
+                 * wird die Offiziersreihe abgeleitet).
+                 */
+                let tiefste = 0;
+                const grundreihe = {};
+
+                for (const eintrag of block) {
+                    tiefste = Math.max(tiefste, eintrag.tiefe);
+
+                    if (eintrag.tiefe === 0) {
+                        grundreihe[SCHACH_RUNDE._querVon(variante, seite, eintrag.feld)]
+                            = zeichen[eintrag.feld];
                     }
                 }
-            } else {
-                erlaubt[farbe] = SCHACH_RUNDE._armeeFelder(variante, farbe, staerke);
+
+                for (const eintrag of block) {
+                    const quer = SCHACH_RUNDE._querVon(variante, seite, eintrag.feld);
+                    const art = SCHACH_RUNDE._aufstellungArt(eintrag.tiefe, tiefste,
+                        zeichen[eintrag.feld], grundreihe[quer]);
+
+                    gesetzt[eintrag.feld] = (farbe === SCHACH.WEISS)
+                        ? art : art.toLowerCase();
+
+                    /*
+                     * JEDER BAUER AUF DEM KREUZ MERKT SICH SEINE SEITE — sonst
+                     * fällt er auf die Farbregel zurück und läuft auf dem
+                     * Flügel quer (dieselbe Falle wie in `_armeeStandKreuz`).
+                     */
+                    if (art === "B" && variante.kreuz) {
+                        bauernSeiten.push({ feld: eintrag.feld, seite: seite });
+                    }
+                }
             }
         }
 
-        const zeichen = runde.stand.brett.split("");
-
         for (let feld = 0; feld < zeichen.length; feld++) {
-            const figur = zeichen[feld];
-
-            if (figur === "." || SCHACH.artVon(figur) === "K") {
+            if (Object.prototype.hasOwnProperty.call(gesetzt, feld)) {
+                zeichen[feld] = gesetzt[feld];
                 continue;
             }
 
-            const farbe = SCHACH.farbeVon(figur);
-            if ((erlaubt[farbe] || []).indexOf(feld) === -1) {
+            /* Ausserhalb jedes Blocks bleibt nur der König stehen — eine
+               Spielart, die ihn nicht mittig aufstellt, verlöre ihn sonst. */
+            if (zeichen[feld] !== "." && SCHACH.artVon(zeichen[feld]) !== "K") {
                 zeichen[feld] = ".";
             }
         }
 
-        runde.stand = Object.assign({}, runde.stand, { brett: zeichen.join("") });
+        const stand = Object.assign({}, runde.stand, { brett: zeichen.join("") });
+
+        if (variante.kreuz) {
+            stand.bauernSeiten = bauernSeiten;
+        }
+
+        runde.stand = stand;
         return runde;
+    },
+
+    /* Die Quer-Koordinate eines Feldes aus Sicht einer Seite: die Spalte, wenn
+       man von oben oder unten schaut, sonst die Reihe. */
+    _querVon(variante, seite, feld) {
+        return (seite === "oben" || seite === "unten")
+            ? (feld % variante.breite)
+            : Math.floor(feld / variante.breite);
+    },
+
+    /*
+     * WAS AUF EINEM FELD DES BLOCKS STEHT (seit v0.104).
+     *
+     * Drei Reihen-Rollen, von aussen nach innen — genau so hat der Nutzer die
+     * Stufe „viel" beschrieben („die Bauern eine vor, dazwischen eine Reihe
+     * mit Pferden und so"):
+     *
+     *     Tiefe 0            die Grundreihe der Spielart, unverändert
+     *     Tiefe 1, 2 tief    Bauern (die gewohnte Aufstellung)
+     *     Tiefe 1, tiefer    die Offiziersreihe
+     *     Tiefe 2 und mehr   Bauern
+     *
+     * DIE OFFIZIERSREIHE IST DIE GRUNDREIHE OHNE KRONE: Was in derselben
+     * Spalte hinten steht, steht auch hier — nur König und Dame werden zum
+     * Springer. So sieht jede Spielart in der zweiten Reihe aus wie in ihrer
+     * ersten (das kleine Brett ohne Läufer bekommt also auch hier keine), und
+     * es entsteht nie ein zweiter König.
+     */
+    _aufstellungArt(tiefe, tiefste, vorhanden, grundFigur) {
+        if (tiefe === 0) {
+            /* Steht dort nichts, füllt ein Springer — keine der heutigen
+               Spielarten hat eine Lücke in der Grundreihe, aber „voll" soll
+               wörtlich voll heissen. */
+            return SCHACH.artVon(vorhanden) || "S";
+        }
+
+        if (tiefe === 1 && tiefste >= 2) {
+            const art = SCHACH.artVon(grundFigur);
+            return (art === "" || art === "K" || art === "D") ? "S" : art;
+        }
+
+        return "B";
     },
 
     /* Ein Brett-Stand mit gewürfelten Armeen auf beiden Seiten. */
@@ -4750,7 +4822,7 @@ const SCHACH_RUNDE = {
 
         /* Ohne Haken bleibt die feste Aufstellung stehen - der Regler
            schneidet sie auf seine Breite zu (seit v0.100). */
-        SCHACH_RUNDE.aufstellungZuschneiden(neu);
+        SCHACH_RUNDE.aufstellungAnpassen(neu);
 
         neu.zugZaehler = 0;
         neu.laeuft = false;

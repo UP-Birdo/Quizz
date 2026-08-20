@@ -209,41 +209,51 @@ gesetzt), `SCHACH_TAFEL.partieAnlegen` (dort steht der Haken fest) und
 `armeeAufstellen` darf **nicht** `armeeAn` fragen: Das normalisiert, und
 `normalisieren` baut sich eine leere Runde — das wäre eine Endlosschleife.
 
-**Wie viele Figuren?** Umgekehrt gerechnet, als man vermuten würde (seit v0.52):
-Zuerst steht der freie RAND fest — immer zwei Spalten je Seite, auf jeder Karte,
-damit die 2-mal-2-Ecke bleibt. Was in der Mitte übrig ist, füllt die Armee auf
-zwei Grundreihen. `armeeSpalten` liefert beides, `armeeAnzahl` ist daraus
-`spalten * 2`: Klassisch 8, kleines Brett 4, grosses 12, Doppelbrett 24. **Keine
-Spielart nennt eine Zahl.** (v0.51 hatte es andersherum versucht — erst die
-halbe Armee, dann den Rand daraus; auf dem kleinen Brett blieb nur eine Spalte
-Rand übrig.)
+**Wie viele Figuren? Der BLOCK entscheidet, nicht eine Zahl.**
+`SCHACH_VARIANTEN.armeeFelderBlock(variante, seite, staerke)` ist seit v0.104
+die eine Quelle: Sie liefert die Felder einer Seite samt ihrer TIEFE (0 =
+äusserste Reihe), und alles andere liest dort — `armeeAnzahl` ist schlicht ihre
+Länge, `_armeeFelder` und `_armeeFelderKreuz` sind Übersetzer (Farbe bzw. Seite
+hinein, Feldnummern heraus). **Keine Spielart nennt eine Zahl.**
 
-**Die STÄRKE verbreitert diesen Block** (`regeln.armeeStaerke`, seit v0.86 —
-richtig erst seit v0.99). `armeeSpalten(variante, staerke)` bekommt sie als
-wahlfreien zweiten Parameter, und alles andere rechnet daraus: `armeeAnzahl`,
-`_armeeFelder`, `_armeeFelderKreuz`. Die vier Stufen spannen zwischen zwei
-Punkten, die es auf jedem Brett wirklich gibt — der gewohnten Breite (`anteil`)
-und der ganzen Reihe (`zurVollenBreite`):
+Der Block hat zwei Masse:
+
+- **Breite** (`armeeSpalten`): entweder der mittlere Block mit zwei freien
+  Spalten je Seite — das ist die 2-mal-2-Ecke, die seit v0.52 fest steht — oder
+  die ganze nutzbare Reihe.
+- **Tiefe** (`armeeTiefe`): zwei Reihen, drei Reihen oder „bis zur Mitte".
+
+**Die vier Stufen (`regeln.armeeStaerke`) setzen beides**, seit v0.104 in dieser
+Leiter (Nutzer-Ansage 20.08., die Leiter ist gegenüber v0.103 um zwei Stufen
+verschoben):
 
 | Klassisches Brett | wenig | normal | viel | voll |
 |---|---|---|---|---|
-| Spalten | 2 | 4 | 6 | 8 |
-| Figuren je Seite | 4 | 8 | 12 | 16 |
+| Breite | mittlerer Block | ganze Reihe | ganze Reihe | ganze Reihe |
+| Reihen | 2 | 2 | 3 | bis zur Mitte |
+| Figuren je Seite | 8 | 16 | 24 | 30 |
+| bis v0.103 hiess das | — | wenig | (Zwischenstufe) | normal |
 
-**Bis v0.98 stand die Stärke NUR in `armeeAnzahl`** und multiplizierte dort
-einen Anteil (1,5 bzw. 2), während die Feldzahl fest blieb. Beim Aufstellen
-gewann die kleinere Zahl — „viel" und „voll" stellten deshalb auf jedem Brett
-dieselbe Armee auf wie „normal". Zwei Tests halten das jetzt fest: Jede Stufe
-stellt mehr auf als die darunter, und die angekündigte Zahl gleicht der Zahl
-der Startfelder (`erkenntnisse.md`, „Eine Einstellung, die eine Zahl
-verspricht").
+**Was in den zusätzlichen Reihen steht, sagt die Tiefe** (`_aufstellungArt`):
+Tiefe 0 ist die Grundreihe der Spielart, die innerste Reihe sind Bauern, und
+dazwischen liegt **eine** Offiziersreihe — die Grundreihe ohne Krone, König und
+Dame werden zum Springer. Damit sieht jede Spielart in der zweiten Reihe aus wie
+in ihrer ersten, und es entsteht nie ein zweiter König.
+
+**Wem ein Feld gehört, wenn sich zwei Fronten treffen** (`armeeNaechsteSeite`):
+der nächstgelegenen Kante; bei Gleichstand der im **Uhrzeigersinn** folgenden
+Seite, damit jede der vier Kreuz-Seiten genau eine ihrer beiden Diagonalen
+gewinnt. Beim Kreuz-DUELL bieten nur die zwei gegenüberliegenden Seiten mit
+(`armeeSeitenVon`) — sonst gewännen die leeren Flügel Felder, und beiden Armeen
+fehlte ein Bauer in der vordersten Reihe. **Das 2-mal-2-Feld in der Brettmitte
+bleibt immer frei** (`armeeMitteFrei`).
 
 **Auf dem Kreuz zählt die MITTE, nicht die Brettbreite** (seit v0.76): Ein
 Streifen ist nur so breit wie `breite - 2 * KREUZ.rand`, die toten Ecken
 gehören nicht dazu. `armeeSpalten` rechnet deshalb mit der Mitte und gibt in
 `rand` den Abstand vom BRETTRAND zurück — erst die tote Ecke, dann der freie
-Rand. `armeeAnzahl` ist damit die Zahl **je Startseite**: kleines Kreuz 4,
-Kreuz 8, grosses Kreuz 12.
+Rand. `armeeAnzahl` ist damit die Zahl **je Startseite**: kleines Kreuz 4 bei
+„wenig", 12 bei „normal".
 
 **Und ein Kreuz stellt je STARTSEITE auf** (`_armeeStandKreuz`, seit v0.76).
 `_armeeStand` kannte bis dahin nur oben und unten und liess die Flügel leer.

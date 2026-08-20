@@ -3902,6 +3902,16 @@ pruefe("Jede Armee-Staerke stellt MEHR auf als die darunter (v0.99)", () => {
      */
     for (const variante of SCHACH_VARIANTEN.zurAuswahl()) {
         let vorher = 0;
+        let erste = 0;
+
+        /*
+         * EINE AUSNAHME, UND ZWAR EINE GERECHNETE (seit v0.104): Auf einem
+         * Brett mit nur sechs Reihen ist die dritte Reihe schon die Mitte —
+         * dort stellen „viel" und „voll" zwangslaeufig dasselbe auf, weil kein
+         * Platz mehr da ist. Das ist kein wirkungsloser Knopf, sondern ein
+         * volles Brett. Auf jedem groesseren Brett bleibt die Leiter streng.
+         */
+        const engesBrett = (variante.hoehe <= 6 || variante.breite <= 6);
 
         for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
             let runde = SCHACH_RUNDE.leereRunde(1000, variante.id,
@@ -3916,12 +3926,23 @@ pruefe("Jede Armee-Staerke stellt MEHR auf als die darunter (v0.99)", () => {
             const summe = Object.keys(gezaehlt)
                 .reduce((wert, art) => wert + gezaehlt[art], 0);
 
-            if (staerke.id !== "wenig") {
+            if (staerke.id === "wenig") {
+                erste = summe;
+            } else if (engesBrett) {
+                wahr(summe >= vorher, variante.id + "/" + staerke.id
+                    + ": nie weniger als die Stufe davor (" + summe
+                    + " gegen " + vorher + ")");
+            } else {
                 wahr(summe > vorher, variante.id + "/" + staerke.id
                     + ": mehr als die Stufe davor (" + summe + " gegen " + vorher + ")");
             }
             vorher = summe;
         }
+
+        /* Auch auf dem engsten Brett muessen die Aussenstufen sich
+           unterscheiden — sonst waere die ganze Knopfreihe eine Behauptung. */
+        wahr(vorher > erste, variante.id + ": voll stellt mehr auf als wenig ("
+            + vorher + " gegen " + erste + ")");
     }
 });
 
@@ -3948,15 +3969,246 @@ pruefe("Die angekuendigte Zahl stimmt mit den Startfeldern ueberein (v0.99)", ()
     }
 });
 
+/*
+ * Die feste Aufstellung so, wie die Partie sie anlegt: leere Runde, Regeln
+ * setzen, Kreuz herrichten, auf den Regler bringen. Genau die Reihenfolge aus
+ * `SCHACH_TAFEL.partieAnlegen` — eine eigene Nachbildung waere die zweite
+ * Wahrheit.
+ */
+function festeAufstellung(varianteId, staerke) {
+    let runde = SCHACH_RUNDE.leereRunde(1000, varianteId, "p-fest-" + varianteId, "F");
+
+    runde.regeln.armeeStaerke = staerke;
+    runde.regeln.armeeFassung = 1;
+    runde = SCHACH_RUNDE.kreuzAufstellen(runde, "");
+
+    return SCHACH_RUNDE.aufstellungAnpassen(runde);
+}
+
+pruefe("Die vier Stufen stellen genau das auf, was sie versprechen (v0.104)", () => {
+    /*
+     * NUTZER-ANSAGE VOM 20.08.2026, die Leiter neu gesetzt:
+     *
+     *   „Die Anzahl und Aufstellung, die derzeit hinter „normal" steht, soll
+     *   bei „wenig" stehen, und die hinter „voll" soll zu „normal" werden.
+     *   „viel" soll die Bauernreihe eins nach vorne ruecken auf allen Seiten,
+     *   und zwischen Bauern und der Dame/Koenig-Reihe soll eine Reihe mit
+     *   Pferden und so dazwischen gebaut werden. Bei „voll" soll bei jedem
+     *   Brett in der Mitte nur noch ein 2x2-Feld frei bleiben, der Rest wird
+     *   mit Truppen gefuellt."
+     *
+     * Diese Pruefung haelt alle vier Bretter im Wortlaut fest — sie ist der
+     * Anker, an dem jede kuenftige Aenderung der Rechnung auffliegt.
+     */
+    const variante = SCHACH_VARIANTEN.holen("standard");
+
+    const erwartet = {
+        wenig:
+            "..ldkl.."
+            + "..bbbb.."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "..BBBB.."
+            + "..LDKL..",
+        normal: variante.aufstellung,
+        viel:
+            "tsldklst"
+            + "tslsslst"
+            + "bbbbbbbb"
+            + "........"
+            + "........"
+            + "BBBBBBBB"
+            + "TSLSSLST"
+            + "TSLDKLST",
+        voll:
+            "tsldklst"
+            + "tslsslst"
+            + "bbbbbbbb"
+            + "bbb..bbb"
+            + "BBB..BBB"
+            + "BBBBBBBB"
+            + "TSLSSLST"
+            + "TSLDKLST"
+    };
+
+    for (const staerke of Object.keys(erwartet)) {
+        gleich(festeAufstellung("standard", staerke).stand.brett, erwartet[staerke],
+            "standard/" + staerke + ": das versprochene Brett");
+    }
+
+    /* „normal" ist wirklich die gewohnte Aufstellung — daran haengt, dass eine
+       neue Partie mit der Vorgabe aussieht wie eh und je. */
+    gleich(erwartet.normal, variante.aufstellung, "normal ist die Vorlage selbst");
+});
+
+pruefe("Auf voll bleibt genau das 2x2 in der Mitte frei (v0.104)", () => {
+    /*
+     * Der woertliche Teil der Ansage, und zwar auf JEDEM viereckigen Brett.
+     * Die Kreuz-Bretter stehen nicht in dieser Liste: Dort gehoeren die vier
+     * toten Ecken nicht zum Brett, und beim Duell bleiben zwei Arme leer —
+     * geprueft wird das eine Feld weiter unten ueber die Ueberschneidung.
+     */
+    for (const id of ["standard", "klein", "gross", "doppelbrett", "grossQuadrat"]) {
+        const variante = SCHACH_VARIANTEN.holen(id);
+        const brett = festeAufstellung(id, "voll").stand.brett;
+
+        let frei = 0;
+
+        for (let feld = 0; feld < brett.length; feld++) {
+            const reihe = Math.floor(feld / variante.breite);
+            const spalte = feld % variante.breite;
+            const mitte = SCHACH_VARIANTEN.armeeMitteFrei(variante, reihe, spalte);
+
+            if (mitte) {
+                frei++;
+                gleich(brett[feld], ".", id + ": die Mitte bleibt frei");
+            } else {
+                wahr(brett[feld] !== ".", id + ": alles andere ist besetzt (Feld "
+                    + feld + ")");
+            }
+        }
+
+        gleich(frei, 4, id + ": genau vier Felder in der Mitte");
+    }
+});
+
+pruefe("Kein Feld gehoert zwei Seiten (v0.104)", () => {
+    /*
+     * DIE GEFAHR DER TIEFEN BLOECKE: Ab „viel" beruehren sich die Fronten — auf
+     * dem Kreuz greifen der obere und der linke Arm nach demselben Feld, auf
+     * jedem Brett laufen sie bei „voll" in der Mitte zusammen. Gehoerte ein
+     * Feld zwei Seiten, stuende dort am Ende die Figur dessen, der zuletzt
+     * geschrieben hat.
+     *
+     * GEPRUEFT WIRD JE AUFSTELLUNG, NICHT JE BRETT: Beim Kreuz-Duell stehen nie
+     * vier Armeen, sondern ein gegenueberliegendes PAAR — welches, entscheidet
+     * die Partie-Kennung. Die beiden moeglichen Paare duerfen sich sehr wohl
+     * ueberlappen, denn sie kommen nie zusammen vor. Genau das hat diese
+     * Pruefung beim Bauen zuerst gemeldet.
+     */
+    for (const variante of SCHACH_VARIANTEN.zurAuswahl()) {
+        const gruppen = (variante.kreuz && !variante.kreuzEinzeln)
+            ? [["oben", "unten", "links", "rechts"]]
+            : [["oben", "unten"], ["links", "rechts"]];
+
+        for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
+            for (const gruppe of gruppen) {
+                const belegt = {};
+
+                for (const seite of gruppe) {
+                    for (const eintrag of SCHACH_VARIANTEN.armeeFelderBlock(
+                        variante, seite, staerke.id)) {
+
+                        wahr(!belegt[eintrag.feld], variante.id + "/" + staerke.id
+                            + ": Feld " + eintrag.feld + " gehoert nur einer Seite (schon "
+                            + belegt[eintrag.feld] + ", jetzt " + seite + ")");
+
+                        belegt[eintrag.feld] = seite;
+                    }
+                }
+            }
+        }
+    }
+});
+
+pruefe("Alle vier Kreuz-Seiten bekommen gleich viele Felder (v0.104)", () => {
+    /*
+     * Der Gleichstand auf der Diagonale wird im Uhrzeigersinn aufgeloest, damit
+     * jede Seite genau eine ihrer beiden Diagonalen gewinnt. Beim ersten
+     * Versuch stand es 35 zu 33, weil dafuer `KREUZ.seiten` benutzt wurde —
+     * jene Liste ist nach Gegenueber sortiert und taugt als Uhr nicht.
+     */
+    for (const id of ["kreuzKlein", "kreuz", "kreuzGross"]) {
+        const variante = SCHACH_VARIANTEN.holen(id);
+
+        for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
+            const zahlen = ["oben", "unten", "links", "rechts"].map((seite) =>
+                SCHACH_VARIANTEN.armeeFelderBlock(variante, seite, staerke.id).length);
+
+            for (const zahl of zahlen) {
+                gleich(zahl, zahlen[0], id + "/" + staerke.id
+                    + ": jede Seite gleich viele Felder (" + zahlen.join("/") + ")");
+            }
+        }
+    }
+});
+
+pruefe("Die zusaetzlichen Reihen bringen keine zweite Krone (v0.104)", () => {
+    /*
+     * Die Offiziersreihe wird aus der Grundreihe abgeleitet — Koenig und Dame
+     * werden dabei zum Springer. Ohne diese Regel haette eine Partie ab „viel"
+     * zwei Koenige je Seite, und damit haetten Schach und Matt ihre Bedeutung
+     * verloren (eiserne Regel: Koenig und Matt bleiben unangetastet).
+     */
+    for (const id of ["standard", "klein", "gross", "doppelbrett", "grossQuadrat"]) {
+        const koenige = (id === "doppelbrett") ? 2 : 1;
+
+        for (const staerke of ["viel", "voll"]) {
+            const brett = festeAufstellung(id, staerke).stand.brett;
+            const zaehlen = (zeichen) =>
+                brett.split("").filter((eines) => eines === zeichen).length;
+
+            gleich(zaehlen("K"), koenige, id + "/" + staerke + ": Weiss behaelt "
+                + koenige + " Koenig(e)");
+            gleich(zaehlen("k"), koenige, id + "/" + staerke + ": Schwarz ebenso");
+            gleich(zaehlen("D"), koenige, id + "/" + staerke + ": keine zweite Dame");
+        }
+    }
+});
+
+pruefe("Jeder Bauer der festen Kreuz-Aufstellung kennt seine Seite (v0.104)", () => {
+    /*
+     * Ohne Eintrag faellt ein Bauer auf die FARBREGEL zurueck (Weiss nach oben)
+     * und liefe auf einem Fluegel quer statt zur Mitte. Bis v0.103 legte
+     * `kreuzAufstellen` die Liste an und niemand ruehrte sie mehr an; seit
+     * v0.104 stellt `aufstellungAnpassen` zusaetzliche Bauernreihen auf und
+     * baut die Liste deshalb neu.
+     */
+    for (const id of ["kreuzKlein", "kreuz", "kreuzGross", "kreuzKleinEinzeln"]) {
+        for (const staerke of ["wenig", "normal", "viel", "voll"]) {
+            const runde = festeAufstellung(id, staerke);
+            const brett = runde.stand.brett;
+            const bekannt = {};
+
+            for (const eintrag of runde.stand.bauernSeiten) {
+                bekannt[eintrag.feld] = eintrag.seite;
+            }
+
+            for (let feld = 0; feld < brett.length; feld++) {
+                if (SCHACH.artVon(brett[feld]) !== "B") {
+                    continue;
+                }
+                wahr(!!bekannt[feld], id + "/" + staerke + ": Bauer auf "
+                    + SCHACH.feldName(feld) + " kennt seine Startseite");
+            }
+
+            /* Und umgekehrt: kein Eintrag zeigt auf ein Feld ohne Bauer —
+               sonst wanderte eine tote Marke mit einer fremden Figur mit. */
+            for (const eintrag of runde.stand.bauernSeiten) {
+                gleich(SCHACH.artVon(brett[eintrag.feld]), "B", id + "/" + staerke
+                    + ": Eintrag " + eintrag.feld + " zeigt auf einen Bauern");
+            }
+        }
+    }
+});
+
 pruefe("Die Zufallsarmee stellt die halbe Armee mittig auf", () => {
+    /*
+     * DIESE PRUEFUNG HAENGT SEIT v0.104 AN DER STUFE „wenig". Die halbe Armee
+     * mit freiem Rand ist genau das, was bis v0.103 „normal" hiess; die Leiter
+     * ist am 20.08. um zwei Stufen verschoben worden (Nutzer-Ansage). Der
+     * gepruefte Aufbau ist unveraendert, nur sein Knopf heisst anders.
+     */
     const regel = SCHACH_VARIANTEN.ARMEE;
 
     /* Mehrere Kennungen, damit nicht eine einzelne Ziehung geprueft wird. */
     for (const kennung of ["p-a", "p-b", "p-c", "p-d", "p-e"]) {
-        const runde = armeePartie("standard", kennung, true);
+        const runde = armeePartie("standard", kennung, true, "wenig");
         const variante = SCHACH_VARIANTEN.holen("standard");
-        const soll = SCHACH_VARIANTEN.armeeAnzahl(variante);
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        const soll = SCHACH_VARIANTEN.armeeAnzahl(variante, "wenig");
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, "wenig");
         const breite = SCHACH.breiteVon(runde.stand);
 
         gleich(soll, 8, "auf dem klassischen Brett acht Figuren (wie vor v0.51)");
@@ -4055,15 +4307,18 @@ pruefe("Der Rand bleibt auf jeder Karte zwei Spalten (v0.52)", () => {
      *
      * Damit faellt die Menge anders aus als in v0.51: nicht die halbe Armee,
      * sondern zwei Grundreihen mal die freien Spalten in der Mitte.
+     *
+     * SEIT v0.104 IST DAS DIE STUFE „wenig" (vorher „normal") — der freie Rand
+     * gehoert zu ihr. Ueber ihr steht die Aufstellung in voller Breite.
      */
     const erwartet = { standard: 8, klein: 4, gross: 12, doppelbrett: 24 };
 
     for (const id of Object.keys(erwartet)) {
         const variante = SCHACH_VARIANTEN.holen(id);
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, "wenig");
 
         gleich(platz.rand, 2, id + ": zwei freie Spalten je Seite");
-        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante), erwartet[id],
+        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante, "wenig"), erwartet[id],
             id + ": passende Anzahl");
         gleich(platz.spalten * 2, erwartet[id], id + ": zwei Reihen voll");
     }
@@ -4077,11 +4332,13 @@ pruefe("Die Menge passt sich jedem Brett an (v0.51)", () => {
      *
      * Gerechnet wird die HAELFTE der gewohnten Armee. Die 8 des klassischen
      * Bretts bleiben damit, wo sie waren; alle anderen folgen von selbst.
+     *
+     * Seit v0.104 heisst diese Stufe „wenig" (siehe oben).
      */
     const erwartet = { standard: 8, klein: 4, gross: 12, doppelbrett: 24 };
 
     for (const id of Object.keys(erwartet)) {
-        const runde = armeePartie(id, "p-menge-" + id, true);
+        const runde = armeePartie(id, "p-menge-" + id, true, "wenig");
         for (const farbe of ["weiss", "schwarz"]) {
             const gezaehlt = figurenZaehlen(runde.stand, farbe);
             const summe = Object.keys(gezaehlt)
@@ -4164,7 +4421,14 @@ pruefe("Die alte Spielart Zufallsarmee laeuft weiter", () => {
     const gezaehlt = figurenZaehlen(runde.stand, "weiss");
     const summe = Object.keys(gezaehlt).reduce((wert, art) => wert + gezaehlt[art], 0);
 
-    gleich(summe, 8, "weiterhin acht Figuren");
+    /*
+     * WIE VIELE FIGUREN, SAGT DIE STUFE — und die Vorgabe ist „normal". Bis
+     * v0.103 waren das acht (die halbe Armee), seit der neuen Leiter in v0.104
+     * sind es sechzehn. Verglichen wird deshalb gegen die angekuendigte Zahl
+     * und nicht mehr gegen eine getippte: Die Spielart soll weiterlaufen, nicht
+     * eine bestimmte Menge festhalten.
+     */
+    gleich(summe, SCHACH_VARIANTEN.armeeAnzahl(alt), "so viele wie angekuendigt");
     gleich(SCHACH_RUNDE.armeeAn(runde), true, "auch ohne Haken");
     gleich(SCHACH.koenigSchlagbarFuer(runde.stand, "weiss"),
         SCHACH.koenigFelder(runde.stand, "weiss").length > 1,
@@ -4216,6 +4480,18 @@ pruefe("Eine Armee ist wirklich gemischt, nicht siebenmal dieselbe Figur", () =>
     for (let nummer = 0; nummer < versuche; nummer++) {
         const runde = SCHACH_RUNDE.leereRunde(
             1000, "zufallsarmee", "p-vielfalt-" + nummer, "V");
+
+        /*
+         * AUF ACHT FIGUREN GEEICHT (seit v0.104). Die Zahlen oben — 4,8 Arten
+         * im Schnitt, 0,4 Prozent Ausreisser — sind an einer Armee von ACHT
+         * gemessen. Seit die Vorgabe „normal" sechzehn Figuren aufstellt, waeren
+         * sechs gleiche voellig gewoehnlich, und die Schwelle traefe den Zufall
+         * statt des Fehlers. Also ausdruecklich „wenig", dieselbe Ziehung wie
+         * frueher.
+         */
+        runde.regeln.armeeStaerke = "wenig";
+        SCHACH_RUNDE.armeeAufstellen(runde);
+
         const gezaehlt = figurenZaehlen(runde.stand, "weiss");
         const arten = Object.keys(gezaehlt);
 
@@ -6921,11 +7197,13 @@ pruefe("Auf dem Kreuz zaehlt die MITTE, nicht die Brettbreite (v0.76)", () => {
      */
     const erwartet = { kreuzKlein: 4, kreuz: 8, kreuzGross: 12 };
 
+    /* Der freie Rand gehoert zur Stufe „wenig" — bis v0.103 hiess sie
+       „normal" (siehe die Leiter in `ARMEE_STAERKEN`). */
     for (const id of Object.keys(erwartet)) {
         const variante = SCHACH_VARIANTEN.holen(id);
-        const platz = SCHACH_VARIANTEN.armeeSpalten(variante);
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, "wenig");
 
-        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante), erwartet[id],
+        gleich(SCHACH_VARIANTEN.armeeAnzahl(variante, "wenig"), erwartet[id],
             id + ": Figuren je Startseite");
 
         /* Zwei tote Ecken plus zwei freie Spalten — auf jeder Kreuz-Groesse. */
@@ -6936,7 +7214,8 @@ pruefe("Auf dem Kreuz zaehlt die MITTE, nicht die Brettbreite (v0.76)", () => {
 
     /* Die viereckigen Bretter rechnen unveraendert weiter. */
     for (const id of ["standard", "klein", "gross", "doppelbrett"]) {
-        gleich(SCHACH_VARIANTEN.armeeSpalten(SCHACH_VARIANTEN.holen(id)).rand, 2,
+        gleich(SCHACH_VARIANTEN.armeeSpalten(
+            SCHACH_VARIANTEN.holen(id), "wenig").rand, 2,
             id + ": weiterhin zwei freie Spalten");
     }
 });
@@ -6984,8 +7263,9 @@ pruefe("Die Zufallsarmee steht auf beiden Startseiten des Kreuzes (v0.76)", () =
 
 pruefe("Beim Kreuz-Duell steht je EINE Armee gegenueber (v0.76)", () => {
     /* „Bei kleinem Kreuz-Duell sollen es wieder gegenueber je 4 Figuren sein." */
-    const runde = armeePartie("kreuzKleinEinzeln", "k-duell", false);
-    const soll = SCHACH_VARIANTEN.armeeAnzahl(SCHACH_VARIANTEN.holen("kreuzKleinEinzeln"));
+    const runde = armeePartie("kreuzKleinEinzeln", "k-duell", false, "wenig");
+    const soll = SCHACH_VARIANTEN.armeeAnzahl(
+        SCHACH_VARIANTEN.holen("kreuzKleinEinzeln"), "wenig");
 
     gleich(soll, 4, "vier Figuren je Team");
 

@@ -1210,3 +1210,62 @@ gesprungen. Ein Wegwerf-Skript, das je Abweisung nachrechnet, WELCHE der drei
 Regeln greift, hat die Ursache in zwei Minuten gezeigt. Eine Auswertung, die
 man vor und nach einer Änderung nebeneinanderlegen kann, ist mehr wert als ein
 weiterer Test.
+
+## Ein tieferer Block sperrt sich selbst ein (v0.104, beim Bauen gemessen)
+
+**Was zu sehen war:** Die neue Stufe „voll" füllt jedes Brett bis auf ein
+2-mal-2-Feld in der Mitte. Mit der festen Aufstellung war alles in Ordnung — mit
+dem Haken **Zufallsarmee** startete je nach Brett jede fünfte bis jede dritte
+Seite ohne einen einzigen gültigen Zug, und bis zu 36 Prozent der Seiten standen
+schon beim Anpfiff im Schach. Auf den Kreuz-Duellen war die Partie damit vorbei,
+bevor sie anfing.
+
+**Die Ursache ist die Tiefe, nicht die Menge.** Bis v0.103 war ein Block immer
+zwei Reihen tief; die Armeen standen weit auseinander, und die gemischte
+Reihenfolge (seit v0.49) war harmlos. Ab drei Reihen berühren sich die Fronten.
+Ein gemischter Block sperrt sich dann selbst ein: Türme und Läufer stehen vor
+der eigenen Mauer statt dahinter, die Bauern dahinter statt davor, und der König
+steht mitten in der vordersten Reihe — direkt vor den gegnerischen Figuren.
+
+**Die Lösung liegt in der Reihenfolge, nicht in der Ziehung.** Ab drei Reihen
+sortiert `_armeeFiguren` die fertig gemischte Liste in zwei Gruppen: Offiziere
+zuerst (sie landen in den äusseren Reihen), Bauern zuletzt. WELCHE Figuren eine
+Seite bekommt, bleibt vollständig gewürfelt; WO sie stehen, folgt der gewohnten
+Ordnung. Nachgemessen sank „Seite ohne Zug" damit auf 3 von 2244 Partien
+(0,13 Prozent) — und einer der drei Fälle stand auf einer Stufe, die es vorher
+schon gab, ist also kein neuer Fehler, sondern der alte Bodensatz der
+Zufallsarmee.
+
+**Die Lehre:** Eine Einstellung, die nur eine Zahl grösser macht, kann trotzdem
+eine Regel brechen, die an einer ganz anderen Stelle steht. Die gemischte
+Aufstellung war jahrelang richtig — sie war es nur, solange zwischen den Armeen
+Platz lag. **Wer eine Grenze verschiebt, prüft nicht die Grenze, sondern das
+Spiel dahinter:** Ein Wegwerf-Skript, das für jedes Brett und jede Stufe die
+Zahl der gültigen Züge zählt, hat es in einem Lauf gezeigt. Kein Test hätte
+danach gefragt, weil niemand auf die Idee kam, dass ein volleres Brett ein
+totes sein könnte.
+
+**Was als Bodensatz bleibt** (bewusst nicht behoben): Rund eine von 750 Partien
+mit Zufallsarmee beginnt weiterhin mit einer Seite ohne Zug — das gab es vor
+v0.104 auch schon. Eine Reparaturschleife dafür wäre teurer als der Knopf
+„Neu aufstellen".
+
+## Die naheliegende Liste war keine Uhr (v0.104, beim Bauen gefunden)
+
+**Was zu sehen war:** Auf dem kleinen Kreuz bekam Weiss 35 Felder und Schwarz
+33 — bei einer Aufstellung, die von Bauart her symmetrisch sein muss.
+
+**Die Ursache:** Wenn sich ab der Stufe „viel" zwei Fronten berühren, entscheidet
+der Abstand, wem ein Feld gehört; auf der Diagonale steht es unentschieden. Die
+Regel dafür lautet „bei Gleichstand gewinnt die im Uhrzeigersinn folgende
+Seite" — dann bekommt jede der vier Seiten genau eine ihrer beiden Diagonalen.
+Als Uhr benutzt wurde `SCHACH_VARIANTEN.KREUZ.seiten`, und die Liste ist nach
+**Gegenüber** sortiert (oben, unten, links, rechts). Der „Nachfolger" von oben
+war damit unten — die gegenüberliegende Seite, die nie im Gleichstand steht. Die
+senkrechten Seiten gewannen beide Diagonalen, die Flügel keine.
+
+**Die Lehre:** Eine vorhandene Liste ist noch keine Ordnung. Wer eine
+Reihenfolge braucht, die eine BEDEUTUNG trägt (hier: die Drehung des Bretts),
+schreibt sie dort hin, wo sie gebraucht wird, statt eine Liste
+weiterzuverwenden, die für einen anderen Zweck sortiert ist. Ein Test zählt
+jetzt die Felder aller vier Kreuz-Seiten und vergleicht sie miteinander.

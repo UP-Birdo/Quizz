@@ -102,19 +102,21 @@ const TEAM_SCHACH = {
          * Wie viele Figuren JEDE Seite bekommt (seit v0.86) — eine der Stufen
          * aus `SCHACH_VARIANTEN.ARMEE_STAERKEN`.
          *
-         * VORGABE „voll" SEIT v0.100 (Nutzer-Entscheidung 20.08.). Der Regler
-         * wirkt jetzt auch OHNE den Haken „Zufallsarmee", schneidet dann also
-         * die feste Aufstellung zu. Bliebe die Vorgabe auf „normal", startete
-         * jede neue Partie plötzlich mit halber Aufstellung — eine Änderung,
-         * die niemand verlangt hat. „voll" heisst: alles bleibt stehen wie
-         * bisher, und wer weniger will, klickt.
+         * VORGABE IST DIE GEWOHNTE AUFSTELLUNG. Seit v0.100 wirkt der Regler
+         * auch OHNE den Haken „Zufallsarmee"; die Vorgabe muss deshalb die
+         * Stufe sein, die alles stehen lässt wie bisher — sonst startete jede
+         * neue Partie mit einer Aufstellung, die niemand verlangt hat.
          *
-         * Im MODELL bleibt die Vorgabe „normal" (`SCHACH_RUNDE`): Eine Partie
-         * ohne Regeln-Block stammt von früher und muss weiterrechnen wie
-         * bisher. Die Vorgabe hier gilt nur für das, was der Anlege-Bildschirm
-         * vorschlägt.
+         * Bis v0.103 hiess diese Stufe „voll", seit der neuen Leiter in v0.104
+         * heisst sie „normal" (dieselbe Aufstellung, anderer Name). Wer mehr
+         * will, klickt — „viel" und „voll" stehen jetzt darüber.
+         *
+         * Im MODELL bleibt die Vorgabe ebenfalls „normal" (`SCHACH_RUNDE`):
+         * Eine Partie ohne Regeln-Block stammt von früher und muss
+         * weiterrechnen wie bisher. Die Vorgabe hier gilt nur für das, was der
+         * Anlege-Bildschirm vorschlägt.
          */
-        armeeStaerke: "voll",
+        armeeStaerke: "normal",
 
         /* Wie viele verschiedene Items es geben soll (seit v0.87). */
         itemVorrat: "alle",
@@ -1540,7 +1542,7 @@ const TEAM_SCHACH = {
             lootboxMenge: SCHACH_VARIANTEN.MENGE_VORGABE,
             zufallsArmee: false,
             armeeUnterschiedlich: false,
-            armeeStaerke: "voll",
+            armeeStaerke: "normal",
             itemVorrat: "alle",
             
 

@@ -676,7 +676,7 @@ Object.assign(TEAM_SCHACH, {
             runde.regeln.armeeFassung = 1;
 
             runde = SCHACH_RUNDE.kreuzAufstellen(runde, "");
-            runde = SCHACH_RUNDE.aufstellungZuschneiden(runde);
+            runde = SCHACH_RUNDE.aufstellungAnpassen(runde);
             return runde.stand.brett;
         }
 

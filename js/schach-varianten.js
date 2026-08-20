@@ -2059,52 +2059,43 @@ const SCHACH_VARIANTEN = {
      * Wie viele Spalten die Armee einnimmt, und wie breit der freie Rand links
      * und rechts ist.
      *
-     * DER RAND IST FEST (seit v0.52): immer zwei Spalten je Seite, auf JEDER
-     * Karte. Was in der Mitte übrig bleibt, füllt die Armee — auf zwei
-     * Grundreihen.
-     *
-     * v0.51 hatte es andersherum versucht: erst die halbe Armee bestimmen, dann
-     * den Rand daraus rechnen. Auf dem kleinen Brett kam damit nur eine Spalte
-     * Rand heraus, und die 2-mal-2-Ecken waren weg — genau das, was am
-     * klassischen Brett den Reiz ausmacht. Jetzt bleibt die Ecke, und die
-     * Menge folgt ihr.
+     * DER RAND IST FEST (seit v0.52): bei der Stufe „wenig" bleiben immer zwei
+     * Spalten je Seite frei, auf JEDER Karte — auf dem klassischen Brett sind
+     * das die 2-mal-2-Ecken, die der Aufstellung ihr Gesicht geben. Die Ecke
+     * ist fest, die Menge folgt ihr (nicht umgekehrt: `erkenntnisse.md`).
      *
      * AUF DEM KREUZ ZÄHLT NUR DIE MITTE (seit v0.76).
      *
      * Ein Kreuz-Streifen ist nicht so breit wie das Brett, sondern so breit wie
-     * die MITTE (`breite - 2 * KREUZ.rand`) — die 2-mal-2-Ecken gehören gar
+     * die MITTE (`breite - 2 * KREUZ.rand`) — die vier toten Ecken gehören gar
      * nicht dazu. Rechnete man mit der vollen Breite, stünde die Armee bis in
      * die tote Ecke hinein und der freie Rand wäre weg. Gerechnet wird deshalb
      * mit der Mitte, und `rand` ist danach der Abstand vom BRETTRAND: erst die
      * tote Ecke, dann der freie Rand.
      *
-     *     Kleines Kreuz (10)  Mitte 6 → 2 Spalten, Rand 4  →  4 Figuren je Seite
-     *     Kreuz (12)          Mitte 8 → 4 Spalten, Rand 4  →  8 Figuren je Seite
-     *     Großes Kreuz (14)   Mitte 10 → 6 Spalten, Rand 4 → 12 Figuren je Seite
+     *     Kleines Kreuz (10)  Mitte 6 → bei „wenig" 2 Spalten, Rand 4
+     *     Kreuz (12)          Mitte 8 → bei „wenig" 4 Spalten, Rand 4
+     *     Großes Kreuz (14)   Mitte 10 → bei „wenig" 6 Spalten, Rand 4
      *
-     * DIE STÄRKE VERBREITERT DEN BLOCK (seit v0.99) — vorher tat sie es nicht,
-     * und genau daran lag der gemeldete Fehler.
+     * SEIT v0.104 IST DIE BREITE NUR NOCH DIE HALBE ANTWORT.
      *
-     * Bis v0.98 war die Zahl der Startfelder FEST (`spalten * 2`), während
-     * `armeeAnzahl` sie mit dem Anteil der Stärke multiplizierte. Alles über
-     * „normal" lief deshalb gegen die Feldzahl und wurde abgeschnitten: „viel"
-     * und „voll" stellten dieselbe Armee auf wie „normal", auf jedem Brett.
-     * Zwei der vier Knöpfe taten nichts — gemeldet am 20.08. als „die Vorschau
-     * bei den Maps ändert sich nicht, wenn man die Figurenzahl ändert".
+     * Bis v0.103 unterschieden sich alle vier Stufen ausschliesslich in der
+     * BREITE des Blocks; tief war er immer zwei Reihen. „voll" hiess damit
+     * „beide Grundreihen ganz gefüllt" — also genau die gewohnte Aufstellung,
+     * mehr ging nicht. Der Nutzer hat die Leiter am 20.08. neu gesetzt: Was
+     * früher „normal" war, ist jetzt „wenig", was früher „voll" war, ist jetzt
+     * „normal", und darüber wächst der Block in die TIEFE.
      *
-     * ZWEI ANKER STATT EINES FAKTORS. Ein Faktor allein kann das nicht lösen:
-     * Er zeigt über die Brettbreite hinaus, und dort ist kein Platz. Deshalb
-     * spannt die Stärke zwischen zwei Punkten, die es wirklich gibt:
+     * Diese Funktion beantwortet deshalb nur noch die Frage nach der Breite
+     * (quer zur Blickrichtung); wie tief es geht, sagt `armeeTiefe`, und
+     * zusammengesetzt wird beides in `armeeFelderBlock` — der einen Stelle,
+     * aus der auch `armeeAnzahl` ihre Zahl zieht.
      *
-     *     `anteil`           die gewohnte Breite (`normal`) und darunter
-     *     `zurVollenBreite`  wie weit von dort bis an den Rand der Reihe
+     * Zwei Breiten genügen dafür:
      *
-     * Damit heisst „voll" wörtlich, was es sagt — die beiden Grundreihen ganz
-     * ausgefüllt —, und „viel" liegt sauber dazwischen. Auf dem klassischen
-     * Brett sind das 2, 4, 6 und 8 Spalten, also 4, 8, 12 und 16 Figuren.
-     *
-     * `normal` und `wenig` rechnen unverändert wie vorher: Jede laufende
-     * Partie und jeder Test von früher kommt auf dieselbe Aufstellung.
+     *     `volleBreite: false`   der mittlere Block mit freiem Rand (v0.103
+     *                            hiess das „normal", heute „wenig")
+     *     `volleBreite: true`    die ganze nutzbare Reihe
      */
     armeeSpalten(variante, staerkeId) {
         const rand = SCHACH_VARIANTEN.ARMEE.randBreite;
@@ -2115,11 +2106,7 @@ const SCHACH_VARIANTEN = {
            gar nichts — dann schrumpft eben der Rand. */
         const grund = Math.max(1, nutzbar - 2 * rand);
         const staerke = SCHACH_VARIANTEN.armeeStaerkeVon(staerkeId);
-
-        const gedehnt = grund * staerke.anteil
-            + (nutzbar - grund) * (staerke.zurVollenBreite || 0);
-
-        const spalten = Math.max(1, Math.min(nutzbar, Math.round(gedehnt)));
+        const spalten = staerke.volleBreite ? nutzbar : grund;
 
         return {
             spalten: spalten,
@@ -2128,28 +2115,202 @@ const SCHACH_VARIANTEN = {
     },
 
     /*
-     * Wie viele Figuren eine Seite in dieser Spielart bekommt: zwei Grundreihen
-     * mal die freien Spalten in der Mitte. Ein Feld, eine Figur — die Zahl ist
-     * also nicht gewählt, sie fällt aus dem Brett:
+     * WIE VIELE REIHEN TIEF DER BLOCK STEHT (seit v0.104).
      *
-     *     Klassisch (8)      4 Spalten →  8      Kleines Brett (6)  2 →  4
-     *     Großes Brett (10)  6 Spalten → 12      Doppelbrett (16)  12 → 24
-     *
-     * AUF DEM KREUZ IST DAS DIE ZAHL JE STARTSEITE (seit v0.76), nicht je Team:
-     * Wer zwei Streifen bekommt, hat am Ende doppelt so viele Figuren. Das
-     * kleine Kreuz gibt also 4 je Seite — beim Duell (eine Armee je Team) sind
-     * das 4 Figuren, beim vollen Kreuz 8.
-     *
-     * Mindestens zwei: der König und eine Figur. Ein König allein wäre keine
-     * Partie, sondern ein Wettlauf.
+     * Zwei Reihen sind die gewohnte Aufstellung (Grundreihe plus Bauern), drei
+     * die Stufe „viel". Bei „voll" gibt es keine feste Zahl: Dort füllt jede
+     * Seite bis zur Mitte, und wo die Mitte liegt, entscheidet `naechsteSeite`.
+     * Die Kante des Bretts ist dabei die einzige Grenze, die es braucht.
      */
+    armeeTiefe(variante, staerkeId) {
+        const staerke = SCHACH_VARIANTEN.armeeStaerkeVon(staerkeId);
+
+        if (staerke.tiefe === "bisMitte") {
+            return Math.max(variante.breite, variante.hoehe);
+        }
+
+        return staerke.tiefe;
+    },
+
+    /*
+     * MIT WELCHEN SEITEN SICH DER BLOCK EINER SEITE DIE FELDER TEILT.
+     *
+     * Auf jedem gewöhnlichen Brett sind das oben und unten, auf dem vollen
+     * Kreuz alle vier Fronten. Beim KREUZ-DUELL (`kreuzEinzeln`, seit v0.72)
+     * stehen nur zwei Armeen auf dem Brett, und zwar einander gegenüber — dann
+     * konkurrieren auch nur diese beiden. Zählte man dort die leeren Flügel
+     * mit, gewönnen sie die Eckfelder der Diagonalen, und beiden Armeen fehlte
+     * mitten in der vordersten Reihe ein Bauer.
+     *
+     * Welche zwei Seiten eine Duell-Partie wirklich benutzt, entscheidet erst
+     * die Partie-Kennung (`SCHACH_RUNDE.kreuzAufstellen`). Für die FORM des
+     * Blocks ist das gleichgültig: Jedes gegenüberliegende Paar ergibt
+     * dieselbe Aufstellung, nur gedreht.
+     */
+    armeeSeitenVon(variante, seite) {
+        if (!variante.kreuz) {
+            return ["oben", "unten"];
+        }
+
+        if (variante.kreuzEinzeln) {
+            const gegen = {
+                oben: "unten", unten: "oben", links: "rechts", rechts: "links"
+            };
+            const eine = gegen[seite] ? seite : "unten";
+
+            return [eine, gegen[eine]];
+        }
+
+        return SCHACH_VARIANTEN.KREUZ.seiten.slice();
+    },
+
+    /*
+     * DAS 2-MAL-2-FELD IN DER MITTE BLEIBT IMMER FREI (seit v0.104).
+     *
+     * Nutzer-Ansage zur Stufe „voll": „In der Mitte soll nur noch ein 2x2-Feld
+     * frei bleiben, der Rest wird mit Truppen gefüllt." Die Aussparung gilt
+     * nicht nur dort, sondern für JEDEN Block — bei „wenig" und „normal" ist
+     * sie ohnehin weit weg, auf dem kleinen Brett verhindert sie bei „viel",
+     * dass sich die beiden Bauernreihen lückenlos berühren und gar nichts mehr
+     * geht.
+     *
+     * Gerechnet mit `floor`/`ceil`, damit auch ein Brett mit ungerader Kante
+     * eine Antwort bekäme: Dort ist es dann eine einzelne Reihe oder Spalte.
+     */
+    armeeMitteFrei(variante, reihe, spalte) {
+        const mitteReihe = [Math.floor((variante.hoehe - 1) / 2),
+            Math.ceil((variante.hoehe - 1) / 2)];
+        const mitteSpalte = [Math.floor((variante.breite - 1) / 2),
+            Math.ceil((variante.breite - 1) / 2)];
+
+        return mitteReihe.indexOf(reihe) !== -1
+            && mitteSpalte.indexOf(spalte) !== -1;
+    },
+
+    /*
+     * WEM EIN FELD GEHÖRT: der Seite, die ihm am nächsten liegt (seit v0.104).
+     *
+     * Solange ein Block zwei Reihen tief ist, stellt sich die Frage nicht —
+     * die Fronten sind weit auseinander. Ab „viel" berühren sie sich: Auf dem
+     * Kreuz greifen der obere und der linke Arm nach demselben Feld, auf jedem
+     * Brett laufen bei „voll" beide Seiten in der Mitte zusammen. Ohne eine
+     * eindeutige Antwort stünden dort zwei Figuren auf einem Feld, und wer
+     * zuletzt schreibt, gewinnt — genau die Sorte Fehler, die das Projekt
+     * schon zweimal hatte.
+     *
+     * BEI GLEICHSTAND GEWINNT DIE IM UHRZEIGERSINN FOLGENDE SEITE. Das ist
+     * nicht Geschmack, sondern Gerechtigkeit: Die Regel dreht sich mit dem
+     * Brett, also bekommt jede der vier Seiten genau eine ihrer beiden
+     * Diagonalen. Jede andere Wahl (immer „oben", immer die erste in der
+     * Liste) gäbe einer Seite mehr Figuren als der anderen — beim ersten
+     * Versuch stand es deshalb 35 zu 33 auf dem kleinen Kreuz.
+     *
+     * DIE REIHENFOLGE STEHT HIER UND NICHT IN `KREUZ.seiten`: Jene Liste ist
+     * nach Gegenüber sortiert (oben, unten, links, rechts) und taugt als Uhr
+     * nicht. Wer sie hier einsetzt, bekommt genau die schiefe Verteilung, die
+     * dieser Absatz verhindern soll.
+     *
+     * WELCHE SEITEN ÜBERHAUPT MITBIETEN, sagt `armeeSeitenVon` — beim
+     * Kreuz-Duell sind es nur zwei.
+     */
+    armeeNaechsteSeite(variante, reihe, spalte, seiten) {
+        const uhr = ["oben", "rechts", "unten", "links"];
+        const abstand = {
+            oben: reihe,
+            unten: variante.hoehe - 1 - reihe,
+            links: spalte,
+            rechts: variante.breite - 1 - spalte
+        };
+
+        let beste = null;
+
+        for (const seite of seiten) {
+            if (beste === null || abstand[seite] < abstand[beste]) {
+                beste = seite;
+                continue;
+            }
+
+            if (abstand[seite] === abstand[beste]
+                && (uhr.indexOf(beste) + 1) % uhr.length === uhr.indexOf(seite)) {
+
+                beste = seite;
+            }
+        }
+
+        return beste;
+    },
+
+    /*
+     * DIE FELDER EINER SEITE — mit ihrer TIEFE, äussere Reihe zuerst.
+     *
+     * Die EINE Stelle, an der eine Aufstellung entsteht: Sowohl die
+     * Zufallsarmee (`SCHACH_RUNDE._armeeStand`) als auch die feste Aufstellung
+     * (`SCHACH_RUNDE.aufstellungAnpassen`) und die angekündigte Zahl
+     * (`armeeAnzahl`) lesen hier. Zwei getrennte Rechnungen für dieselbe Sache
+     * liefen im Projekt schon zweimal auseinander (v0.86 und v0.99).
+     *
+     * Die TIEFE je Feld steht mit im Ergebnis, weil sie sagt, WAS dort steht:
+     * 0 ist die Grundreihe, danach kommt die Offiziersreihe, davor die Bauern.
+     * Wer sie nachrechnen müsste, rechnete die zweite Wahrheit.
+     *
+     * Die äussere Reihe steht zuerst — daran hängt die Zufallsarmee, die ihre
+     * zuerst gezogenen Figuren nach hinten stellt.
+     */
+    armeeFelderBlock(variante, seite, staerkeId) {
+        const felder = [];
+        const seiten = SCHACH_VARIANTEN.armeeSeitenVon(variante, seite);
+
+        if (seiten.indexOf(seite) === -1) {
+            return felder;
+        }
+
+        const platz = SCHACH_VARIANTEN.armeeSpalten(variante, staerkeId);
+        const grenze = SCHACH_VARIANTEN.armeeTiefe(variante, staerkeId);
+        const senkrecht = (seite === "oben" || seite === "unten");
+
+        for (let tiefe = 0; tiefe < grenze; tiefe++) {
+            for (let schritt = 0; schritt < platz.spalten; schritt++) {
+                const quer = platz.rand + schritt;
+
+                const reihe = senkrecht
+                    ? ((seite === "oben") ? tiefe : variante.hoehe - 1 - tiefe)
+                    : quer;
+                const spalte = senkrecht
+                    ? quer
+                    : ((seite === "links") ? tiefe : variante.breite - 1 - tiefe);
+
+                if (reihe < 0 || reihe >= variante.hoehe) {
+                    continue;
+                }
+                if (spalte < 0 || spalte >= variante.breite) {
+                    continue;
+                }
+                if (SCHACH_VARIANTEN.armeeMitteFrei(variante, reihe, spalte)) {
+                    continue;
+                }
+                if (SCHACH_VARIANTEN.armeeNaechsteSeite(
+                    variante, reihe, spalte, seiten) !== seite) {
+
+                    continue;
+                }
+
+                felder.push({
+                    feld: reihe * variante.breite + spalte,
+                    tiefe: tiefe
+                });
+            }
+        }
+
+        return felder;
+    },
+
     /*
      * WIE VIELE FIGUREN EINE SEITE BEKOMMT.
      *
-     * Grundzahl ist die Breite der Aufstellung (`armeeSpalten`); seit v0.86
-     * multipliziert eine STÄRKE sie (Nutzer-Wunsch V1: „die Anzahl der Figuren
-     * auch eine Knopf-Funktion"). Die Stärke ist WAHLFREI und ohne Angabe
-     * „normal" — damit liefert jeder Aufruf von früher unverändert dasselbe.
+     * Ein Feld, eine Figur — die Zahl ist nicht gewählt, sie fällt aus dem
+     * Block (`armeeFelderBlock`). Auf dem klassischen Brett sind das 8, 16, 24
+     * und 30 Figuren, von „wenig" bis „voll". Die Stärke ist WAHLFREI und ohne
+     * Angabe „normal".
      *
      * Nie unter 2: Eine Seite braucht ihren König und wenigstens eine Figur
      * daneben. Die Zahl wirkt VOR dem Bauen der Figurenliste, nie danach —
@@ -2158,63 +2319,79 @@ const SCHACH_VARIANTEN = {
      */
     /*
      * SEIT v0.99 IST DAS DIESELBE RECHNUNG WIE DIE FELDER — und das ist der
-     * ganze Punkt: Die Stärke wirkt jetzt in `armeeSpalten`, also dort, wo
-     * auch die Startfelder herkommen. Vorher rechnete diese Funktion mit dem
-     * Anteil weiter, während die Feldzahl fest blieb; was nicht hinpasste,
-     * fiel beim Aufstellen weg, und die Zahl unter der Kachel log.
+     * ganze Punkt: Vorher rechnete diese Funktion mit dem Anteil weiter,
+     * während die Feldzahl fest blieb; was nicht hinpasste, fiel beim
+     * Aufstellen weg, und die Zahl unter der Kachel log.
      *
-     * Zwei Zahlen für dieselbe Sache laufen auseinander — hier taten sie es
-     * ab dem ersten Knopfdruck über „normal".
+     * Seit v0.104 wird nicht einmal mehr nachgerechnet, sondern GEZÄHLT: Die
+     * Zahl ist die Länge der Feldliste. Zwei Zahlen für dieselbe Sache laufen
+     * auseinander — hier taten sie es ab dem ersten Knopfdruck über „normal".
+     *
+     * Auf dem Kreuz ist das die Zahl je STARTSEITE (seit v0.76), nicht je
+     * Team: Wer zwei Streifen bekommt, hat am Ende doppelt so viele Figuren.
+     * Alle vier Seiten sind gleich gross, deshalb genügt eine.
      */
     armeeAnzahl(variante, staerkeId) {
         return Math.max(2,
-            SCHACH_VARIANTEN.armeeSpalten(variante, staerkeId).spalten * 2);
+            SCHACH_VARIANTEN.armeeFelderBlock(variante, "unten", staerkeId).length);
     },
 
     /*
-     * DIE VIER STÄRKEN DER ZUFALLSARMEE (seit v0.86).
+     * DIE VIER STÄRKEN DER ARMEE (seit v0.86, neu gesetzt in v0.104).
      *
      * Aufgebaut wie `LOOTBOX_MENGEN` — dieselbe Knopfreihe, dieselbe Bedienung.
-     * Genannt wird ein ANTEIL statt einer festen Zahl: Die Bretter sind
-     * unterschiedlich breit, eine „8" wäre auf dem kleinen Brett unmöglich und
+     * Genannt wird keine feste Zahl, sondern eine Form: Die Bretter sind
+     * unterschiedlich gross, eine „8" wäre auf dem kleinen Brett unmöglich und
      * auf dem Doppelbrett mickrig. Was am Ende herauskommt, steht als echte
      * Zahl unter jeder Spielart-Kachel.
+     *
+     * DIE LEITER IST AM 20.08.2026 UM ZWEI STUFEN VERSCHOBEN WORDEN
+     * (Nutzer-Ansage). Was bis v0.103 „normal" hiess, heisst jetzt „wenig";
+     * was „voll" hiess — die gewohnte Aufstellung mit beiden Grundreihen —,
+     * heisst jetzt „normal". Darüber wächst der Block nicht mehr in die
+     * Breite (dort ist der Rand erreicht), sondern in die TIEFE:
+     *
+     *     wenig    2 Reihen, mittlerer Block      (bis v0.103: „normal")
+     *     normal   2 Reihen, ganze Breite         (bis v0.103: „voll")
+     *     viel     3 Reihen: Bauern eine vor, dazwischen die Offiziersreihe
+     *     voll     bis zur Mitte — frei bleibt nur das 2-mal-2-Feld
+     *
+     * Laufende Partien merken davon nichts: Ihr Brett steht im Stand und wird
+     * nie neu gerechnet. Wer eine solche Partie NEU AUFSTELLT, bekommt die
+     * neue Bedeutung ihrer Stufe — das ist eine bewusste Handlung.
      */
     ARMEE_STAERKEN: [
         {
             id: "wenig",
             titel: "wenig",
-            anteil: 0.5,
-            hinweis: "Halb so viele Figuren wie üblich — kurze, offene Partien."
+            volleBreite: false,
+            tiefe: 2,
+            hinweis: "Nur der mittlere Block der beiden Grundreihen — kurze, "
+                + "offene Partien."
         },
         {
             id: "normal",
             titel: "normal",
-            anteil: 1,
-            hinweis: "Die übliche Zahl: so breit wie die Aufstellung."
+            volleBreite: true,
+            tiefe: 2,
+            hinweis: "Die gewohnte Aufstellung: Grundreihe und Bauernreihe "
+                + "ganz gefüllt."
         },
-        /*
-         * `zurVollenBreite` seit v0.99 (siehe `armeeSpalten`): Diese zwei
-         * Stufen werden nicht mehr aus dem Anteil gerechnet, sondern aus dem
-         * Abstand zur ganzen Reihe. Mit einem Anteil von 1,5 und 2 zeigten sie
-         * über den Brettrand hinaus und wurden abgeschnitten — beide stellten
-         * dieselbe Armee auf wie „normal".
-         */
         {
             id: "viel",
             titel: "viel",
-            anteil: 1,
-            zurVollenBreite: 0.5,
-            hinweis: "Deutlich mehr — der Block reicht halb bis an den Rand, "
-                + "das Brett wird enger."
+            volleBreite: true,
+            tiefe: 3,
+            hinweis: "Eine Reihe mehr: Die Bauern rücken vor, dahinter kommt "
+                + "eine Reihe Springer, Läufer und Türme dazu."
         },
         {
             id: "voll",
             titel: "voll",
-            anteil: 1,
-            zurVollenBreite: 1,
-            hinweis: "Die beiden Grundreihen ganz ausgefüllt — mehr passt nicht "
-                + "auf die Startfelder."
+            volleBreite: true,
+            tiefe: "bisMitte",
+            hinweis: "Alles voll bis zur Mitte — frei bleibt nur ein "
+                + "2-mal-2-Feld in der Brettmitte."
         }
     ],
 

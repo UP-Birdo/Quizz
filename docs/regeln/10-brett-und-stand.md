@@ -114,35 +114,40 @@ Startseiten, Zufallsarmee und Figurenzahl, Risse und Mauern, Zugwege.
 - **DIE STÄRKE GILT FÜR JEDE PARTIE, nicht nur für die Zufallsarmee** (seit
   v0.100, Nutzer-Entscheidung 20.08.: „Zufallsarmee hat keine Auswirkung mehr
   auf die Grösse der Armee, nur der Regler hat es"). Der Haken entscheidet, WELCHE
-  Figuren stehen; die Stärke, WIE VIELE. Ohne Haken schneidet
-  `SCHACH_RUNDE.aufstellungZuschneiden` die feste Aufstellung auf denselben
-  Feld-Block zu, den auch die Zufallsarmee benutzt — **Könige bleiben dabei
+  Figuren stehen; die Stärke, WIE VIELE. Ohne Haken bringt
+  `SCHACH_RUNDE.aufstellungAnpassen` die feste Aufstellung auf denselben
+  Feld-Block, den auch die Zufallsarmee benutzt — **Könige bleiben dabei
   immer stehen**, sonst verlöre eine Spielart mit König ausserhalb der Mitte ihn
-  beim Zuschneiden.
-  **Die Funktion nimmt weg, sie stellt nicht her.** Sie darf deshalb nur auf ein
-  FRISCHES Brett laufen und nie zweimal nacheinander — der zweite Aufruf
-  schnitte vom bereits beschnittenen Brett. Aufgerufen wird sie an genau drei
-  Stellen: `partieAnlegen`, `neuAufstellen`, Vorschau der Kachel.
+  beim Anpassen.
+  **Sie nimmt weg UND stellt hin** (seit v0.104, vorher hiess sie
+  `aufstellungZuschneiden` und konnte nur wegnehmen): Ab der Stufe „viel" steht
+  der Block tiefer, als die Spielart Figuren mitbringt. Sie darf deshalb nur auf
+  ein FRISCHES Brett laufen und nie zweimal nacheinander — der zweite Aufruf
+  rechnete auf dem Ergebnis des ersten. Aufgerufen wird sie an genau drei
+  Stellen: `partieAnlegen`, `neuAufstellen`, Vorschau der Kachel. **Auf dem
+  Kreuz baut sie `bauernSeiten` neu**, weil sie zusätzliche Bauernreihen
+  aufstellt.
   **`regeln.armeeFassung` ist der Umstieg** (Muster von `bonusFassung`): Nur bei
   1 wird zugeschnitten. Sie ist nötig, weil „kein Eintrag" für zwei Altfälle
   gleichzeitig das Richtige tun müsste und sie sich widersprechen — eine Partie
   von früher MIT fester Aufstellung stand voll auf dem Brett, eine MIT
   Zufallsarmee hatte die halbe Armee. Wer am Zuschneiden etwas ändert, prüft
   beide.
-- **DIE STÄRKE DER ZUFALLSARMEE VERBREITERT DEN STARTFELD-BLOCK, sie
-  multipliziert keine Zahl** (seit v0.99). `SCHACH_VARIANTEN.armeeSpalten`
-  nimmt die Stärke entgegen und liefert daraus Spalten UND Rand;
-  `armeeAnzahl`, `_armeeFelder` und `_armeeFelderKreuz` rechnen alle daraus.
-  **Bis v0.98 taten sie das nicht:** `armeeAnzahl` multiplizierte den Anteil,
-  die Feldzahl blieb fest — alles über „normal" wurde beim Aufstellen
-  abgeschnitten, und „viel" wie „voll" stellten auf JEDEM Brett dieselbe Armee
-  auf wie „normal". Zwei von vier Knöpfen taten nichts.
-  **Die Regel dahinter:** Wer eine Einstellung baut, die eine ZAHL verspricht,
-  prüft, ob das Brett sie halten kann — und rechnet beide aus derselben
-  Funktion. Zwei Rechnungen für dieselbe Sache laufen auseinander; hier taten
-  sie es ab dem ersten Knopfdruck. Zwei Tests halten es fest: Jede Stufe stellt
-  mehr auf als die darunter, und die angekündigte Zahl gleicht der Zahl der
-  Startfelder.
+- **DIE STÄRKE FORMT EINEN FELD-BLOCK, sie multipliziert keine Zahl** (seit
+  v0.99, seit v0.104 auch in die Tiefe). Die eine Quelle ist
+  `SCHACH_VARIANTEN.armeeFelderBlock` — sie liefert Felder samt TIEFE;
+  `armeeAnzahl` ist ihre Länge, `_armeeFelder` und `_armeeFelderKreuz` sind
+  Übersetzer. Wer eine zweite Rechnung für dieselbe Sache aufmacht, holt sich
+  den Fehler von v0.98 zurück (`erkenntnisse.md`, „Eine Einstellung, die eine
+  Zahl verspricht"). Zwei Tests halten es fest: Jede Stufe stellt mehr auf als
+  die darunter, und die angekündigte Zahl gleicht der Zahl der Startfelder.
+- **AB DREI REIHEN STEHEN DIE BAUERN VORN — auch bei der Zufallsarmee** (seit
+  v0.104, `_armeeFiguren`). Gemischt wird weiter, aber nur innerhalb der beiden
+  Gruppen: Offiziere in die äusseren Reihen, Bauern nach vorn. Ohne das sperrt
+  sich ein tiefer Block selbst ein — nachgemessen stand bei „voll" je nach
+  Brett jede fünfte bis dritte Seite schon beim Anpfiff ohne gültigen Zug da
+  (`erkenntnisse.md`). **Bis zwei Reihen bleibt der freie Mix**, dort ist er
+  seit v0.49 gewollt.
 - **Die Zufallsarmee ist ein HAKEN der Partie** (`regeln.zufallsArmee`, seit
   v0.51 — vorher eine eigene Spielart). Das echte Brett baut
   `SCHACH_RUNDE._armeeStand` aus der Partie-Kennung — gerechnet, nicht

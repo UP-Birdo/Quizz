@@ -39,7 +39,9 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 
 | **Item-Vorrat** | `regeln.itemVorrat`, `regeln.itemPool` | Welche Fähigkeiten es in DIESER Partie überhaupt gibt: **wenig / 10 / viele / alle / selbst wählen** (`SCHACH_VARIANTEN.ITEM_VORRAETE`). Die Stufe ist die Einstellung, `itemPool` die daraus entstandene Liste. Leerer Pool heisst „keine Einschränkung". |
 | **Selbst gewählte Items** | `regeln.itemAuswahl` | Die angehakte Liste aus dem Modus „selbst wählen" (seit v0.100) — die EINGABE, aus der `itemPool` entsteht. Mindestens ein Item; gefiltert wird beim Auslosen noch einmal gegen die Bedingungen der Partie. |
-| **Figurenzahl / Regler** | `regeln.armeeStaerke`, `armeeFassung` | Wie viele Figuren je Seite stehen: **wenig / normal / viel / voll**. Seit v0.100 gilt der Regler in JEDER Partie, nicht nur bei Zufallsarmee — `armeeFassung: 1` sagt, dass diese Partie schon so rechnet. |
+| **Figurenzahl / Regler** | `regeln.armeeStaerke`, `armeeFassung` | Wie viele Figuren je Seite stehen: **wenig / normal / viel / voll**. Seit v0.100 gilt der Regler in JEDER Partie, nicht nur bei Zufallsarmee — `armeeFassung: 1` sagt, dass diese Partie schon so rechnet. **Seit v0.104 ist „normal" die gewohnte Aufstellung** (vorher hiess die „voll"); darüber wächst der Block in die Tiefe. |
+| **Block / Tiefe** | `SCHACH_VARIANTEN.armeeFelderBlock`, `armeeTiefe` | Die Felder EINER Startseite samt ihrer Tiefe: 0 ist die Grundreihe, dann die Offiziersreihe, davor die Bauern. Die eine Quelle für Zufallsarmee, feste Aufstellung und die angekündigte Zahl. |
+| **Offiziersreihe** | `SCHACH_RUNDE._aufstellungArt` | Die Reihe, die ab „viel" zwischen Grundreihe und Bauern entsteht: die Grundreihe ohne Krone — König und Dame werden zum Springer. |
 
 ## Regeln und Wirkungen
 

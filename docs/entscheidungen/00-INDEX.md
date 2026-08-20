@@ -90,6 +90,14 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       klebende Knopfleiste des Dialogs hatte keinen `z-index`; Figuren, Marken
       und der schwebende Zurueck-Knopf lagen darueber. Die Ebenen stehen
       seither als Variablen an einer Stelle in `css\stil.css`
+    - **Ein tieferer Block sperrt sich selbst ein** (v0.104) — ab drei
+      Reihen berühren sich die Armeen; die seit v0.49 gemischte Zufallsarmee
+      stand dann bis zu einem Drittel der Fälle ohne gültigen Zug da.
+      Offiziere aussen, Bauern vorn. Merksatz: Wer eine Grenze verschiebt,
+      prüft nicht die Grenze, sondern das Spiel dahinter
+    - **Die naheliegende Liste war keine Uhr** (v0.104) — `KREUZ.seiten` ist
+      nach Gegenüber sortiert und taugt nicht als Uhrzeigersinn; die
+      Diagonalen des Kreuzes verteilten sich dadurch 35 zu 33
 
 ## entschieden.md - Entschieden - und warum
 

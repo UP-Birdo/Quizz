@@ -400,7 +400,7 @@ const SCHACH_TAFEL = {
 
         /* Ohne Haken bleibt die feste Aufstellung stehen - der Regler
            schneidet sie auf seine Breite zu (seit v0.100). */
-        SCHACH_RUNDE.aufstellungZuschneiden(partie);
+        SCHACH_RUNDE.aufstellungAnpassen(partie);
 
         /* Welche Items es in dieser Partie gibt — einmalig, gerechnet aus der
            Partie-Kennung (seit v0.87). */
