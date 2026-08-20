@@ -859,3 +859,72 @@ der Liste, weil er nie über die Grenze hinaus mitgewürfelt wird.
 **Merksatz:** Wer eine gerechnete Liste kürzt, kürzt sie beim BAUEN, nicht
 nach dem Mischen — sonst hängt ein Pflicht-Element (hier: der König) vom
 Zufall der Mischung ab, ob es die Kürzung übersteht.
+
+## Dieselbe Falle, zweite Wiederholung: eine Einstellung, die nichts tut (v0.86/v0.87, gefunden v0.91)
+
+**Symptom:** Die Knopfreihen „Wie viele Figuren je Seite?" (v0.86) und „Welche
+Items kommen vor?" (v0.87) liessen sich bedienen und bewirkten **nichts**.
+Jede Partie startete mit „normal" und „alle".
+
+**Ursache:** `SCHACH_TAFEL.partieAnlegen` kopiert die Einstellungen EINZELN
+aus dem übergebenen Regel-Objekt in die Partie. Für `armeeStaerke` und
+`itemVorrat` wurde diese Zeile beide Male vergessen.
+
+**Warum es niemandem auffiel — der eigentliche Lehrsatz:** Die
+Spielart-Kachel zeigte trotzdem das Richtige. Sie liest
+`TEAM_SCHACH.neueRegeln` direkt, nicht die angelegte Partie. **Das Bild
+stimmte, das Spiel nicht.** Eine Vorschau, die aus einer anderen Quelle
+rechnet als das Ergebnis, bestätigt einen Fehler, statt ihn zu zeigen.
+
+**Das ist die ZWEITE Wiederholung.** Genau dasselbe passierte in v0.60/v0.71
+mit `regenStufe` (siehe den Abschnitt darüber). Dort stand die Lehre schon:
+„beim Anlegen wird jedes Feld der Einstellungen übernommen". Sie stand nur in
+Prosa — **abgesichert war sie nicht**, und deshalb griff sie beim nächsten
+Feld nicht.
+
+**Was jetzt anders ist:** Ein Test in `test-schach-tafel.js` geht die
+ÜBERGEBENEN Regeln durch und vergleicht jede mit der angelegten Partie. Er
+nennt keine Feldnamen und muss deshalb nie mitgepflegt werden — wer eine neue
+Einstellung ergänzt und die Zeile in `partieAnlegen` vergisst, fällt von
+selbst auf.
+
+**Merksatz:** Eine Lehre, die nur als Satz in der Doku steht, hält genau bis
+zum nächsten Mal. Wer eine Aufzählung als Falle erkennt, baut denselben Tag
+den Test dazu — sonst schreibt man denselben Abschnitt zweimal.
+
+**Und zur Methode:** Gefunden wurde es nicht durch Lesen, sondern durch ein
+Wegwerf-Skript gegen die echten Dateien: Einstellungen hineingeben,
+`partieAnlegen` aufrufen, herausschreiben, was in der Partie ankommt. Zwei
+Minuten Arbeit für eine Frage, die durch Code-Lesen unbeantwortet blieb —
+dieselbe Methode hatte schon v0.71 geholfen.
+
+## Was zur Meldung #36 schon gemessen wurde (Stand 20.08.2026, offen)
+
+**Meldung:** „Dieb und Enttarnen sind sofort verschwunden nach dem Einsammeln
+und Zugwechsel, funktioniert nicht wie ein Item."
+
+**Damit die nächste Sitzung nicht dieselbe Strecke noch einmal läuft — das
+ist bereits AUSGESCHLOSSEN**, gemessen mit einem Wegwerf-Skript gegen die
+echten Dateien:
+
+- `normalisieren` wirft sie NICHT weg. Beide überleben Speichern und Laden,
+  in Partien mit sichtbarer wie mit verborgener Seltenheit.
+- `darfEinsetzen` liefert für beide `true`.
+- Das Einsammeln legt sie richtig in den Vorrat, und sie bleiben dort auch
+  nach dem Laden.
+- `faehigkeitEinsetzen` funktioniert für beide: Enttarnen verbraucht sich und
+  lässt den Zug, der Dieb verbraucht sich und legt die Beute in den Vorrat.
+- `_gefalleneVorhanden` betrifft nur Nekromant, Wiederbelebung und
+  Wiedergeburt und gibt für alles andere `true` zurück.
+- Der Bildschirm filtert den Vorrat nicht nach `art`; die Fähigkeiten-Karte
+  zeigt jede Fähigkeit im Vorrat.
+
+**Was dabei gefunden wurde, war ein ANDERER Fehler** (die verworfenen
+Einstellungen, siehe den Abschnitt darüber). Gut möglich, dass die Meldung
+eine Folge davon war — das ist die erste Frage an den Nutzer, bevor hier
+weiter gesucht wird.
+
+**Wo noch nicht gemessen wurde:** im echten Zusammenspiel zweier Geräte über
+die Datenbank. Der nächste Schritt wäre, den Zugwechsel mit zwei Anmeldungen
+nachzustellen und dabei zu beobachten, ob der Vorrat über den Abgleich
+zurückgesetzt wird.
