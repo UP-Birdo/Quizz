@@ -349,6 +349,20 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   nimmt der Seite ihre gewohnte Gangart; bleibt dabei kein einziger Zug übrig,
   stünde die Partie (und `alleZuege` läse es als Matt). `faehigkeitEinsetzen`
   weist das Einsetzen deshalb ab, statt den Fall entstehen zu lassen.
+- **EINE RICHTUNG, DIE DER NUTZER WÄHLT, ZÄHLT VON SEINER ARMEE AUS — nie vom
+  Brett** (seit v0.101, Platztausch). „vor" ist die Marschrichtung der eigenen
+  Bauern (`SCHACH.tauschSchritt` aus `bauernRichtung`), die drei übrigen folgen
+  daraus. Der Grund steht in der Ansicht: Sie dreht sich so, dass die eigene
+  Armee unten steht (`_drehungVon`, seit v0.72) — „oben auf dem Brett" und
+  „oben auf dem Bildschirm" sind auf dem Kreuz zwei verschiedene Dinge, „vor"
+  dagegen ist auf jedem Gerät dasselbe. Wer eine Fähigkeit mit Richtungswahl
+  baut, rechnet genauso.
+- **Eine zweite Angabe neben dem Zielfeld reist als `wahl`** — die LAGE der
+  Mauer (v0.80) und die RICHTUNG des Platztauschs (v0.101). Der Bildschirm
+  holt sie an EINER Stelle (`TEAM_SCHACH._zusatzWahl`), das Modell nimmt sie
+  als letzten Parameter von `zielFelder`, `zielUmriss` und `_zielWirkung`
+  entgegen. Wer eine dritte solche Fähigkeit baut, trägt sie dort ein statt
+  einen zweiten Weg zu öffnen.
 - **Eine Fähigkeit mit Zielfeld wird erst platziert, dann eingesetzt** (seit
   v0.57). Der Tipp setzt den Vorschau-Kasten (`TEAM_SCHACH.zielVorschau`,
   `zielUmriss`), ausgeführt wird über „Einsetzen". Den Umriss liefert

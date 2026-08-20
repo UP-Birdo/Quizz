@@ -746,6 +746,21 @@ Object.assign(TEAM_SCHACH, {
                 () => TEAM_SCHACH.drehenMauer(partie)));
         }
 
+        /*
+         * DERSELBE KNOPF FÜR DEN PLATZTAUSCH (seit v0.101, Wunsch W7). Er
+         * nennt den IST-Zustand statt des Ziels — anders als bei der Mauer,
+         * und mit Absicht: Bei zwei Lagen sagt „Senkrecht legen" eindeutig,
+         * was der Tipp bewirkt; bei vier Richtungen wäre die nächste Station
+         * eine Angabe ohne Wert. Was zählt, ist, in welche Richtung gerade
+         * getauscht wird — die markierten Felder zeigen den Rest.
+         */
+        if (TEAM_SCHACH.zielFaehigkeit === "platztausch") {
+            leiste.appendChild(TEAM_SCHACH._knopf(
+                "Richtung: " + TEAM_SCHACH.tauschRichtungText(TEAM_SCHACH.tauschRichtung),
+                "knopf-still",
+                () => TEAM_SCHACH.schaltenTausch(partie)));
+        }
+
         leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still",
             () => TEAM_SCHACH.zielVerwerfen()));
 

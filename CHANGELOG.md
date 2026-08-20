@@ -3,6 +3,28 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.101.0 — 2026-08-20
+
+**Der Platztausch geht jetzt in alle vier Richtungen — und auch mit dem Gegner.**
+
+- **Vier Richtungen statt einer.** Bisher tauschte eine eigene Figur nur mit der
+  Figur direkt vor ihr. Jetzt wählst du die Richtung: vor, zurück, links oder
+  rechts. Ein Knopf unter dem Brett schaltet sie weiter, und die markierten
+  Felder zeigen sofort, was in dieser Richtung überhaupt geht.
+
+  Die Richtungen zählen von deiner eigenen Armee aus — „vor" ist immer die
+  Richtung, in die deine Bauern marschieren. Damit heisst „vor" auf dem
+  gedrehten Kreuz-Brett dasselbe wie auf dem geraden.
+
+- **Auch gegnerische Figuren sind Tauschpartner.** Damit lässt sich eine
+  fremde Figur aus einer Sichtlinie ziehen oder in eine hineinsetzen. Könige
+  tauschen weiterhin nicht — in keiner der beiden Rollen.
+
+- **Dafür kostet er jetzt den Zug.** Kein Pluszeichen mehr: Wer in die
+  gegnerische Stellung eingreift, gibt den Zug ab. Das ist dieselbe Regel, die
+  schon den Bauernschub und das Nudelholz getroffen hat — zu stark heisst
+  Pluszeichen weg, nicht Stufe verschieben.
+
 ## v0.100.0 — 2026-08-20
 
 **Die Figurenzahl gilt jetzt immer, die Items lassen sich selbst zusammenstellen

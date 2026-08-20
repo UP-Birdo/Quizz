@@ -3067,6 +3067,10 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
     const kostetDenZug = ["bauernschub", "verstaerkung", "spiegel",
         "wiedergeburt", "wiederbelebung", "friedhof", "haendler", "nachschub",
         "dieb",
+        /* `platztausch` seit v0.101 (Wunsch W7): Er versetzt jetzt auch
+           GEGNERISCHE Figuren - damit greift er in die fremde Stellung ein und
+           kostet den Zug. Dritter Fall der Regel „zu stark heisst Plus weg". */
+        "platztausch",
         /* Seit v0.80: zweiter Anwendungsfall von „zu stark heisst Plus weg,
            nicht Stufe verschieben" (v0.47), nach dem Bauernschub in v0.56. */
         "nudelholz"];
@@ -3075,7 +3079,7 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
         "mauer", "fessel", "frost", "doppelzug",
         /* Die zwei gewoehnlichen von v0.79: rein positionell, kein Material
            und keine geschlagene Figur - genau die Bedingung dieser Gruppe. */
-        "schubs", "platztausch",
+        "schubs",
         /* `enttarnen` (v0.88) nimmt kein Material und bewegt nichts — es
            aendert nur, was EINE Seite sieht. Dieselbe Einordnung wie die
            Halluzination, waere sie eine Faehigkeit. */
@@ -6060,7 +6064,70 @@ pruefe("Platztausch: der Springer kommt hinter dem Bauern hervor (v0.79)", () =>
 
     gleich(SCHACH.figurAuf(nachher.stand, bauer), "S", "der Springer steht jetzt vorn");
     gleich(SCHACH.figurAuf(nachher.stand, springer), "B", "der Bauer dahinter");
-    gleich(nachher.stand.amZug, "weiss", "und der Zug bleibt Weiss");
+
+    /* SEIT v0.101 KOSTET ER DEN ZUG (Nutzer-Ansage W7: „kein Plus mehr") —
+       bis v0.100 blieb Weiss hier am Zug. */
+    gleich(nachher.stand.amZug, "schwarz", "und danach ist der Gegner am Zug");
+});
+
+pruefe("Platztausch: alle vier Richtungen, auch mit dem Gegner (v0.101)", () => {
+    /*
+     * WUNSCH W7: „Soll in jede Richtung gehen, auch mit gegnerischen Figuren,
+     * kein Plus mehr, und nur die vier Seiten drum herum — horizontal und
+     * vertikal."
+     *
+     * Die Richtungen stehen RELATIV ZUR EIGENEN ARMEE („vor" ist die
+     * Marschrichtung der eigenen Bauern), damit sie auf dem gedrehten
+     * Kreuz-Brett dasselbe bedeuten wie auf dem geraden.
+     */
+    const stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "...T...."
+            + "..lDs..."
+            + "...B...."
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const dame = SCHACH.feldNummer("d3");
+
+    /* Weiss steht unten, „vor" ist also nach oben — dort steht der Turm. */
+    const vor = SCHACH.platztausch(stand, "weiss", dame, "vor");
+    wahr(vor !== null, "vor: der Turm ist der Partner");
+    gleich(SCHACH.figurAuf(vor.stand, SCHACH.feldNummer("d4")), "D", "die Dame rueckt vor");
+    gleich(SCHACH.figurAuf(vor.stand, dame), "T", "der Turm kommt zurueck");
+
+    /* Zurueck steht der eigene Bauer. */
+    const zurueck = SCHACH.platztausch(stand, "weiss", dame, "zurueck");
+    wahr(zurueck !== null, "zurueck: der eigene Bauer");
+    gleich(SCHACH.figurAuf(zurueck.stand, SCHACH.feldNummer("d2")), "D", "die Dame geht zurueck");
+
+    /*
+     * UND ZUR SEITE STEHEN GEGNER — das ist die eigentliche Neuerung. Links
+     * der schwarze Laeufer, rechts der schwarze Springer.
+     */
+    const links = SCHACH.platztausch(stand, "weiss", dame, "links");
+    wahr(links !== null, "links: auch ein gegnerischer Laeufer geht");
+    gleich(SCHACH.figurAuf(links.stand, SCHACH.feldNummer("c3")), "D",
+        "die Dame steht jetzt links");
+    gleich(SCHACH.figurAuf(links.stand, dame), "l", "und der Gegner auf ihrem Platz");
+
+    const rechts = SCHACH.platztausch(stand, "weiss", dame, "rechts");
+    wahr(rechts !== null, "rechts: der gegnerische Springer ebenso");
+    gleich(SCHACH.figurAuf(rechts.stand, SCHACH.feldNummer("e3")), "D",
+        "die Dame steht jetzt rechts");
+
+    /* Ohne Angabe gilt „vor" — jeder Aufruf von frueher bleibt gueltig. */
+    const ohne = SCHACH.platztausch(stand, "weiss", dame);
+    gleich(ohne.stand.brett, vor.stand.brett, "ohne Angabe wird nach vorn getauscht");
+
+    /* Und es bleiben WIRKLICH nur die vier Seiten: schraeg geht nichts. */
+    gleich(SCHACH.TAUSCH_RICHTUNGEN.length, 4, "genau vier Richtungen");
 });
 
 pruefe("Platztausch: nur eigene Figuren, nie der Koenig (v0.79)", () => {
@@ -6091,7 +6158,11 @@ pruefe("Platztausch: nur eigene Figuren, nie der Koenig (v0.79)", () => {
     gleich(SCHACH.platztausch(koenigDavor, "weiss", SCHACH.feldNummer("a2")), null,
         "und auch nicht als Vordermann");
 
-    /* 3. Eine gegnerische Figur davor ist kein Tauschpartner. */
+    /*
+     * 3. EINE GEGNERISCHE FIGUR DAVOR GEHT SEIT v0.101 (Wunsch W7) — bis
+     * v0.100 war sie kein Tauschpartner. Der Test steht auf dem Kopf, weil
+     * die Regel es tut.
+     */
     const gegnerDavor = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
         brett: "....k..."
@@ -6105,8 +6176,8 @@ pruefe("Platztausch: nur eigene Figuren, nie der Koenig (v0.79)", () => {
         amZug: "weiss",
         rochade: ""
     });
-    gleich(SCHACH.platztausch(gegnerDavor, "weiss", SCHACH.feldNummer("a2")), null,
-        "mit dem Gegner wird nicht getauscht");
+    wahr(SCHACH.platztausch(gegnerDavor, "weiss", SCHACH.feldNummer("a2")) !== null,
+        "mit dem Gegner wird jetzt getauscht");
 
     /* 4. Ohne Vordermann ebenfalls nicht. */
     const allein = SCHACH.standNormalisieren({
@@ -6141,7 +6212,18 @@ pruefe("Gruen hat wieder eine Auswahl UND ein Pluszeichen (v0.79)", () => {
         return !eintrag.beendetZug && !eintrag.istDerZug;
     });
 
-    wahr(mitPlus.length >= 2, "davon mindestens zwei mit Pluszeichen (sind "
+    /*
+     * SEIT v0.101 GENUEGT EINE (vorher zwei). Der Platztausch hat sein
+     * Pluszeichen auf Nutzer-Ansage verloren (W7: „kein Plus mehr"), weil er
+     * jetzt auch gegnerische Figuren versetzt — dritter Anwendungsfall der
+     * Regel „zu stark heisst Plus weg, nicht Stufe verschieben".
+     *
+     * Die Sorge von v0.79 bleibt trotzdem richtig und die Pruefung deshalb
+     * stehen: Gruen darf nicht wieder auf „dein Zug wird ein anderer"
+     * zusammenschrumpfen. Faellt auch der Schubs eines Tages weg, faellt es
+     * hier auf, und dann braucht die Stufe Ersatz.
+     */
+    wahr(mitPlus.length >= 1, "davon mindestens eine mit Pluszeichen (sind "
         + mitPlus.length + ": " + mitPlus.join(", ") + ")");
 
     /*

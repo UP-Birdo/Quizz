@@ -3364,7 +3364,9 @@ const SCHACH_RUNDE = {
         }
 
         if (art === "platztausch") {
-            return SCHACH.platztausch(runde.stand, farbe, feld);
+            /* `wahl` ist hier die RICHTUNG (seit v0.101) — dasselbe Muster wie
+               die Lage der Mauer, nur mit vier Möglichkeiten statt zwei. */
+            return SCHACH.platztausch(runde.stand, farbe, feld, wahl);
         }
 
         if (art === "nudelholz") {

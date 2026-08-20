@@ -218,6 +218,14 @@ const TEAM_SCHACH = {
      */
     mauerRichtung: "waagerecht",
 
+    /*
+     * Die Richtung des Platztauschs (seit v0.101, Wunsch W7) — eine der vier
+     * aus `SCHACH.TAUSCH_RICHTUNGEN`, gemessen an der eigenen Marschrichtung.
+     * „vor" ist die Vorgabe und damit der Tausch, den es bis v0.100 als
+     * einzigen gab.
+     */
+    tauschRichtung: "vor",
+
     /* Bis zu welchem Zugzähler die Wirkung einer Fähigkeit gezeigt wurde. */
     wirkungBis: {},
 
@@ -966,14 +974,14 @@ const TEAM_SCHACH = {
              */
             if (TEAM_SCHACH.zielVorschau === feld) {
                 TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit,
-                    feld, undefined, TEAM_SCHACH.mauerRichtung);
+                    feld, undefined, TEAM_SCHACH._zusatzWahl());
                 return;
             }
 
             TEAM_SCHACH.zielVorschau = feld;
             TEAM_SCHACH.zielUmriss = SCHACH_RUNDE.zielUmriss(
                 partie, person.id, TEAM_SCHACH.zielFaehigkeit, feld,
-                TEAM_SCHACH.mauerRichtung);
+                TEAM_SCHACH._zusatzWahl());
 
             TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
@@ -1030,6 +1038,7 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.zielVorschau = -1;
         TEAM_SCHACH.zielUmriss = [];
         TEAM_SCHACH.mauerRichtung = "waagerecht";
+        TEAM_SCHACH.tauschRichtung = "vor";
         TEAM_SCHACH.auswahlZaehler = -1;
     },
 
@@ -1043,7 +1052,74 @@ const TEAM_SCHACH = {
         }
 
         TEAM_SCHACH.faehigkeitAusfuehren(partie, TEAM_SCHACH.zielFaehigkeit,
-            TEAM_SCHACH.zielVorschau, undefined, TEAM_SCHACH.mauerRichtung);
+            TEAM_SCHACH.zielVorschau, undefined, TEAM_SCHACH._zusatzWahl());
+    },
+
+    /*
+     * DIE ZUSATZWAHL DER GERADE PLATZIERTEN FÄHIGKEIT (seit v0.101).
+     *
+     * Zwei Fähigkeiten brauchen neben dem Zielfeld noch eine zweite Angabe,
+     * und beide reisen als `wahl` durch dieselbe Kette bis in `_zielWirkung`:
+     * die LAGE der Mauer (seit v0.80) und die RICHTUNG des Platztauschs (seit
+     * v0.101). Damit der Weg dorthin nur einmal existiert, fragen alle Stellen
+     * diese eine Funktion — vorher stand an vier Stellen `mauerRichtung`, und
+     * die zweite Fähigkeit hätte jede davon anfassen müssen.
+     *
+     * `art` ist WAHLFREI: Ohne Angabe gilt die Fähigkeit, die gerade platziert
+     * wird (`zielFaehigkeit`). Das genügt an drei der vier Stellen — nur beim
+     * ERSTEN Prüfen in `faehigkeitEinsetzen` steht sie noch nicht fest, und
+     * dort wird sie ausdrücklich mitgegeben.
+     */
+    _zusatzWahl(art) {
+        const gemeint = art || TEAM_SCHACH.zielFaehigkeit;
+
+        if (gemeint === "platztausch") {
+            return TEAM_SCHACH.tauschRichtung;
+        }
+        return TEAM_SCHACH.mauerRichtung;
+    },
+
+    /*
+     * DIE RICHTUNG DES PLATZTAUSCHS WEITERSCHALTEN (seit v0.101).
+     *
+     * Ein Knopf statt vier: Er zählt durch `SCHACH.TAUSCH_RICHTUNGEN` — genau
+     * das Muster des Dreh-Knopfs der Mauer, nur mit vier Stationen. Vier
+     * Knöpfe nebeneinander wären am Handy die grössere Fläche für dieselbe
+     * Auskunft, und die Zielfelder zeigen ohnehin sofort, was gerade geht.
+     */
+    schaltenTausch(partie) {
+        const person = TEAM_SCHACH._ich();
+        if (!person || TEAM_SCHACH.zielFaehigkeit !== "platztausch") {
+            return;
+        }
+
+        const alle = SCHACH.TAUSCH_RICHTUNGEN;
+        const jetzt = alle.indexOf(TEAM_SCHACH.tauschRichtung);
+
+        TEAM_SCHACH.tauschRichtung = alle[(jetzt + 1) % alle.length];
+
+        /* Wie beim Drehen der Mauer: Der bisherige Vorschau-Platz passt meist
+           nicht mehr, und die Liste der möglichen Felder wird neu gerechnet. */
+        TEAM_SCHACH.zielVorschau = -1;
+        TEAM_SCHACH.zielUmriss = [];
+        TEAM_SCHACH.zielFelder = SCHACH_RUNDE.zielFelder(
+            partie, person.id, "platztausch", TEAM_SCHACH.tauschRichtung);
+
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
+
+    /* Wie die Richtung im Knopf heisst. */
+    tauschRichtungText(richtungId) {
+        if (richtungId === "zurueck") {
+            return "zurück";
+        }
+        if (richtungId === "links") {
+            return "nach links";
+        }
+        if (richtungId === "rechts") {
+            return "nach rechts";
+        }
+        return "nach vorn";
     },
 
     /*
@@ -1824,7 +1900,7 @@ const TEAM_SCHACH = {
         let felder = null;
         if (beschreibung.art === "ziel") {
             felder = SCHACH_RUNDE.zielFelder(partie, person.id, art,
-                TEAM_SCHACH.mauerRichtung);
+                TEAM_SCHACH._zusatzWahl(art));
 
             if (felder.length === 0) {
                 await DIALOG.hinweis("Kein Ziel möglich",

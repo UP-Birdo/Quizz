@@ -857,10 +857,11 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "ziel",
             zielArt: "eigeneFigurTauschbar",
-            beschreibung: "Tippe eine eigene Figur an: Sie tauscht den Platz mit "
-                + "deiner eigenen Figur direkt davor — so kommt der Läufer hinter dem "
-                + "Bauern hervor. Nur zwischen zwei eigenen Figuren, und der König "
-                + "tauscht nicht. Dein Zug bleibt dir."
+            beendetZug: true,
+            beschreibung: "Eine eigene Figur tauscht den Platz mit dem Nachbarfeld "
+                + "in der gewählten Richtung. Vor, zurück, links oder rechts — auch "
+                + "mit einer gegnerischen Figur. Könige tauschen nicht. Danach ist "
+                + "der Gegner am Zug."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ----

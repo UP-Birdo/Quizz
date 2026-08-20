@@ -3411,12 +3411,17 @@ const SCHACH = {
     },
 
     /*
-     * PLATZTAUSCH (seit v0.79): Eine eigene Figur tauscht den Platz mit der
-     * eigenen Figur direkt VOR ihr.
+     * PLATZTAUSCH (seit v0.79, umgebaut in v0.101): Eine eigene Figur tauscht
+     * den Platz mit der Figur auf EINEM der vier Nachbarfelder — waagerecht
+     * oder senkrecht, eigene wie gegnerische.
      *
-     * Holt den Läufer hinter dem eigenen Bauern hervor, ohne einen Zug zu
-     * kosten. Rein positionell, kein Material, keine Figur des Gegners
-     * berührt — deshalb behält sie den Zug (Hausregel v0.47).
+     * Bis v0.100 ging nur die eigene Figur direkt VOR ihr, und die Fähigkeit
+     * behielt den Zug. Beides hat der Nutzer am 20.08. geändert (W7: „soll in
+     * jede Richtung gehen, auch mit gegnerischen Figuren, kein Plus mehr, und
+     * nur die vier Seiten drum herum"). Mit einer gegnerischen Figur ist sie
+     * kein reines Aufräumen mehr, sondern ein Eingriff in die fremde Stellung
+     * — deshalb kostet sie jetzt den Zug (`beendetZug`, Hausregel v0.47: „zu
+     * stark heisst Plus weg, nicht Stufe verschieben").
      *
      * „VOR" IST DIE LAUFRICHTUNG DER EIGENEN BAUERN (`bauernRichtung`). Damit
      * stimmt es auch auf dem Kreuz für jede Armee, die von einer anderen Seite
@@ -3431,7 +3436,40 @@ const SCHACH = {
      * Freifahrtschein — und „Schachmatt" wäre nicht mehr eindeutig. Dieselbe
      * Linie wie beim Schild, bei der Fessel und beim Spiegel.
      */
-    platztausch(stand, farbe, feld) {
+    /*
+     * DIE VIER RICHTUNGEN DES PLATZTAUSCHS (seit v0.101, Wunsch W7).
+     *
+     * Sie stehen RELATIV ZUR EIGENEN ARMEE, nicht zum Brett: „vor" ist die
+     * Richtung, in die die eigenen Bauern marschieren (`bauernRichtung`), die
+     * übrigen drei folgen daraus. Das ist kein Schmuck, sondern die einzige
+     * Schreibweise, die auf dem Kreuz stimmt: Die Ansicht dreht sich so, dass
+     * die eigene Armee unten steht (`_drehungVon`, seit v0.72) — „oben" auf
+     * dem Brett und „oben" auf dem Bildschirm sind dort zwei verschiedene
+     * Dinge, „vor" dagegen ist auf jedem Gerät dasselbe.
+     *
+     * `vor` ist die Vorgabe und damit genau der Tausch, den es bis v0.100 als
+     * einzigen gab — jeder Aufruf von früher bleibt gültig.
+     */
+    TAUSCH_RICHTUNGEN: ["vor", "rechts", "zurueck", "links"],
+
+    /* Der Schritt (dr, ds) einer dieser Richtungen, gemessen an der
+       Laufrichtung der eigenen Bauern. */
+    tauschSchritt(stand, feld, farbe, richtungId) {
+        const vor = SCHACH.bauernRichtung(stand, feld, farbe);
+
+        if (richtungId === "zurueck") {
+            return { dr: -vor.dr, ds: -vor.ds };
+        }
+        if (richtungId === "links") {
+            return { dr: -vor.ds, ds: vor.dr };
+        }
+        if (richtungId === "rechts") {
+            return { dr: vor.ds, ds: -vor.dr };
+        }
+        return { dr: vor.dr, ds: vor.ds };
+    },
+
+    platztausch(stand, farbe, feld, richtungId) {
         const figur = SCHACH.figurAuf(stand, feld);
 
         if (SCHACH.farbeVon(figur) !== farbe || SCHACH.artVon(figur) === "K") {
@@ -3439,7 +3477,7 @@ const SCHACH = {
         }
 
         const breite = SCHACH.breiteVon(stand);
-        const richtung = SCHACH.bauernRichtung(stand, feld, farbe);
+        const richtung = SCHACH.tauschSchritt(stand, feld, farbe, richtungId);
         const reihe = SCHACH.reiheVon(feld, breite) + richtung.dr;
         const spalte = SCHACH.spalteVon(feld, breite) + richtung.ds;
 
@@ -3450,7 +3488,19 @@ const SCHACH = {
         const davor = SCHACH._feld(stand, reihe, spalte);
         const andere = SCHACH.figurAuf(stand, davor);
 
-        if (SCHACH.farbeVon(andere) !== farbe || SCHACH.artVon(andere) === "K") {
+        /*
+         * SEIT v0.101 TAUSCHT ER AUCH MIT GEGNERISCHEN FIGUREN (Wunsch W7).
+         * Verlangt wird nur noch, dass dort überhaupt eine Figur steht und
+         * dass es kein König ist — in keiner der beiden Rollen.
+         *
+         * Der König bleibt aussen vor wie bisher: Wer sich gratis aus dem
+         * Schach tauscht, macht „Schachmatt" mehrdeutig. Dass der Tausch
+         * darüber hinaus keinen König ins Schach setzen und keinen aus dem
+         * Matt holen darf, ist seit v0.95 KEINE Sonderregel dieser Fähigkeit
+         * mehr, sondern gilt für jede — `SCHACH_RUNDE._wirkungVerboten` prüft
+         * es an einer Stelle für alle.
+         */
+        if (andere === "." || SCHACH.artVon(andere) === "K") {
             return null;
         }
 
