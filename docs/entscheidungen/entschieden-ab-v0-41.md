@@ -1057,7 +1057,7 @@ jetzt auf 15, und ein Test besteht darauf, dass jede Stufe wirklich mehr
 liefert als die darunter. Wer Fähigkeiten ergänzt, darf die Zahlen anheben; der
 Test sagt, wann es nötig wird.
 
-## Sichtbarer Name und technische Kennung sind zweierlei (v0.89)
+## Die Schreibweise „Quizz" bleibt (v0.89 umbenannt, v0.90 zurueckgebaut)
 
 **Nutzer-Frage vom 20.08.:** „Kann es sein, dass überall Quizz falsch
 geschrieben ist?" — Ja. Richtig ist **Quiz** mit einem z; „Quizz" war von
@@ -1096,3 +1096,33 @@ Repo `up-birdo/Quizz`, und die Werkzeuge heissen weiter `Deploy-Quizz.ps1` und
 selbst umbenennen (dann ändert sich die Adresse der Seite und alte Lesezeichen
 gehen ins Leere) und in der Firebase-Konsole neue Regeln anlegen. Beides wurde
 am 20.08. bewusst NICHT gemacht.
+
+### Nachtrag: mit v0.90.0 vollständig zurückgebaut
+
+**Ansage des Nutzers am 20.08., nach Rücksprache mit den Mitspielern:** „Es
+soll doch überall Quizz weiter heissen, alles zurückbauen."
+
+Damit ist die Umbenennung aus v0.89.0 hinfällig. Der sichtbare Name ist wieder
+**Quizz** — Seitentitel, Kopfzeile, Startbildschirm, Tab, Rangliste, README.
+Die App heisst jetzt wieder in beiden Welten gleich, sichtbar wie technisch.
+
+**Warum das die bessere Entscheidung ist, obwohl die Schreibweise falsch
+bleibt:** Ein Name ist kein Rechtschreibfall, sondern eine Vereinbarung. Die
+Runde kennt die App seit Monaten als „Quizz", spricht so über sie und findet
+sie so auf dem Handy. Sprachliche Richtigkeit hätte nur dann gezählt, wenn
+niemand den alten Namen schon benutzte — und genau das war nicht der Fall.
+Der Nutzer hat vor der Entscheidung mit den Mitspielern gesprochen; das ist
+die richtige Instanz für eine Namensfrage.
+
+**Was von v0.89 stehen bleibt und WARUM es wertvoll ist:** die Warnung über
+den drei Prüfsummen-Zutaten (`quizz-pin|`, `quizz-admin|`, `wuerfel-quizz|`)
+und den Speicherpfaden. Sie hing nie an der Umbenennung: Diese Zeichenketten
+dürfen unter keinen Umständen angefasst werden, egal wie die App heisst. Der
+Warnblock in `versiegelung.js` und der Test in `test-syntax.js` bleiben
+deshalb erhalten.
+
+**Was der Vorgang gekostet hat:** eine Version hin, eine zurück — und die
+Erkenntnis, dass eine Namensfrage vor dem Bauen in die Runde gehört, nicht
+danach. Nicht rückgängig gemacht wurde nichts: v0.89.0 bleibt als
+ausgelieferte Nummer stehen (eine ausgelieferte Version wird nie mit anderem
+Inhalt erneut veröffentlicht), der Rückbau ist v0.90.0.

@@ -1,7 +1,7 @@
 {
-    "name": "Quiz",
-    "short_name": "Quiz",
-    "description": "Würfel Quiz und Team Schach für die Runde",
+    "name": "Quizz",
+    "short_name": "Quizz",
+    "description": "Würfel Quizz und Team Schach für die Runde",
     "lang": "de",
     "start_url": "./",
     "scope": "./",

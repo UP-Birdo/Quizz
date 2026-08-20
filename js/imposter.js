@@ -110,7 +110,7 @@ const IMPOSTER = {
         const person = IMPOSTER._ich();
         if (!person) {
             wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
-                "Melde dich zuerst im Tab Würfel Quiz an — dann bist du auch hier "
+                "Melde dich zuerst im Tab Würfel Quizz an — dann bist du auch hier "
                 + "mit deinem Namen dabei."));
             return;
         }
@@ -219,7 +219,7 @@ const IMPOSTER = {
          * Wer die Wortliste sieht, hat als Imposter einen Vorteil; also soll
          * der Weg dorthin gar nicht erst sichtbar sein.
          *
-         * Den Verwaltungs-Zugang bekommt man im Tab Würfel Quiz. Das steht
+         * Den Verwaltungs-Zugang bekommt man im Tab Würfel Quizz. Das steht
          * auch hinter dem i, damit niemand suchen muss.
          */
         if (ICH.verwaltungAktiv()) {

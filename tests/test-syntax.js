@@ -160,12 +160,25 @@ pruefe("Version aus konfig.js steht in der STATUS.md", () => {
     const version = treffer[1];
     const status = dateisystem.readFileSync(pfad.join(projekt, "STATUS.md"), "utf8");
 
-    /* Nur die Kopfzeile zählt — weiter unten stehen ältere Nummern in der
-       Rückschau, die hier nichts beweisen. */
-    const kopf = status.split(/^## /m)[0];
-    if (kopf.indexOf("v" + version) === -1) {
-        throw new Error("v" + version + " fehlt im Kopf der STATUS.md"
-            + " (dort steht noch ein älterer Stand)");
+    /*
+     * GEPRUEFT WIRD DIE VERSIONSZEILE SELBST, nicht der ganze Kopf.
+     *
+     * Bis v0.90 stand hier `kopf.indexOf(...)` — und das war zu grosszuegig:
+     * Im Kopf steht auch der Satz „das naechste Voll-Backup ist bei v0.90.0
+     * faellig". Als die App auf 0.90.0 sprang, fand der Test die Nummer dort
+     * und meldete gruen, obwohl die Versionszeile noch 0.89.0 nannte — also
+     * genau die Drift, gegen die er gebaut wurde. Ein Waechter, der am
+     * falschen Ort sucht, ist schlimmer als keiner: Er beruhigt.
+     */
+    const zeile = (status.match(/^\*\*Version:\*\*.*$/m) || [""])[0];
+
+    if (!zeile) {
+        throw new Error("In der STATUS.md fehlt die Zeile, die mit"
+            + " **Version:** beginnt");
+    }
+    if (zeile.indexOf("v" + version) === -1) {
+        throw new Error("Die Versionszeile der STATUS.md nennt nicht v" + version
+            + " (dort steht: " + zeile.trim() + ")");
     }
 });
 
@@ -205,24 +218,36 @@ pruefe("Die Pruefsummen-Zutaten heissen weiter quizz (v0.89)", () => {
     }
 });
 
-pruefe("Der sichtbare Name ist Quiz mit EINEM z (v0.89)", () => {
+pruefe("Der sichtbare Name ist und bleibt Quizz (v0.90)", () => {
     /*
-     * Die Gegenrichtung: Was ein Mensch liest, heisst „Quiz". Geprueft wird
-     * dort, wo der Name wirklich sichtbar wird — Seitentitel, Kopfzeile und
-     * der Name auf dem Startbildschirm.
+     * DIE APP HEISST „QUIZZ" MIT ZWEI z — UEBERALL, AUCH SICHTBAR.
+     *
+     * Kurze Geschichte dieses Tests, damit ihn niemand falsch versteht:
+     * In v0.89.0 wurde der sichtbare Name auf „Quiz" korrigiert, weil die
+     * Schreibweise sprachlich falsch ist. Nach Ruecksprache mit den
+     * Mitspielern wurde das mit v0.90.0 VOLLSTAENDIG ZURUECKGEBAUT — die
+     * Runde kennt die App unter „Quizz", und der eingefuehrte Name wiegt
+     * schwerer als die Rechtschreibung.
+     *
+     * Der Test prueft deshalb jetzt das Gegenteil von damals: dass nirgends
+     * versehentlich wieder ein z verlorengeht. Zusammen mit dem Test darueber
+     * (Pruefsummen-Zutaten) steht die Schreibweise damit in BEIDEN Welten
+     * fest — sichtbar wie technisch, und beide gleich.
      */
     const seite = dateisystem.readFileSync(pfad.join(projekt, "index.html"), "utf8");
     const anzeige = dateisystem.readFileSync(
         pfad.join(projekt, "manifest.webmanifest"), "utf8");
 
-    for (const stelle of ["<title>Quiz</title>", "<h1>Quiz</h1>"]) {
+    for (const stelle of ["<title>Quizz</title>", "<h1>Quizz</h1>"]) {
         if (seite.indexOf(stelle) === -1) {
-            throw new Error("index.html: " + stelle + " fehlt");
+            throw new Error("index.html: " + stelle + " fehlt —"
+                + " der sichtbare Name muss Quizz mit zwei z sein"
+                + " (Ruecksprache mit den Mitspielern, v0.90)");
         }
     }
 
-    if (anzeige.indexOf("\"name\": \"Quiz\"") === -1) {
-        throw new Error("manifest.webmanifest: der Name heisst nicht Quiz");
+    if (anzeige.indexOf("\"name\": \"Quizz\"") === -1) {
+        throw new Error("manifest.webmanifest: der Name heisst nicht Quizz");
     }
 });
 

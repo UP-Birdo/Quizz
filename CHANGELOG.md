@@ -3,6 +3,18 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.90.0 — 2026-08-20
+
+**Die App heisst wieder „Quizz" — die Umbenennung ist zurückgenommen.**
+
+- Nach Rücksprache in der Runde bleibt es beim eingeführten Namen: Titel,
+  Kopfzeile, Name auf dem Startbildschirm, der Tab „Würfel Quizz" und die
+  Ranglisten-Spalte stehen wieder so da wie vorher. Damit heisst die App
+  überall gleich — sichtbar wie im Hintergrund.
+
+- Für dich ändert sich nichts weiter: PIN, Verwaltungs-Passwort, laufende
+  Runden, Partien und die Rangliste waren nie betroffen.
+
 ## v0.89.0 — 2026-08-20
 
 **Die App heisst jetzt richtig: „Quiz" mit einem z.**

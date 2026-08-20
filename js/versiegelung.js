@@ -87,16 +87,18 @@ const VERSIEGELUNG = {
         /*
          * ACHTUNG, DAS „quizz" HIER IST KEIN NAME, SONDERN EINE ZUTAT.
          *
-         * Seit v0.89 heisst die App sichtbar „Quiz" mit einem z. Diese drei
-         * Zeichenketten dürfen TROTZDEM NIE angepasst werden: Sie gehen in die
-         * Prüfsumme ein. Wer hier ein z streicht, macht auf einen Schlag jede
-         * gespeicherte Spieler-PIN, das Verwaltungs-Passwort und jedes Siegel
-         * ungültig — laufende Runden liessen sich nicht mehr auflösen, und der
-         * Fehler fiele erst beim nächsten Anmelden auf.
+         * Die App heisst „Quizz" mit zwei z — überall, auch sichtbar. Selbst
+         * wenn das eines Tages jemand ändern will: Diese drei Zeichenketten
+         * dürfen NIE angepasst werden. Sie gehen in die Prüfsumme ein. Wer
+         * hier ein z streicht, macht auf einen Schlag jede gespeicherte
+         * Spieler-PIN, das Verwaltungs-Passwort und jedes Siegel ungültig —
+         * laufende Runden liessen sich nicht mehr auflösen, und der Fehler
+         * fiele erst beim nächsten Anmelden auf.
          *
-         * Dasselbe gilt für die Speicherpfade in `konfig.js`. Begründung:
-         * `docs\entscheidungen\entschieden-ab-v0-41.md`, „Sichtbarer Name und
-         * technische Kennung sind zweierlei (v0.89)".
+         * Dasselbe gilt für die Speicherpfade in `konfig.js`. Begründung und
+         * die Geschichte dazu (v0.89 umbenannt, v0.90 zurückgebaut):
+         * `docs\entscheidungen\entschieden-ab-v0-41.md`, „Die Schreibweise
+         * Quizz bleibt".
          */
         return VERSIEGELUNG._summeBilden("quizz-pin|" + String(pin || "") + "|" + String(salz || ""));
     },
