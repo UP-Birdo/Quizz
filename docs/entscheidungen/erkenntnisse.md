@@ -1001,6 +1001,37 @@ Bequemlichkeit einbaut, die etwas WEGNIMMT, fragt vorher nach.** Der Bericht
 lautete deshalb auch nicht „der Dieb ist grau", sondern „der Dieb ist
 verschwunden": Was man nicht anfassen darf, ist für den Spieler nicht da.
 
+## Eine aufgehobene Regel lebt in ihrem Erklärtext weiter (v0.95, gefunden v0.100)
+
+**Was zu sehen war:** Der Beschreibungstext des Frostes versprach: „Er gilt auch
+für Könige: Wer einen König so einsperrt, dass ihm kein Feld mehr bleibt, setzt
+ihn matt." Das Recht, mit einer Fähigkeit mattzusetzen, ist mit **v0.95**
+zurückgenommen worden — `_wirkungVerboten` weist genau das seither ab. Der Text
+stand trotzdem fünf Versionen lang weiter da und erklärte etwas, das die App
+nicht mehr tut.
+
+**Warum es niemandem auffiel:** Die Regeländerung von v0.95 war eine Arbeit am
+MODELL. Geprüft wurde, was `faehigkeitEinsetzen` und `zielFelder` tun; die Tests
+wurden nachgezogen, die Doku auch. Nur der Erklärtext ist weder Code noch Doku —
+er ist eine Zeichenkette mitten in der Fähigkeiten-Tabelle und läuft in keiner
+Prüfung mit.
+
+**Gefunden wurde er beim KÜRZEN**, nicht beim Suchen: Der Nutzer hatte gemeldet,
+die Texte seien zu lang. Wer einen Text zusammenstreicht, muss ihn Satz für Satz
+lesen — und dabei fällt auf, was nicht mehr stimmt.
+
+**Die Lehre — Erweiterung der Lehre aus v0.94:** Dort hiess es „Wer eine Regel
+aufhebt, sucht die STELLEN, die sich auf sie verlassen haben". Das ist zu eng.
+Es sind auch die SÄTZE, die sie erklären: Beschreibungen, Hinweise unter
+Knopfreihen, Info-Texte. Sie sind die einzige Stelle, an der ein Nutzer die
+Regel je liest, und sie sind die einzige, die kein Test bewacht.
+
+**Was jetzt anders ist:** Ein Test hält seit v0.100 jede Beschreibung kurz
+(unter 400 Zeichen, Kurztext unter 150). Das fängt die WAHRE Ursache nicht ab —
+gegen einen falschen Satz hilft keine Längengrenze —, aber es erzwingt, dass
+jemand den Text anfasst, sobald er wächst. Lange Texte sind der Ort, an dem
+aufgehobene Regeln überwintern.
+
 ## Eine Einstellung, die eine Zahl verspricht, die das Brett nicht halten kann (v0.86, gefunden v0.99)
 
 **Symptom:** Die Knopfreihe „Wie viele Figuren je Seite?" hatte vier Stufen,

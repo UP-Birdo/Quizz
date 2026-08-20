@@ -1379,6 +1379,45 @@ body {
     border-color: var(--haupt);
 }
 
+/*
+ * DIE ANKREUZLISTE DER ITEMS (seit v0.100) — sichtbar nur unter dem Knopf
+ * „selbst wählen". Sie kann zwanzig Einträge haben und darf den
+ * Anlege-Bildschirm trotzdem nicht sprengen: Deshalb fliesst sie in Spalten
+ * und bekommt eine eigene Höhe mit Rollbalken.
+ */
+.item-auswahl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 8px;
+    margin-top: 6px;
+    border: 1px solid var(--rand);
+    border-radius: 8px;
+}
+
+/* Die Stufen-Überschrift bricht die Reihe um: Sie nimmt die ganze Breite,
+   damit darunter wieder von links begonnen wird. */
+.item-auswahl-stufe {
+    flex: 0 0 100%;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.item-haken {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.item-haken-an {
+    background: var(--haupt);
+    color: #fff;
+    border-color: var(--haupt);
+}
+
 .schalter-text {
     display: flex;
     flex-direction: column;

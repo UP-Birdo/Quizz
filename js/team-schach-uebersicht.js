@@ -414,6 +414,17 @@ Object.assign(TEAM_SCHACH, {
                 "knopf-klein vorrat-knopf" + (aktiv ? " vorrat-knopf-aktiv" : " knopf-still"),
                 () => {
                     TEAM_SCHACH.neueRegeln.itemVorrat = groesse.id;
+
+                    /* Beim ersten Wechsel auf „selbst wählen" ist alles
+                       angehakt: Man streicht weg, was man nicht will — das ist
+                       weniger Arbeit als zwanzigmal anhaken, und die Liste ist
+                       nie leer. */
+                    if (groesse.eigeneWahl
+                        && TEAM_SCHACH.neueRegeln.itemAuswahl.length === 0) {
+
+                        TEAM_SCHACH.neueRegeln.itemAuswahl = TEAM_SCHACH._alleItems();
+                    }
+
                     TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
                 });
 
@@ -422,10 +433,104 @@ Object.assign(TEAM_SCHACH, {
         }
 
         zeile.appendChild(leiste);
-        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis",
-            SCHACH_VARIANTEN.itemVorratVon(TEAM_SCHACH.neueRegeln.itemVorrat).hinweis));
+
+        const gewaehlt = SCHACH_VARIANTEN.itemVorratVon(TEAM_SCHACH.neueRegeln.itemVorrat);
+        let hinweis = gewaehlt.hinweis;
+
+        /*
+         * DIE ANKREUZLISTE (seit v0.100). Sie steht nur unter dem Knopf
+         * „selbst wählen" — sonst wäre der Anlege-Bildschirm eine Wand aus
+         * zwanzig Kästchen, die fast niemand braucht.
+         */
+        if (gewaehlt.eigeneWahl) {
+            const anzahl = TEAM_SCHACH.neueRegeln.itemAuswahl.length;
+
+            zeile.appendChild(TEAM_SCHACH._itemAuswahlBauen());
+            hinweis = anzahl + (anzahl === 1 ? " Item" : " Items") + " angehakt. "
+                + "Die Chancen verteilen sich auf diese Liste — was nicht "
+                + "angehakt ist, kommt in dieser Partie nicht vor.";
+        }
+
+        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis", hinweis));
 
         return zeile;
+    },
+
+    /*
+     * DIE LISTE ZUM ANHAKEN (seit v0.100).
+     *
+     * Gezeigt wird, was in dieser Partie überhaupt vorkommen KANN — also
+     * `faehigkeitenDerStufe` je Stufe, dieselbe Quelle wie Ziehung und
+     * Bibliothek. Versteckte Fähigkeiten stehen deshalb gar nicht erst drin.
+     *
+     * MINDESTENS EINS BLEIBT ANGEHAKT (Nutzer-Vorgabe). Das letzte Kästchen
+     * lässt sich nicht ausschalten; wer es versucht, bekommt einen Hinweis
+     * statt einer leeren Liste. Eine leere Liste hiesse im Modell „keine
+     * Einschränkung", also das Gegenteil von dem, was man gerade wollte.
+     */
+    /* Jede Fähigkeit, die es zu wählen gibt — dieselbe Quelle wie Ziehung und
+       Bibliothek, also ohne die versteckten. */
+    _alleItems() {
+        const liste = [];
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            for (const art of SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id)) {
+                liste.push(art);
+            }
+        }
+        return liste;
+    },
+
+    _itemAuswahlBauen() {
+        const halter = TEAM_SCHACH._element("div", "item-auswahl");
+
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
+            if (arten.length === 0) {
+                continue;
+            }
+
+            halter.appendChild(TEAM_SCHACH._element("div",
+                "item-auswahl-stufe stufe-" + stufe.id, stufe.titel));
+
+            for (const art of arten) {
+                halter.appendChild(TEAM_SCHACH._itemHakenBauen(art));
+            }
+        }
+
+        return halter;
+    },
+
+    _itemHakenBauen(art) {
+        const gewaehlt = TEAM_SCHACH.neueRegeln.itemAuswahl;
+        const drin = (gewaehlt.indexOf(art) !== -1);
+
+        const knopf = TEAM_SCHACH._knopf(
+            (drin ? "[x] " : "[ ] ") + SCHACH_VARIANTEN.faehigkeitTitel(art),
+            "knopf-klein item-haken" + (drin ? " item-haken-an" : " knopf-still"),
+            () => {
+                if (!drin) {
+                    gewaehlt.push(art);
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    return;
+                }
+
+                if (gewaehlt.length <= 1) {
+                    DIALOG.hinweis("Mindestens ein Item",
+                        "Eine Partie mit Lootboxen braucht wenigstens ein Item — "
+                        + "sonst wäre jede Lootbox leer. Hake erst ein anderes an, "
+                        + "dann kannst du dieses abwählen.");
+                    return;
+                }
+
+                gewaehlt.splice(gewaehlt.indexOf(art), 1);
+                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+            });
+
+        knopf.setAttribute("aria-pressed", drin ? "true" : "false");
+        knopf.title = SCHACH_VARIANTEN.faehigkeitKurz(art);
+
+        return knopf;
     },
 
     _armeeStaerkeLeisteBauen() {
@@ -458,10 +563,17 @@ Object.assign(TEAM_SCHACH, {
             leiste.appendChild(knopf);
         }
 
-        satz.textContent = TEAM_SCHACH.neueRegeln.zufallsArmee
-            ? SCHACH_VARIANTEN.armeeStaerkeVon(TEAM_SCHACH.neueRegeln.armeeStaerke).hinweis
-            : "Gilt für die Zufallsarmee. Ohne den Haken bringt jede Spielart "
-                + "ihre eigene Aufstellung mit — die Zahl unter der Kachel gilt.";
+        /*
+         * SEIT v0.100 GILT DIE REIHE IMMER, mit Haken wie ohne — der Haken
+         * entscheidet nur noch, WELCHE Figuren stehen. Der zweite Satz von
+         * früher („gilt für die Zufallsarmee") war damit falsch geworden.
+         */
+        satz.textContent = SCHACH_VARIANTEN
+            .armeeStaerkeVon(TEAM_SCHACH.neueRegeln.armeeStaerke).hinweis
+            + (TEAM_SCHACH.neueRegeln.zufallsArmee
+                ? ""
+                : " Ohne den Haken bleibt die Aufstellung der Spielart stehen, "
+                    + "nur eben schmaler.");
 
         zeile.appendChild(leiste);
         zeile.appendChild(satz);
@@ -541,12 +653,32 @@ Object.assign(TEAM_SCHACH, {
      * Startseite auf) und beim Haken „unterschiedliche Armeen".
      */
     _vorschauBrett(variante) {
-        if (TEAM_SCHACH.neueRegeln.zufallsArmee !== true) {
-            return variante.aufstellung;
-        }
-
         let runde = SCHACH_RUNDE.leereRunde(0, variante.id,
             "vorschau-" + variante.id, "");
+
+        /*
+         * OHNE HAKEN ZEIGT DIE KACHEL DIE FESTE AUFSTELLUNG — seit v0.100 aber
+         * auf den Regler zugeschnitten, genau wie die Partie sie anlegt.
+         * Vorher gab sie hier stumpf `variante.aufstellung` zurück; der Regler
+         * bewegte das Bild also nur mit Haken, und ohne ihn versprach die
+         * Kachel eine Aufstellung, die so gar nicht kam.
+         *
+         * Gerechnet wird über DENSELBEN Weg wie beim Anlegen. Eine Vorschau,
+         * die aus einer anderen Quelle rechnet als das Ergebnis, bestätigt
+         * einen Fehler, statt ihn zu zeigen — genau das ist in v0.86/v0.87
+         * passiert (`erkenntnisse.md`).
+         */
+        if (TEAM_SCHACH.neueRegeln.zufallsArmee !== true) {
+            runde.regeln.armeeStaerke = TEAM_SCHACH.neueRegeln.armeeStaerke;
+
+            /* Die Vorschau ist immer eine NEUE Partie — sie rechnet deshalb
+               nach der neuen Regel (siehe `armeeFassung`). */
+            runde.regeln.armeeFassung = 1;
+
+            runde = SCHACH_RUNDE.kreuzAufstellen(runde, "");
+            runde = SCHACH_RUNDE.aufstellungZuschneiden(runde);
+            return runde.stand.brett;
+        }
 
         runde.regeln.zufallsArmee = true;
         runde.regeln.armeeUnterschiedlich =

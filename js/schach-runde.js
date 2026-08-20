@@ -285,6 +285,31 @@ const SCHACH_RUNDE = {
                 armeeStaerke: "normal",
 
                 /*
+                 * SCHNEIDET DIE STÄRKE AUCH DIE FESTE AUFSTELLUNG ZU?
+                 * (seit v0.100, Muster von `bonusFassung`.)
+                 *
+                 * 1 heisst ja. Fehlt der Eintrag, stammt die Partie aus der
+                 * Zeit vor v0.100 und wird nicht angefasst.
+                 *
+                 * WARUM ES DIESE FASSUNG BRAUCHT und die Stufe allein nicht
+                 * genügt: „Kein Eintrag" müsste für zwei Fälle gleichzeitig
+                 * das Richtige tun, und sie widersprechen sich.
+                 *
+                 *   Partie von früher MIT fester Aufstellung — sie stand voll
+                 *   auf dem Brett. „normal" würde ihr beim Neu aufstellen die
+                 *   halbe Armee wegnehmen.
+                 *
+                 *   Partie von früher MIT Zufallsarmee — sie bekam die halbe
+                 *   Armee. „voll" würde ihr die doppelte geben.
+                 *
+                 * Eine einzige Vorgabe kann das nicht leisten. Die Fassung
+                 * trennt deshalb die FRAGE („gilt die neue Rechnung?") von der
+                 * ANTWORT („welche Stufe?") — dann bleibt „normal" für beide
+                 * Altfälle richtig.
+                 */
+                armeeFassung: 0,
+
+                /*
                  * WELCHE ITEMS es in dieser Partie gibt (seit v0.87, R5/V3).
                  * `itemVorrat` ist die Einstellung („alle" ist die Vorgabe und
                  * das Spiel wie vorher), `itemPool` die beim Anlegen einmal
@@ -292,6 +317,10 @@ const SCHACH_RUNDE = {
                  */
                 itemVorrat: "alle",
                 itemPool: [],
+
+                /* Die selbst angehakte Liste (seit v0.100) — nur bei
+                   `itemVorrat: "auswahl"` von Bedeutung. */
+                itemAuswahl: [],
 
                 /* Muss sich das Team über einen Zug einig werden? */
                 einigkeit: false
@@ -705,6 +734,85 @@ const SCHACH_RUNDE = {
         return arten;
     },
 
+    /*
+     * DIE FESTE AUFSTELLUNG AUF DEN REGLER ZUSCHNEIDEN (seit v0.100).
+     *
+     * NUTZER-ENTSCHEIDUNG 20.08.2026: „Zufallsarmee hat keine Auswirkung mehr
+     * auf die Grösse der Armee, nur der Regler hat es." Bis v0.99 tat der
+     * Regler ausschliesslich etwas, wenn der Haken „Zufallsarmee" gesetzt war
+     * — und der Haken änderte die Figurenzahl gleich mit. Beides gehörte nicht
+     * zusammen: Der Haken entscheidet, WELCHE Figuren stehen, der Regler, WIE
+     * VIELE.
+     *
+     * Zugeschnitten wird auf denselben Feld-Block, den auch die Zufallsarmee
+     * benutzt (`_armeeFelder`) — dieselbe Rechnung, dasselbe Ergebnis. Was
+     * ausserhalb steht, fällt weg.
+     *
+     * KÖNIGE BLEIBEN IMMER STEHEN, auch ausserhalb des Blocks. Sonst könnte
+     * eine Spielart, die ihren König nicht in die Mitte stellt, ihn beim
+     * Zuschneiden verlieren — und eine Partie ohne König ist keine. Die eiserne
+     * Regel „König und Matt bleiben unangetastet" gilt hier genauso.
+     *
+     * MIT HAKEN passiert hier nichts: `_armeeStand` baut den Block ohnehin
+     * selbst, und zwar aus derselben Funktion.
+     *
+     * WICHTIG FÜR AUFRUFER: Diese Funktion nimmt weg, sie stellt nicht her.
+     * Sie darf deshalb nur auf ein FRISCHES Brett laufen, nie zweimal
+     * nacheinander mit verschiedenen Stärken — sonst schneidet der zweite
+     * Aufruf vom bereits beschnittenen Brett. Aufgerufen wird sie an den drei
+     * Stellen, an denen ein Brett neu entsteht und die Regeln feststehen:
+     * `partieAnlegen`, `neuAufstellen` und die Vorschau der Kachel.
+     */
+    aufstellungZuschneiden(runde) {
+        const regeln = runde.regeln || {};
+
+        /* Eine Partie von vor v0.100 wird nicht angefasst — siehe
+           `armeeFassung` bei den Regel-Vorgaben. */
+        if (regeln.armeeFassung !== 1) {
+            return runde;
+        }
+        if (regeln.zufallsArmee === true) {
+            return runde;
+        }
+
+        const variante = SCHACH_VARIANTEN.holen(runde.variante);
+        const staerke = regeln.armeeStaerke;
+        const erlaubt = {};
+
+        for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
+            if (variante.kreuz) {
+                erlaubt[farbe] = [];
+                for (const seite of SCHACH.startSeitenVon(runde.stand, farbe)) {
+                    for (const feld of SCHACH_RUNDE._armeeFelderKreuz(
+                        variante, seite, staerke)) {
+
+                        erlaubt[farbe].push(feld);
+                    }
+                }
+            } else {
+                erlaubt[farbe] = SCHACH_RUNDE._armeeFelder(variante, farbe, staerke);
+            }
+        }
+
+        const zeichen = runde.stand.brett.split("");
+
+        for (let feld = 0; feld < zeichen.length; feld++) {
+            const figur = zeichen[feld];
+
+            if (figur === "." || SCHACH.artVon(figur) === "K") {
+                continue;
+            }
+
+            const farbe = SCHACH.farbeVon(figur);
+            if ((erlaubt[farbe] || []).indexOf(feld) === -1) {
+                zeichen[feld] = ".";
+            }
+        }
+
+        runde.stand = Object.assign({}, runde.stand, { brett: zeichen.join("") });
+        return runde;
+    },
+
     /* Ein Brett-Stand mit gewürfelten Armeen auf beiden Seiten. */
     _armeeStand(stand, id, getrennt, staerke) {
         const variante = SCHACH.varianteVon(stand);
@@ -948,6 +1056,10 @@ const SCHACH_RUNDE = {
             runde.regeln.armeeStaerke = SCHACH_VARIANTEN
                 .armeeStaerkeVon(roh.regeln.armeeStaerke).id;
 
+            /* Rechnet diese Partie schon nach der neuen Regel? (seit v0.100,
+               siehe `armeeFassung` bei den Vorgaben.) */
+            runde.regeln.armeeFassung = (roh.regeln.armeeFassung === 1) ? 1 : 0;
+
             /*
              * Der Item-Vorrat (seit v0.87). Ohne Angabe „alle" — eine Partie
              * von früher spielt mit dem vollen Angebot weiter. Aus dem
@@ -960,6 +1072,15 @@ const SCHACH_RUNDE = {
 
             runde.regeln.itemPool = Array.isArray(roh.regeln.itemPool)
                 ? roh.regeln.itemPool.filter((art) =>
+                    SCHACH_VARIANTEN.FAEHIGKEITEN[art]
+                    && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt)
+                : [];
+
+            /* Die selbst zusammengestellte Liste (seit v0.100). Sie ist die
+               EINGABE, `itemPool` das Ergebnis — beide reisen mit, damit man
+               beim Neu aufstellen dieselbe Wahl behält. */
+            runde.regeln.itemAuswahl = Array.isArray(roh.regeln.itemAuswahl)
+                ? roh.regeln.itemAuswahl.filter((art) =>
                     SCHACH_VARIANTEN.FAEHIGKEITEN[art]
                     && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt)
                 : [];
@@ -1328,17 +1449,24 @@ const SCHACH_RUNDE = {
      * Teil braucht Beobachtung — und er ist auch der, der sich zwischen
      * Runden am stärksten unterscheidet.
      *
-     * Das Ergebnis ist ausdrücklich ein GROBER Indikator. Es wird deshalb auf
-     * fünf Minuten gerundet angezeigt und nie als Zusage formuliert.
+     * Das Ergebnis ist ausdrücklich ein GROBER Indikator und nie als Zusage
+     * formuliert.
      */
     SEKUNDEN_JE_HALBZUG_VORGABE: 20,
 
     /*
-     * Ab wann die Messung die Vorgabe ablöst. Unter fünf beendeten Partien
-     * ist der Durchschnitt Zufall, kein Wert — dann bleibt die Vorgabe stehen,
-     * und die Messung schiebt sie nur langsam beiseite.
+     * WIE SCHNELL DIE MESSUNG DIE VORGABE ABLÖST (seit v0.100).
+     *
+     * Die Zahl ist der „Anlauf" in der Mischung `gezaehlt / (gezaehlt + ANLAUF)`
+     * — siehe `sekundenJeHalbzug`. Bei 3 zählt die erste gemessene Partie ein
+     * Viertel, die dritte die Hälfte, die zwölfte vier Fünftel.
+     *
+     * WARUM MISCHEN STATT SCHWELLE: Bis v0.99 stand hier `MESSUNG_AB_PARTIEN: 5`
+     * — vier Partien zählten gar nicht, die fünfte alles. Eine Schätzung, die
+     * an einer festen Zahl springt, wirkt kaputt; eine, die sich mit jeder
+     * Partie ein Stück bewegt, wirkt lernend. Sie IST auch lernend.
      */
-    MESSUNG_AB_PARTIEN: 5,
+    MESSUNG_ANLAUF: 3,
 
     sekundenJeHalbzug(partien) {
         const liste = Array.isArray(partien) ? partien : [];
@@ -1363,11 +1491,33 @@ const SCHACH_RUNDE = {
             gezaehlt++;
         }
 
-        if (gezaehlt < SCHACH_RUNDE.MESSUNG_AB_PARTIEN || halbzuege <= 0) {
+        if (gezaehlt <= 0 || halbzuege <= 0) {
             return SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE;
         }
 
-        return sekunden / halbzuege;
+        /*
+         * SEIT v0.100 GIBT ES KEINE SCHWELLE MEHR, SONDERN EIN GEWICHT
+         * (Nutzer-Ansage: „die geschätzte Zeit soll sich immer besser anhand
+         * gespielter Runden anpassen").
+         *
+         * Bis v0.99 galt: unter fünf gemessenen Partien die Vorgabe, ab der
+         * fünften ausschliesslich die Messung. Das ist an beiden Enden falsch —
+         * die vierte Partie sagte gar nichts, die fünfte plötzlich alles, und
+         * die Zahl sprang.
+         *
+         * Jetzt mischen sich beide, und die Messung bekommt mit jeder Partie
+         * mehr Gewicht: `gezaehlt / (gezaehlt + ANLAUF)`. Bei einer gemessenen
+         * Partie zählt sie ein Viertel, bei drei die Hälfte, bei zwölf vier
+         * Fünftel — sie nähert sich der reinen Messung, ohne sie je ganz zu
+         * erreichen. Genau das ist gemeint mit „immer besser": Die Schätzung
+         * bewegt sich ab der ERSTEN gemessenen Partie und wird ruhiger, je
+         * mehr dazukommen.
+         */
+        const gemessen = sekunden / halbzuege;
+        const gewicht = gezaehlt / (gezaehlt + SCHACH_RUNDE.MESSUNG_ANLAUF);
+
+        return SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE * (1 - gewicht)
+            + gemessen * gewicht;
     },
 
     /*
@@ -1416,8 +1566,23 @@ const SCHACH_RUNDE = {
         const minuten = SCHACH_RUNDE.dauerSchaetzung(
             figurenJeSeite, felder, regeln, partien) / 60;
 
-        if (minuten < 8) {
-            return "etwa 5 Minuten";
+        /*
+         * DREI STUFEN DER GENAUIGKEIT (seit v0.100, Nutzer-Ansage: die Zahl
+         * soll sich „bei jeder kleinen Änderung oben an den Auswahlfeldern"
+         * verändern).
+         *
+         * Bis v0.99 wurde IMMER auf fünf Minuten gerundet, und alles unter
+         * acht Minuten hiess pauschal „etwa 5 Minuten". Damit verschluckte die
+         * Anzeige genau das, was der Nutzer sehen will: Ein Knopfdruck, der
+         * vier Figuren mehr aufs Brett stellt, bewegte die Zahl oft gar nicht.
+         *
+         * Kurze Partien werden deshalb auf die MINUTE gerundet — dort fällt
+         * jede Änderung ins Gewicht. Erst ab einer halben Stunde wird gröber
+         * gerundet, denn dort ist die Minute ohnehin nicht mehr zu halten.
+         */
+        if (minuten < 30) {
+            const knapp = Math.max(1, Math.round(minuten));
+            return "etwa " + knapp + ((knapp === 1) ? " Minute" : " Minuten");
         }
 
         const gerundet = Math.round(minuten / 5) * 5;
@@ -1680,6 +1845,32 @@ const SCHACH_RUNDE = {
     itemVorratAuslosen(runde) {
         const groesse = SCHACH_VARIANTEN.itemVorratVon(
             runde.regeln ? runde.regeln.itemVorrat : "");
+
+        /*
+         * SELBST GEWÄHLT (seit v0.100): Dann wird gar nicht gezogen, sondern
+         * übernommen. Gefiltert wird trotzdem — die Wahl ist beim Anlegen
+         * getroffen worden, die Bedingungen der Partie gelten aber weiter
+         * (Enttarnen gibt es nur ohne, Verstecken nur mit sichtbarer
+         * Seltenheit).
+         *
+         * BLEIBT NICHTS ÜBRIG, GILT WIEDER ALLES. Eine leere Liste heisst im
+         * ganzen Projekt „keine Einschränkung" (`itemVorrat`), und das ist hier
+         * die richtige Antwort: Eine Partie ganz ohne Items wäre eine Partie
+         * ohne Lootboxen, und dafür gibt es den Haken. Der Anlege-Bildschirm
+         * lässt die Liste ohnehin nicht leer werden.
+         */
+        if (groesse.eigeneWahl) {
+            const gewaehlt = Array.isArray(runde.regeln.itemAuswahl)
+                ? runde.regeln.itemAuswahl : [];
+
+            runde.regeln.itemPool = gewaehlt
+                .filter((art) => !!SCHACH_VARIANTEN.FAEHIGKEITEN[art])
+                .filter((art) => !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt)
+                .filter((art) => SCHACH_RUNDE.bedingungPasst(art, runde))
+                .filter((art, stelle, alle) => alle.indexOf(art) === stelle);
+
+            return runde;
+        }
 
         if (!groesse.anzahl) {
             runde.regeln.itemPool = [];
@@ -4554,6 +4745,10 @@ const SCHACH_RUNDE = {
            auseinanderlaufen. */
         SCHACH_RUNDE.kreuzAufstellen(neu, "|neu|" + wann);
         SCHACH_RUNDE.armeeAufstellen(neu, "|neu|" + wann);
+
+        /* Ohne Haken bleibt die feste Aufstellung stehen - der Regler
+           schneidet sie auf seine Breite zu (seit v0.100). */
+        SCHACH_RUNDE.aufstellungZuschneiden(neu);
 
         neu.zugZaehler = 0;
         neu.laeuft = false;

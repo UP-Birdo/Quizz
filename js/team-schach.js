@@ -98,12 +98,32 @@ const TEAM_SCHACH = {
         zufallsArmee: false,
         armeeUnterschiedlich: false,
 
-        /* Wie viele Figuren die Zufallsarmee bekommt (seit v0.86) — eine der
-           Stufen aus `SCHACH_VARIANTEN.ARMEE_STAERKEN`. */
-        armeeStaerke: "normal",
+        /*
+         * Wie viele Figuren JEDE Seite bekommt (seit v0.86) — eine der Stufen
+         * aus `SCHACH_VARIANTEN.ARMEE_STAERKEN`.
+         *
+         * VORGABE „voll" SEIT v0.100 (Nutzer-Entscheidung 20.08.). Der Regler
+         * wirkt jetzt auch OHNE den Haken „Zufallsarmee", schneidet dann also
+         * die feste Aufstellung zu. Bliebe die Vorgabe auf „normal", startete
+         * jede neue Partie plötzlich mit halber Aufstellung — eine Änderung,
+         * die niemand verlangt hat. „voll" heisst: alles bleibt stehen wie
+         * bisher, und wer weniger will, klickt.
+         *
+         * Im MODELL bleibt die Vorgabe „normal" (`SCHACH_RUNDE`): Eine Partie
+         * ohne Regeln-Block stammt von früher und muss weiterrechnen wie
+         * bisher. Die Vorgabe hier gilt nur für das, was der Anlege-Bildschirm
+         * vorschlägt.
+         */
+        armeeStaerke: "voll",
 
         /* Wie viele verschiedene Items es geben soll (seit v0.87). */
         itemVorrat: "alle",
+        
+
+        /* Die selbst angehakte Liste (seit v0.100) - nur bei
+
+           `itemVorrat: "auswahl"` von Bedeutung. */
+        itemAuswahl: [],
 
         /*
          * EINIGKEIT IST DIE VORGABE (seit v0.76, Eingangskorb vom 18.08.:
@@ -275,6 +295,14 @@ const TEAM_SCHACH = {
      * Anleitung finge von vorn an. Deshalb wird sie genau einmal gebaut.
      */
     infoGezeichnet: false,
+
+    /*
+     * Welchen Partien der Vorrat schon vorgestellt wurde (seit v0.100) —
+     * `{ partieId: true }`. Steht bewusst NUR hier im Bildschirm und nie im
+     * Stand: Es ist eine Nachricht an einen Zuschauer, kein Spielstand. Siehe
+     * `vorratVorstellen`.
+     */
+    vorratGezeigt: {},
 
     /*
      * Welcher Eintrag der Bibliothek gerade aufgeklappt ist. Es ist immer
@@ -469,6 +497,14 @@ const TEAM_SCHACH = {
         /* Zuerst: Gilt die Auswahl überhaupt noch? Sie lebt in diesem Objekt
            und nicht im Spielstand — siehe _auswahlPruefen. */
         TEAM_SCHACH._auswahlPruefen(partie, person);
+
+        /*
+         * Vor dem Anpfiff einmal zeigen, welche Items drin sind (seit v0.100).
+         * NICHT abgewartet: Das Zeichnen läuft weiter, das Fenster legt sich
+         * darüber. Ein `await` hier hielte den ganzen Bildschirm an, bis
+         * jemand liest.
+         */
+        TEAM_SCHACH.vorratVorstellen(partie);
 
         wurzel.appendChild(TEAM_SCHACH._partieKopfBauen(partie));
         wurzel.appendChild(TEAM_SCHACH._standLeisteBauen(partie, person));
@@ -1428,8 +1464,14 @@ const TEAM_SCHACH = {
             lootboxMenge: SCHACH_VARIANTEN.MENGE_VORGABE,
             zufallsArmee: false,
             armeeUnterschiedlich: false,
-            armeeStaerke: "normal",
+            armeeStaerke: "voll",
             itemVorrat: "alle",
+            
+
+            /* Die selbst angehakte Liste (seit v0.100) - nur bei
+
+               `itemVorrat: "auswahl"` von Bedeutung. */
+            itemAuswahl: [],
 
             /* Einigkeit ist die Vorgabe (seit v0.76) — siehe `neueRegeln`. */
             einigkeit: true
@@ -1489,6 +1531,7 @@ const TEAM_SCHACH = {
             armeeUnterschiedlich: TEAM_SCHACH.neueRegeln.armeeUnterschiedlich,
             armeeStaerke: TEAM_SCHACH.neueRegeln.armeeStaerke,
             itemVorrat: TEAM_SCHACH.neueRegeln.itemVorrat,
+            itemAuswahl: TEAM_SCHACH.neueRegeln.itemAuswahl,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
         };
 
@@ -1659,6 +1702,62 @@ const TEAM_SCHACH = {
      * ja auch die Fähigkeiten des Gegners an, und dort gibt es keinen Grund zu
      * nennen.
      */
+    /*
+     * DAS FENSTER VOR DEM ANPFIFF: WELCHE ITEMS SIND DRIN? (seit v0.100.)
+     *
+     * Nutzer-Wunsch 20.08.: „Es soll vor Beginn auch ein Popup kommen mit
+     * ‚diese Items sind drin' in einer Liste, wo auch anklickbar ist, um sich
+     * die einzelnen anzuschauen, was sie machen."
+     *
+     * DREI FESTLEGUNGEN:
+     *
+     *   1. NUR VOR DEM ANPFIFF. Läuft die Partie schon, drängt sich nichts
+     *      dazwischen — dieselbe Regel wie beim Abschluss-Bildschirm. Wer
+     *      später nachsehen will, hat weiter das i im Partie-Kopf.
+     *   2. NUR EINMAL JE PARTIE UND GERÄT. Gemerkt wird es im Bildschirm,
+     *      nicht im Stand: Es ist eine Nachricht an EINEN Zuschauer, kein
+     *      Spielstand. Nach dem Neuladen kommt es wieder — das ist gewollt,
+     *      denn dann sieht man es ja auch wieder zum ersten Mal.
+     *   3. NUR, WENN ES ETWAS ZU SAGEN GIBT. Ohne begrenzten Vorrat („alle")
+     *      gibt es keine Liste, und dann bleibt das Fenster weg.
+     *
+     * Die Liste führt WEITER: Ein Tipp auf einen Eintrag öffnet dessen
+     * Anleitung mit Bildern, danach steht die Liste wieder da. Deshalb die
+     * Schleife — `DIALOG.liste` liefert den gewählten Eintrag oder `null`.
+     */
+    async vorratVorstellen(partie) {
+        const vorrat = SCHACH_RUNDE.itemVorrat(partie);
+
+        if (!vorrat || vorrat.length === 0 || partie.laeuft || partie.ergebnis) {
+            return;
+        }
+        if (TEAM_SCHACH.vorratGezeigt[partie.id]) {
+            return;
+        }
+        TEAM_SCHACH.vorratGezeigt[partie.id] = true;
+
+        while (true) {
+            const eintraege = vorrat.map((art) => ({
+                beschriftung: SCHACH_VARIANTEN.faehigkeitTitel(art),
+                hinweis: SCHACH_VARIANTEN.stufeVon(art).titel,
+                wert: art
+            }));
+
+            const gewaehlt = await DIALOG.liste(
+                "Diese Items sind drin (" + vorrat.length + ")",
+                "Nur diese Fähigkeiten kommen in dieser Partie aus den Lootboxen "
+                    + "— für beide Seiten dieselben. Die Chancen verteilen sich "
+                    + "auf diese Liste. Tippe eine an, um zu sehen, was sie macht.",
+                eintraege,
+                "Los geht's");
+
+            if (!gewaehlt) {
+                return;
+            }
+            await TEAM_SCHACH.faehigkeitAnsehen(gewaehlt);
+        }
+    },
+
     async faehigkeitAnsehen(art, grund) {
         const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
         if (!beschreibung) {

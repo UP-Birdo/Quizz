@@ -60,6 +60,11 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       kein Fehler war, sondern eine Regel, die sich wie einer anfühlte.
       Merksatz: Wer eine Bequemlichkeit einbaut, die etwas WEGNIMMT, fragt
       vorher nach
+    - **Eine aufgehobene Regel lebt in ihrem Erklärtext weiter** (v0.95,
+      gefunden v0.100) — der Frost-Text versprach noch fünf Versionen lang das
+      Mattsetzen, das v0.95 zurückgenommen hatte. Merksatz: Wer eine Regel
+      aufhebt, sucht nicht nur die Stellen, die sich auf sie verlassen, sondern
+      auch die SÄTZE, die sie erklären — sie bewacht kein Test
     - **Eine Einstellung, die eine Zahl verspricht, die das Brett nicht halten
       kann** (v0.86, gefunden v0.99) — „viel" und „voll" stellten dieselbe
       Armee auf wie „normal", weil `armeeAnzahl` den Anteil multiplizierte,

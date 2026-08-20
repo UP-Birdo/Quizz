@@ -399,28 +399,44 @@ pruefe("Die Dauer-Schaetzung lernt aus echten Partien (v0.93)", () => {
     gleich(SCHACH_RUNDE.sekundenJeHalbzug([]),
         SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE, "ohne Partien die Vorgabe");
 
-    /* Zu wenige Partien sind Zufall, kein Wert — die Vorgabe bleibt. */
-    const wenige = [];
-    for (let n = 0; n < SCHACH_RUNDE.MESSUNG_AB_PARTIEN - 1; n++) {
-        wenige.push({ spielzeit: 600, stand: { takt: 20 } });
-    }
-    gleich(SCHACH_RUNDE.sekundenJeHalbzug(wenige),
-        SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE, "unter der Schwelle die Vorgabe");
+    /*
+     * SEIT v0.100 GIBT ES KEINE SCHWELLE MEHR (Nutzer-Ansage: „soll sich immer
+     * besser anhand gespielter Runden anpassen"). Vorgabe und Messung mischen
+     * sich, und die Messung bekommt mit jeder Partie mehr Gewicht. Geprueft
+     * wird deshalb die RICHTUNG, nicht mehr ein Sprung an einer festen Zahl.
+     */
+    const machen = (anzahl) => {
+        const liste = [];
+        for (let n = 0; n < anzahl; n++) {
+            liste.push({ spielzeit: 600, stand: { takt: 20 } });
+        }
+        return liste;
+    };
 
-    /* Genug Partien: Jetzt zaehlt die Messung. 600 s auf 20 Halbzuege = 30. */
-    const genug = [];
-    for (let n = 0; n < SCHACH_RUNDE.MESSUNG_AB_PARTIEN; n++) {
-        genug.push({ spielzeit: 600, stand: { takt: 20 } });
-    }
-    gleich(SCHACH_RUNDE.sekundenJeHalbzug(genug), 30, "gemessen: 30 s je Halbzug");
+    /* 600 s auf 20 Halbzuege = 30 s je Halbzug, die Vorgabe ist 20. */
+    const eine = SCHACH_RUNDE.sekundenJeHalbzug(machen(1));
+    const drei = SCHACH_RUNDE.sekundenJeHalbzug(machen(3));
+    const viele = SCHACH_RUNDE.sekundenJeHalbzug(machen(30));
+
+    wahr(eine > SCHACH_RUNDE.SEKUNDEN_JE_HALBZUG_VORGABE,
+        "schon die erste gemessene Partie bewegt die Schaetzung");
+    wahr(drei > eine, "drei Partien wiegen schwerer als eine");
+    wahr(viele > drei, "und dreissig schwerer als drei");
+    wahr(viele < 30, "die reine Messung wird nie ganz erreicht");
+    wahr(viele > 29, "aber fast");
+
+    /* Bei genau `MESSUNG_ANLAUF` Partien wiegen Vorgabe und Messung gleich. */
+    gleich(Math.round(drei), 25, "drei Partien: genau die Mitte aus 20 und 30");
 
     /* Angefangene oder leere Partien verfaelschen nichts. */
+    const genug = machen(5);
     const gemischt = genug.concat([
         { spielzeit: 0, stand: { takt: 40 } },
         { spielzeit: 900, stand: { takt: 0 } },
         { stand: { takt: 30 } }
     ]);
-    gleich(SCHACH_RUNDE.sekundenJeHalbzug(gemischt), 30,
+    gleich(SCHACH_RUNDE.sekundenJeHalbzug(gemischt),
+        SCHACH_RUNDE.sekundenJeHalbzug(genug),
         "Partien ohne Zeit oder ohne Zuege zaehlen nicht mit");
 
     /* Mehr Figuren und mehr Platz heissen mehr Zuege. */
@@ -716,7 +732,15 @@ pruefe("Jede Vorrat-Stufe liefert WENIGER als die darueber (v0.87)", () => {
         verfuegbar += SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length;
     }
 
-    const stufen = SCHACH_VARIANTEN.ITEM_VORRAETE;
+    /*
+     * „selbst wählen" (seit v0.100) bleibt aussen vor: Sie ist keine MENGE,
+     * sondern eine Liste, die der Nutzer zusammenstellt — sie kann alles
+     * enthalten oder ein einziges Item. Erkennbar an `eigeneWahl`, nicht am
+     * Namen; wer eine zweite solche Stufe baut, faellt damit nicht herein.
+     */
+    const stufen = SCHACH_VARIANTEN.ITEM_VORRAETE.filter(
+        (groesse) => !groesse.eigeneWahl);
+
     let vorher = 0;
 
     for (const groesse of stufen) {
@@ -729,6 +753,107 @@ pruefe("Jede Vorrat-Stufe liefert WENIGER als die darueber (v0.87)", () => {
     }
 
     gleich(vorher, verfuegbar, "die oberste Stufe ist wirklich alles");
+});
+
+pruefe("Selbst gewaehlt: genau diese Items, sonst nichts (v0.100)", () => {
+    /*
+     * NUTZER-WUNSCH 20.08.: „und selbst auswaehlen, dann kommt die Liste der
+     * Items, welche man anhaken kann — mindestens ein Item. Die Chancen teilen
+     * sich unter den Items auf, die gerade in der Runde sind."
+     *
+     * Der zweite Satz ist der wichtigere: Es genuegt nicht, die Liste zu
+     * merken — aus einer Lootbox darf danach NICHTS anderes kommen, und die
+     * Stufen, in denen nichts uebrig bleibt, duerfen gar nicht mehr gezogen
+     * werden. Beides faellt hier zusammen.
+     */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-wahl", "Wahl");
+    runde.regeln.faehigkeiten = true;
+    runde.regeln.itemVorrat = "auswahl";
+    runde.regeln.itemAuswahl = ["mauer", "fessel", "schubs"];
+
+    const fertig = SCHACH_RUNDE.itemVorratAuslosen(runde);
+
+    gleich(fertig.regeln.itemPool.slice().sort().join(","), "fessel,mauer,schubs",
+        "genau die angehakten Items, nichts dazu und nichts weg");
+
+    /* Aus jeder Stufe kommt nur, was drin steht — oder gar nichts. */
+    const pool = SCHACH_RUNDE.itemVorrat(fertig);
+    wahr(pool !== null, "der Vorrat ist begrenzt");
+
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        for (let schritt = 0; schritt < 100; schritt++) {
+            const art = SCHACH_VARIANTEN.faehigkeitAusStufe(
+                stufe.id, schritt / 100, [], pool);
+
+            if (art === "") {
+                continue;
+            }
+            wahr(pool.indexOf(art) !== -1, stufe.id + ": " + art + " ist angehakt");
+        }
+    }
+
+    /* Und leere Stufen bekommen Gewicht 0, werden also nicht mehr gezogen. */
+    const gewichte = SCHACH_RUNDE._stufenGewichte(fertig);
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        if (SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id, pool).length === 0) {
+            gleich(gewichte[stufe.id], 0, stufe.id + ": ohne Item kein Gewicht");
+        }
+    }
+});
+
+pruefe("Die eigene Auswahl haelt sich an die Bedingungen der Partie (v0.100)", () => {
+    /*
+     * Man kann beim Anlegen etwas anhaken, das es in DIESER Partie gar nicht
+     * geben kann: Enttarnen gibt es nur ohne sichtbare Seltenheit, Verstecken
+     * nur mit. Die Wahl wird deshalb beim Auslosen noch einmal gefiltert —
+     * sonst belegte so ein Item einen Platz und kaeme nie.
+     */
+    const offen = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-wahl2", "Offen");
+    offen.regeln.faehigkeiten = true;
+    offen.regeln.seltenheitZeigen = true;
+    offen.regeln.itemVorrat = "auswahl";
+    offen.regeln.itemAuswahl = ["mauer", "enttarnen", "verstecken"];
+
+    const fertig = SCHACH_RUNDE.itemVorratAuslosen(offen);
+
+    wahr(fertig.regeln.itemPool.indexOf("enttarnen") === -1,
+        "Enttarnen gibt es hier nicht und steht deshalb nicht im Vorrat");
+    wahr(fertig.regeln.itemPool.indexOf("verstecken") !== -1,
+        "Verstecken dagegen schon");
+    wahr(fertig.regeln.itemPool.indexOf("mauer") !== -1, "und die Mauer sowieso");
+});
+
+pruefe("Die eigene Auswahl uebersteht Speichern und Laden (v0.100)", () => {
+    /*
+     * Die Liste ist die EINGABE, `itemPool` das Ergebnis. Beide reisen mit —
+     * sonst stuende beim „Neu aufstellen" wieder alles zur Verfuegung, obwohl
+     * jemand die Partie ausdruecklich auf drei Items festgelegt hat.
+     *
+     * Dass die Liste ueberhaupt in der angelegten Partie ankommt, prueft der
+     * Test in `test-schach-tafel.js`, der seit v0.91 ALLE uebergebenen Regeln
+     * durchgeht — dort gehoert die Falle hin, nicht hierher.
+     */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-wahl3", "Wahl");
+    runde.regeln.faehigkeiten = true;
+    runde.regeln.itemVorrat = "auswahl";
+    runde.regeln.itemAuswahl = ["mauer", "fessel"];
+
+    const fertig = SCHACH_RUNDE.itemVorratAuslosen(runde);
+    const geladen = SCHACH_RUNDE.normalisieren(JSON.parse(JSON.stringify(fertig)));
+
+    gleich(geladen.regeln.itemAuswahl.slice().sort().join(","), "fessel,mauer",
+        "die Wahl uebersteht Speichern und Laden");
+    gleich(geladen.regeln.itemPool.slice().sort().join(","), "fessel,mauer",
+        "der Vorrat ebenso");
+    gleich(geladen.regeln.itemVorrat, "auswahl", "und die Stufe auch");
+
+    /* Ein Stand von frueher kennt das Feld nicht — dann ist die Liste leer,
+       und „leer" heisst im ganzen Projekt „keine Einschraenkung". */
+    const roh = JSON.parse(JSON.stringify(geladen));
+    delete roh.regeln.itemAuswahl;
+
+    const alt = SCHACH_RUNDE.normalisieren(roh);
+    gleich(alt.regeln.itemAuswahl.length, 0, "ohne Angabe eine leere Liste");
 });
 
 pruefe("Aus einer Lootbox kommt nur, was im Vorrat steht (v0.87)", () => {
@@ -7502,12 +7627,29 @@ pruefe("Jede Faehigkeit hat einen kurzen Satz, und er passt zur Beschreibung (v0
     }
 });
 
-pruefe("Die Mauer war der Anlass und ist jetzt kurz (v0.94)", () => {
-    const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung("mauer");
-    const kurz = SCHACH_VARIANTEN.faehigkeitKurz("mauer");
+pruefe("Keine Beschreibung wird wieder zu lang (v0.94, verschaerft v0.100)", () => {
+    /*
+     * DIE MAUER WAR ZWEIMAL DER ANLASS. In v0.94 bekam sie den Kurztext
+     * (`faehigkeitKurz`, erster Satz) — der lange Text blieb daneben stehen.
+     * Am 20.08. hat der Nutzer erneut gemeldet, er sei „immer noch viel zu
+     * lang": Auch im Aufklapper liest niemand zwoelf Zeilen.
+     *
+     * Statt nur die Mauer zu kuerzen, haelt dieser Test jetzt ALLE
+     * Faehigkeiten kurz. Sonst waechst die naechste unbemerkt nach — die Mauer
+     * ist nicht lang geworden, weil jemand es wollte, sondern weil bei jeder
+     * Regelaenderung ein Satz dazukam.
+     */
+    const grenze = 400;
 
-    wahr(voll.length > 500, "die ganze Beschreibung ist lang: " + voll.length);
-    wahr(kurz.length < 150, "der Kurztext nicht: " + kurz.length);
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+        const kurz = SCHACH_VARIANTEN.faehigkeitKurz(art);
+
+        wahr(voll.length <= grenze,
+            art + ": Beschreibung hoechstens " + grenze + " Zeichen (" + voll.length + ")");
+        wahr(kurz.length < 150, art + ": Kurztext unter 150 (" + kurz.length + ")");
+        wahr(kurz.length > 0, art + ": es gibt einen Kurztext");
+    }
 });
 
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");

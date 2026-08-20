@@ -114,6 +114,24 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   (Wunsch #17: der erste König fällt normal, beim letzten gelten wieder Schach
   und Matt). Der Schalter bleibt trotzdem: Er ist die einzige Möglichkeit, ein
   Brett ganz ohne Schachbegriff zu bauen.
+- **DIE STÄRKE GILT FÜR JEDE PARTIE, nicht nur für die Zufallsarmee** (seit
+  v0.100, Nutzer-Entscheidung 20.08.: „Zufallsarmee hat keine Auswirkung mehr
+  auf die Grösse der Armee, nur der Regler hat es"). Der Haken entscheidet, WELCHE
+  Figuren stehen; die Stärke, WIE VIELE. Ohne Haken schneidet
+  `SCHACH_RUNDE.aufstellungZuschneiden` die feste Aufstellung auf denselben
+  Feld-Block zu, den auch die Zufallsarmee benutzt — **Könige bleiben dabei
+  immer stehen**, sonst verlöre eine Spielart mit König ausserhalb der Mitte ihn
+  beim Zuschneiden.
+  **Die Funktion nimmt weg, sie stellt nicht her.** Sie darf deshalb nur auf ein
+  FRISCHES Brett laufen und nie zweimal nacheinander — der zweite Aufruf
+  schnitte vom bereits beschnittenen Brett. Aufgerufen wird sie an genau drei
+  Stellen: `partieAnlegen`, `neuAufstellen`, Vorschau der Kachel.
+  **`regeln.armeeFassung` ist der Umstieg** (Muster von `bonusFassung`): Nur bei
+  1 wird zugeschnitten. Sie ist nötig, weil „kein Eintrag" für zwei Altfälle
+  gleichzeitig das Richtige tun müsste und sie sich widersprechen — eine Partie
+  von früher MIT fester Aufstellung stand voll auf dem Brett, eine MIT
+  Zufallsarmee hatte die halbe Armee. Wer am Zuschneiden etwas ändert, prüft
+  beide.
 - **DIE STÄRKE DER ZUFALLSARMEE VERBREITERT DEN STARTFELD-BLOCK, sie
   multipliziert keine Zahl** (seit v0.99). `SCHACH_VARIANTEN.armeeSpalten`
   nimmt die Stärke entgegen und liefert daraus Spalten UND Rand;

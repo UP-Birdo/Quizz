@@ -922,17 +922,39 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
      */
     const variante = SCHACH_VARIANTEN.holen("standard");
     const gemerkt = TEAM_SCHACH.neueRegeln.zufallsArmee;
+    const gemerkteStaerke = TEAM_SCHACH.neueRegeln.armeeStaerke;
 
     const zaehlen = (brett) => brett.split("").filter((z) => z !== ".").length;
 
     try {
-        /* 1. Ohne Haken: die feste Aufstellung, unveraendert. */
+        /*
+         * 1. OHNE HAKEN UND AUF „voll": die feste Aufstellung, unveraendert.
+         *
+         * SEIT v0.100 gehoert die Staerke dazu (Nutzer-Entscheidung 20.08.:
+         * „Zufallsarmee hat keine Auswirkung mehr auf die Groesse, nur der
+         * Regler"). „voll" ist die Vorgabe und schneidet nichts weg.
+         */
         TEAM_SCHACH.neueRegeln.zufallsArmee = false;
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "voll";
         if (TEAM_SCHACH._vorschauBrett(variante) !== variante.aufstellung) {
-            throw new Error("ohne Haken muss die gewohnte Aufstellung kommen");
+            throw new Error("ohne Haken und auf voll muss die gewohnte Aufstellung kommen");
         }
 
-        /* 2. Mit Haken: ein anderes Brett, und zwar ein duenner besetztes. */
+        /* 1b. Und der Regler wirkt AUCH ohne Haken (neu in v0.100). */
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "normal";
+        const schmal = TEAM_SCHACH._vorschauBrett(variante);
+
+        if (zaehlen(schmal) >= zaehlen(variante.aufstellung)) {
+            throw new Error("der Regler muss auch ohne Haken schmaler stellen ("
+                + zaehlen(schmal) + " gegen " + zaehlen(variante.aufstellung) + ")");
+        }
+        if (schmal.indexOf("K") === -1 || schmal.indexOf("k") === -1) {
+            throw new Error("beide Koenige muessen das Zuschneiden ueberstehen");
+        }
+
+        /* 2. Mit Haken: ein anderes Brett bei gleicher Groesse — der Haken
+              entscheidet seit v0.100 nur noch, WELCHE Figuren stehen. */
+        TEAM_SCHACH.neueRegeln.armeeStaerke = "voll";
         TEAM_SCHACH.neueRegeln.zufallsArmee = true;
         const beispiel = TEAM_SCHACH._vorschauBrett(variante);
 
@@ -942,8 +964,8 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
         if (beispiel.length !== variante.aufstellung.length) {
             throw new Error("die Brettgroesse darf sich nicht aendern");
         }
-        if (zaehlen(beispiel) >= zaehlen(variante.aufstellung)) {
-            throw new Error("die Zufallsarmee muss kleiner sein als die volle ("
+        if (zaehlen(beispiel) !== zaehlen(variante.aufstellung)) {
+            throw new Error("auf voll stehen gleich viele Figuren wie sonst ("
                 + zaehlen(beispiel) + " gegen " + zaehlen(variante.aufstellung) + ")");
         }
 
@@ -963,6 +985,7 @@ pruefe("Mit Zufallsarmee zeigt die Kachel ein echtes Beispiel (v0.83)", () => {
         }
     } finally {
         TEAM_SCHACH.neueRegeln.zufallsArmee = gemerkt;
+        TEAM_SCHACH.neueRegeln.armeeStaerke = gemerkteStaerke;
     }
 });
 

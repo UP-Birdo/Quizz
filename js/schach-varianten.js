@@ -807,9 +807,11 @@ const SCHACH_VARIANTEN = {
             art: "zugmuster",
             muster: "umkreis2",
             istDerZug: true,
-            beschreibung: "Einsetzen, dann Figur antippen und Zielfeld wählen: Sie "
-                + "setzt auf ein FREIES Feld im Umkreis von zwei, über alles hinweg "
-                + "— geschlagen wird dabei nicht. Der Teleport IST dein Zug; normal "
+            /* Der erste Satz ist zugleich der Kurztext (`faehigkeitKurz`) und
+               muss unter 150 Zeichen bleiben — ein Test hält es fest. */
+            beschreibung: "Figur antippen und Zielfeld wählen: Sie setzt auf ein "
+                + "FREIES Feld im Umkreis von zwei, über alles hinweg — geschlagen "
+                + "wird nicht. Der Teleport IST dein Zug; normal "
                 + "ziehen kannst du danach nicht mehr, es ist der Gegner dran."
         },
 
@@ -937,12 +939,10 @@ const SCHACH_VARIANTEN = {
             zielArt: "spalte",
             beendetZug: true,
             beschreibung: "Rollt über zwei Spalten und schiebt alle Figuren darin ein "
-                + "Feld nach vorn — von dir weg. Angetippt wird ein Feld deiner eigenen "
-                + "Grundreihe, also unten am Brett. Es rollt wirklich alles: die eigenen "
-                + "wie die fremden, Könige eingeschlossen. Nur wo kein Platz mehr ist, "
-                + "bleibt die Figur stehen — und deinen eigenen König ins Schach schieben "
-                + "kannst du damit nicht. Das Nudelholz IST dein Zug: Danach ist der "
-                + "Gegner dran."
+                + "Feld von dir weg — die eigenen wie die fremden, Könige "
+                + "eingeschlossen. Angetippt wird ein Feld deiner Grundreihe. Wo kein "
+                + "Platz ist, bleibt die Figur stehen. Das Nudelholz IST dein Zug: "
+                + "Danach ist der Gegner dran."
         },
 
         /*
@@ -995,15 +995,23 @@ const SCHACH_VARIANTEN = {
             stufe: "lila",
             art: "ziel",
             zielArt: "frostblock",
+            /*
+             * DER LETZTE SATZ VON v0.80 IST HIER BIS v0.99 STEHEN GEBLIEBEN:
+             * „Wer einen König so einsperrt, dass ihm kein Feld mehr bleibt,
+             * setzt ihn matt." Das Recht des Frostes, mattzusetzen, ist mit
+             * v0.95 zurückgenommen worden (`_wirkungVerboten`) — der Text
+             * versprach also seit fünf Versionen etwas, das die Regel abweist.
+             *
+             * Aufgefallen ist es beim Kürzen, nicht beim Regeln-Ändern. Wer
+             * eine Regel aufhebt, sucht auch die TEXTE, die sie erklären —
+             * dieselbe Lehre wie in v0.94, nur eine Ebene weiter aussen.
+             */
             beschreibung: "Friert ein 2-mal-2-Feld für einen Zug ein: Was darin "
-                + "steht, kommt nicht heraus und lässt sich in dieser Zeit auch "
-                + "nicht schlagen — eigene Figuren eingeschlossen. Genau das kann "
-                + "der Zweck sein: Ein eingefrorener eigener Läufer ist einen Zug "
-                + "lang unantastbar. Bewegen darf sich jede Figur INNERHALB des "
-                + "Blocks, der Frost ist eine Mauer aussen herum. Er gilt auch für "
-                + "Könige: Wer einen König so einsperrt, dass ihm kein Feld mehr "
-                + "bleibt, setzt ihn matt. Angetippt wird die linke obere Ecke des "
-                + "Blocks; er muss mindestens eine Figur treffen."
+                + "steht, kommt nicht heraus und ist so lange auch nicht "
+                + "schlagbar — eigene Figuren eingeschlossen. Innerhalb des "
+                + "Blocks darf sich jede Figur bewegen; der Frost ist eine Mauer "
+                + "aussen herum. Angetippt wird die linke obere Ecke; mindestens "
+                + "eine Figur muss im Block stehen."
         },
         /*
          * VERSTÄRKUNG IST SEIT v0.56 EINE AUFWERTUNGSKETTE.
@@ -1024,11 +1032,13 @@ const SCHACH_VARIANTEN = {
             art: "ziel",
             zielArt: "eigeneFigur",
             beendetZug: true,
-            beschreibung: "Eine eigene Figur steigt eine Stufe auf: Bauer wird "
-                + "Springer, Springer wird Läufer oder Turm, Läufer und Turm werden "
-                + "Dame, Dame wird König — und ein zweiter König sind zwei Leben. "
-                + "Hast du zwei Könige, wird einer davon zu zwei Damen. Danach ist "
-                + "der Gegner am Zug."
+            /* Der erste Satz ist der Kurztext und bleibt unter 150 Zeichen —
+               die Kette selbst steht im zweiten. */
+            beschreibung: "Eine eigene Figur steigt eine Stufe auf. Bauer wird "
+                + "Springer, Springer wird Läufer oder Turm, Läufer und Turm "
+                + "werden Dame, Dame wird König — ein zweiter König sind zwei "
+                + "Leben. Hast du schon zwei, wird einer zu zwei Damen. Danach "
+                + "ist der Gegner am Zug."
         },
         fessel: {
             titel: "Fessel",
@@ -1124,17 +1134,20 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "ziel",
             zielArt: "mauerplatz",
-            beschreibung: "Legt eine Mauer über drei freie Felder — auf das angetippte "
-                + "Feld und je eines daneben, wahlweise quer oder längs. Niemand zieht "
-                + "hindurch, aber Springer setzen darüber hinweg. Nach 6 Halbzügen — "
-                + "also je drei Zügen für dich und den Gegner — zerfällt sie. "
-                + "Du darfst sie auch auf eine bestehende Mauer legen, auch auf die des "
-                + "Gegners: Dort, wo sich beide überdecken, zählt die Restzeit der alten "
-                + "Mauer dazu — die übrigen Felder halten die üblichen 6 Halbzüge. "
-                + "Am äussersten Rand geht sie nicht: Dort fehlt der Nachbar, den sie "
-                + "auf einer Seite braucht. Auf einen Riss kann sie nicht, dort ist der "
-                + "Boden weg. Lootboxen unter der Mauer werden gefressen — "
-                + "sie sind danach weg."
+            /*
+             * KURZ GEHALTEN (seit v0.100, zweite Nutzer-Ansage dazu). Der Text
+             * nannte jede Bedingung in einem eigenen Satz und war damit der
+             * längste im Spiel — im Einsetzen-Fenster liest ihn dann niemand.
+             *
+             * Geblieben ist, was man VOR dem Antippen wissen muss; die
+             * Feinheiten (Rand, Riss) zeigt das Brett ohnehin, indem es dort
+             * kein Zielfeld markiert.
+             */
+            beschreibung: "Legt eine Mauer über drei freie Felder — das angetippte "
+                + "und je eines daneben, quer oder längs. Niemand zieht hindurch, "
+                + "nur Springer setzen darüber. Nach 6 Halbzügen zerfällt sie. "
+                + "Auf eine bestehende Mauer gelegt, zählt deren Restzeit dazu; "
+                + "Lootboxen darunter sind weg."
         },
 
         /*
@@ -1203,10 +1216,10 @@ const SCHACH_VARIANTEN = {
             art: "sicht",
             sichtWirkung: "zeigen",
             nurOhneSeltenheit: true,
-            beschreibung: "Nur in Partien, die die Seltenheit verbergen: Du allein "
-                + "siehst 6 Halbzüge lang, wie selten die liegenden Lootboxen sind — "
-                + "ihre Farbe. WAS drin steckt, verrät sie weiterhin nicht, und der "
-                + "Gegner merkt nichts. Du bleibst am Zug."
+            beschreibung: "Du allein siehst 6 Halbzüge lang an der Farbe, wie selten "
+                + "die liegenden Lootboxen sind. Gibt es nur in Partien, welche die "
+                + "Seltenheit verbergen; WAS drin steckt, verrät sie weiterhin nicht, "
+                + "und der Gegner merkt nichts. Du bleibst am Zug."
         },
 
         /*
@@ -1240,10 +1253,10 @@ const SCHACH_VARIANTEN = {
             art: "sicht",
             sichtWirkung: "verbergen",
             nurMitSeltenheit: true,
-            beschreibung: "Nur in Partien, die die Seltenheit zeigen: Dein Gegner "
-                + "sieht 6 Halbzüge lang nicht mehr, wie selten die liegenden "
-                + "Lootboxen sind — für ihn sieht jede aus wie jede andere. Du "
-                + "selbst siehst die Farben weiterhin. Du bleibst am Zug."
+            beschreibung: "Dein Gegner sieht 6 Halbzüge lang nicht mehr, wie selten "
+                + "die liegenden Lootboxen sind. Gibt es nur in Partien, welche die "
+                + "Seltenheit zeigen; für ihn sieht dann jede aus wie jede andere, "
+                + "du selbst siehst die Farben weiter. Du bleibst am Zug."
         },
 
         dieb: {
@@ -2402,12 +2415,32 @@ const SCHACH_VARIANTEN = {
             anzahl: 15,
             hinweis: "Fünfzehn verschiedene Items — Abwechslung, aber nicht alles."
         },
+        /*
+         * SELBST WÄHLEN (seit v0.100, Nutzer-Wunsch: „und selbst auswählen,
+         * dann kommt die Liste der Items, welche man anhaken kann —
+         * mindestens ein Item").
+         *
+         * Die einzige Stufe, die keine ZAHL ist: Der Vorrat wird nicht
+         * gezogen, sondern übernommen (`regeln.itemAuswahl`). `anzahl: 0`
+         * heisst deshalb hier nicht „alle", sondern „wird nicht gelost" —
+         * darüber entscheidet allein `eigeneWahl`.
+         *
+         * Sie steht ANS ENDE der Liste, hinter „alle": Die Reihe ist von wenig
+         * nach viel sortiert, und die eigene Wahl ist keine Menge.
+         */
         {
             id: "alle",
             titel: "alle",
             anzahl: 0,
             hinweis: "Alles, was es gibt. Am Anfang wird nichts ausgelost, und "
                 + "es wird auch nichts angezeigt."
+        },
+        {
+            id: "auswahl",
+            titel: "selbst wählen",
+            anzahl: 0,
+            eigeneWahl: true,
+            hinweis: "Du stellst die Liste selbst zusammen — mindestens ein Item."
         }
     ],
 

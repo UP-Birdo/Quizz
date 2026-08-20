@@ -362,8 +362,32 @@ const SCHACH_TAFEL = {
             partie.regeln.itemVorrat =
                 SCHACH_VARIANTEN.itemVorratVon(regeln.itemVorrat).id;
 
+            /* Die selbst angehakte Liste (seit v0.100). Ohne diese Zeile
+               liesse sich die Auswahl bedienen und täte nichts — genau der
+               Fehler von v0.86/v0.87, den der Test unten seit v0.91 abfängt. */
+            partie.regeln.itemAuswahl = Array.isArray(regeln.itemAuswahl)
+                ? regeln.itemAuswahl.slice() : [];
+
             partie.regeln.einigkeit = (regeln.einigkeit === true);
         }
+
+        /*
+         * RECHNET DIESE PARTIE NACH DER NEUEN REGEL? (seit v0.100.)
+         *
+         * Die Fassung wird genau dann gesetzt, wenn der Aufrufer eine Stärke
+         * WIRKLICH GENANNT hat. Das ist der Unterschied, auf den es ankommt:
+         * `armeeStaerkeVon` liefert für alles Unbekannte „normal" — wer die
+         * Einstellung gar nicht kennt, bekäme damit stillschweigend die halbe
+         * Aufstellung. Der Anlege-Bildschirm nennt sie immer; Aufrufer von
+         * früher tun es nicht, und für die bleibt alles beim Alten.
+         *
+         * Der Eintrag steht ausserhalb des `regeln`-Blocks oben, weil er keine
+         * Einstellung ist, sondern die Fassung.
+         */
+        const genannt = SCHACH_VARIANTEN.ARMEE_STAERKEN.some(
+            (stufe) => stufe.id === (regeln ? regeln.armeeStaerke : ""));
+
+        partie.regeln.armeeFassung = genannt ? 1 : 0;
 
         /*
          * ERST JETZT steht der Haken fest, deshalb wird die Zufallsarmee hier
@@ -373,6 +397,10 @@ const SCHACH_TAFEL = {
          */
         SCHACH_RUNDE.kreuzAufstellen(partie);
         SCHACH_RUNDE.armeeAufstellen(partie);
+
+        /* Ohne Haken bleibt die feste Aufstellung stehen - der Regler
+           schneidet sie auf seine Breite zu (seit v0.100). */
+        SCHACH_RUNDE.aufstellungZuschneiden(partie);
 
         /* Welche Items es in dieser Partie gibt — einmalig, gerechnet aus der
            Partie-Kennung (seit v0.87). */

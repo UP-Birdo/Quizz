@@ -3,6 +3,47 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.100.0 — 2026-08-20
+
+**Die Figurenzahl gilt jetzt immer, die Items lassen sich selbst zusammenstellen
+— und vier Texte sind kürzer geworden.**
+
+- **Der Regler „Wie viele Figuren je Seite?" wirkt in jeder Partie.** Bisher tat
+  er nur etwas, wenn der Haken „Zufallsarmee" gesetzt war. Jetzt entscheidet der
+  Haken nur noch, WELCHE Figuren stehen (gewürfelt oder die gewohnte
+  Aufstellung) — WIE VIELE sagt allein der Regler. Ohne Haken bleibt die
+  Aufstellung der Spielart stehen, nur eben schmaler; Könige bleiben immer.
+
+  **Die Vorgabe ist „voll"**, eine neue Partie sieht also aus wie bisher.
+  Laufende Partien ändern sich nicht.
+
+- **Neu: „selbst wählen" beim Item-Vorrat.** Neben wenig / 10 / viele / alle gibt
+  es jetzt eine Liste zum Anhaken. Beim ersten Umschalten ist alles angehakt —
+  du streichst weg, was nicht vorkommen soll. Mindestens ein Item bleibt stehen.
+  Die Chancen verteilen sich auf das, was übrig ist: Eine Seltenheitsstufe ohne
+  angehaktes Item wird gar nicht mehr gezogen.
+
+- **Ein Fenster vor dem Anpfiff zeigt, welche Items drin sind.** Es kommt einmal
+  je Partie, bevor sie startet, und listet den Vorrat auf. Jeder Eintrag ist
+  antippbar und zeigt die Fähigkeit mit ihrer Bildanleitung; danach steht die
+  Liste wieder da. Bei „alle" bleibt das Fenster weg — dann gibt es nichts
+  Besonderes zu sagen.
+
+- **Die geschätzte Dauer lernt jetzt von Anfang an.** Bisher zählte die Messung
+  erst ab der fünften gespielten Partie und sprang dann. Jetzt mischen sich
+  Vorgabe und Messung, und die Messung bekommt mit jeder Partie mehr Gewicht.
+  Ausserdem wird unter einer halben Stunde auf die MINUTE gerundet statt auf
+  fünf — damit bewegt sich die Zahl auch bei kleinen Änderungen an den
+  Einstellungen oben.
+
+- **Vier Beschreibungen sind kürzer.** Die Mauer war der Anlass (zum zweiten
+  Mal), dazu Nudelholz, Frost und Verstärkung. Ein Test hält ab jetzt JEDE
+  Beschreibung kurz — sonst wächst die nächste unbemerkt nach.
+
+  **Beim Kürzen ist ein Fehler aufgefallen:** Der Frost-Text versprach seit
+  v0.95 noch immer, man könne mit ihm mattsetzen. Das Recht ist damals
+  zurückgenommen worden; nur der Text wusste es nicht.
+
 ## v0.99.0 — 2026-08-20
 
 **Zwei Meldungen vom selben Tag: der Dieb und die Figurenzahl.**

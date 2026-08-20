@@ -37,6 +37,10 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Stufe der Menge** | `regeln.lootboxMenge` | Wie viele Lootboxen erscheinen: **wenig / normal / viele / Regen** (seit v0.71, vier Kästchen unter dem Lootbox-Haken). Tabelle: `SCHACH_VARIANTEN.LOOTBOX_MENGEN`. |
 | **Lootbox-Regen** | `regeln.regen`, `regenStufe` | Die zwei Einstellungen von v0.50/v0.60, die die Stufe abgelöst hat. Sie stehen noch in jeder Partie: Fehlt die Stufe, wird sie daraus gerechnet. Sichtbar sind sie nicht mehr. |
 
+| **Item-Vorrat** | `regeln.itemVorrat`, `regeln.itemPool` | Welche Fähigkeiten es in DIESER Partie überhaupt gibt: **wenig / 10 / viele / alle / selbst wählen** (`SCHACH_VARIANTEN.ITEM_VORRAETE`). Die Stufe ist die Einstellung, `itemPool` die daraus entstandene Liste. Leerer Pool heisst „keine Einschränkung". |
+| **Selbst gewählte Items** | `regeln.itemAuswahl` | Die angehakte Liste aus dem Modus „selbst wählen" (seit v0.100) — die EINGABE, aus der `itemPool` entsteht. Mindestens ein Item; gefiltert wird beim Auslosen noch einmal gegen die Bedingungen der Partie. |
+| **Figurenzahl / Regler** | `regeln.armeeStaerke`, `armeeFassung` | Wie viele Figuren je Seite stehen: **wenig / normal / viel / voll**. Seit v0.100 gilt der Regler in JEDER Partie, nicht nur bei Zufallsarmee — `armeeFassung: 1` sagt, dass diese Partie schon so rechnet. |
+
 ## Regeln und Wirkungen
 
 | Wort | Im Code | Was gemeint ist |
