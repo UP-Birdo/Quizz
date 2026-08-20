@@ -87,11 +87,10 @@ const SCHACH_GRUNDLAGEN = {
                 "........"
             ],
             text: "Er geht ein Feld nach vorn und nie zurück. Schlagen kann er "
-                + "nur SCHRÄG nach vorn — deshalb ist das Feld direkt vor ihm "
-                + "hier kein Zug: Dort steht jemand, und geradeaus schlägt er "
-                + "nicht. Von seinem Startfeld darf er zwei Felder auf einmal. "
-                + "Erreicht er die letzte Reihe, wird er zu einer Figur deiner "
-                + "Wahl — fast immer zur Dame."
+                + "nur SCHRÄG nach vorn — das Feld direkt vor ihm ist hier "
+                + "deshalb kein Zug. Vom Startfeld darf er zwei Felder auf "
+                + "einmal. In der letzten Reihe wird er zu einer Figur deiner "
+                + "Wahl, fast immer zur Dame."
         },
         {
             id: "springer",
@@ -110,9 +109,8 @@ const SCHACH_GRUNDLAGEN = {
                 "........"
             ],
             text: "Zwei Felder gerade, eines zur Seite — ein L. Er ist der "
-                + "einzige, der über andere Figuren HINWEGSETZT: Was dazwischen "
-                + "steht, ist ihm gleich. Dafür trifft er nie zwei Felder, die "
-                + "nebeneinanderliegen."
+                + "einzige, der über andere Figuren HINWEGSETZT. Dafür trifft "
+                + "er nie zwei Felder, die nebeneinanderliegen."
         },
         {
             id: "laeufer",
@@ -131,7 +129,8 @@ const SCHACH_GRUNDLAGEN = {
                 "........"
             ],
             text: "Schräg, so weit er will. Er bleibt sein Leben lang auf "
-                + "seiner Farbe: Ein Läufer, der auf einem hellen Feld startet, "
+                + "seiner Farbe: Ein Läufer, der auf einem hellen Feld "
+                    + "startet, "
                 + "erreicht nie ein dunkles."
         },
         {
@@ -190,9 +189,8 @@ const SCHACH_GRUNDLAGEN = {
                 "........"
             ],
             text: "Ein Feld in jede Richtung. Er zieht am wenigsten und "
-                + "entscheidet trotzdem alles: Geht er verloren, ist die Partie "
-                + "vorbei. Deshalb darf er nie auf ein Feld ziehen, auf dem er "
-                + "geschlagen werden könnte."
+                + "entscheidet alles: Geht er verloren, ist die Partie vorbei. "
+                + "Er darf nie auf ein bedrohtes Feld ziehen."
         },
 
         /* ---- Wie eine Partie ausgeht ---- */
@@ -217,11 +215,10 @@ const SCHACH_GRUNDLAGEN = {
             erwartet: "laeuft",
             imSchach: true,
             text: "Der König wird angegriffen — hier vom Turm, der die ganze "
-                + "Spalte deckt. Schach ist noch kein Ende: Du MUSST es aber "
-                + "sofort auflösen, und dafür gibt es drei Wege. Weglaufen, den "
-                + "Angreifer schlagen, oder etwas dazwischenstellen. Ein Zug, "
-                + "der das Schach stehen lässt, ist kein erlaubter Zug — das "
-                + "Brett bietet ihn gar nicht erst an."
+                + "Spalte deckt. Schach ist noch kein Ende, aber du musst es "
+                    + "sofort auflösen: weglaufen, den Angreifer schlagen oder "
+                    + "etwas dazwischenstellen. Züge, die das Schach stehen "
+                    + "lassen, bietet das Brett gar nicht erst an."
         },
         {
             id: "matt",
@@ -245,11 +242,10 @@ const SCHACH_GRUNDLAGEN = {
             ],
             amZug: "schwarz",
             erwartet: "matt",
-            text: "Schach — und keiner der drei Wege geht mehr. Weglaufen "
-                + "kann er nicht: Der gegnerische König deckt die Felder vor "
-                + "ihm, und die oberste Reihe hält der Turm. Das ist das Ende, "
-                + "und wer mattgesetzt hat, gewinnt. Merke: Der König wird nie "
-                + "wirklich geschlagen — die Partie endet einen Schritt vorher."
+            text: "Schach — und keiner der drei Wege geht mehr. Weglaufen kann "
+                + "er nicht: Der gegnerische König deckt die Felder vor ihm, "
+                + "die oberste Reihe hält der Turm. Das ist das Ende. Der König "
+                + "wird nie geschlagen — die Partie endet einen Schritt vorher."
         },
         {
             id: "patt",
@@ -274,10 +270,9 @@ const SCHACH_GRUNDLAGEN = {
             amZug: "schwarz",
             erwartet: "patt",
             text: "Der König steht NICHT im Schach — und trotzdem geht kein "
-                + "einziger Zug mehr. Das ist Patt, und die Partie endet "
-                + "unentschieden. Der häufigste Ärger im Schach: Wer weit vorn "
-                + "liegt und unaufmerksam wird, verschenkt den Sieg. Wenn dem "
-                + "Gegner fast nichts mehr bleibt, lass ihm ein Feld."
+                + "einziger Zug mehr. Das ist Patt: unentschieden. Wer weit "
+                    + "vorn liegt, verschenkt so den Sieg — lass dem Gegner ein "
+                    + "Feld."
         },
 
         /* ---- Züge, die man kennen muss ---- */
@@ -300,11 +295,9 @@ const SCHACH_GRUNDLAGEN = {
             von: [1, 1],
             nach: [0, 1],
             umwandlung: "D",
-            text: "Erreicht ein Bauer die letzte Reihe, wird er sofort zu einer "
-                + "anderen Figur — du wählst welche. Fast immer nimmt man die "
-                + "Dame. Aus dem schwächsten Stein wird damit der stärkste, und "
-                + "genau deshalb sind Bauern im Endspiel viel mehr wert, als "
-                + "sie aussehen."
+            text: "Erreicht ein Bauer die letzte Reihe, wird er zu einer Figur "
+                + "deiner Wahl — fast immer der Dame. Deshalb sind Bauern im "
+                + "Endspiel viel mehr wert, als sie aussehen."
         },
         {
             id: "rochade",
@@ -339,13 +332,11 @@ const SCHACH_GRUNDLAGEN = {
             rochadeFelder: [[7, 7]],
             von: [7, 4],
             nach: [7, 6],
-            text: "Der einzige Zug, bei dem sich ZWEI eigene Figuren bewegen: "
-                + "Der König geht zwei Felder auf den Turm zu, und der Turm "
-                + "springt auf die andere Seite. Sie bringt den König in "
-                + "Sicherheit und den Turm ins Spiel. Sie geht nur, wenn beide "
-                + "noch nie gezogen haben, dazwischen alles frei ist und der "
-                + "König weder im Schach steht noch über ein bedrohtes Feld "
-                + "läuft."
+            text: "Der einzige Zug mit ZWEI eigenen Figuren: Der König geht "
+                + "zwei Felder auf den Turm zu, der Turm springt auf die andere "
+                + "Seite. Sie geht nur, wenn beide noch nie gezogen haben, "
+                + "dazwischen alles frei ist und der König weder im Schach "
+                + "steht noch über ein bedrohtes Feld läuft."
         },
         {
             id: "enpassant",
@@ -374,10 +365,9 @@ const SCHACH_GRUNDLAGEN = {
             vorzug: { von: [1, 3], nach: [3, 3] },
             von: [3, 4],
             nach: [2, 3],
-            text: "Zieht ein gegnerischer Bauer mit seinem Doppelschritt an "
-                + "deinem Bauern vorbei, darfst du ihn trotzdem schlagen — so, "
-                + "als wäre er nur ein Feld gegangen. Aber nur SOFORT im "
-                + "nächsten Zug; wer es verpasst, hat es verpasst."
+            text: "Zieht ein gegnerischer Bauer mit dem Doppelschritt an "
+                + "deinem vorbei, darfst du ihn schlagen, als wäre er nur ein "
+                + "Feld gegangen — aber nur SOFORT im nächsten Zug."
         }
     ],
 
@@ -387,15 +377,14 @@ const SCHACH_GRUNDLAGEN = {
             id: "figuren",
             titel: "Die Figuren und wie sie ziehen",
             text: "Jede Figur hat ihre eigene Gangart. Die farbigen Punkte "
-                + "zeigen, wohin sie von dort aus ziehen könnte — gerechnet mit "
-                + "denselben Regeln, nach denen auch dein echtes Brett arbeitet."
+                + "zeigen, wohin sie von dort aus ziehen könnte."
         },
         {
             id: "werte",
             titel: "Was ist wie viel wert?",
-            text: "Eine grobe Faustregel, mit der auch die Auswertung am Ende "
-                + "der Partie rechnet. Sie sagt, ob sich ein Tausch lohnt: Turm "
-                + "gegen Läufer ist ein Gewinn, Dame gegen Springer ein Verlust."
+            text: "Eine Faustregel, mit der auch die Auswertung rechnet: Turm "
+                + "gegen Läufer ist ein Gewinn, Dame gegen Springer ein "
+                + "Verlust."
         },
         {
             id: "ausgang",
@@ -426,7 +415,8 @@ const SCHACH_GRUNDLAGEN = {
      * Wert und ein Satz dazu. Der Wert kommt aus `SCHACH_RUNDE.FIGUR_WERT`.
      */
     WERT_SATZ: {
-        K: "Unbezahlbar. Er wird nie geschlagen — geht er verloren, ist die Partie aus.",
+        K: "Unbezahlbar. Er wird nie geschlagen — geht er verloren, ist die "
+            + "Partie aus.",
         D: "Die stärkste Figur. Sie allein wiegt zwei Türme fast auf.",
         T: "Stark auf freien Linien. Zwei Türme sind mehr wert als eine Dame.",
         L: "So viel wie ein Springer — aber nur auf seiner Farbe.",

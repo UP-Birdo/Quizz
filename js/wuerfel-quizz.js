@@ -210,9 +210,8 @@ const WUERFEL_QUIZZ = {
 
         await DIALOG.hinweis(
             "Dreimal falsch",
-            "Die PIN stimmt nicht. Wenn du sie vergessen hast, muss dich jemand mit "
-                + "dem Verwaltungs-Zugang aus der Runde entfernen — danach kannst du "
-                + "dich neu anmelden."
+            "Die PIN stimmt nicht. Vergessen? Dann muss dich jemand mit dem "
+                + "Verwaltungs-Zugang aus der Runde entfernen."
         );
         return false;
     },
@@ -421,7 +420,7 @@ const WUERFEL_QUIZZ = {
         /* Festgelegt, aber der Wurf liegt woanders: Gerätewechsel. */
         if (ich.pruefwert !== "" && !wurf) {
             karte.appendChild(WUERFEL_QUIZZ._element("p", "meldung meldung-warnung",
-                "Du hast schon festgelegt, aber dieser Wurf liegt auf einem anderen "
+                "Dein Wurf liegt auf einem anderen "
                 + "Gerät. Öffne die Seite dort — oder trag hier neu ein; das wird "
                 + "dann für alle als erneute Festlegung sichtbar."));
         }

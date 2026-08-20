@@ -8047,8 +8047,14 @@ pruefe("Keine Beschreibung wird wieder zu lang (v0.94, verschaerft v0.100)", () 
      * Faehigkeiten kurz. Sonst waechst die naechste unbemerkt nach — die Mauer
      * ist nicht lang geworden, weil jemand es wollte, sondern weil bei jeder
      * Regelaenderung ein Satz dazukam.
+     *
+     * SEIT v0.106 IST DIE GRENZE 250 (vorher 400): „generell zu viel Texte
+     * ueberall" (Nutzer-Ansage 21.08.). In derselben Runde ist jede
+     * Beschreibung ueberarbeitet worden, die laengste liegt jetzt bei 239.
+     * Der Satz „Danach ist der Gegner am Zug" steht nirgends mehr — das sagt
+     * schon das fehlende Pluszeichen an der Marke.
      */
-    const grenze = 400;
+    const grenze = 250;
 
     for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
         const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung(art);

@@ -3,6 +3,41 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.106.0 — 2026-08-21
+
+**Zweiter Durchgang: Jetzt sind ALLE Texte der App kürzer.**
+
+In v0.105 waren die Einstellungen dran, diesmal alles Übrige — die
+Fähigkeiten-Bibliothek, „Schach lernen", die Bildanleitungen, die
+Punkte-Erklärungen aller drei Spiele und die Meldungen im Spiel. Gemessen sind
+es **6.600 Zeichen weniger** (von rund 39.000 auf 32.600), ohne dass eine Regel
+verlorengegangen ist.
+
+Wo am meisten wegfiel:
+
+- **Die 29 Beschreibungen der Fähigkeiten und Unglücks-Lootboxen** sind von
+  zusammen 6.250 auf 4.450 Zeichen geschrumpft. Der Satz „Danach ist der Gegner
+  am Zug" steht nirgends mehr: Das sagt schon das fehlende Pluszeichen an der
+  Marke, und die Legende darunter erklärt es.
+
+- **Die Punkte-Erklärungen** hinter dem i sind in allen drei Spielen etwa halb
+  so lang (Rangliste 1.155 → 530 Zeichen, Würfel Quizz 926 → 550, Imposter
+  852 → 530). Die Zahlen stehen jetzt als Aufzählung statt in ausformulierten
+  Sätzen.
+
+- **„Schach lernen" und die Bildanleitungen** sind gestrafft — jedes Bild
+  behält seine Aussage, aber die Nebensätze sind weg.
+
+- **Die Spielart-Kacheln** nennen die Brettmasse nicht mehr im Text; die Zahl
+  steht ohnehin darüber.
+
+Damit es so bleibt: Ein Test lässt für eine Fähigkeit jetzt höchstens 250
+Zeichen zu (vorher 400). Wer eine neue schreibt, merkt beim Testlauf, wenn sie
+zu lang gerät.
+
+Tests: 1529 Prüfungen, 0 Fehler.
+
+
 ## v0.105.0 — 2026-08-21
 
 **Der Anlege-Bildschirm ist aufgeräumt: weniger Text, mehr Übersicht.**

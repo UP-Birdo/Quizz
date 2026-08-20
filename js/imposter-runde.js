@@ -1030,26 +1030,23 @@ const IMPOSTER_RUNDE = {
 
     /* Die Punkteregeln im Wortlaut — für den i-Knopf. */
     punkteErklaerung() {
-        return "Jede Runde bringt " + IMPOSTER_RUNDE.PUNKTE_TEILNAHME
-            + " Punkte fürs Mitspielen.\n\n"
-            + "Für jeden Mitspieler, den du richtig einschätzt — Imposter oder "
-            + "nicht —, gibt es " + IMPOSTER_RUNDE.PUNKTE_RICHTIG_GETIPPT + " Punkte.\n\n"
-            + "Ein Imposter bekommt " + IMPOSTER_RUNDE.PUNKTE_IMPOSTER_UNENTDECKT
-            + " Punkte, wenn ihn weniger als die Hälfte der anderen enttarnt hat, "
-            + "und " + IMPOSTER_RUNDE.PUNKTE_WORT_ERRATEN + " Punkte, wenn er das "
-            + "Wort errät. Ein Tippfehler wird dabei verziehen.\n\n"
-            + "War die Runde in unter " + Math.round(IMPOSTER_RUNDE.TEMPO_SEKUNDEN / 60)
-            + " Minuten vorbei, bekommen alle " + IMPOSTER_RUNDE.PUNKTE_TEMPO
-            + " Punkte Zuschlag.\n\n"
-            + "Wie viele Imposter es wirklich werden, entscheidet der Zufall: Es "
-            + "können weniger sein als eingestellt, in seltenen Fällen keiner. "
-            + "Einer ist nie Imposter — sonst wüsste niemand das Wort.\n\n"
-            + "Vor jeder Runde darfst du ein eigenes Wort beisteuern. Es kommt in "
-            + "den gemeinsamen Vorrat und kann schon in derselben Runde drankommen. "
-            + "Ein Wort, das gerade dran war, wird dagegen erst nach und nach "
-            + "wieder wahrscheinlich — nach etwa "
-            + IMPOSTER_RUNDE.WIEDERHOLUNG_RUNDEN + " Runden zählt es wieder ganz "
-            + "normal mit. Gesperrt ist es nie.";
+        return "Mitspielen: " + IMPOSTER_RUNDE.PUNKTE_TEILNAHME + " Punkte.\n"
+            + "Je richtig eingeschätztem Mitspieler: "
+            + IMPOSTER_RUNDE.PUNKTE_RICHTIG_GETIPPT + ".\n"
+            + "Als Imposter: " + IMPOSTER_RUNDE.PUNKTE_IMPOSTER_UNENTDECKT
+            + ", wenn dich weniger als die Hälfte enttarnt, und "
+            + IMPOSTER_RUNDE.PUNKTE_WORT_ERRATEN + " fürs erratene Wort "
+            + "(Tippfehler verziehen).\n"
+            + "Unter " + Math.round(IMPOSTER_RUNDE.TEMPO_SEKUNDEN / 60)
+            + " Minuten: " + IMPOSTER_RUNDE.PUNKTE_TEMPO
+            + " Punkte Zuschlag für alle.\n\n"
+            + "Wie viele Imposter es werden, entscheidet der Zufall — es können "
+            + "weniger sein als eingestellt, selten keiner. Einer ist es nie, "
+            + "sonst wüsste niemand das Wort.\n\n"
+            + "Dein eigenes Wort kann schon in derselben Runde drankommen. Was "
+            + "gerade dran war, wird nach etwa "
+            + IMPOSTER_RUNDE.WIEDERHOLUNG_RUNDEN
+            + " Runden wieder normal wahrscheinlich — gesperrt ist es nie.";
     },
 
     /* ---------------------------------------------------------------- *

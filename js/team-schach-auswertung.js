@@ -692,20 +692,14 @@ Object.assign(TEAM_SCHACH, {
             () => TEAM_SCHACH.infoSchliessen()));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Auf freien Feldern erscheinen Lootboxen. Wer mit einer Figur darüber oder "
-            + "darauf zieht, sammelt ein, was darin steckt — welche Fähigkeit es ist, "
-            + "sieht man vorher nie. Nur der Springer sammelt unterwegs nichts ein: "
-            + "Er setzt über die Felder dazwischen hinweg. Manche Lootboxen bringen "
-            + "nichts Gutes und wirken sofort. Ob man ihnen das ansieht — dann steht "
-            + "ihr Fragezeichen auf dem Kopf —, entscheidet der Haken "
-            + "Unglücks-Lootboxen anzeigen beim Anlegen der Partie."));
+            "Wer mit einer Figur über eine Lootbox oder auf sie zieht, sammelt ein, "
+            + "was darin steckt — vorher sieht man es nie. Nur der Springer sammelt "
+            + "unterwegs nichts ein. Manche Lootboxen bringen nichts Gutes und wirken "
+            + "sofort; ob man ihnen das ansieht, entscheidet ein Haken beim Anlegen."));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Nach jedem Halbzug kann ein neuer dazukommen — solange ein Feld frei "
-            + "ist, hört das nicht auf. Liegen gelassene bleiben liegen, bis sie "
-            + "jemand einsammelt. Was du schon im Vorrat hast, kommt seltener nach; "
-            + "bei den seltenen Stufen weniger stark, weil es dort weniger zur "
-            + "Auswahl gibt."));
+            "Nachschub kommt, solange ein Feld frei ist; liegen gelassene bleiben "
+            + "liegen. Was du schon im Vorrat hast, kommt seltener nach."));
 
         /* Die beiden Zeichen aus dem Vorrat erklären — dort ist kein Platz
            für Text, hier schon. */
@@ -715,10 +709,8 @@ Object.assign(TEAM_SCHACH, {
         const plusZeile = TEAM_SCHACH._element("div", "stufen-eintrag");
         plusZeile.appendChild(TEAM_SCHACH._element("span", "stufen-name", "Pluszeichen"));
         plusZeile.appendChild(TEAM_SCHACH._element("span", "stufen-text",
-            "Nach dem Einsetzen bleibt dir dein normaler Zug. Fehlt es, ist der Zug "
-            + "damit weg — entweder ist gleich der Gegner dran, oder die Fähigkeit "
-            + "IST dein Zug (Sprung, Teleport). Das Zeichen gehört zur Fähigkeit: "
-            + "Es steht immer da, auch bei denen des Gegners."));
+            "Nach dem Einsetzen bleibt dir dein normaler Zug. Fehlt es, kostet die "
+            + "Fähigkeit den Zug. Das Zeichen steht immer da, auch beim Gegner."));
         legende.appendChild(plusZeile);
 
         const blitzZeile = TEAM_SCHACH._element("div", "stufen-eintrag");
@@ -1032,10 +1024,8 @@ Object.assign(TEAM_SCHACH, {
          * sieht genau das aus wie ein Fehler.
          */
         halter.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Dein Gerät ist auf weniger Bewegung eingestellt — deshalb stehen "
-            + "hier alle Bilder nebeneinander, statt nacheinander abgespielt zu "
-            + "werden. Wer den Ablauf sehen möchte, schaltet in den "
-            + "Systemeinstellungen die Animationen wieder ein."));
+            "Dein Gerät ist auf weniger Bewegung eingestellt — deshalb stehen alle "
+            + "Bilder nebeneinander, statt abgespielt zu werden."));
 
         for (let nummer = 0; nummer < schritte.length; nummer++) {
             const kasten = TEAM_SCHACH._element("div", "anleitung-bild");

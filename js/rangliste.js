@@ -315,33 +315,20 @@ const RANGLISTE = {
 
     /* Die Regeln im Wortlaut, aus denselben Konstanten wie die Rechnung. */
     erklaerung() {
-        return "Die Rangliste zählt alle Spiele zusammen.\n\n"
-            + "WÜRFEL QUIZZ\n"
-            + "Es zählen die Punkte aus dem Punktestand des Spiels. Wie sie "
-            + "entstehen, steht dort hinter dem i-Knopf.\n\n"
-            + "TEAM SCHACH\n"
-            + "Gewertet wird jede beendete Partie, für jeden, der zu diesem "
-            + "Zeitpunkt in einem der beiden Teams stand:\n"
-            + "Sieg: " + RANGLISTE.PUNKTE_SIEG + " Punkte.\n"
-            + "Unentschieden: " + RANGLISTE.PUNKTE_REMIS + " Punkte.\n"
-            + "Dabeigewesen: " + RANGLISTE.PUNKTE_TEILNAHME + " Punkte, "
-            + "zusätzlich zum Ergebnis.\n"
-            + "Geschlagene Figuren: " + RANGLISTE.PUNKTE_JE_FIGURENWERT
-            + " Punkte je Figurenwert (Bauer 1, Springer und Läufer 3, Turm 5, "
-            + "Dame 9), höchstens " + RANGLISTE.PUNKTE_BEUTE_HOECHSTENS
-            + " Punkte je Partie. Auch eine verlorene Partie war Arbeit, wenn "
-            + "man dem Gegner die Dame abgenommen hat.\n\n"
-            + "Laufende Partien zählen nicht mit — erst das Ergebnis bringt "
-            + "Punkte. Alle aus dem Siegerteam bekommen dieselben Punkte; wer "
-            + "wie viele Züge gemacht hat, spielt keine Rolle. Das ist gewollt, "
-            + "denn im Team gibt es keine Reihenfolge.\n\n"
-            + "IMPOSTER\n"
-            + "Gewertet wird die aufgelöste Runde jedes Raums; die Punkte aus "
-            + "allen Räumen werden addiert. Wie sie entstehen, steht im Spiel "
-            + "hinter dem i-Knopf. Startet ein Raum neu, zählen dort die neuen "
-            + "Punkte statt der alten — anders als beim Schach, wo jedes "
-            + "Ergebnis dauerhaft festgeschrieben wird.\n\n"
-            + "Bei Gleichstand entscheidet der Name, nicht der Zufall.";
+        return "Alle drei Spiele zusammengezählt.\n\n"
+            + "WÜRFEL QUIZZ und IMPOSTER\n"
+            + "Die Punkte des jeweiligen Spiels; wie sie entstehen, steht dort "
+            + "hinter dem i. Beim Imposter zählt die letzte Runde jedes Raums.\n\n"
+            + "TEAM SCHACH — je beendeter Partie, für jeden im Team:\n"
+            + "Sieg " + RANGLISTE.PUNKTE_SIEG + ", unentschieden "
+            + RANGLISTE.PUNKTE_REMIS + ", dabeigewesen "
+            + RANGLISTE.PUNKTE_TEILNAHME + " (zusätzlich).\n"
+            + "Beute: " + RANGLISTE.PUNKTE_JE_FIGURENWERT + " je Figurenwert "
+            + "(Bauer 1, Springer und Läufer 3, Turm 5, Dame 9), höchstens "
+            + RANGLISTE.PUNKTE_BEUTE_HOECHSTENS + " je Partie.\n\n"
+            + "Laufende Partien zählen nicht. Im Team bekommen alle dasselbe — "
+            + "wer wie viel gezogen hat, zählt nicht. Bei Gleichstand "
+            + "entscheidet der Name.";
     },
 
     /* ---------------------------------------------------------------- *

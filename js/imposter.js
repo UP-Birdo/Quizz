@@ -433,10 +433,8 @@ const IMPOSTER = {
         wurzel.appendChild(kopf);
 
         wurzel.appendChild(IMPOSTER._element("p", "erklaerung",
-            "Hier stehen alle Wörter. Ergänzte Wörter gelten für alle Räume — "
-            + "sie liegen im gemeinsamen Stand, damit jedes Gerät aus derselben "
-            + "Liste zieht. Der feste Katalog lässt sich hier nicht ändern; er "
-            + "steht in js/imposter-woerter.js."));
+            "Ergänzte Wörter gelten für alle Räume. Der feste Katalog lässt sich "
+            + "hier nicht ändern."));
 
         /* Die festen Themen, dann die selbst angelegten — sonst könnte man die
            Wörter, die jemand beigesteuert hat, nirgends mehr ansehen. */
@@ -1113,7 +1111,7 @@ const IMPOSTER = {
     async wortBeisteuern() {
         const wort = await DIALOG.eingabe(
             "Dein Wort für später",
-            "Ein Wort, das man beschreiben kann, ohne es zu nennen. Es kommt in "
+            "Ein Wort, das man beschreiben kann, ohne es zu nennen. Es kommt "
                 + "den gemeinsamen Vorrat — vielleicht schon in dieser Runde. "
                 + "Leer lassen und weiter, wenn dir keines einfällt.",
             "",

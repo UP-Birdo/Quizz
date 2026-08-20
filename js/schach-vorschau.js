@@ -130,9 +130,11 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 25,
             ziel: -1,
-            vorher: "Die schwarze Dame steht schräg versetzt — gerade kommt der Turm "
+            vorher: "Die schwarze Dame steht schräg versetzt — gerade kommt "
+                + "der Turm "
                 + "dort nie hin.",
-            nachher: "Mit Sprung geht er wie ein Springer. Vier neue Punkte stehen "
+            nachher: "Mit Sprung geht er wie ein Springer. Vier neue Punkte "
+                + "stehen "
                 + "auf dem Brett — und auf einem davon steht die Dame."
         },
 
@@ -169,12 +171,13 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             ziel: -1,
-            vorher: "Der Turm ist von den eigenen Leuten zugestellt — kein einziger "
-                + "Zug bleibt ihm, und der Springer holt ihn beim nächsten Mal.",
-            nachher: "Ausweichen öffnet ihm ein Feld in jede Richtung, auch schräg. "
-                + "Hier ist genau eines frei — und dort kommt der Springer nicht "
-                + "hin. Nur auf FREIE Felder, geschlagen wird dabei nicht: Es ist "
-                + "die Notbremse, kein Angriff."
+            vorher: "Der Turm ist von den eigenen Leuten zugestellt — kein "
+                + "einziger "
+                + "Zug bleibt ihm, und der Springer holt ihn beim nächsten "
+                    + "Mal.",
+            nachher: "Ausweichen öffnet ihm ein Feld in jede Richtung. Hier "
+                + "ist genau eines frei — und dort kommt der Springer nicht "
+                + "hin. Nur auf FREIE Felder, geschlagen wird nicht."
         },
 
         /*
@@ -199,9 +202,11 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             ziel: -1,
-            vorher: "Der Turm ist von den eigenen Leuten eingemauert — kein Zug "
+            vorher: "Der Turm ist von den eigenen Leuten eingemauert — kein "
+                + "Zug "
                 + "bleibt ihm, und der Springer holt ihn beim nächsten Mal.",
-            nachher: "Der Teleport setzt über alles hinweg, auf ein freies Feld im "
+            nachher: "Der Teleport setzt über alles hinweg, auf ein freies "
+                + "Feld im "
                 + "Umkreis von zwei. Er kommt heraus — und nimmt von dort den "
                 + "Springer ins Visier."
         },
@@ -230,11 +235,14 @@ const SCHACH_VORSCHAU = {
             /* Das dritte Bild zeigt, was das Pluszeichen wert ist: Der Zug ist
                noch da, und der Weg ist jetzt frei (seit v0.80). */
             nachspiel: [20, 14],
-            vorher: "Der schwarze Bauer steht deinem Bauern direkt im Weg — keiner "
+            vorher: "Der schwarze Bauer steht deinem Bauern direkt im Weg — "
+                + "keiner "
                 + "von beiden kommt vorbei.",
-            nachher: "Ein Schubs, und er steht ein Feld weiter hinten. Geschlagen "
+            nachher: "Ein Schubs, und er steht ein Feld weiter hinten. "
+                + "Geschlagen "
                 + "wird dabei nichts.",
-            nachsatz: "Und dein Zug gehört immer noch dir: Der Bauer rückt sofort "
+            nachsatz: "Und dein Zug gehört immer noch dir: Der Bauer rückt "
+                + "sofort "
                 + "in die Lücke nach."
         },
 
@@ -259,9 +267,11 @@ const SCHACH_VORSCHAU = {
                Der Läufer schlägt im selben Zug, für den er eben erst frei
                geworden ist. */
             nachspiel: [26, 12],
-            vorher: "Dein Läufer steht hinter dem eigenen Bauern und sieht keine "
+            vorher: "Dein Läufer steht hinter dem eigenen Bauern und sieht "
+                + "keine "
                 + "einzige Diagonale.",
-            nachher: "Die beiden tauschen die Plätze: Der Läufer steht vorn, der "
+            nachher: "Die beiden tauschen die Plätze: Der Läufer steht vorn, "
+                + "der "
                 + "Bauer rückt nach hinten.",
             nachsatz: "Und dein Zug bleibt dir — der Läufer holt sich den Turm "
                 + "gleich selbst."
@@ -290,9 +300,12 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: -1,
-            vorher: "Drei eigene Bauern — und einer steht kurz vor der letzten Reihe.",
-            nachher: "Alle rücken auf einmal vor: Der vorderste wandelt um, und der "
-                + "mittlere greift jetzt den Läufer an. Danach ist der Gegner am Zug."
+            vorher: "Drei eigene Bauern — und einer steht kurz vor der letzten "
+                + "Reihe.",
+            nachher: "Alle rücken auf einmal vor: Der vorderste wandelt um, "
+                + "und der "
+                + "mittlere greift jetzt den Läufer an. Danach ist der Gegner "
+                    + "am Zug."
         },
         schutzschild: {
             brett: [
@@ -306,17 +319,18 @@ const SCHACH_VORSCHAU = {
             figur: 14,
             ziel: 14,
             nachspiel: [34, 16],
-            vorher: "Der schwarze Turm steht deiner Dame gegenüber — er schlägt sie "
+            vorher: "Der schwarze Turm steht deiner Dame gegenüber — er "
+                + "schlägt sie "
                 + "als Nächstes.",
             nachher: "Mit dem Schild überlebt sie den Schlag: Er verpufft, der "
                 + "Angreifer bleibt stehen. Die Zahl sagt, wie lange es hält.",
             /* Der Satz sagt seit v0.75 ausdrücklich, WOZU das gut ist (Meldung
                I14): Man greift woanders an, ohne Angst um die Dame — der
                schwarze Turm steht ja noch da und zielt weiter auf sie. */
-            nachsatz: "Und weil das Schild dich keinen Zug kostet, greifst du im "
-                + "selben Atemzug woanders an: Dein Turm holt sich den Läufer. Um "
-                + "die Dame musst du dabei keine Angst haben — der schwarze Turm "
-                + "zielt weiter auf sie, aber sein Schlag verpufft."
+            nachsatz: "Weil das Schild keinen Zug kostet, greifst du im selben "
+                + "Atemzug woanders an: Dein Turm holt sich den Läufer. Der "
+                + "schwarze Turm zielt weiter auf die Dame — sein Schlag "
+                + "verpufft."
         },
         /* Das Erdbeben ist seit v0.54 ein Unglückswürfel — sein Beispiel steht
            weiter unten bei `PECH_BEISPIELE`. */
@@ -347,13 +361,13 @@ const SCHACH_VORSCHAU = {
                Zug, danach ist der Gegner dran — ein eigener Zug im Anschluss
                wäre eine Lüge im Bild. Bis v0.79 zeigte das dritte Bild genau
                das, was die Fähigkeit jetzt nicht mehr hergibt. */
-            vorher: "Angetippt wird ein Feld deiner eigenen Grundreihe — unten am "
+            vorher: "Angetippt wird ein Feld deiner eigenen Grundreihe — unten "
+                + "am "
                 + "Brett. Gerollt werden die beiden Spalten darüber, über die "
                 + "ganze Höhe.",
-            nachher: "Jede Figur in diesen beiden Spalten rückt ein Feld nach "
-                + "vorn, von dir weg — die eigenen wie die fremden, vom "
-                + "untersten bis zum obersten Feld. Das Nudelholz IST dein Zug: "
-                + "Danach ist der Gegner dran."
+            nachher: "Jede Figur in diesen beiden Spalten rückt ein Feld von "
+                + "dir weg — die eigenen wie die fremden. Das Nudelholz IST "
+                + "dein Zug."
         },
 
         /*
@@ -376,9 +390,11 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: 31,
-            vorher: "Der schwarze Läufer steht auf der langen Diagonale und zielt auf "
+            vorher: "Der schwarze Läufer steht auf der langen Diagonale und "
+                + "zielt auf "
                 + "deinen Turm. Gedeckt ist der von niemandem.",
-            nachher: "Der neue Bauer tritt auf deiner Grundreihe an und deckt genau "
+            nachher: "Der neue Bauer tritt auf deiner Grundreihe an und deckt "
+                + "genau "
                 + "dieses Feld. Jetzt kostet der Schlag den Läufer."
         },
         mauer: {
@@ -393,12 +409,16 @@ const SCHACH_VORSCHAU = {
             figur: -1,
             ziel: 14,
             nachspiel: [19, 6],
-            vorher: "Der schwarze Turm zielt die ganze Spalte hinunter auf deine Dame.",
-            nachher: "Die Mauer legt sich um das angetippte Feld und sperrt die "
+            vorher: "Der schwarze Turm zielt die ganze Spalte hinunter auf "
+                + "deine Dame.",
+            nachher: "Die Mauer legt sich um das angetippte Feld und sperrt "
+                + "die "
                 + "Spalte — für beide Seiten. Die Zahl zählt herunter, bis sie "
                 + "zerfällt.",
-            nachsatz: "Nur Springer setzen darüber hinweg — und weil die Mauer dich "
-                + "keinen Zug kostet, tut deiner das sofort und holt den Läufer."
+            nachsatz: "Nur Springer setzen darüber hinweg — und weil die Mauer "
+                + "dich "
+                + "keinen Zug kostet, tut deiner das sofort und holt den "
+                    + "Läufer."
         },
 
         /* ---- Episch: kostet den Gegner etwas ---- */
@@ -428,13 +448,13 @@ const SCHACH_VORSCHAU = {
             figur: 8,
             ziel: 8,
             nachspiel: [34, 16],
-            vorher: "Springer und Läufer haben beide deine Dame im Visier — einer "
+            vorher: "Springer und Läufer haben beide deine Dame im Visier — "
+                + "einer "
                 + "von ihnen holt sie.",
-            nachher: "Der Frost sperrt ein 2-mal-2-Feld: Beide kommen einen Zug "
-                + "lang nicht heraus und sind in dieser Zeit auch nicht zu "
-                + "schlagen. Innerhalb des Blocks dürfen sie sich bewegen — er "
-                + "ist eine Mauer aussen herum, kein Anker. Die blaue Linie zeigt, "
-                + "wer eingesperrt ist.",
+            nachher: "Der Frost sperrt ein 2-mal-2-Feld: Beide kommen einen "
+                + "Zug lang nicht heraus und sind so lange auch nicht zu "
+                + "schlagen. Innen dürfen sie sich bewegen — die blaue Linie "
+                + "zeigt den Block.",
             nachsatz: "Und weil er dich keinen Zug kostet, holt sich dein Turm "
                 + "derweil den Bauern, auf den er die ganze Zeit gezielt hat."
         },
@@ -449,9 +469,12 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             ziel: 20,
-            vorher: "Ein einzelner Bauer. An die beiden Türme kommt er nie heran.",
-            nachher: "Er steigt eine Stufe auf: Aus dem Bauern wird ein Springer — "
-                + "und der bedroht von hier aus gleich beide. Danach ist der Gegner "
+            vorher: "Ein einzelner Bauer. An die beiden Türme kommt er nie "
+                + "heran.",
+            nachher: "Er steigt eine Stufe auf: Aus dem Bauern wird ein "
+                + "Springer — "
+                + "und der bedroht von hier aus gleich beide. Danach ist der "
+                    + "Gegner "
                 + "am Zug."
         },
         /*
@@ -487,11 +510,15 @@ const SCHACH_VORSCHAU = {
             nachschlag: [32, 14],
             vorher: "Der schwarze Läufer greift deinen Bauern an — und könnte "
                 + "jederzeit wegziehen.",
-            nachher: "Gefesselt: Er bleibt mehrere Züge stehen. Die Zahl an seinem "
-                + "Feld zählt herunter — geschlagen werden kann er dabei ganz normal.",
-            nachsatz: "Die Fessel kostet dich keinen Zug: Du stellst deinen Turm "
+            nachher: "Gefesselt: Er bleibt mehrere Züge stehen. Die Zahl an "
+                + "seinem "
+                + "Feld zählt herunter — geschlagen werden kann er dabei ganz "
+                    + "normal.",
+            nachsatz: "Die Fessel kostet dich keinen Zug: Du stellst deinen "
+                + "Turm "
                 + "gleich so, dass er ihn als Nächstes holt.",
-            nachschlagSatz: "Der Gegner zieht — nur der Läufer nicht, der steht "
+            nachschlagSatz: "Der Gegner zieht — nur der Läufer nicht, der "
+                + "steht "
                 + "fest. Und dann holt ihn dein Turm wirklich."
         },
 
@@ -524,9 +551,11 @@ const SCHACH_VORSCHAU = {
             ziel: -1,
             zug: [20, 14],
             nachspiel: [14, 16],
-            vorher: "Der Turm kann den Bauern schlagen — und dahinter steht noch "
+            vorher: "Der Turm kann den Bauern schlagen — und dahinter steht "
+                + "noch "
                 + "ein Läufer.",
-            nachher: "Geschlagen, und dein Team ist sofort wieder am Zug: Die Punkte "
+            nachher: "Geschlagen, und dein Team ist sofort wieder am Zug: Die "
+                + "Punkte "
                 + "zeigen, wohin derselbe Turm gleich noch darf.",
             nachsatz: "Er nimmt den Läufer dazu — zwei Figuren, ein Zugrecht."
         },
@@ -561,11 +590,14 @@ const SCHACH_VORSCHAU = {
             figur: -1,
             ziel: 33,
             todeszug: [8, 26],
-            vorspiel: "Deine Dame steht mitten auf dem Brett — und der schwarze Turm "
+            vorspiel: "Deine Dame steht mitten auf dem Brett — und der "
+                + "schwarze Turm "
                 + "hat freie Bahn auf sie.",
-            vorher: "Er schlägt sie. Angetippt wird jetzt ein freies Feld deiner "
+            vorher: "Er schlägt sie. Angetippt wird jetzt ein freies Feld "
+                + "deiner "
                 + "eigenen Grundreihe.",
-            nachher: "Sie kehrt zurück — hinten, weit weg vom Geschehen. Danach ist "
+            nachher: "Sie kehrt zurück — hinten, weit weg vom Geschehen. "
+                + "Danach ist "
                 + "der Gegner am Zug."
         },
         spiegel: {
@@ -579,9 +611,12 @@ const SCHACH_VORSCHAU = {
             ],
             figur: 20,
             ziel: 20,
-            vorher: "Der schwarze Turm steht deiner Dame gegenüber. Eine Dame ist gut.",
-            nachher: "Zwei sind besser: Die Kopie erscheint auf einem freien Feld "
-                + "daneben — aus dem Nichts steht dort eine zweite. Danach ist der "
+            vorher: "Der schwarze Turm steht deiner Dame gegenüber. Eine Dame "
+                + "ist gut.",
+            nachher: "Zwei sind besser: Die Kopie erscheint auf einem freien "
+                + "Feld "
+                + "daneben — aus dem Nichts steht dort eine zweite. Danach ist "
+                    + "der "
                 + "Gegner am Zug."
         },
         wiederbelebung: {
@@ -598,9 +633,11 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             ziel: 20,
             gefallen: [{ art: "T", feld: 20 }],
-            vorher: "Hier fiel dein Turm — direkt vor dem gegnerischen. Blass siehst "
+            vorher: "Hier fiel dein Turm — direkt vor dem gegnerischen. Blass "
+                + "siehst "
                 + "du, wo. Das Feld ist frei.",
-            nachher: "Er steht genau dort wieder auf, mitten im Geschehen, und hält "
+            nachher: "Er steht genau dort wieder auf, mitten im Geschehen, und "
+                + "hält "
                 + "den Gegner sofort auf. Danach ist der Gegner am Zug."
         },
         friedhof: {
@@ -629,10 +666,13 @@ const SCHACH_VORSCHAU = {
                 { art: "S", feld: 20 },
                 { art: "T", feld: 21 }
             ],
-            vorher: "Hier sind vier GEGNER gefallen — blass siehst du, wo. Angetippt "
+            vorher: "Hier sind vier GEGNER gefallen — blass siehst du, wo. "
+                + "Angetippt "
                 + "wird die linke obere Ecke des 2-mal-2-Feldes.",
-            nachher: "Genau die, die dort fielen, stehen in DEINER Farbe wieder auf "
-                + "— jeder auf seinem Feld. Die Zahl sagt, wie lange sie bleiben: "
+            nachher: "Genau die, die dort fielen, stehen in DEINER Farbe "
+                + "wieder auf "
+                + "— jeder auf seinem Feld. Die Zahl sagt, wie lange sie "
+                    + "bleiben: "
                 + "Je stärker die Figur, desto kürzer."
         },
         /*
@@ -655,8 +695,10 @@ const SCHACH_VORSCHAU = {
             ziel: -1,
             vorher: "Bauern, Türme, ein Springer, ein Läufer, eine Dame — der "
                 + "Händler bedient sich aus dem, was du dastehen hast.",
-            nachher: "Angenommen: Der Tausch ist vollzogen, ungefähr gleichwertig. "
-                + "Was er anbietet, wechselt mit jedem Zug — und danach ist der "
+            nachher: "Angenommen: Der Tausch ist vollzogen, ungefähr "
+                + "gleichwertig. "
+                + "Was er anbietet, wechselt mit jedem Zug — und danach ist "
+                    + "der "
                 + "Gegner am Zug."
         },
 
@@ -678,12 +720,14 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: -1,
-            vorher: "Diese Partie verbirgt die Seltenheit: Jede liegende Lootbox "
-                + "sieht aus wie jede andere, man weiss nie, ob sich das Einsammeln "
+            vorher: "Diese Partie verbirgt die Seltenheit: Jede liegende "
+                + "Lootbox "
+                + "sieht aus wie jede andere, man weiss nie, ob sich das "
+                    + "Einsammeln "
                 + "lohnt.",
-            nachher: "Enttarnt: Für 6 Halbzüge trägt jede Lootbox ihre Farbe — du "
-                + "siehst, wie SELTEN sie ist. Was drin steckt, verrät sie weiter "
-                + "nicht, und der Gegner sieht davon nichts. Du bleibst am Zug."
+            nachher: "Enttarnt: Für 6 Halbzüge trägt jede Lootbox ihre Farbe — "
+                + "du siehst, wie SELTEN sie ist. Was drin steckt, verrät sie "
+                + "nicht."
         },
 
         /*
@@ -703,9 +747,11 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: -1,
-            vorher: "Diese Partie zeigt die Seltenheit: Jeder sieht an der Farbe, "
+            vorher: "Diese Partie zeigt die Seltenheit: Jeder sieht an der "
+                + "Farbe, "
                 + "welche Lootbox sich lohnt — und der Gegner rechnet damit.",
-            nachher: "Versteckt: Für 6 Halbzüge sieht der Gegner nur noch graue "
+            nachher: "Versteckt: Für 6 Halbzüge sieht der Gegner nur noch "
+                + "graue "
                 + "Lootboxen und muss raten, welche etwas taugt. Du siehst die "
                 + "Farben weiter. Du bleibst am Zug."
         },
@@ -725,10 +771,13 @@ const SCHACH_VORSCHAU = {
                das Beispiel liesse sich nicht bauen. */
             gegnerVorrat: ["sprung", "mauer"],
             vorher: "Der Griff geht nicht aufs Brett, sondern in den Vorrat: "
-                + "Du siehst vorher, welche bis zu zwei Fähigkeiten du dem Gegner "
+                + "Du siehst vorher, welche bis zu zwei Fähigkeiten du dem "
+                    + "Gegner "
                 + "abnimmst.",
-            nachher: "Angenommen: Die Fähigkeiten liegen jetzt in DEINEM Vorrat, "
-                + "beim Gegner fehlen sie. Auf dem Brett ändert sich dabei nichts — "
+            nachher: "Angenommen: Die Fähigkeiten liegen jetzt in DEINEM "
+                + "Vorrat, "
+                + "beim Gegner fehlen sie. Auf dem Brett ändert sich dabei "
+                    + "nichts — "
                 + "und danach ist der Gegner am Zug."
         }
     },
@@ -777,10 +826,13 @@ const SCHACH_VORSCHAU = {
             figur: 32,
             wuerfel: 20,
             zug: [32, 8],
-            vorher: "Der Turm will die Spalte hinauf und den Läufer schlagen — auf "
+            vorher: "Der Turm will die Spalte hinauf und den Läufer schlagen — "
+                + "auf "
                 + "dem Weg liegt eine Lootbox.",
-            nachher: "Es war ein schlechter: Er stolpert am Stein zurück, dorthin, "
-                + "wo er hergekommen ist. Der Läufer steht noch — wer sein Ziel "
+            nachher: "Es war ein schlechter: Er stolpert am Stein zurück, "
+                + "dorthin, "
+                + "wo er hergekommen ist. Der Läufer steht noch — wer sein "
+                    + "Ziel "
                 + "nicht erreicht, schlägt dort auch nichts."
         },
 
@@ -809,13 +861,14 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             wuerfel: 14,
             zug: [20, 8],
-            vorher: "Der Turm ist von den eigenen Leuten eingebaut — heraus kommt er "
-                + "nur nach oben. Dort liegt eine Lootbox, und dahinter steht der "
+            vorher: "Der Turm ist von den eigenen Leuten eingebaut — heraus "
+                + "kommt er "
+                + "nur nach oben. Dort liegt eine Lootbox, und dahinter steht "
+                    + "der "
                 + "Springer, den er holen will.",
             nachher: "Geschlagen hat er ihn — die Lootbox war trotzdem eine "
-                + "schlechte: Für DICH sehen die übrigen gegnerischen Figuren eine "
-                + "Weile falsch aus. Sie ziehen wie immer, der Gegner merkt nichts "
-                + "davon."
+                + "schlechte: Für DICH sehen die gegnerischen Figuren eine "
+                + "Weile falsch aus. Sie ziehen wie immer."
         },
 
         /*
@@ -850,10 +903,13 @@ const SCHACH_VORSCHAU = {
             figur: 26,
             wuerfel: 20,
             zug: [26, 20],
-            vorher: "Ein Zug noch, dann wandelt dein Bauer um — und der Turm holt "
+            vorher: "Ein Zug noch, dann wandelt dein Bauer um — und der Turm "
+                + "holt "
                 + "sich vorher noch die Lootbox.",
-            nachher: "Es war ein schlechter: Das Brett wächst an einer zufälligen "
-                + "Seite. Plötzlich ist alles weiter weg, und der Bauer braucht "
+            nachher: "Es war ein schlechter: Das Brett wächst an einer "
+                + "zufälligen "
+                + "Seite. Plötzlich ist alles weiter weg, und der Bauer "
+                    + "braucht "
                 + "wieder länger."
         },
 
@@ -884,12 +940,12 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             wuerfel: 14,
             zug: [20, 2],
-            vorher: "Vier eigene Bauern halten die Ränder, und der Turm zieht auf "
+            vorher: "Vier eigene Bauern halten die Ränder, und der Turm zieht "
+                + "auf "
                 + "den gegnerischen los — die Lootbox liegt auf dem Weg.",
-            nachher: "Geschlagen hat er ihn: Der Angriff geht durch. Die Lootbox war "
-                + "trotzdem eine schlechte — eine ganze Reihe oder Spalte bricht "
-                + "weg, und was dort stand, stürzt mit. Es trifft die eigenen Leute "
-                + "genauso."
+            nachher: "Der Angriff geht durch, die Lootbox war trotzdem eine "
+                + "schlechte: Eine ganze Reihe bricht weg, und was dort stand, "
+                + "stürzt mit — auch die eigenen Leute."
         },
         /*
          * ERDBEBEN NEU GESTELLT (v0.58, Punkt H8).
@@ -925,12 +981,12 @@ const SCHACH_VORSCHAU = {
             figur: 32,
             wuerfel: 20,
             zug: [32, 2],
-            vorher: "Der Turm will die ganze Spalte hinauf und den Läufer schlagen — "
+            vorher: "Der Turm will die ganze Spalte hinauf und den Läufer "
+                + "schlagen — "
                 + "die Lootbox nimmt er unterwegs mit, ohne stehen zu bleiben.",
-            nachher: "Es war eine schlechte: Der Boden reisst SOFORT auf, mitten in "
-                + "seinem Weg. Oben kommt er nicht mehr an — der Zug endet vor dem "
-                + "Loch, und der Läufer bleibt stehen. Die Risse bleiben die ganze "
-                + "Partie; nur Springer setzen darüber."
+            nachher: "Es war eine schlechte: Der Boden reisst SOFORT auf, "
+                + "mitten in seinem Weg — der Zug endet vor dem Loch. Die Risse "
+                + "bleiben die ganze Partie."
         },
 
         /*
@@ -950,9 +1006,11 @@ const SCHACH_VORSCHAU = {
             figur: 20,
             wuerfel: 14,
             zug: [20, 14],
-            vorher: "Dein Angriff steht: Der Turm rückt vor, und der Bauer nimmt "
+            vorher: "Dein Angriff steht: Der Turm rückt vor, und der Bauer "
+                + "nimmt "
                 + "schon den zweiten ins Visier.",
-            nachher: "Alle eigenen Figuren rutschen ein Feld zurück — nicht nur die, "
+            nachher: "Alle eigenen Figuren rutschen ein Feld zurück — nicht "
+                + "nur die, "
                 + "die die Lootbox eingesammelt hat. Beide Angriffe sind dahin."
         },
         /*
@@ -979,9 +1037,9 @@ const SCHACH_VORSCHAU = {
             wuerfel: 20,
             zug: [14, 20],
             vorher: "Zwei Türme, und noch gehören beide dir.",
-            nachher: "Einer läuft zum Gegner über und kämpft ab sofort GEGEN dich — "
-                + "der Unterschied ist doppelt so gross wie ein Verlust, und beim "
-                + "nächsten Zug kostet er dich etwas. Könige meutern nicht."
+            nachher: "Einer läuft zum Gegner über und kämpft ab sofort GEGEN "
+                + "dich — doppelt so schlimm wie ein Verlust. Könige meutern "
+                + "nicht."
         }
     },
 
@@ -1080,7 +1138,7 @@ const SCHACH_VORSCHAU = {
 
         if (!beispiel.todeszug) {
             return SCHACH_VORSCHAU._rundeRoh(beispiel,
-                beschreibung.nurImGegenzug ? SCHACH.gegner(SCHACH_VORSCHAU.FARBE) : "");
+                beschreibung.nurImGegenzug ? SCHACH.gegner(SCHACH_VORSCHAU.FARBE) : " ");
         }
 
         return SCHACH_VORSCHAU._nachDemTod(beispiel);
@@ -1292,10 +1350,9 @@ const SCHACH_VORSCHAU = {
                         nein: "Abbrechen"
                     },
 
-                    text: "So sieht sein Angebot aus: Erst kommt dieses Fenster. "
-                        + "Markiert ist auf dem Brett, was weggeht und wo das Neue "
-                        + "erscheint. Du darfst ablehnen — dann behältst du die "
-                        + "Fähigkeit."
+                    text: "So sieht sein Angebot aus. Markiert ist, was "
+                        + "weggeht und wo das Neue erscheint. Du darfst "
+                        + "ablehnen."
                 }));
             }
         }
@@ -1495,7 +1552,8 @@ const SCHACH_VORSCHAU = {
             runde: gezogen,
             marken: [beispiel.nachspiel[1]],
             wege: [{ von: beispiel.nachspiel[0], nach: beispiel.nachspiel[1] }],
-            text: beispiel.nachsatz || ("Dein Zug bleibt dir: Die Figur geht von "
+            text: beispiel.nachsatz || ("Dein Zug bleibt dir: Die Figur geht "
+                + "von "
                 + name(beispiel.nachspiel[0]) + " nach "
                 + name(beispiel.nachspiel[1]) + ".")
         });

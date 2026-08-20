@@ -1823,9 +1823,8 @@ const TEAM_SCHACH = {
 
             const gewaehlt = await DIALOG.liste(
                 "Diese Items sind drin (" + vorrat.length + ")",
-                "Nur diese Fähigkeiten kommen in dieser Partie aus den Lootboxen "
-                    + "— für beide Seiten dieselben. Die Chancen verteilen sich "
-                    + "auf diese Liste. Tippe eine an, um zu sehen, was sie macht.",
+                "Nur diese Fähigkeiten kommen in dieser Partie vor, für beide "
+                    + "Seiten dieselben. Tippe eine an.",
                 eintraege,
                 "Los geht's");
 
@@ -2012,9 +2011,8 @@ const TEAM_SCHACH = {
 
         if (!angebot) {
             await DIALOG.hinweis("Der Händler hat nichts für dich",
-                "Für sein heutiges Angebot fehlen dir die passenden Figuren — oder "
-                + "es ist kein Platz für das, was du bekämst. Nach dem nächsten Zug "
-                + "bietet er etwas anderes an. Die Fähigkeit bleibt dir erhalten.");
+                "Dir fehlen die passenden Figuren — oder der Platz für das, was du "
+                + "bekämst. Nach dem nächsten Zug bietet er etwas anderes an.");
             return;
         }
 
@@ -2057,9 +2055,8 @@ const TEAM_SCHACH = {
 
         if (!beute) {
             await DIALOG.hinweis("Beim Gegner ist nichts zu holen",
-                "Der Gegner hat gerade keine einzige Fähigkeit im Vorrat. Sobald er "
-                + "eine Lootbox einsammelt, lohnt sich der Griff wieder — die "
-                + "Fähigkeit bleibt dir so lange erhalten.");
+                "Der Gegner hat gerade nichts im Vorrat. Der Dieb bleibt dir "
+                + "erhalten, bis sich der Griff lohnt.");
             return;
         }
 

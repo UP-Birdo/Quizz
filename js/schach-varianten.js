@@ -186,7 +186,7 @@ const SCHACH_VARIANTEN = {
             titel: "Stolperstein",
             stufe: "gruen",
             beschreibung: "Die Figur, die die Lootbox eingesammelt hat, wird ein Feld "
-                + "zurückgeworfen — zurück in Richtung der eigenen Grundreihe."
+                + "zurückgeworfen — Richtung eigener Grundreihe."
         },
         /*
          * AUSDEHNUNG UND EINSTURZ SIND SEIT v0.84 AUS DEM SPIEL GENOMMEN
@@ -208,9 +208,8 @@ const SCHACH_VARIANTEN = {
             titel: "Ausdehnung",
             stufe: "blau",
             versteckt: true,
-            beschreibung: "Das Spielfeld wächst um eine Reihe oder Spalte — oben, "
-                + "unten, links oder rechts, jede Seite mit derselben Chance von "
-                + "einem Viertel. Alle Wege werden länger."
+            beschreibung: "Das Spielfeld wächst um eine Reihe oder Spalte — jede der vier "
+                + "Seiten mit derselben Chance. Alle Wege werden länger."
         },
 
         /*
@@ -222,9 +221,9 @@ const SCHACH_VARIANTEN = {
             titel: "Einsturz",
             stufe: "blau",
             versteckt: true,
-            beschreibung: "Eine ganze Reihe oder Spalte bricht weg — zufällig eine "
-                + "der vier Seiten, aber nie eine, auf der ein König steht. Was "
-                + "dort steht, stürzt mit: Figuren wie Lootboxen."
+            beschreibung: "Eine ganze Reihe oder Spalte bricht weg — zufällig eine der "
+                + "vier Seiten, aber nie eine, auf der ein König steht. Was dort "
+                + "steht, stürzt mit."
         },
 
         /*
@@ -254,12 +253,10 @@ const SCHACH_VARIANTEN = {
         erdbeben: {
             titel: "Spalt",
             stufe: "lila",
-            beschreibung: "Der Boden reisst auf: Drei freie Felder brechen weg und "
-                + "sind ab sofort gesperrt — niemand zieht hindurch, nur Springer "
-                + "setzen darüber hinweg. Anders als eine Mauer bleiben diese Risse "
-                + "die ganze Partie. Und sie reissen SOFORT auf: Wer die Lootbox im "
-                + "Vorbeiziehen mitnimmt und danach vor einem Loch steht, bleibt "
-                + "davor stehen — der Zug endet dort."
+            beschreibung: "Drei freie Felder brechen weg und bleiben die ganze Partie "
+                + "gesperrt — nur Springer setzen darüber. Sie reissen SOFORT "
+                + "auf: Wer die Lootbox im Vorbeiziehen mitnimmt und dann vor "
+                + "einem Loch steht, bleibt davor stehen."
         },
         /*
          * „HALLUZINATION" HEISST SIE SEIT v0.73 (Meldung I11) — die KENNUNG
@@ -272,10 +269,9 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             /* Die Zahl muss zu `SCHACH_RUNDE.GLAS_HALBZUEGE` passen (seit
                v0.79 vier statt acht) — ein Test hält beide zusammen. */
-            beschreibung: "Wer sie einsammelt, sieht die gegnerischen Figuren 4 "
-                + "Halbzüge lang falsch: Sie ziehen wie immer, sehen aber aus wie "
-                + "etwas anderes. Nur die eigene Ansicht ist betroffen — der Gegner "
-                + "merkt nichts."
+            beschreibung: "Wer sie einsammelt, sieht die gegnerischen Figuren 4 Halbzüge "
+                + "lang falsch: Sie ziehen wie immer, sehen aber aus wie etwas "
+                + "anderes. Der Gegner merkt nichts."
         },
         /*
          * MEUTEREI UND ERDRUTSCH HABEN v0.41 IHRE STUFEN GETAUSCHT.
@@ -290,15 +286,15 @@ const SCHACH_VARIANTEN = {
         meuterei: {
             titel: "Meuterei",
             stufe: "gelb",
-            beschreibung: "Eine eigene Figur läuft zum Gegner über und kämpft ab "
-                + "sofort für die andere Seite. Könige meutern nicht."
+            beschreibung: "Eine eigene Figur läuft zum Gegner über und kämpft ab sofort "
+                + "für die andere Seite. Könige meutern nicht."
         },
         erdrutsch: {
             titel: "Erdrutsch",
             stufe: "lila",
-            beschreibung: "Alle eigenen Figuren rutschen ein Feld zurück in Richtung "
-                + "der eigenen Grundreihe, soweit dort Platz ist. Der ganze Angriff "
-                + "fällt in sich zusammen."
+            beschreibung: "Alle eigenen Figuren rutschen ein Feld zurück Richtung eigener "
+                + "Grundreihe, soweit dort Platz ist. Der Angriff fällt in sich "
+                + "zusammen."
         }
     },
 
@@ -760,10 +756,8 @@ const SCHACH_VARIANTEN = {
             art: "zugmuster",
             muster: "springer",
             istDerZug: true,
-            beschreibung: "Einsetzen, dann sofort springen: Eine Figur deiner Wahl "
-                + "geht jetzt wie ein Springer — und darf dabei schlagen. Der Sprung "
-                + "IST dein Zug; etwas anderes kannst du in diesem Zug nicht mehr "
-                + "machen, und danach ist der Gegner dran."
+            beschreibung: "Einsetzen, dann sofort springen: Eine Figur deiner Wahl geht "
+                + "jetzt wie ein Springer — und darf dabei schlagen."
         },
         /*
          * AUSWEICHEN GEHT SEIT v0.58 NUR NOCH IM GEGENZUG.
@@ -814,11 +808,9 @@ const SCHACH_VARIANTEN = {
             muster: "ausweichen",
             imGegenzug: true,
             nurImGegenzug: true,
-            beschreibung: "Die Notbremse: Du setzt sie ein, WÄHREND der Gegner am "
-                + "Zug ist — im eigenen Zug geht sie nicht. Danach darf eine Figur "
-                + "deiner Wahl bei deinem nächsten Zug auch ein Feld in jede "
-                + "Richtung gehen, auf ein FREIES Feld; geschlagen wird dabei "
-                + "nicht. Wer zuerst drückt, war zuerst."
+            beschreibung: "Die Notbremse: Du setzt sie ein, WÄHREND der Gegner am Zug "
+                + "ist. Danach darf eine Figur deiner Wahl bei deinem nächsten "
+                + "Zug auch ein Feld in jede Richtung gehen, auf ein FREIES Feld."
         },
         teleport: {
             titel: "Teleport",
@@ -828,10 +820,9 @@ const SCHACH_VARIANTEN = {
             istDerZug: true,
             /* Der erste Satz ist zugleich der Kurztext (`faehigkeitKurz`) und
                muss unter 150 Zeichen bleiben — ein Test hält es fest. */
-            beschreibung: "Figur antippen und Zielfeld wählen: Sie setzt auf ein "
-                + "FREIES Feld im Umkreis von zwei, über alles hinweg — geschlagen "
-                + "wird nicht. Der Teleport IST dein Zug; normal "
-                + "ziehen kannst du danach nicht mehr, es ist der Gegner dran."
+            beschreibung: "Figur antippen und Zielfeld wählen: Sie setzt auf ein FREIES "
+                + "Feld im Umkreis von zwei, über alles hinweg — geschlagen wird "
+                + "nicht."
         },
 
         /* ------------------------------------------------------------ *
@@ -864,11 +855,10 @@ const SCHACH_VARIANTEN = {
             stufe: "gruen",
             art: "ziel",
             zielArt: "gegnerFigurSchubsbar",
-            beschreibung: "Tippe eine gegnerische Figur an, die neben einer deiner "
-                + "Figuren steht: Sie wird ein Feld von dieser weggeschoben. Nur auf "
-                + "ein freies Feld — geschlagen wird nicht, und Könige bleiben stehen. "
-                + "Stehen mehrere deiner Figuren daneben, zeigt dir der Vorschau-Kasten "
-                + "vorher, wohin es geht. Dein Zug bleibt dir."
+            beschreibung: "Eine gegnerische Figur neben einer deiner Figuren wird ein "
+                + "Feld weggeschoben. Nur auf ein freies Feld, kein Schlag, keine "
+                + "Könige. Stehen mehrere deiner Figuren daneben, zeigt der "
+                + "Vorschau-Kasten, wohin es geht."
         },
 
         platztausch: {
@@ -878,9 +868,8 @@ const SCHACH_VARIANTEN = {
             zielArt: "eigeneFigurTauschbar",
             beendetZug: true,
             beschreibung: "Eine eigene Figur tauscht den Platz mit dem Nachbarfeld "
-                + "in der gewählten Richtung. Vor, zurück, links oder rechts — auch "
-                + "mit einer gegnerischen Figur. Könige tauschen nicht. Danach ist "
-                + "der Gegner am Zug."
+                + "— vor, zurück, links oder rechts. Auch mit einer gegnerischen "
+                + "Figur; Könige tauschen nicht."
         },
 
         /* ---- Ungewöhnlich: verändert die Stellung ----
@@ -906,10 +895,9 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "sofort",
             beendetZug: true,
-            beschreibung: "Alle eigenen Bauern rücken sofort ein Feld vor, soweit "
-                + "das Feld davor frei ist. Geschlagen wird dabei nicht. Erreichen "
-                + "dabei Bauern die letzte Reihe, wandeln sie alle um — du wählst, "
-                + "in welche Figur. Danach ist der Gegner am Zug."
+            beschreibung: "Alle eigenen Bauern rücken ein Feld vor, soweit das Feld davor "
+                + "frei ist; geschlagen wird nicht. Erreicht dabei einer die "
+                + "letzte Reihe, wandelt er um."
         },
         schutzschild: {
             titel: "Schutzschild",
@@ -919,11 +907,10 @@ const SCHACH_VARIANTEN = {
             /* Der zweite Satz seit v0.69 (Wunsch #31): Dass die geschützte
                Figur stehen bleiben muss, ergab sich bisher nur aus dem
                Spielverlauf — man hat es gemerkt, nachdem es passiert war. */
-            beschreibung: "Eine eigene Figur überlebt den nächsten Angriff: Der "
-                + "Schlag verpufft, der Angreifer bleibt stehen. Achtung: Das "
-                + "Schild bleibt bei der FIGUR, nicht beim Feld — ziehst du mit "
-                + "ihr, ist es weg. Lass sie stehen, bis der Angriff kommt. Auf "
-                + "den König wirkt das Schild nicht."
+            beschreibung: "Eine eigene Figur überlebt den nächsten Angriff: Der Schlag "
+                + "verpufft, der Angreifer bleibt stehen. Das Schild hängt an der "
+                + "FIGUR — ziehst du mit ihr, ist es weg. Auf den König wirkt es "
+                + "nicht."
         },
         /*
          * DAS ERDBEBEN IST SEIT v0.54 KEINE FÄHIGKEIT MEHR.
@@ -959,10 +946,9 @@ const SCHACH_VARIANTEN = {
             zielArt: "spalte",
             beendetZug: true,
             beschreibung: "Rollt über zwei Spalten und schiebt alle Figuren darin ein "
-                + "Feld von dir weg — die eigenen wie die fremden, Könige "
-                + "eingeschlossen. Angetippt wird ein Feld deiner Grundreihe. Wo kein "
-                + "Platz ist, bleibt die Figur stehen. Das Nudelholz IST dein Zug: "
-                + "Danach ist der Gegner dran."
+                + "Feld von dir weg — eigene wie fremde, Könige eingeschlossen. "
+                + "Angetippt wird ein Feld deiner Grundreihe; wo kein Platz ist, "
+                + "bleibt die Figur stehen."
         },
 
         /*
@@ -990,8 +976,8 @@ const SCHACH_VARIANTEN = {
             zielArt: "eigeneGrundreihe",
             beendetZug: true,
             beschreibung: "Ein neuer Bauer tritt an: Du setzt ihn auf ein freies Feld "
-                + "deiner eigenen Grundreihe, also ganz unten bei dir. Ist dort kein "
-                + "Feld mehr frei, geht es nicht. Danach ist der Gegner am Zug."
+                + "deiner eigenen Grundreihe. Ist dort nichts frei, geht es "
+                + "nicht."
         },
 
         /* ---- Episch: kostet den Gegner wirklich etwas ----
@@ -1026,12 +1012,10 @@ const SCHACH_VARIANTEN = {
              * eine Regel aufhebt, sucht auch die TEXTE, die sie erklären —
              * dieselbe Lehre wie in v0.94, nur eine Ebene weiter aussen.
              */
-            beschreibung: "Friert ein 2-mal-2-Feld für einen Zug ein: Was darin "
-                + "steht, kommt nicht heraus und ist so lange auch nicht "
-                + "schlagbar — eigene Figuren eingeschlossen. Innerhalb des "
-                + "Blocks darf sich jede Figur bewegen; der Frost ist eine Mauer "
-                + "aussen herum. Angetippt wird die linke obere Ecke; mindestens "
-                + "eine Figur muss im Block stehen."
+            beschreibung: "Friert ein 2-mal-2-Feld einen Zug lang ein. Was darin steht, "
+                + "kommt nicht heraus und ist so lange auch nicht schlagbar — "
+                + "eigene Figuren eingeschlossen. Innen darf sich alles bewegen. "
+                + "Angetippt wird die linke obere Ecke."
         },
         /*
          * VERSTÄRKUNG IST SEIT v0.56 EINE AUFWERTUNGSKETTE.
@@ -1054,20 +1038,18 @@ const SCHACH_VARIANTEN = {
             beendetZug: true,
             /* Der erste Satz ist der Kurztext und bleibt unter 150 Zeichen —
                die Kette selbst steht im zweiten. */
-            beschreibung: "Eine eigene Figur steigt eine Stufe auf. Bauer wird "
-                + "Springer, Springer wird Läufer oder Turm, Läufer und Turm "
-                + "werden Dame, Dame wird König — ein zweiter König sind zwei "
-                + "Leben. Hast du schon zwei, wird einer zu zwei Damen. Danach "
-                + "ist der Gegner am Zug."
+            beschreibung: "Eine eigene Figur steigt eine Stufe auf. Bauer wird Springer, "
+                + "Springer wird Läufer oder Turm, Läufer und Turm werden Dame, "
+                + "Dame wird König — ein zweiter König sind zwei Leben."
         },
         fessel: {
             titel: "Fessel",
             stufe: "lila",
             art: "ziel",
             zielArt: "gegnerFigur",
-            beschreibung: "Eine gegnerische Figur bleibt mehrere Züge lang stehen "
-                + "— sie darf nicht ziehen, ist dabei aber ganz normal zu schlagen. "
-                + "Wie lange, steht als Zahl an ihrem Feld."
+            beschreibung: "Eine gegnerische Figur bleibt mehrere Züge lang stehen — sie "
+                + "darf nicht ziehen, ist aber ganz normal zu schlagen. Wie "
+                + "lange, steht als Zahl an ihrem Feld."
         },
 
         /* ---- Legendär: entscheidet Partien ----
@@ -1078,8 +1060,8 @@ const SCHACH_VARIANTEN = {
             titel: "Doppelzug",
             stufe: "gelb",
             art: "ablauf",
-            beschreibung: "Nach dem nächsten Zug ist dein Team sofort noch "
-                + "einmal am Zug. Der König des Gegners bleibt dabei unantastbar."
+            beschreibung: "Nach dem nächsten Zug ist dein Team sofort noch einmal am Zug. "
+                + "Der König des Gegners bleibt dabei unantastbar."
         },
         /*
          * Wiedergeburt ist seit v0.48 EPISCH, nicht mehr legendär.
@@ -1109,8 +1091,8 @@ const SCHACH_VARIANTEN = {
             art: "ziel",
             zielArt: "eigeneGrundreihe",
             beendetZug: true,
-            beschreibung: "Die zuletzt verlorene eigene Figur kehrt auf ein freies "
-                + "Feld der eigenen Grundreihe zurück. Danach ist der Gegner am Zug."
+            beschreibung: "Die zuletzt verlorene eigene Figur kehrt auf ein freies Feld "
+                + "der eigenen Grundreihe zurück."
         },
         spiegel: {
             titel: "Spiegel",
@@ -1119,8 +1101,7 @@ const SCHACH_VARIANTEN = {
             zielArt: "eigeneFigurKopierbar",
             beendetZug: true,
             beschreibung: "Verdoppelt eine eigene Figur: Die Kopie erscheint auf einem "
-                + "freien Feld daneben. Könige lassen sich nicht spiegeln. Danach ist "
-                + "der Gegner am Zug."
+                + "freien Feld daneben. Könige lassen sich nicht spiegeln."
         },
 
         /*
@@ -1137,8 +1118,8 @@ const SCHACH_VARIANTEN = {
             art: "ziel",
             zielArt: "eigenesGrab",
             beendetZug: true,
-            beschreibung: "Eine eigene geschlagene Figur steht genau dort wieder auf, "
-                + "wo sie fiel — wenn das Feld frei ist. Danach ist der Gegner am Zug."
+            beschreibung: "Eine eigene geschlagene Figur steht genau dort wieder auf, wo "
+                + "sie fiel — wenn das Feld frei ist."
         },
 
         /*
@@ -1163,11 +1144,10 @@ const SCHACH_VARIANTEN = {
              * Feinheiten (Rand, Riss) zeigt das Brett ohnehin, indem es dort
              * kein Zielfeld markiert.
              */
-            beschreibung: "Legt eine Mauer über drei freie Felder — das angetippte "
-                + "und je eines daneben, quer oder längs. Niemand zieht hindurch, "
-                + "nur Springer setzen darüber. Nach 6 Halbzügen zerfällt sie. "
-                + "Auf eine bestehende Mauer gelegt, zählt deren Restzeit dazu; "
-                + "Lootboxen darunter sind weg."
+            beschreibung: "Legt eine Mauer über drei freie Felder — das angetippte und je "
+                + "eines daneben. Niemand zieht hindurch, nur Springer setzen "
+                + "darüber. Nach 6 Halbzügen zerfällt sie; Lootboxen darunter "
+                + "sind weg."
         },
 
         /*
@@ -1183,9 +1163,8 @@ const SCHACH_VARIANTEN = {
             stufe: "lila",
             art: "handel",
             beendetZug: true,
-            beschreibung: "Ein Angebot: Figuren gegen andere Figuren, ungefähr "
-                + "gleich viel wert. Du darfst ablehnen — dann bleibt die Fähigkeit "
-                + "dir erhalten. Nimmst du an, ist danach der Gegner am Zug."
+            beschreibung: "Ein Angebot: Figuren gegen andere, ungefähr gleich viel wert. "
+                + "Du darfst ablehnen — dann bleibt die Fähigkeit dir."
         },
 
         /*
@@ -1236,10 +1215,9 @@ const SCHACH_VARIANTEN = {
             art: "sicht",
             sichtWirkung: "zeigen",
             nurOhneSeltenheit: true,
-            beschreibung: "Du allein siehst 6 Halbzüge lang an der Farbe, wie selten "
-                + "die liegenden Lootboxen sind. Gibt es nur in Partien, welche die "
-                + "Seltenheit verbergen; WAS drin steckt, verrät sie weiterhin nicht, "
-                + "und der Gegner merkt nichts. Du bleibst am Zug."
+            beschreibung: "Du allein siehst 6 Halbzüge lang an der Farbe, wie selten die "
+                + "liegenden Lootboxen sind — was drin steckt, verrät sie nicht. "
+                + "Gibt es nur in Partien, welche die Seltenheit verbergen."
         },
 
         /*
@@ -1273,10 +1251,9 @@ const SCHACH_VARIANTEN = {
             art: "sicht",
             sichtWirkung: "verbergen",
             nurMitSeltenheit: true,
-            beschreibung: "Dein Gegner sieht 6 Halbzüge lang nicht mehr, wie selten "
-                + "die liegenden Lootboxen sind. Gibt es nur in Partien, welche die "
-                + "Seltenheit zeigen; für ihn sieht dann jede aus wie jede andere, "
-                + "du selbst siehst die Farben weiter. Du bleibst am Zug."
+            beschreibung: "Dein Gegner sieht 6 Halbzüge lang nicht mehr, wie selten die "
+                + "liegenden Lootboxen sind; du selbst schon. Gibt es nur in "
+                + "Partien, welche die Seltenheit zeigen."
         },
 
         dieb: {
@@ -1284,12 +1261,10 @@ const SCHACH_VARIANTEN = {
             stufe: "lila",
             art: "diebstahl",
             beendetZug: true,
-            beschreibung: "Du nimmst dem Gegner bis zu zwei Fähigkeiten weg — sie "
-                + "wandern in deinen Vorrat. Vorher siehst du, was du bekommst, und "
-                + "darfst ablehnen; dann behältst du den Dieb, und nach dem nächsten "
-                + "Zug greift er woanders zu. Hat der Gegner nichts, geht es nicht. "
-                + "Der Bestohlene sieht im Verlauf, was ihm fehlt. "
-                + "Nimmst du an, ist danach der Gegner am Zug."
+            beschreibung: "Du nimmst dem Gegner bis zu zwei Fähigkeiten weg. Vorher "
+                + "siehst du, was du bekommst, und darfst ablehnen — dann "
+                + "behältst du den Dieb und greifst später woanders zu. Hat der "
+                + "Gegner nichts, geht es nicht."
         },
 
         /*
@@ -1308,11 +1283,10 @@ const SCHACH_VARIANTEN = {
             zielArt: "friedhofsplatz",
             beendetZug: true,
             beschreibung: "Bis zu vier gefallene GEGNER stehen auf einem freien "
-                + "2×2-Feld wieder auf — in deiner Farbe, und du ziehst mit ihnen "
-                + "wie mit eigenen. Wie lange sie bleiben, hängt von der Figur ab: "
-                + "je stärker, desto kürzer. Ein Bauer hält 8 Halbzüge durch, eine "
-                + "Dame nur 2 — sie zieht also genau einmal. Die Restzeit steht an "
-                + "ihrem Feld. Danach ist der Gegner am Zug."
+                + "2-mal-2-Feld wieder auf — in deiner Farbe, du ziehst mit ihnen "
+                + "wie mit eigenen. Je stärker die Figur, desto kürzer bleibt "
+                + "sie: Bauer 8 Halbzüge, Dame 2. Die Restzeit steht an ihrem "
+                + "Feld."
         }
     },
 
@@ -2782,12 +2756,10 @@ const SCHACH_VARIANTEN = {
 
         const anteil = Math.round(stufe.abklingen.gewicht * 100);
 
-        return "Diese Stufe hat eine Abklingzeit: Direkt nach einer Lootbox "
-            + "dieser Stufe zählt sie nur noch mit " + anteil + " Prozent ihres "
-            + "Gewichts und braucht " + stufe.abklingen.halbzuege + " Halbzüge, "
-            + "bis sie wieder voll zählt. So kommen nicht mehrere gleiche "
-            + "hintereinander; die anderen Stufen behalten ihre Chance und sind "
-            + "in dieser Zeit häufiger an der Reihe.\n\n";
+        return "Abklingzeit: Direkt nach einer Lootbox dieser Stufe zählt sie "
+            + "nur noch " + anteil + " Prozent und braucht "
+            + stufe.abklingen.halbzuege + " Halbzüge bis zurück auf voll — so "
+            + "kommen nicht mehrere gleiche hintereinander.\n\n";
     },
 
     /* Die Zahlen zu einer Stufe — hinter dem i an ihrer Überschrift. */
@@ -2800,22 +2772,15 @@ const SCHACH_VARIANTEN = {
         const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id);
         const einzeln = SCHACH_VARIANTEN.chanceVon(arten[0] || "").toFixed(1).replace(".", ",");
 
-        return "Von allen Lootboxen, die erscheinen, tragen " + stufe.chance
-            + " Prozent eine Fähigkeit dieser Stufe.\n\n"
+        return stufe.chance + " Prozent aller Lootboxen tragen diese Stufe, "
+            + "innerhalb der Stufe jede Fähigkeit gleich oft — bei "
+            + arten.length + " also je " + einzeln + " Prozent.\n\n"
             + SCHACH_VARIANTEN.abklingenErklaerung(stufe.id)
-            + "Innerhalb der Stufe sind alle gleich wahrscheinlich — bei "
-            + arten.length + " Fähigkeiten also je " + einzeln + " Prozent.\n\n"
-            + "Wie oft überhaupt eine erscheint, sagt die Stufe, die beim Anlegen "
-            + "gewählt wurde: auf der Stufe wenig nach jedem vollen Zug mit "
-            + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent, meist eine, selten zwei, "
-            + "sehr selten drei. Auf normal, viele und Regen nach jedem "
-            + "Halbzug, und umso mehr, je leerer das Brett wird. Der Nachschub "
-            + "hört nie auf, solange ein Feld frei ist; liegen gelassene Lootboxen "
-            + "bleiben liegen, bis sie jemand einsammelt.\n\n"
-            + "Jede achte Lootbox ist eine Unglücks-Lootbox (" + SCHACH_VARIANTEN.PECH_CHANCE
-            + " Prozent) — er wirkt sofort gegen den, der ihn einsammelt.\n\n"
-            + "Gewürfelt wird dabei nicht: Feld und Inhalt werden aus dem Spielstand "
-            + "gerechnet, damit alle Mitspieler dasselbe Brett sehen.";
+            + "Jede achte ist eine Unglücks-Lootbox ("
+            + SCHACH_VARIANTEN.PECH_CHANCE + " Prozent); sie wirkt sofort gegen "
+            + "den, der sie einsammelt.\n\n"
+            + "Gewürfelt wird nicht: Feld und Inhalt werden aus dem Spielstand "
+            + "gerechnet, damit alle dasselbe Brett sehen.";
     },
 
     faehigkeitenErklaerung() {
@@ -2828,13 +2793,9 @@ const SCHACH_VARIANTEN = {
             .join(" / ");
 
         let text = "Auf freien Feldern erscheinen Lootboxen — meist eine, manchmal "
-            + "mehr (" + anzahl + "). Wie oft, entscheidet die beim Anlegen "
-            + "gewählte Stufe (" + stufen + "): Die unterste wirft nach jedem "
-            + "vollen Zug mit " + SCHACH_VARIANTEN.BONUS_CHANCE + " Prozent aus, "
-            + "die drei anderen nach jedem Halbzug und umso reichlicher, je leerer "
-            + "das Brett wird. Das hört nicht auf: Solange ein Feld frei ist, kommt "
-            + "Nachschub, und liegen gelassene bleiben liegen. Wer mit einer Figur "
-            + "darauf zieht, sammelt die Fähigkeit für sein Team ein.\n\n"
+            + "mehr (" + anzahl + "). Wie oft, sagt die beim Anlegen gewählte "
+            + "Stufe (" + stufen + "). Wer mit einer Figur darauf zieht, sammelt "
+            + "die Fähigkeit für sein Team ein; liegen gelassene bleiben liegen.\n\n"
             + "Welche es wird, hängt von der Stufe ab:\n";
 
         for (const stufe of SCHACH_VARIANTEN.STUFEN) {
@@ -2850,12 +2811,11 @@ const SCHACH_VARIANTEN = {
             }
         }
 
-        text += "\nInnerhalb einer Stufe sind alle gleich wahrscheinlich. "
-            + "Gewürfelt wird dabei nicht: Feld und Fähigkeit werden aus dem "
-            + "Spielstand gerechnet, damit alle Mitspieler dasselbe Brett sehen.\n\n"
-            + "Eine Stufe mit Abklingzeit kommt direkt nach einer Lootbox dieser "
-            + "Stufe eine Weile seltener; die übrigen Stufen behalten ihre "
-            + "Chance und sind so lange häufiger an der Reihe.";
+        text += "\nInnerhalb einer Stufe sind alle gleich wahrscheinlich, und "
+            + "gewürfelt wird nicht: Feld und Fähigkeit werden aus dem Spielstand "
+            + "gerechnet, damit alle dasselbe Brett sehen. Eine Stufe mit "
+            + "Abklingzeit kommt direkt nach einer Lootbox dieser Stufe eine "
+            + "Weile seltener.";
 
         return text;
     }

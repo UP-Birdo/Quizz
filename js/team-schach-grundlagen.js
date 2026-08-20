@@ -58,10 +58,9 @@ Object.assign(TEAM_SCHACH, {
             () => TEAM_SCHACH.grundlagenSchliessen()));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Alles, was man fürs normale Schach wissen muss — in der "
-            + "Reihenfolge, in der man es braucht. Jedes Bild ist mit denselben "
-            + "Regeln gerechnet, nach denen auch euer echtes Brett arbeitet: "
-            + "Was hier steht, gilt dort auch."));
+            "Alles fürs normale Schach — in der "
+            + "Reihenfolge, in der man es braucht. Jedes Bild ist mit den echten "
+            + "Regeln gerechnet."));
 
         for (const gruppe of SCHACH_GRUNDLAGEN.GRUPPEN) {
             wurzel.appendChild(TEAM_SCHACH._grundlagenGruppeBauen(gruppe));
@@ -75,11 +74,9 @@ Object.assign(TEAM_SCHACH, {
         const abschluss = TEAM_SCHACH._element("section", "karte");
         abschluss.appendChild(TEAM_SCHACH._element("h3", "", "Und was ist hier anders?"));
         abschluss.appendChild(TEAM_SCHACH._element("p", "erklaerung",
-            "Team Schach spielt nach genau diesen Regeln — mit einer Zugabe: "
-            + "Auf dem Brett erscheinen Lootboxen, und wer darüberzieht, sammelt "
-            + "eine Fähigkeit ein. Die können Figuren zurückholen, Felder "
-            + "sperren oder eine Reihe verschieben. Schachmatt setzen können sie "
-            + "nicht — das bleibt deinem Zug vorbehalten."));
+            "Team Schach spielt nach diesen Regeln, mit einer Zugabe: Lootboxen "
+            + "auf dem Brett. Ihre Fähigkeiten können Figuren zurückholen oder "
+            + "Felder sperren — schachmatt setzen können sie nicht."));
 
         const knopf = TEAM_SCHACH._knopf("Zu den Fähigkeiten", "knopf-still knopf-klein",
             () => {

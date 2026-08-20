@@ -647,26 +647,19 @@ const MODELL = {
      */
     punkteErklaerung() {
         const nah = MODELL.PUNKTE_NAH;
-        return "So werden die Punkte vergeben:\n\n"
-            + "Für jeden Würfel, den du genau richtig geraten hast: "
-                + MODELL.PUNKTE_EXAKT + " Punkte.\n"
-            + "Für jeden Würfel, der um 1 danebenlag: " + nah[0] + " Punkte.\n"
-            + "Für jeden Würfel, der um 2 danebenlag: " + nah[1] + " Punkte.\n"
-            + "Weiter daneben: keine Punkte.\n\n"
-            + "Wer auf eine Person am besten getippt hat, bekommt zusätzlich "
-                + MODELL.PUNKTE_BONUS + " Punkte. Liegen mehrere gleichauf, "
-                + "bekommen sie den Bonus alle.\n\n"
-            + "Die Reihenfolge der Würfel zählt nie. Zuerst werden die genau "
-            + "richtigen Werte verrechnet, der Rest wird der Größe nach gepaart — "
-            + "immer so, wie es für dich am besten ist.\n\n"
-            + "Der Stern ist keine Zahl und hat zu keiner Zahl einen Abstand: "
-            + "Für ihn gibt es Punkte nur, wenn du ihn genau getroffen hast.\n\n"
-            + "Beispiel: Der Wurf ist 1, 2, 3, 4, 5 und du tippst 1, 2, 3, 4, 4. "
-            + "Vier Würfel sitzen genau (" + (4 * MODELL.PUNKTE_EXAKT) + " Punkte), "
-            + "die 4 liegt um 1 neben der 5 (" + nah[0] + " Punkte) — macht "
-            + (4 * MODELL.PUNKTE_EXAKT + nah[0]) + " Punkte.\n\n"
-            + "Gezählt wird nur gegen Mitspieler, die schon aufgedeckt haben. "
-            + "Der Punktestand wächst also mit jeder Person, die aufdeckt.";
+        return "Je Würfel: genau richtig " + MODELL.PUNKTE_EXAKT
+            + " Punkte, um 1 daneben " + nah[0] + ", um 2 daneben " + nah[1]
+            + ", weiter daneben nichts.\n\n"
+            + "Wer auf eine Person am besten getippt hat, bekommt "
+            + MODELL.PUNKTE_BONUS + " Punkte dazu — bei Gleichstand alle.\n\n"
+            + "Die Reihenfolge zählt nie: erst die genauen Treffer, der Rest "
+            + "wird der Grösse nach gepaart, immer zu deinen Gunsten. Der Stern "
+            + "hat zu keiner Zahl einen Abstand — für ihn gibt es Punkte nur "
+            + "genau getroffen.\n\n"
+            + "Beispiel: Wurf 1, 2, 3, 4, 5 und Tipp 1, 2, 3, 4, 4 — vier genau ("
+            + (4 * MODELL.PUNKTE_EXAKT) + " Punkte) plus eins daneben (" + nah[0]
+            + ") macht " + (4 * MODELL.PUNKTE_EXAKT + nah[0]) + ".\n\n"
+            + "Gezählt wird nur gegen Mitspieler, die schon aufgedeckt haben.";
     },
 
     /* ---------------------------------------------------------------- *
