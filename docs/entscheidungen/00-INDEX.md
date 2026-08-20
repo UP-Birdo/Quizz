@@ -40,6 +40,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       Wiederholung von „Richtung aus der Farbe rechnet auf dem Kreuz falsch"
     - Zwei Uhren, und die eine Funktion nahm die falsche (v0.83, behoben
       v0.83.1) — zugZaehler ist Sperr-Sicherung, stand.takt die Spiel-Uhr
+    - Eine gemischte Liste darf man nicht hinten abschneiden (v0.86) — der
+      König konnte aus der gemischten Zufallsarmee herausfallen, wenn die
+      Liste erst nach dem Mischen gekürzt wurde
 
 ## entschieden.md - Entschieden - und warum
 

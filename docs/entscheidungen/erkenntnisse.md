@@ -835,3 +835,27 @@ Frist am `zugZaehler` (`glasBis`) — jedes eingesetzte Item verkürzt es um
 einen Halbzug. Der Umbau auf `takt` braucht eine Umstiegsregel für laufende
 Partien (gespeicherte `glasBis`-Werte sind in zugZaehler-Einheiten) und steht
 in der ROADMAP, Bündel T.
+
+## Eine gemischte Liste darf man nicht hinten abschneiden (v0.86)
+
+**Symptom:** Beim Bauen der Knopfreihe für die Figurenzahl (Bündel V, V1) fiel
+auf, dass eine Zufallsarmee auf der Stufe „viel" gelegentlich ohne König
+startete — ein Zustand, den es laut Regelwerk nie geben darf.
+
+**Ursache:** `_armeeFiguren` würfelt die Figurenliste einer Seite und MISCHT
+sie danach — der König steht also an einer zufälligen Stelle in der Liste,
+nicht mehr an einer festen. Wurde diese Liste anschließend auf die Zahl der
+verfügbaren Startfelder gekürzt (einfaches Abschneiden am Ende), flog der
+König mit heraus, sobald er hinter die Schnittstelle gerutscht war. **Vor
+v0.86 fiel das nie auf**, weil die Grundzahl der Figuren nie über die Zahl der
+Startfelder hinausging — es wurde also nie gekürzt. Die neue Stufe „viel"
+liefert erstmals mehr Figuren, als Startfelder da sind, und traf den Fehler
+sofort.
+
+**Fix:** Die Feldzahl wirkt jetzt schon beim BAUEN der Liste als Obergrenze,
+nicht erst beim Kürzen danach — der König bleibt dadurch in jedem Fall Teil
+der Liste, weil er nie über die Grenze hinaus mitgewürfelt wird.
+
+**Merksatz:** Wer eine gerechnete Liste kürzt, kürzt sie beim BAUEN, nicht
+nach dem Mischen — sonst hängt ein Pflicht-Element (hier: der König) vom
+Zufall der Mischung ab, ob es die Kürzung übersteht.

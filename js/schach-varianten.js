@@ -1997,8 +1997,67 @@ const SCHACH_VARIANTEN = {
      * Mindestens zwei: der König und eine Figur. Ein König allein wäre keine
      * Partie, sondern ein Wettlauf.
      */
-    armeeAnzahl(variante) {
-        return Math.max(2, SCHACH_VARIANTEN.armeeSpalten(variante).spalten * 2);
+    /*
+     * WIE VIELE FIGUREN EINE SEITE BEKOMMT.
+     *
+     * Grundzahl ist die Breite der Aufstellung (`armeeSpalten`); seit v0.86
+     * multipliziert eine STÄRKE sie (Nutzer-Wunsch V1: „die Anzahl der Figuren
+     * auch eine Knopf-Funktion"). Die Stärke ist WAHLFREI und ohne Angabe
+     * „normal" — damit liefert jeder Aufruf von früher unverändert dasselbe.
+     *
+     * Nie unter 2: Eine Seite braucht ihren König und wenigstens eine Figur
+     * daneben. Die Zahl wirkt VOR dem Bauen der Figurenliste, nie danach —
+     * `_armeeFiguren` mischt, ein nachträgliches Abschneiden könnte also den
+     * König treffen.
+     */
+    armeeAnzahl(variante, staerkeId) {
+        const grund = SCHACH_VARIANTEN.armeeSpalten(variante).spalten * 2;
+        const anteil = SCHACH_VARIANTEN.armeeStaerkeVon(staerkeId).anteil;
+
+        return Math.max(2, Math.round(grund * anteil));
+    },
+
+    /*
+     * DIE VIER STÄRKEN DER ZUFALLSARMEE (seit v0.86).
+     *
+     * Aufgebaut wie `LOOTBOX_MENGEN` — dieselbe Knopfreihe, dieselbe Bedienung.
+     * Genannt wird ein ANTEIL statt einer festen Zahl: Die Bretter sind
+     * unterschiedlich breit, eine „8" wäre auf dem kleinen Brett unmöglich und
+     * auf dem Doppelbrett mickrig. Was am Ende herauskommt, steht als echte
+     * Zahl unter jeder Spielart-Kachel.
+     */
+    ARMEE_STAERKEN: [
+        {
+            id: "wenig",
+            titel: "wenig",
+            anteil: 0.5,
+            hinweis: "Halb so viele Figuren wie üblich — kurze, offene Partien."
+        },
+        {
+            id: "normal",
+            titel: "normal",
+            anteil: 1,
+            hinweis: "Die übliche Zahl: so breit wie die Aufstellung."
+        },
+        {
+            id: "viel",
+            titel: "viel",
+            anteil: 1.5,
+            hinweis: "Die Hälfte mehr — das Brett wird enger."
+        },
+        {
+            id: "voll",
+            titel: "voll",
+            anteil: 2,
+            hinweis: "So viele, wie auf die Startfelder passen. Mehr geht nicht: "
+                + "Was keinen Platz findet, bleibt weg."
+        }
+    ],
+
+    /* Ohne Angabe „normal" — die Zahl, die vor v0.86 galt. */
+    armeeStaerkeVon(id) {
+        return SCHACH_VARIANTEN.ARMEE_STAERKEN.find((eintrag) => eintrag.id === id)
+            || SCHACH_VARIANTEN.ARMEE_STAERKEN.find((eintrag) => eintrag.id === "normal");
     },
 
     /* Zieht eine Figur der Zufallsarmee. `wert` ist eine Zahl von 0 bis 1. */

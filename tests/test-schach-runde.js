@@ -3135,14 +3135,112 @@ function figurenZaehlen(stand, farbe) {
  * dann die Regeln setzen, dann aufstellen. (Die Tafel selbst wird hier nicht
  * geladen — diese Datei prueft die RUNDE.)
  */
-function armeePartie(varianteId, kennung, getrennt) {
+function armeePartie(varianteId, kennung, getrennt, staerke) {
     const runde = SCHACH_RUNDE.leereRunde(1000, varianteId, kennung, "Zufall");
 
     runde.regeln.zufallsArmee = true;
     runde.regeln.armeeUnterschiedlich = (getrennt === true);
+    if (staerke) {
+        runde.regeln.armeeStaerke = staerke;
+    }
 
     return SCHACH_RUNDE.armeeAufstellen(runde);
 }
+
+/* Zaehlt die Figuren einer Farbe auf einem Brett. */
+function figurenAufBrett(brett, weiss) {
+    let anzahl = 0;
+    for (const zeichen of brett) {
+        if (zeichen === ".") {
+            continue;
+        }
+        if ((zeichen === zeichen.toUpperCase()) === !!weiss) {
+            anzahl++;
+        }
+    }
+    return anzahl;
+}
+
+pruefe("Die Staerke steuert die Figurenzahl, und der Koenig bleibt IMMER (v0.86)", () => {
+    /*
+     * WUNSCH V1 (20.08.): „Die Anzahl der Figuren auch eine Knopf-Funktion."
+     *
+     * DIE GEFAHR DABEI: `_armeeFiguren` MISCHT die Figurenliste, der Koenig
+     * steht also an zufaelliger Stelle. Wer die Zahl durch Abschneiden der
+     * fertigen Liste kuerzt, loescht ihn frueher oder spaeter weg — und eine
+     * Partie ohne Koenig ist keine. Die Staerke wirkt deshalb VOR dem Bauen
+     * der Liste (`armeeAnzahl`). Genau das prueft dieser Test, ueber viele
+     * Kennungen und auf mehreren Brettern.
+     */
+    for (const varianteId of ["standard", "klein", "kreuz"]) {
+        for (const staerke of ["wenig", "normal", "viel", "voll"]) {
+            for (let nummer = 0; nummer < 12; nummer++) {
+                const runde = armeePartie(varianteId, "p-st-" + staerke + nummer,
+                    false, staerke);
+                const brett = runde.stand.brett;
+
+                wahr(brett.indexOf("K") !== -1,
+                    varianteId + "/" + staerke + ": Weiss hat einen Koenig");
+                wahr(brett.indexOf("k") !== -1,
+                    varianteId + "/" + staerke + ": Schwarz hat einen Koenig");
+            }
+        }
+    }
+});
+
+pruefe("Mehr Staerke heisst nie weniger Figuren (v0.86)", () => {
+    /*
+     * Dieselbe Leiter wie bei den Lootbox-Mengen: Keine Stufe stellt weniger
+     * auf als die darunter. Gemessen wird ueber mehrere Kennungen, damit nicht
+     * eine einzelne Ziehung das Ergebnis traegt — und auf dem klassischen
+     * Brett, wo Platz fuer alle Stufen ist.
+     */
+    const reihe = SCHACH_VARIANTEN.ARMEE_STAERKEN.map((eintrag) => eintrag.id);
+
+    const zaehlen = (staerke) => {
+        let gesamt = 0;
+        for (let nummer = 0; nummer < 20; nummer++) {
+            const runde = armeePartie("standard", "p-leiter" + nummer, false, staerke);
+            gesamt += figurenAufBrett(runde.stand.brett, true);
+        }
+        return gesamt;
+    };
+
+    let vorher = 0;
+    for (const staerke of reihe) {
+        const jetzt = zaehlen(staerke);
+        wahr(jetzt >= vorher, staerke + " stellt nicht weniger auf als die Stufe davor ("
+            + jetzt + " gegen " + vorher + ")");
+        vorher = jetzt;
+    }
+
+    /* Und die Aussenstufen unterscheiden sich wirklich — sonst waere die
+       ganze Knopfreihe eine Behauptung. */
+    wahr(zaehlen("voll") > zaehlen("wenig"), "voll stellt mehr auf als wenig");
+});
+
+pruefe("Eine Partie ohne Staerke-Angabe spielt weiter wie vor v0.86", () => {
+    /*
+     * ADDITIVER DATENVERTRAG: Ein gespeicherter Stand von frueher kennt
+     * `armeeStaerke` nicht. Er muss exakt dasselbe Brett ergeben wie „normal" —
+     * sonst stellte sich eine angefangene Partie beim naechsten Laden um.
+     */
+    const alt = armeePartie("standard", "p-alt", false);
+    const roh = JSON.parse(JSON.stringify(alt));
+    delete roh.regeln.armeeStaerke;
+
+    const wieder = SCHACH_RUNDE.normalisieren(roh);
+    gleich(wieder.regeln.armeeStaerke, "normal", "fehlende Angabe wird normal");
+
+    const gleichStark = armeePartie("standard", "p-alt", false, "normal");
+    gleich(alt.stand.brett, gleichStark.stand.brett, "dasselbe Brett wie normal");
+
+    /* Auch eine unbekannte Stufe darf nichts kaputt machen. */
+    const kaputt = JSON.parse(JSON.stringify(alt));
+    kaputt.regeln.armeeStaerke = "riesig";
+    gleich(SCHACH_RUNDE.normalisieren(kaputt).regeln.armeeStaerke, "normal",
+        "unbekannte Stufe wird normal");
+});
 
 pruefe("Die Zufallsarmee stellt die halbe Armee mittig auf", () => {
     const regel = SCHACH_VARIANTEN.ARMEE;

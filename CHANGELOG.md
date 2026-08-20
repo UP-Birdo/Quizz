@@ -3,6 +3,25 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.86.0 — 2026-08-20
+
+**Du bestimmst, wie viele Figuren auf dem Brett stehen.**
+
+- **Ganz oben beim Anlegen steht jetzt eine Knopfreihe „Wie viele Figuren je
+  Seite?"** mit vier Stufen: wenig, normal, viel, voll. Sie ist immer da und
+  wird wie die Knöpfe für die Lootbox-Menge bedient.
+
+- **Die Zahl unter jeder Spielart-Kachel geht sofort mit.** Was dort steht, ist
+  die Zahl, mit der die Partie wirklich anfängt — Kachel und Partie rechnen
+  dieselbe Aufstellung.
+
+- Die Stufe wirkt auf die **Zufallsarmee**. Ohne diesen Haken bringt jede
+  Spielart ihre eigene Aufstellung mit; die Knopfreihe sagt das dann auch.
+  **Ein König ist immer dabei**, auch auf der kleinsten Stufe.
+
+- Angefangene Partien ändern sich nicht: Wer keine Stufe gespeichert hat,
+  spielt mit „normal" weiter — genau der Zahl, die vorher galt.
+
 ## v0.85.0 — 2026-08-20
 
 **Eine neue Fähigkeit und eine stapelbare Mauer.**

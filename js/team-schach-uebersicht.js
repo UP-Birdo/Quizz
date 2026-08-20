@@ -38,6 +38,16 @@ Object.assign(TEAM_SCHACH, {
             + "Startaufstellung."));
 
         wurzel.appendChild(kopf);
+
+        /*
+         * DIE FIGURENZAHL STEHT GANZ OBEN (seit v0.86, Wunsch V1: „die Anzahl
+         * der Figuren auch eine Knopf-Funktion, immer bei der Auswahl ganz
+         * oben"). Vor Brettform und Kacheln — wer die Stärke ändert, sieht die
+         * Zahl unter JEDER Kachel sofort mitgehen, weil die Kachel dasselbe
+         * `armeeAufstellen` rechnet wie die echte Partie.
+         */
+        wurzel.appendChild(TEAM_SCHACH._armeeStaerkeLeisteBauen());
+
         wurzel.appendChild(TEAM_SCHACH._regelSchalterBauen());
         wurzel.appendChild(TEAM_SCHACH._formLeisteBauen());
 
@@ -352,6 +362,57 @@ Object.assign(TEAM_SCHACH, {
         return knopf;
     },
 
+    /*
+     * DIE KNOPFREIHE FÜR DIE FIGURENZAHL (seit v0.86, Wunsch V1).
+     *
+     * Gebaut wie die Lootbox-Mengen — dieselbe Reihe, dieselben Klassen; wer
+     * die eine bedienen kann, kann auch die andere. Sie steht IMMER da, auch
+     * ohne den Haken „Zufallsarmee": Die Ansage war „immer bei der Auswahl
+     * ganz oben". Ohne den Haken sagt der Hinweis, dass die Spielart ihre
+     * eigene Aufstellung mitbringt — die Reihe verschwindet nicht, sonst
+     * springt der Bildschirm beim Haken-Setzen.
+     */
+    _armeeStaerkeLeisteBauen() {
+        /*
+         * EIGENE KLASSEN (`armee-zeile`/`armee-leiste`), nicht die der
+         * Lootbox-Mengen: Diese Reihe steht IMMER da, die Mengen-Reihe nur
+         * unter dem Haken „Lootboxen". Mit denselben Klassen hielte ein Test
+         * die eine für die andere — und im CSS wäre nicht mehr trennbar, was
+         * wovon gilt. Das Aussehen erben sie gemeinsam (`stil.css`).
+         */
+        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt armee-zeile");
+
+        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-titel",
+            "Wie viele Figuren je Seite?"));
+
+        const leiste = TEAM_SCHACH._element("div", "armee-leiste");
+        const satz = TEAM_SCHACH._element("span", "schalter-hinweis", "");
+
+        for (const staerke of SCHACH_VARIANTEN.ARMEE_STAERKEN) {
+            const aktiv = (staerke.id === TEAM_SCHACH.neueRegeln.armeeStaerke);
+
+            const knopf = TEAM_SCHACH._knopf(staerke.titel,
+                "knopf-klein armee-knopf" + (aktiv ? " armee-knopf-aktiv" : " knopf-still"),
+                () => {
+                    TEAM_SCHACH.neueRegeln.armeeStaerke = staerke.id;
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                });
+
+            knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+            leiste.appendChild(knopf);
+        }
+
+        satz.textContent = TEAM_SCHACH.neueRegeln.zufallsArmee
+            ? SCHACH_VARIANTEN.armeeStaerkeVon(TEAM_SCHACH.neueRegeln.armeeStaerke).hinweis
+            : "Gilt für die Zufallsarmee. Ohne den Haken bringt jede Spielart "
+                + "ihre eigene Aufstellung mit — die Zahl unter der Kachel gilt.";
+
+        zeile.appendChild(leiste);
+        zeile.appendChild(satz);
+
+        return zeile;
+    },
+
     _spielartKachelBauen(variante) {
         const kachel = document.createElement("button");
         kachel.type = "button";
@@ -416,6 +477,10 @@ Object.assign(TEAM_SCHACH, {
         runde.regeln.zufallsArmee = true;
         runde.regeln.armeeUnterschiedlich =
             (TEAM_SCHACH.neueRegeln.armeeUnterschiedlich === true);
+
+        /* Dieselbe Stärke wie beim Anlegen (seit v0.86) — sonst zeigt die
+           Kachel eine andere Zahl, als die Partie hinterher aufstellt. */
+        runde.regeln.armeeStaerke = TEAM_SCHACH.neueRegeln.armeeStaerke;
 
         runde = SCHACH_RUNDE.armeeAufstellen(runde, "");
         return runde.stand.brett;

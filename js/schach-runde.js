@@ -255,6 +255,15 @@ const SCHACH_RUNDE = {
                  */
                 armeeUnterschiedlich: false,
 
+                /*
+                 * WIE VIELE FIGUREN die Zufallsarmee bekommt (seit v0.86,
+                 * Wunsch V1). Eine der vier Stufen aus
+                 * `SCHACH_VARIANTEN.ARMEE_STAERKEN`; „normal" ist die Zahl,
+                 * die vor v0.86 galt — eine Partie von früher spielt also
+                 * unverändert weiter.
+                 */
+                armeeStaerke: "normal",
+
                 /* Muss sich das Team über einen Zug einig werden? */
                 einigkeit: false
             },
@@ -314,7 +323,8 @@ const SCHACH_RUNDE = {
         runde.stand = SCHACH_RUNDE._armeeStand(
             runde.stand,
             (runde.id || "partie") + (saatZusatz || ""),
-            runde.regeln.armeeUnterschiedlich === true);
+            runde.regeln.armeeUnterschiedlich === true,
+            runde.regeln.armeeStaerke);
 
         return runde;
     },
@@ -593,9 +603,24 @@ const SCHACH_RUNDE = {
         return stelle + "|" + was + "|" + basis;
     },
 
-    _armeeFiguren(id, farbe, variante, getrennt, seite) {
+    _armeeFiguren(id, farbe, variante, getrennt, seite, staerke, hoechstens) {
         const regel = SCHACH_VARIANTEN.ARMEE;
-        const anzahl = SCHACH_VARIANTEN.armeeAnzahl(variante);
+
+        /*
+         * `staerke` und `hoechstens` sind wahlfrei (seit v0.86); ohne Angabe
+         * liefert der Aufruf die Zahl von früher.
+         *
+         * `hoechstens` ist die Zahl der STARTFELDER, und sie deckelt die Liste
+         * HIER — nicht erst beim Aufstellen. Der Grund ist der Mischschritt
+         * unten: Eine fertige, gemischte Liste hinterher abzuschneiden trifft
+         * irgendwann den König, und eine Seite ohne König ist keine Partie.
+         * Vor v0.86 fiel das nicht auf, weil die Grundzahl nie über die
+         * Feldzahl hinausging; mit der Stufe „viel" tut sie es.
+         */
+        const gewuenscht = SCHACH_VARIANTEN.armeeAnzahl(variante, staerke);
+        const anzahl = (typeof hoechstens === "number" && hoechstens > 0)
+            ? Math.max(2, Math.min(gewuenscht, hoechstens))
+            : gewuenscht;
 
         /*
          * DIESELBE ARMEE FÜR BEIDE, WENN NICHT ANDERS GEWÜNSCHT (seit v0.51).
@@ -652,13 +677,13 @@ const SCHACH_RUNDE = {
     },
 
     /* Ein Brett-Stand mit gewürfelten Armeen auf beiden Seiten. */
-    _armeeStand(stand, id, getrennt) {
+    _armeeStand(stand, id, getrennt, staerke) {
         const variante = SCHACH.varianteVon(stand);
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
 
         if (variante.kreuz) {
-            return SCHACH_RUNDE._armeeStandKreuz(stand, id, getrennt);
+            return SCHACH_RUNDE._armeeStandKreuz(stand, id, getrennt, staerke);
         }
 
         const zeichen = [];
@@ -668,7 +693,8 @@ const SCHACH_RUNDE = {
 
         for (const farbe of [SCHACH.WEISS, SCHACH.SCHWARZ]) {
             const felder = SCHACH_RUNDE._armeeFelder(variante, farbe);
-            const arten = SCHACH_RUNDE._armeeFiguren(id, farbe, variante, getrennt);
+            const arten = SCHACH_RUNDE._armeeFiguren(
+                id, farbe, variante, getrennt, undefined, staerke, felder.length);
             const anzahl = Math.min(felder.length, arten.length);
 
             for (let stelle = 0; stelle < anzahl; stelle++) {
@@ -711,7 +737,7 @@ const SCHACH_RUNDE = {
      *      und ein gewürfelter Bauer zwei Felder weiter fiele ohne Eintrag auf
      *      die Farbregel zurück und liefe auf dem Flügel quer.
      */
-    _armeeStandKreuz(stand, id, getrennt) {
+    _armeeStandKreuz(stand, id, getrennt, staerke) {
         const variante = SCHACH.varianteVon(stand);
         const zeichen = [];
 
@@ -725,7 +751,7 @@ const SCHACH_RUNDE = {
             for (const seite of SCHACH.startSeitenVon(stand, farbe)) {
                 const felder = SCHACH_RUNDE._armeeFelderKreuz(variante, seite);
                 const arten = SCHACH_RUNDE._armeeFiguren(
-                    id, farbe, variante, getrennt, seite);
+                    id, farbe, variante, getrennt, seite, staerke, felder.length);
                 const anzahl = Math.min(felder.length, arten.length);
 
                 for (let stelle = 0; stelle < anzahl; stelle++) {
@@ -879,6 +905,11 @@ const SCHACH_RUNDE = {
 
             runde.regeln.zufallsArmee = (roh.regeln.zufallsArmee === true);
             runde.regeln.armeeUnterschiedlich = (roh.regeln.armeeUnterschiedlich === true);
+
+            /* Unbekannte oder fehlende Stärke wird „normal" — der Wert von
+               vor v0.86, damit angefangene Partien gleich bleiben. */
+            runde.regeln.armeeStaerke = SCHACH_VARIANTEN
+                .armeeStaerkeVon(roh.regeln.armeeStaerke).id;
 
             runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
         }

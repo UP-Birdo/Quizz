@@ -87,6 +87,10 @@ const TEAM_SCHACH = {
         zufallsArmee: false,
         armeeUnterschiedlich: false,
 
+        /* Wie viele Figuren die Zufallsarmee bekommt (seit v0.86) — eine der
+           Stufen aus `SCHACH_VARIANTEN.ARMEE_STAERKEN`. */
+        armeeStaerke: "normal",
+
         /*
          * EINIGKEIT IST DIE VORGABE (seit v0.76, Eingangskorb vom 18.08.:
          * „Team muss einig sein soll andersrum da stehen").
@@ -1267,6 +1271,7 @@ const TEAM_SCHACH = {
             lootboxMenge: SCHACH_VARIANTEN.MENGE_VORGABE,
             zufallsArmee: false,
             armeeUnterschiedlich: false,
+            armeeStaerke: "normal",
 
             /* Einigkeit ist die Vorgabe (seit v0.76) — siehe `neueRegeln`. */
             einigkeit: true
@@ -1324,6 +1329,7 @@ const TEAM_SCHACH = {
             lootboxMenge: TEAM_SCHACH.neueRegeln.lootboxMenge,
             zufallsArmee: TEAM_SCHACH.neueRegeln.zufallsArmee,
             armeeUnterschiedlich: TEAM_SCHACH.neueRegeln.armeeUnterschiedlich,
+            armeeStaerke: TEAM_SCHACH.neueRegeln.armeeStaerke,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
         };
 

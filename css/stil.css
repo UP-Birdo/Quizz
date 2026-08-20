@@ -1305,25 +1305,29 @@ body {
  * Geräten brechen sie um statt sich zu quetschen. Sie ersetzen den
  * Schieberegler von v0.60 samt seiner `.regler`-Klassen.
  */
-.mengen-zeile {
+.mengen-zeile,
+.armee-zeile {
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: 8px 0;
 }
 
-.mengen-leiste {
+.mengen-leiste,
+.armee-leiste {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.mengen-knopf {
+.mengen-knopf,
+.armee-knopf {
     flex: 1 1 auto;
     min-width: 70px;
 }
 
-.mengen-knopf-aktiv {
+.mengen-knopf-aktiv,
+.armee-knopf-aktiv {
     background: var(--haupt);
     color: #fff;
     border-color: var(--haupt);
