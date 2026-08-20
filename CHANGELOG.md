@@ -3,6 +3,21 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.91.0 — 2026-08-20
+
+**Zwei Einstellungen haben nichts getan — jetzt tun sie es.**
+
+- **„Wie viele Figuren je Seite?" (aus v0.86) und „Welche Items kommen vor?"
+  (aus v0.87) wurden beim Anlegen der Partie verworfen.** Man konnte sie
+  einstellen, die Vorschau zeigte sogar das Richtige — die Partie startete
+  aber immer mit „normal" beziehungsweise „alle". Beide Einstellungen wirken
+  ab sofort wirklich.
+
+  Wenn du dich gewundert hast, dass eine Partie trotz „wenig" voll besetzt
+  war oder trotz begrenztem Vorrat jedes Item vorkam: Das war dieser Fehler,
+  nicht dein Gedächtnis. Bereits angelegte Partien behalten ihre
+  Einstellungen — die Spielart steht mit dem Anlegen fest.
+
 ## v0.90.0 — 2026-08-20
 
 **Die App heisst wieder „Quizz" — die Umbenennung ist zurückgenommen.**

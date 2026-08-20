@@ -340,6 +340,28 @@ const SCHACH_TAFEL = {
 
             partie.regeln.zufallsArmee = (regeln.zufallsArmee === true);
             partie.regeln.armeeUnterschiedlich = (regeln.armeeUnterschiedlich === true);
+
+            /*
+             * DIESE ZWEI FEHLTEN — v0.86 und v0.87 waren dadurch WIRKUNGSLOS
+             * (gefunden beim Nachmessen der Meldung #36, behoben v0.91).
+             *
+             * Diese Funktion kopiert jede Einstellung EINZELN aus dem
+             * übergebenen Objekt. Wer eine neue hinzufügt und diese Zeile
+             * vergisst, baut eine Einstellung, die sich bedienen lässt und
+             * nichts tut. Besonders heimtückisch war es hier, weil die
+             * Kachel-Vorschau richtig aussah: Sie liest `TEAM_SCHACH.neueRegeln`
+             * direkt, nicht die angelegte Partie — das Bild stimmte also,
+             * das Spiel nicht.
+             *
+             * Ein Test in `test-schach-tafel.js` vergleicht seit v0.91 die
+             * übergebenen Regeln mit denen der angelegten Partie, damit die
+             * nächste Einstellung nicht wieder hier hängen bleibt.
+             */
+            partie.regeln.armeeStaerke =
+                SCHACH_VARIANTEN.armeeStaerkeVon(regeln.armeeStaerke).id;
+            partie.regeln.itemVorrat =
+                SCHACH_VARIANTEN.itemVorratVon(regeln.itemVorrat).id;
+
             partie.regeln.einigkeit = (regeln.einigkeit === true);
         }
 

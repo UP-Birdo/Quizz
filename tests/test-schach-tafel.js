@@ -241,5 +241,49 @@ pruefe("Der Vergleich erkennt neue, geaenderte und geloeschte Partien", () => {
         SCHACH_TAFEL.partieEntfernen(zweite.tafel, erste.partie.id, 2300)), "Loeschen erkannt");
 });
 
+pruefe("JEDE Einstellung aus der Auswahl kommt in der Partie an (v0.91)", () => {
+    /*
+     * DER FEHLER, DER DIESEN TEST AUSGELOEST HAT (gefunden 20.08. beim
+     * Nachmessen der Meldung #36):
+     *
+     * `partieAnlegen` kopiert jede Einstellung EINZELN. Bei v0.86
+     * (`armeeStaerke`) und v0.87 (`itemVorrat`) wurde diese Zeile vergessen —
+     * beide Knopfreihen liessen sich bedienen und taten NICHTS. Aufgefallen
+     * ist es nicht, weil die Kachel-Vorschau `TEAM_SCHACH.neueRegeln` direkt
+     * liest: Das Bild stimmte, das Spiel nicht.
+     *
+     * Dieser Test vergleicht deshalb nicht einzelne Felder, sondern geht die
+     * uebergebenen Regeln DURCH: Was hineingeht, muss auch ankommen. Wer eine
+     * neue Einstellung ergaenzt, faellt hier auf, sobald er sie in
+     * `partieAnlegen` vergisst — ohne dass jemand den Test anfassen muesste.
+     */
+    const regeln = {
+        faehigkeiten: true,
+        seltenheitZeigen: false,
+        pechZeigen: true,
+        lootboxMenge: "viele",
+        zufallsArmee: true,
+        armeeUnterschiedlich: true,
+        armeeStaerke: "wenig",
+        itemVorrat: "zehn",
+        einigkeit: false
+    };
+
+    const angelegt = SCHACH_TAFEL.partieAnlegen(
+        SCHACH_TAFEL.leereTafel(), "faehigkeiten", "Naht", 5000, regeln);
+
+    const partie = angelegt.partie;
+
+    for (const schluessel of Object.keys(regeln)) {
+        gleich(partie.regeln[schluessel], regeln[schluessel],
+            "Einstellung \"" + schluessel + "\" kommt in der Partie an");
+    }
+
+    /* Und die Auswirkung, nicht nur der Wert: Der Item-Vorrat wurde
+       ausgelost, weil `itemVorrat` angekommen ist. */
+    gleich(partie.regeln.itemPool.length, 10,
+        "der Vorrat wurde mit der gewaehlten Groesse ausgelost");
+});
+
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
 process.exit(anzahlFehler === 0 ? 0 : 1);
