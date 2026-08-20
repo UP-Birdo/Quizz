@@ -43,6 +43,13 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - Eine gemischte Liste darf man nicht hinten abschneiden (v0.86) — der
       König konnte aus der gemischten Zufallsarmee herausfallen, wenn die
       Liste erst nach dem Mischen gekürzt wurde
+    - **Dieselbe Falle, zweite Wiederholung: eine Einstellung, die nichts
+      tut** (v0.86/v0.87, gefunden v0.91) — `partieAnlegen` kopiert Regeln
+      EINZELN und übersprang zwei; die Vorschau las eine andere Quelle als
+      das Ergebnis und bestätigte den Fehler. Merksatz: Eine Lehre, die nur
+      als Satz in der Doku steht, hält bis zum nächsten Mal
+    - **Was zur Meldung #36 schon gemessen wurde** (offen) — Liste dessen,
+      was bereits AUSGESCHLOSSEN ist. **Vor jeder weiteren Suche lesen**
 
 ## entschieden.md - Entschieden - und warum
 
