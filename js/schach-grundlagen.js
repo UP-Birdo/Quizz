@@ -314,11 +314,14 @@ const SCHACH_GRUNDLAGEN = {
             /*
              * König und Turm mit ihren Rechten, dazwischen frei.
              *
-             * Die Rechte werden hier AUSDRÜCKLICH gesetzt (`rochadeFelder`,
-             * `rochadeKoenige`) statt aus der Spielart gelesen: Das kleine
-             * 6-mal-6-Brett der Anleitung ist keine echte Spielart, seine
-             * Startfelder stehen in keiner Tabelle. Das Regelwerk liest die
-             * Rechte ohnehin aus dem Stand — siehe `SCHACH._rochadeTuerme`.
+             * Die Rechte stehen hier AUSDRÜCKLICH (`rochadeFelder`,
+             * `rochadeKoenige`) und werden nicht aus der Spielart gelesen.
+             * Seit v0.97 wäre beides möglich — die Spielart ist `standard`,
+             * und dort stehen König und Türme auf ihren gewohnten Feldern.
+             * Ausdrücklich ist trotzdem besser: Das Bild zeigt nur zwei
+             * Figuren, nicht die ganze Grundstellung, und aus einer LEEREN
+             * Reihe liest keine Tabelle ein Recht heraus. Das Regelwerk nimmt
+             * die Rechte ohnehin aus dem Stand — siehe `SCHACH._rochadeTuerme`.
              */
             /* Die echten Felder: König e1, Turm h1, dazwischen frei. Auf dem
                normalen Brett ist das die kurze Rochade, wie man sie kennt. */

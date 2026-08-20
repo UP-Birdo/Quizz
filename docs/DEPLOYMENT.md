@@ -94,6 +94,17 @@ sonst teilen sich beide denselben Gerätespeicher):
     Punkte auf dem Brett. Mit einem Bauern auf c4 ziehen — die Fähigkeit
     erscheint unter dem Brett, der grüne Punkt verschwindet und kommt nach dem
     Neuladen der Seite **nicht** zurück. Einsetzen und die Wirkung prüfen.
+17a. **„Schach lernen"** (seit v0.96, Knopf oben in der Übersicht): Alle vier
+    Abschnitte sind da, ein Kapitel klappt auf und zeigt ein **8-mal-8-Brett**
+    mit markierten Feldern — und **keine Lootbox** (das war der Fehler aus
+    v0.96). Beim Aufklappen eines zweiten Kapitels klappt das erste zu. Der
+    schwebende Zurück-Knopf führt in die Übersicht.
+17b. **Ein Fenster einer Fähigkeit öffnen** (Vorrat antippen): Oben steht EIN
+    Satz, darunter die Bilder, darunter der Aufklapper „Die ganze
+    Beschreibung". **Nach unten scrollen und prüfen, dass keine Figur über den
+    Knöpfen liegt** — genau das war der Fehler aus v0.93. Mit dem Mauszeiger
+    über eine Fähigkeit im Vorrat fahren: Der Kurzhinweis ist ein Satz, kein
+    Kasten.
 18. **Löschen** einer Partie fragt nach und entfernt sie in beiden Fenstern.
 19. **Tab Rangliste:** Zeigt alle Mitspieler mit Gesamtpunkten; hinter dem
     **i** steht die Rechnung. Nach einer beendeten Schachpartie muss der Sieger

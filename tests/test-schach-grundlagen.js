@@ -89,7 +89,7 @@ pruefe("Jedes Kapitel bringt mindestens ein Bild zustande", () => {
                 kapitel.id + ": das Bild hat einen Satz");
             gleich(bild.runde.stand.brett.length,
                 SCHACH_GRUNDLAGEN.BREITE * SCHACH_GRUNDLAGEN.HOEHE,
-                kapitel.id + ": das Brett hat 6 mal 6 Felder");
+                kapitel.id + ": das Brett hat 8 mal 8 Felder");
         }
     }
 });

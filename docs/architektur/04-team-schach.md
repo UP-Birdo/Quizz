@@ -517,6 +517,31 @@ Ein Test (`tests\test-schach-vorschau.js`) prüft für JEDE Fähigkeit, dass es
 ein Beispiel gibt und dass sich Vorher und Nachher sichtbar unterscheiden. Wer
 eine Fähigkeit hinzufügt oder ändert und das Beispiel vergisst, merkt es dort.
 
+### Dieselbe Machart für die Schachregeln (seit v0.96)
+
+`schach-grundlagen.js` ist die zweite Anleitung — nicht zu den Fähigkeiten,
+sondern zum normalen Schach: wie jede Figur zieht, wann Schach, Matt und Patt
+gilt, was eine Figur wert ist, und die drei Sonderzüge. Sie ist genauso gebaut
+und aus demselben Grund: **Die Bilder werden gerechnet, nie gezeichnet.** Die
+Punkte einer Gangart kommen aus `SCHACH.zuege`, das Urteil „Matt" aus
+`SCHACH.lage`, die Werte aus `SCHACH_RUNDE.FIGUR_WERT`. `bilder(id)` liefert
+dieselbe Form wie die Fähigkeits-Anleitung (`{ runde, marken, ziele, tipp,
+wege, text }`) — deshalb zeichnet beides derselbe `_beispielBrettBauen`.
+
+Zwei Unterschiede zur Fähigkeits-Anleitung, beide bewusst:
+
+- **Das Brett ist das normale**, 8 mal 8 und Spielart `standard` (seit v0.97).
+  Dort ist das Brett die Sache selbst und nicht der Rahmen für eine Wirkung —
+  und nur so ist die Rochade die echte (e1 nach g1).
+- **`bonus: []` steht ausdrücklich im Stand.** Ohne eigene Liste füllt
+  `normalisieren` sie aus `variante.bonusFelder`; die alte, versteckte Spielart
+  `faehigkeiten` trägt dort vier Umstiegs-Felder, und die lagen bis v0.96 in
+  jedem Bild der Anleitung.
+
+Gezeichnet wird in `team-schach-grundlagen.js` (`_grundlagenZeichnen`), der
+Einstieg steht als Knopf oben in der Partie-Übersicht — vor dem Beitreten,
+nicht erst in einer laufenden Partie.
+
 Gezeichnet wird in `team-schach-auswertung.js` (`_anleitungBauen`,
 `_beispielBrettBauen`) — im Einsetzen-Dialog und in der Bibliothek hinter dem i.
 **Dort ist der Eintrag selbst der Knopf:** Jede Fähigkeit ist ein `details`.

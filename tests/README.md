@@ -87,6 +87,27 @@ entstehen aus den echten Regeln, also lässt sich prüfen, ob sie etwas zeigen.
 **Wer eine Fähigkeit ändert und ihr Beispiel vergisst, sieht es hier** — das
 Zielfeld ist dann kein gültiges mehr, und das Bild kommt gar nicht zustande.
 
+## Was wird geprüft (`test-schach-grundlagen.js`)
+
+Die Anleitung „Schach lernen" (seit v0.96). Nach demselben Gedanken wie oben:
+Ihre Bilder sind mit den echten Regeln GERECHNET, also lässt sich nachrechnen,
+ob sie stimmen.
+
+| Bereich | Inhalt |
+|---|---|
+| Vollständigkeit | jede Gruppe hat Kapitel, jedes Kapitel Titel, Text und mindestens ein Bild; jede Figur hat ihr eigenes Kapitel |
+| **Probe aufs Exempel** | die markierten Felder sind genau die aus `SCHACH.zuege` — keines zu viel, keines zu wenig |
+| Der Bauer | das Feld geradeaus ist besetzt und deshalb KEIN Zug, das schräge Schlagfeld dagegen markiert |
+| Schach, Matt, Patt | was das Kapitel behauptet, bestätigt `SCHACH.lage`; beim Patt zusätzlich: kein Schach UND kein Zug |
+| Sonderzüge | Umwandlung, Rochade und en passant werden wirklich gezogen; vorher und nachher unterscheiden sich, bei der Rochade auf VIER Feldern |
+| Brett | 8 mal 8, Spielart `standard`, Rochade auf den echten Feldern e1/h1 |
+| **Keine Lootbox** | auf keinem Bild liegt eine — der Fehler aus v0.96, der aus `variante.bonusFelder` kam |
+| Figurenwerte | dieselben Zahlen wie `SCHACH_RUNDE.FIGUR_WERT`, Reihenfolge absteigend |
+
+**Wer eine Gangart ändert, sieht das Bild mitgehen; wer sie kaputt macht, sieht
+es hier.** Vier der Stellungen sind beim Schreiben nicht aufgegangen — der Test
+hat es gesagt, bevor es ein Anfänger geglaubt hätte.
+
 ## Was wird geprüft (`test-syntax.js`)
 
 Die Bildschirm- und Speicherdateien laufen nur im Browser, lassen sich hier
