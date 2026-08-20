@@ -358,6 +358,16 @@ const SCHACH = {
             enttarntBis: 0,
 
             /*
+             * VERSTECKT (seit v0.98): Wer die Seltenheit der liegenden
+             * Lootboxen gerade NICHT sehen darf, obwohl die Partie sie zeigt —
+             * und bis wann. Das Gegenstück zum Enttarnen, aufgebaut wie das
+             * volle Glas: Hier steht das OPFER, also die Seite, die weniger
+             * sieht, nicht die Seite, die die Fähigkeit eingesetzt hat.
+             */
+            verstecktFarbe: "",
+            verstecktBis: 0,
+
+            /*
              * Mauern auf dem Brett (seit v3.3): [{ felder: [a, b, c], bis }].
              *
              * `bis` ist ein Wert von `halbzuege` — die Mauer gilt, solange
@@ -423,7 +433,36 @@ const SCHACH = {
              * Farbregel zurück — Weiss unten, Schwarz oben, also genau die
              * Ansicht von früher.
              */
-            startSeiten: {}
+            startSeiten: {},
+
+            /*
+             * WELCHE BAUERN IHREN ERSTEN EIGENEN ZUG SCHON GEMACHT HABEN
+             * (seit v0.98, Wünsche #37 und #38) — Feldnummern.
+             *
+             * WARUM ES DIESE LISTE BRAUCHT. Bis v0.97 hing der Doppelschritt
+             * allein an der REIHE: Wer auf einer der beiden Startreihen stand,
+             * durfte zwei Felder. Das ist falsch, sobald eine Fähigkeit Bauern
+             * schiebt, ohne dass ein Zug stattfindet:
+             *
+             *   - Ein Bauer, den das Nudelholz oder der Bauernschub nach vorne
+             *     schiebt, verlor seinen Doppelschritt, obwohl er nie selbst
+             *     gezogen war (#38).
+             *   - Ein Bauer, den etwas auf seine Startreihe ZURÜCK schiebt,
+             *     bekam ihn ein zweites Mal (#37).
+             *
+             * Jetzt zählt allein: Hat dieser Bauer schon selbst gezogen? Die
+             * Liste verfolgt das FELD und wird überall dort nachgeführt, wo
+             * auch `bauernSeiten` nachgeführt wird — Zug, Schub, Brettgrösse.
+             *
+             * ADDITIV, ÜBER DIE FASSUNG: `bauernZugFassung` sagt, ob dieser
+             * Stand nach der neuen Rechnung geht. Fehlt sie (jede Partie vor
+             * v0.98), baut `standNormalisieren` die Liste EINMAL aus der alten
+             * Reihen-Regel nach und setzt die Fassung — dasselbe Muster wie
+             * `bonusFassung` bei den Lootboxen. Eine laufende Partie rechnet
+             * dadurch im Moment des Umstiegs genau wie vorher weiter.
+             */
+            bauernZog: [],
+            bauernZugFassung: 0
         };
     },
 
@@ -622,6 +661,13 @@ const SCHACH = {
             stand.enttarntBis = roh.enttarntBis;
         }
 
+        /* Versteckt (seit v0.98) — dasselbe Muster, gegenläufige Wirkung. */
+        if (farben.indexOf(roh.verstecktFarbe) !== -1
+            && Number.isInteger(roh.verstecktBis) && roh.verstecktBis > 0) {
+            stand.verstecktFarbe = roh.verstecktFarbe;
+            stand.verstecktBis = roh.verstecktBis;
+        }
+
         if (Array.isArray(roh.mauern)) {
             stand.mauern = roh.mauern
                 .filter((eintrag) => eintrag && Array.isArray(eintrag.felder)
@@ -686,6 +732,50 @@ const SCHACH = {
         if (Number.isInteger(roh.enPassantOpfer) && roh.enPassantOpfer >= 0
             && roh.enPassantOpfer < felder) {
             stand.enPassantOpfer = roh.enPassantOpfer;
+        }
+
+        /*
+         * WER SEINEN ERSTEN ZUG SCHON GEMACHT HAT (seit v0.98).
+         *
+         * Zwei Fälle, und der zweite ist der Umstieg:
+         *
+         *   Fassung 1  Der Stand rechnet schon nach der Liste — sie wird nur
+         *              gesäubert. „Wo kein Bauer steht, braucht es keinen
+         *              Eintrag" hält sie von selbst sauber: Fällt ein Bauer
+         *              und stellt sich später ein anderer auf sein Feld, erbt
+         *              der nicht dessen Vorgeschichte.
+         *   sonst      Eine Partie von vor v0.98. Die Liste wird EINMAL aus
+         *              der alten Reihen-Regel nachgebaut: Jeder Bauer, dem sie
+         *              den Doppelschritt verwehrt hätte, gilt als gezogen.
+         *              Im Moment des Umstiegs rechnet die Partie damit genau
+         *              wie vorher weiter; erst der nächste Schub macht den
+         *              Unterschied.
+         *
+         * Der Umstieg läuft nur EINMAL, weil er die Fassung setzt — sonst
+         * fiele ein geschobener Bauer beim nächsten Normalisieren wieder auf
+         * die Reihen-Regel zurück, und der Fix wäre keiner.
+         */
+        const istBauer = (feld) => SCHACH.artVon(SCHACH.figurAuf(stand, feld)) === "B";
+
+        if (roh.bauernZugFassung === 1) {
+            stand.bauernZugFassung = 1;
+            stand.bauernZog = (Array.isArray(roh.bauernZog) ? roh.bauernZog : [])
+                .filter((feld) => Number.isInteger(feld) && feld >= 0 && feld < felder)
+                .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle)
+                .filter(istBauer);
+        } else {
+            stand.bauernZugFassung = 1;
+            stand.bauernZog = [];
+
+            for (let feld = 0; feld < felder; feld++) {
+                if (!istBauer(feld)) {
+                    continue;
+                }
+                const farbe = SCHACH.farbeVon(SCHACH.figurAuf(stand, feld));
+                if (!SCHACH._darfDoppeltNachReihe(stand, feld, farbe)) {
+                    stand.bauernZog.push(feld);
+                }
+            }
         }
 
         return stand;
@@ -845,7 +935,30 @@ const SCHACH = {
      * Die zwei Reihen (oder Spalten) an der Startseite, aus denen ein Bauer
      * den Doppelschritt hat. Geliefert wird eine Prüfung auf ein Feld.
      */
+    /*
+     * SEIT v0.98 ENTSCHEIDET DER BAUER, NICHT DIE REIHE (Wünsche #37/#38).
+     *
+     * Der Doppelschritt gehört zum ERSTEN eigenen Zug eines Bauern — „nur beim
+     * ersten Mal Bewegen, wenn es möglich ist". Wer geschoben wurde, hat sich
+     * nicht selbst bewegt und behält ihn deshalb; wer schon gezogen ist,
+     * bekommt ihn auch dann nicht zurück, wenn ihn etwas auf seine Startreihe
+     * zurückschiebt.
+     *
+     * Die Reihen-Regel von früher bleibt als `_darfDoppeltNachReihe` bestehen:
+     * Sie ist der Rückfall für Stände ohne Fassung (und die Vorlage, aus der
+     * `standNormalisieren` die Liste beim Umstieg einmalig baut).
+     */
     bauernDarfDoppelt(stand, feld, farbe) {
+        if (stand && stand.bauernZugFassung === 1) {
+            const liste = Array.isArray(stand.bauernZog) ? stand.bauernZog : [];
+            return liste.indexOf(feld) === -1;
+        }
+        return SCHACH._darfDoppeltNachReihe(stand, feld, farbe);
+    },
+
+    /* Die Rechnung bis v0.97: Steht der Bauer auf einer der beiden Reihen an
+       seiner Startseite? Siehe `bauernDarfDoppelt`. */
+    _darfDoppeltNachReihe(stand, feld, farbe) {
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
         const seite = SCHACH.bauernSeite(stand, feld, farbe);
@@ -896,15 +1009,54 @@ const SCHACH = {
     },
 
     /*
+     * Führt `bauernZog` über einen Zug nach (seit v0.98) — das Gegenstück zu
+     * `_bauernSeitenNachfuehren`, nur dass hier keine Seite mitreist, sondern
+     * bloss die Feldnummer.
+     *
+     * Drei Fälle, und alle drei sind nötig:
+     *
+     *   1. Wer auf `nach` stand, wurde geschlagen — sein Eintrag fällt weg.
+     *      Ohne das erbte die ziehende Figur die Vorgeschichte ihres Opfers.
+     *      Dasselbe gilt für das En-passant-Opfer, das woanders steht.
+     *   2. Der Eintrag des ziehenden Bauern wandert von `von` auf `nach`.
+     *   3. ZIEHT EIN BAUER, hat er seinen ersten Zug hinter sich und kommt neu
+     *      in die Liste — es sei denn, er wandelt um; dann ist er keiner mehr.
+     *
+     * Eine Rochade braucht nichts Eigenes: Türme stehen nie in dieser Liste,
+     * und auf den Rochadefeldern steht kein Bauer.
+     */
+    _bauernZogNachfuehren(stand, zug, art) {
+        const liste = Array.isArray(stand.bauernZog) ? stand.bauernZog : [];
+        const weg = zug.enPassant ? [zug.enPassantFeld] : [];
+
+        const neu = liste.filter((feld) => feld !== zug.von
+            && feld !== zug.nach && weg.indexOf(feld) === -1);
+
+        if (art === "B" && !zug.umwandlung) {
+            neu.push(zug.nach);
+        }
+        return neu;
+    },
+
+    /*
      * Verschiebt Startseiten entlang beliebiger Wege — für die Fähigkeiten,
      * die Figuren bewegen, ohne dass ein Zug stattfindet (Nudelholz,
      * Bauernschub, Erdbeben, Erdrutsch). Ohne das bliebe der Eintrag auf dem
      * alten Feld liegen, und der geschobene Bauer fiele auf die Farbregel
      * zurück — auf dem Kreuz liefe er danach in die falsche Richtung.
+     *
+     * SEIT v0.98 WANDERT `bauernZog` MIT (Wunsch #38). Das ist der Kern des
+     * Wunsches: Wer geschoben wird, hat sich nicht selbst bewegt — sein
+     * Eintrag (oder eben sein Fehlen) zieht deshalb einfach mit um, und der
+     * Doppelschritt bleibt ihm erhalten. Beide Listen werden hier zusammen
+     * nachgeführt, damit niemand die eine pflegt und die andere vergisst.
      */
     bauernSeitenVerschieben(stand, wege) {
         const liste = Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [];
-        if (!Array.isArray(wege) || wege.length === 0 || liste.length === 0) {
+        const gezogen = Array.isArray(stand.bauernZog) ? stand.bauernZog : [];
+
+        if (!Array.isArray(wege) || wege.length === 0
+            || (liste.length === 0 && gezogen.length === 0)) {
             return stand;
         }
 
@@ -917,14 +1069,22 @@ const SCHACH = {
             }
         }
 
+        /* Wo jetzt kein Bauer mehr steht, braucht es keinen Eintrag. */
+        const istBauer = (feld) => SCHACH.artVon(SCHACH.figurAuf(stand, feld)) === "B";
+
         const neu = liste
             .map((eintrag) => (Number.isInteger(umzug[eintrag.feld])
                 ? { feld: umzug[eintrag.feld], seite: eintrag.seite }
                 : eintrag))
-            /* Wo jetzt kein Bauer mehr steht, braucht es keinen Eintrag. */
-            .filter((eintrag) => SCHACH.artVon(SCHACH.figurAuf(stand, eintrag.feld)) === "B");
+            .filter((eintrag) => istBauer(eintrag.feld));
 
-        return Object.assign({}, stand, { bauernSeiten: neu });
+        const neuGezogen = gezogen
+            .map((feld) => (Number.isInteger(umzug[feld]) ? umzug[feld] : feld))
+            .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle)
+            .filter(istBauer);
+
+        return Object.assign({}, stand,
+            { bauernSeiten: neu, bauernZog: neuGezogen });
     },
 
     /* ---------------------------------------------------------------- *
@@ -1296,10 +1456,19 @@ const SCHACH = {
      *   Gerade Strecke  jedes Feld dazwischen.
      *   Alles andere    nur die beiden Enden (Teleport, Wiedergeburt,
      *                   Friedhof, Handel — dazwischen liegt kein Weg).
+     *
+     * `ohneWeg` (wahlfrei, seit v0.98) schaltet die Rechnung ab: Dann sind es
+     * IMMER nur die beiden Enden. Gebraucht wird das vom Teleport, der auch
+     * geradeaus über alles hinweg setzt — der Geometrie allein ist das nicht
+     * anzusehen. Der Parameter steht hinten und hat eine Vorgabe, damit jeder
+     * Aufruf von früher unverändert gilt.
      */
-    wegFelder(stand, von, nach) {
+    wegFelder(stand, von, nach, ohneWeg) {
         if (von === nach) {
             return [von];
+        }
+        if (ohneWeg) {
+            return [von, nach];
         }
 
         const breite = SCHACH.breiteVon(stand);
@@ -1345,12 +1514,17 @@ const SCHACH = {
      * „Sprung“ (dieselbe Bewegung) und der Teleport (der über alles hinweg
      * geht). Alle anderen laufen über jedes Feld dazwischen — und sammeln
      * dabei ein, was dort liegt.
+     *
+     * BIS v0.97 GALT DAS FÜR DEN TELEPORT NUR ZUFÄLLIG: Erkannt wurde er an
+     * der krummen Strecke. Ein Teleport zwei Felder GERADEAUS lief deshalb wie
+     * ein gewöhnlicher Zug und sammelte unterwegs ein. `ohneWeg` sagt es jetzt
+     * ausdrücklich (siehe `wegFelder`).
      */
-    betreteneFelder(stand, von, nach) {
+    betreteneFelder(stand, von, nach, ohneWeg) {
         if (von === nach) {
             return [];
         }
-        if (!SCHACH.istGeradeStrecke(stand, von, nach)) {
+        if (ohneWeg || !SCHACH.istGeradeStrecke(stand, von, nach)) {
             return [nach];
         }
         return SCHACH.wegFelder(stand, von, nach).slice(1);
@@ -1612,6 +1786,17 @@ const SCHACH = {
      * Teleport: auf ein FREIES Feld im Umkreis springen, über alles hinweg.
      * Bewusst ohne Schlagen — sonst wäre die Fähigkeit auf engem Raum eine
      * Allzweckwaffe gegen jede Figur in Reichweite.
+     *
+     * JEDER DIESER ZÜGE TRÄGT `ohneWeg` (seit v0.98, Wunsch #35). „Über alles
+     * hinweg" heisst: Zwischen Start und Ziel liegt kein Weg — weder einer,
+     * den man zeichnet, noch einer, auf dem man etwas einsammelt.
+     *
+     * DAS WAR NICHT NUR EINE FRAGE DER ANZEIGE. Ein Teleport über zwei Felder
+     * GERADEAUS sah für `wegFelder` und `betreteneFelder` aus wie ein
+     * gewöhnlicher Zwei-Felder-Zug: Das Brett zog eine Linie durch das Feld
+     * dazwischen, und die Figur sammelte dort auch noch eine Lootbox ein.
+     * Beides ist jetzt weg, und zwar aus DERSELBEN Angabe — Anzeige und Regel
+     * dürfen bei einem Weg nie auseinanderlaufen.
      */
     _umkreiszuege(stand, von, farbe, weite) {
         const liste = [];
@@ -1631,7 +1816,7 @@ const SCHACH = {
                 }
                 const ziel = SCHACH._feld(stand, r, s);
                 if (SCHACH.figurAuf(stand, ziel) === ".") {
-                    liste.push(SCHACH._zug(stand, von, ziel));
+                    liste.push(SCHACH._zug(stand, von, ziel, { ohneWeg: true }));
                 }
             }
         }
@@ -1648,7 +1833,11 @@ const SCHACH = {
             schlaegt: SCHACH.figurAuf(stand, nach) !== ".",
             rochade: "",
             enPassant: false,
-            umwandlung: ""
+            umwandlung: "",
+
+            /* Setzt dieser Zug über alles hinweg? Nur der Teleport tut das
+               (seit v0.98) — siehe `_umkreiszuege` und `wegFelder`. */
+            ohneWeg: false
         };
         return Object.assign(eintrag, zusatz || {});
     },
@@ -2394,6 +2583,22 @@ const SCHACH = {
             glasFarbe: stand.glasFarbe,
             glasBis: stand.glasBis,
 
+            /*
+             * ENTTARNEN UND VERSTECKEN laufen genau wie das Glas nach dem
+             * Zugzähler ab und wandern deshalb unverändert mit.
+             *
+             * BIS v0.98 STANDEN SIE HIER NICHT — und dieser Stand wird als
+             * Objekt-Literal gebaut, nicht aus dem alten kopiert. Ein Feld,
+             * das hier fehlt, ist nach dem nächsten Zug einfach weg. Genau
+             * das war die Meldung #36: „Enttarnen ist sofort verschwunden
+             * nach dem Einsammeln und Zugwechsel." Die Fähigkeit versprach
+             * sechs Halbzüge und hielt keinen einzigen.
+             */
+            enttarntFarbe: stand.enttarntFarbe,
+            enttarntBis: stand.enttarntBis,
+            verstecktFarbe: stand.verstecktFarbe,
+            verstecktBis: stand.verstecktBis,
+
             /* Abgelaufene Mauern verschwinden hier — sonst wüchse die Liste
                über die ganze Partie, obwohl längst nichts mehr steht. */
             mauern: SCHACH.mauern(stand),
@@ -2408,6 +2613,27 @@ const SCHACH = {
             /* Wird weiter unten nachgeführt, sobald feststeht, ob der Bauer
                umgewandelt oder en passant geschlagen hat. */
             bauernSeiten: [],
+
+            /*
+             * WEM WELCHE STARTSEITE GEHÖRT, steht für die ganze Partie fest
+             * (seit v0.72) — es wandert deshalb unverändert mit.
+             *
+             * BIS v0.98 FEHLTE ES HIER, und damit galt die Zusage nicht: Nach
+             * dem ersten Zug war der Eintrag weg, und `startSeitenVon` fiel
+             * still auf seinen zweiten Weg zurück (die Bauern). Auf dem Kreuz
+             * heisst das genau den Fehler, den v0.72 verhindern sollte — die
+             * Ansicht dreht sich, sobald der letzte Bauer einer Seite fällt.
+             * Die Listen darin werden nie an Ort und Stelle geändert, eine
+             * flache Kopie genügt.
+             */
+            startSeiten: Object.assign({}, stand.startSeiten),
+
+            /*
+             * Welcher Bauer seinen ersten eigenen Zug schon gemacht hat (seit
+             * v0.98). Wird weiter unten nachgeführt, sobald der Zug feststeht.
+             */
+            bauernZog: [],
+            bauernZugFassung: stand.bauernZugFassung,
 
             /* En passant gilt genau einen Halbzug — beides wird unten neu
                gesetzt, wenn dieser Zug ein Doppelschritt war. */
@@ -2526,6 +2752,14 @@ const SCHACH = {
         neu.bauernSeiten = SCHACH._bauernSeitenNachfuehren(
             stand, zug.von, zug.nach, !!zug.umwandlung,
             zug.enPassant ? [zug.enPassantFeld] : []);
+
+        /*
+         * DAS ERSTZUG-RECHT (seit v0.98): Genau hier verliert es der Bauer,
+         * der ZIEHT — und nur der. Dieselbe Nachführung wie bei den
+         * Startseiten: Der Eintrag eines Geschlagenen fällt weg, und wer
+         * umwandelt, braucht keinen mehr.
+         */
+        neu.bauernZog = SCHACH._bauernZogNachfuehren(stand, zug, art);
 
         /*
          * Zähler für die Fünfzig-Züge-Regel. ACHTUNG: Er springt hier auf 0
@@ -3826,6 +4060,12 @@ const SCHACH = {
             bauernSeiten: (Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [])
                 .map((eintrag) => ({ feld: umrechnen(eintrag.feld), seite: eintrag.seite }))
                 .filter((eintrag) => gueltig(eintrag.feld)),
+
+            /* Die neunte Stelle (seit v0.98): wer schon selbst gezogen hat.
+               Dieselbe Rechnung, dieselbe Bedingung. */
+            bauernZog: (Array.isArray(stand.bauernZog) ? stand.bauernZog : [])
+                .map((feld) => umrechnen(feld))
+                .filter((feld) => gueltig(feld)),
 
             risse: liste(SCHACH.risse(stand))
         });

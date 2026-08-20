@@ -42,7 +42,29 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   von früher und jede laufende Partie unverändert weiter. Wer einen Bauern
   bewegt, ohne dass ein Zug stattfindet (Nudelholz, Bauernschub, Erdbeben),
   führt die Einträge mit `SCHACH.bauernSeitenVerschieben` nach — sonst läuft
-  der geschobene Bauer danach in die falsche Richtung.
+  der geschobene Bauer danach in die falsche Richtung. **Seit v0.98 gilt das
+  auch für die Unglücks-Lootboxen:** `_pechAusloesen` reicht sein `wege`
+  dorthin weiter; bis dahin tat es das nicht, und ein vom Erdbeben geschobener
+  Bauer lief auf dem Kreuz danach falsch herum.
+- **DER DOPPELSCHRITT GEHÖRT DEM BAUERN, NICHT DER REIHE** (seit v0.98,
+  Wünsche #37 und #38). Gefragt wird nicht mehr „steht er auf einer
+  Startreihe", sondern **„hat dieser Bauer schon selbst gezogen"**. Wer
+  geschoben wurde, hat sich nicht selbst bewegt und behält seinen
+  Doppelschritt; wer gezogen ist, bekommt ihn auch dann nicht zurück, wenn ihn
+  etwas auf seine Startreihe zurückschiebt. Die Antwort steht als
+  `stand.bauernZog` (Feldnummern) im Stand und wird überall dort nachgeführt,
+  wo auch `bauernSeiten` nachgeführt wird — Zug, Schub, Brettgrösse.
+  **`bauernZugFassung` ist der Umstieg** (Muster von `bonusFassung`): Fehlt
+  sie, baut `standNormalisieren` die Liste EINMAL aus der alten Reihen-Regel
+  (`SCHACH._darfDoppeltNachReihe`, die es weiterhin gibt) — eine laufende
+  Partie rechnet im Moment des Umstiegs deshalb genau wie vorher.
+- **Ein Zug, der über alles hinweg setzt, hat KEINEN WEG** (seit v0.98, Wunsch
+  #35). Der Teleport trägt dafür `ohneWeg` am Zug-Eintrag, und `wegFelder` wie
+  `betreteneFelder` nehmen die Angabe als wahlfreien letzten Parameter. Vorher
+  wurde er an der krummen Strecke ERKANNT — ein Teleport zwei Felder geradeaus
+  fiel deshalb durch: Das Brett zeichnete eine Linie durch das Feld dazwischen,
+  und die Figur sammelte dort eine Lootbox ein. **Wer eine weitere Bewegung
+  ohne Weg baut, setzt die Angabe, statt sie aus der Geometrie zu raten.**
 - **Ein Kreuz-Brett hat vier tote Ecken, und die stehen im STAND**
   (`kreuz: true` an der Spielart, gesetzt von `SCHACH_RUNDE.kreuzAufstellen`).
   Sie sind gewöhnliche **Risse** — damit muss keine einzige Regel etwas von
@@ -116,6 +138,14 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   immer unerreichbar, unter einer Mauer unsichtbar. **Und Risse zählen auch
   nicht als Brett:** Der Massstab „wie leer ist es gerade" lässt sie aus, sonst
   regnete es auf dem Kreuz weniger als auf einem gleich grossen Quadrat.
+- **`SCHACH._ausfuehren` baut den neuen Stand als LITERAL, nicht als Kopie**
+  (Merkposten seit v0.98). Jedes Feld, das dort nicht ausdrücklich steht, ist
+  nach dem Zug weg — und kein Normalisieren holt es zurück. Genau so verlor das
+  Enttarnen seine Wirkung (Meldung #36) und `startSeiten` seine Zusage, für die
+  ganze Partie zu gelten. Wer ein Feld im Stand ergänzt, trägt es DORT ein; ein
+  Test in `tests\test-schach.js` vergleicht die Schlüssel vorher und nachher
+  und fängt das Vergessen ab, ohne je gepflegt werden zu müssen
+  (`erkenntnisse.md`, „Ein Stand, der als Literal gebaut wird").
 - **Was `schach.js` wissen muss, steht im STAND, nicht in `regeln`.** Die
   Regeln der Partie gehören `SCHACH_RUNDE`; das Regelwerk sieht nur den Stand.
   Deshalb wandert `koenigeAlsLeben` beim Aufstellen in den Stand (v0.51). Wer

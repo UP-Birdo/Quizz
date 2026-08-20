@@ -353,7 +353,24 @@ Object.assign(TEAM_SCHACH, {
                     && partie.stand.enttarntFarbe === meinTeam
                     && partie.zugZaehler < partie.stand.enttarntBis;
 
-                const zeigen = (partie.regeln.seltenheitZeigen !== false) || enttarnt;
+                /*
+                 * VERSTECKEN (seit v0.98): das Gegenstück. Hier steht im Stand
+                 * das OPFER — wer das Verstecken abbekommen hat, sieht die
+                 * Farbe für ein paar Halbzüge nicht, obwohl die Partie sie
+                 * sonst zeigt. Wer sie eingesetzt hat, sieht weiter alles.
+                 */
+                const versteckt = !!meinTeam
+                    && partie.stand.verstecktFarbe === meinTeam
+                    && partie.zugZaehler < partie.stand.verstecktBis;
+
+                /*
+                 * Die Einstellung der Partie ist der Ausgangspunkt, die zwei
+                 * Fähigkeiten drehen sie je Seite und auf Zeit. Zusammentreffen
+                 * können sie nicht: Enttarnen gibt es nur ohne, Verstecken nur
+                 * mit `seltenheitZeigen`.
+                 */
+                const zeigen = ((partie.regeln.seltenheitZeigen !== false) && !versteckt)
+                    || enttarnt;
                 const pechZeigen = (partie.regeln.pechZeigen === true)
                     && !!bonusHier.pech;
                 const stufe = SCHACH_RUNDE.bonusStufe(bonusHier);
@@ -1240,6 +1257,15 @@ Object.assign(TEAM_SCHACH, {
                 wege = [{ von: eintrag.von, nach: eintrag.nach }];
             }
 
+            /*
+             * DER TELEPORT BEKOMMT KEINE LINIE (seit v0.98, Wunsch #35):
+             * „nur der Startpunkt und der Zielort werden markiert". Beides
+             * setzt `spur.enden` ohnehin; die Angabe schaltet allein die Felder
+             * dazwischen ab. Sie steht am EINTRAG, weil sie zum Zug gehört —
+             * die Geometrie sieht einem geraden Teleport nichts an.
+             */
+            const ohneWeg = !!eintrag.ohneWeg;
+
             for (const weg of wege) {
                 if (weg.von === weg.nach) {
                     continue;
@@ -1247,7 +1273,8 @@ Object.assign(TEAM_SCHACH, {
                 spur.enden[weg.von] = true;
                 spur.enden[weg.nach] = true;
 
-                for (const feld of SCHACH.wegFelder(partie.stand, weg.von, weg.nach)) {
+                for (const feld of SCHACH.wegFelder(partie.stand, weg.von, weg.nach,
+                    ohneWeg)) {
                     spur.weg[feld] = true;
                     if (istPech) {
                         spur.pech[feld] = true;

@@ -686,6 +686,30 @@ const SCHACH_VORSCHAU = {
                 + "nicht, und der Gegner sieht davon nichts. Du bleibst am Zug."
         },
 
+        /*
+         * Verstecken (seit v0.98) — wie das Enttarnen ein Bild, das die
+         * WIRKUNG nicht zeigen kann: Sie liegt in der Ansicht des GEGNERS, und
+         * gezeichnet wird immer die eigene. Der Text trägt sie deshalb allein;
+         * ein erfundenes Bild wäre irreführender als keines.
+         */
+        verstecken: {
+            brett: [
+                ".....t",
+                "......",
+                "..s...",
+                ".B....",
+                "TT..L.",
+                "....D."
+            ],
+            figur: -1,
+            ziel: -1,
+            vorher: "Diese Partie zeigt die Seltenheit: Jeder sieht an der Farbe, "
+                + "welche Lootbox sich lohnt — und der Gegner rechnet damit.",
+            nachher: "Versteckt: Für 6 Halbzüge sieht der Gegner nur noch graue "
+                + "Lootboxen und muss raten, welche etwas taugt. Du siehst die "
+                + "Farben weiter. Du bleibst am Zug."
+        },
+
         dieb: {
             brett: [
                 ".....t",

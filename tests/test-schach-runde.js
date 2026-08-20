@@ -617,6 +617,92 @@ pruefe("Enttarnen wirkt seitenbezogen und befristet (v0.88)", () => {
     gleich(wieder.stand.enttarntBis, 0, "und die Frist ist leer");
 });
 
+pruefe("Verstecken gibt es nur, wenn die Seltenheit gezeigt wird (v0.98)", () => {
+    /*
+     * DAS GEGENSTUECK ZUM ENTTARNEN, R4-Rest. Derselbe Mechanismus mit
+     * umgekehrtem Vorzeichen: Wo die Farbe ohnehin verborgen ist, gaebe es
+     * nichts mehr zu verstecken — die Faehigkeit darf dort nirgends auftauchen.
+     */
+    const verborgen = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-v1", "Verborgen");
+    verborgen.regeln.faehigkeiten = true;
+    verborgen.regeln.seltenheitZeigen = false;
+
+    const offen = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten", "p-v2", "Offen");
+    offen.regeln.faehigkeiten = true;
+    offen.regeln.seltenheitZeigen = true;
+
+    wahr(SCHACH_RUNDE.bedingungPasst("verstecken", offen), "offen: gibt es");
+    wahr(!SCHACH_RUNDE.bedingungPasst("verstecken", verborgen), "verborgen: gibt es nicht");
+
+    /*
+     * UND DIE ZWEI SCHLIESSEN EINANDER AUS: In jeder Partie gibt es genau
+     * eine von beiden, nie beide und nie keine. Faellt das eines Tages
+     * auseinander, ist entweder ein Schalter falsch gesetzt oder die Bedingung
+     * anders gemeint als hier.
+     */
+    for (const runde of [verborgen, offen]) {
+        const beide = SCHACH_RUNDE.bedingungPasst("verstecken", runde)
+            !== SCHACH_RUNDE.bedingungPasst("enttarnen", runde);
+        wahr(beide, "genau eine der beiden passt");
+    }
+
+    /* In der Liste der Partie taucht sie entsprechend auf oder nicht. */
+    const inVerborgen = SCHACH_RUNDE.erlaubteFaehigkeiten(verborgen);
+    const inOffen = SCHACH_RUNDE.erlaubteFaehigkeiten(offen);
+
+    wahr(inVerborgen !== null && inVerborgen.indexOf("verstecken") === -1,
+        "verborgen: nicht in der erlaubten Liste");
+    wahr(inOffen === null || inOffen.indexOf("verstecken") !== -1,
+        "offen: in der erlaubten Liste");
+
+    /* Und die Ziehung liefert sie in einer verborgenen Partie nie. */
+    const stufe = SCHACH_VARIANTEN.stufeVon("verstecken").id;
+    for (let schritt = 0; schritt < 300; schritt++) {
+        const art = SCHACH_VARIANTEN.faehigkeitAusStufe(
+            stufe, schritt / 300, [], inVerborgen);
+        wahr(art !== "verstecken", "verborgen: wird nicht gezogen");
+    }
+
+    /* Auch nicht ueber den ausgelosten Vorrat. */
+    verborgen.regeln.itemVorrat = "viele";
+    const mitVorrat = SCHACH_RUNDE.itemVorratAuslosen(verborgen);
+    wahr(mitVorrat.regeln.itemPool.indexOf("verstecken") === -1,
+        "verborgen: kommt auch nicht in den ausgelosten Vorrat");
+});
+
+pruefe("Verstecken trifft den GEGNER und ist befristet (v0.98)", () => {
+    /*
+     * DER EINE UNTERSCHIED ZUM ENTTARNEN: Im Stand landet nicht die eigene
+     * Farbe, sondern die des Gegners — dort steht das OPFER, wie beim vollen
+     * Glas. Wer das eines Tages umdreht, nimmt sich selbst die Sicht.
+     */
+    wahr(SCHACH_VARIANTEN.FAEHIGKEITEN.verstecken.beschreibung
+        .indexOf(String(SCHACH_RUNDE.VERSTECKT_HALBZUEGE) + " Halbzüge") !== -1,
+        "Text und Konstante nennen dieselbe Zahl");
+
+    const runde = faehigkeitenPartie();
+    runde.regeln.seltenheitZeigen = true;
+    runde.faehigkeiten.weiss.push("verstecken");
+
+    const vorher = runde.stand.brett;
+    const nachher = SCHACH_RUNDE.faehigkeitEinsetzen(runde, "id-anna", "verstecken", -1);
+
+    wahr(nachher !== null, "laesst sich einsetzen");
+    gleich(nachher.stand.brett, vorher, "das Brett bleibt unberuehrt");
+    gleich(nachher.stand.verstecktFarbe, "schwarz", "wirkt gegen Schwarz");
+    wahr(nachher.stand.verstecktBis > nachher.zugZaehler, "und laeuft noch");
+    gleich(nachher.stand.enttarntFarbe, "", "das Enttarnen bleibt unberuehrt");
+
+    /* Der Datenvertrag: Ein Stand von frueher kennt die Felder nicht. */
+    const roh = JSON.parse(JSON.stringify(nachher));
+    delete roh.stand.verstecktFarbe;
+    delete roh.stand.verstecktBis;
+
+    const wieder = SCHACH_RUNDE.normalisieren(roh);
+    gleich(wieder.stand.verstecktFarbe, "", "ohne Angabe wirkt nichts");
+    gleich(wieder.stand.verstecktBis, 0, "und die Frist ist leer");
+});
+
 pruefe("Jede Vorrat-Stufe liefert WENIGER als die darueber (v0.87)", () => {
     /*
      * SONST IST EIN KNOPF WIRKUNGSLOS. Genau das war beim Bauen der Fall:
@@ -2868,7 +2954,10 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
         /* `enttarnen` (v0.88) nimmt kein Material und bewegt nichts — es
            aendert nur, was EINE Seite sieht. Dieselbe Einordnung wie die
            Halluzination, waere sie eine Faehigkeit. */
-        "enttarnen"];
+        "enttarnen",
+        /* `verstecken` (v0.98) ist sein Gegenstueck und aendert genauso wenig
+           am Brett — nur eben den Blick der ANDEREN Seite. */
+        "verstecken"];
 
     /* Die dritte Gruppe seit v0.48: Die Faehigkeit IST der Zug. Man bleibt am
        Zug, macht ihn sofort — und kann sonst nichts mehr. */

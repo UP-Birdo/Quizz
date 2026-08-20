@@ -898,10 +898,58 @@ Wegwerf-Skript gegen die echten Dateien: Einstellungen hineingeben,
 Minuten Arbeit für eine Frage, die durch Code-Lesen unbeantwortet blieb —
 dieselbe Methode hatte schon v0.71 geholfen.
 
-## Was zur Meldung #36 schon gemessen wurde (Stand 20.08.2026, offen)
+## Ein Stand, der als Literal gebaut wird, verliert jedes vergessene Feld (Meldung #36, gefunden v0.98)
 
 **Meldung:** „Dieb und Enttarnen sind sofort verschwunden nach dem Einsammeln
 und Zugwechsel, funktioniert nicht wie ein Item."
+
+**Die Ursache — für die Enttarnen-Hälfte gefunden und behoben:**
+`SCHACH._ausfuehren` baut den neuen Stand als **Objekt-Literal**, nicht als
+Kopie des alten. Jedes Feld, das dort nicht ausdrücklich aufgeführt ist,
+existiert nach dem Zug schlicht nicht mehr — und `standNormalisieren` kann es
+nicht zurückholen, denn der Wert ist weg. `enttarntFarbe` und `enttarntBis`
+(v0.88) standen nie darin. Die Fähigkeit versprach sechs Halbzüge und hielt
+**keinen einzigen**: Der nächste Zug löschte ihre Wirkung.
+
+**Beim Nachmessen fiel ein zweiter Verlust derselben Art auf**, älter und
+stiller: `startSeiten` (v0.72). Der Eintrag soll für die ganze Partie
+feststehen — genau dafür wurde er gebaut, damit sich die Ansicht auf dem Kreuz
+nicht dreht, sobald die letzten Bauern einer Seite fallen. Tatsächlich war er
+nach dem ERSTEN Zug weg, und `SCHACH.startSeitenVon` fiel still auf seinen
+zweiten Weg zurück: die Bauern. Die Zusage von v0.72 galt also nie länger als
+einen Halbzug. Dass niemand es merkte, liegt am Rückfall — er liefert meistens
+dieselbe Antwort, nur eben nicht, wenn die Bauern fehlen.
+
+**Warum das keine Nachlässigkeit war, sondern eine Bauform:** Ein Literal ist
+an dieser Stelle die richtige Wahl — fast jedes Feld muss beim Ziehen ohnehin
+neu entschieden werden (was läuft ab, was bleibt, was wandert mit). Nur trägt
+diese Bauform ihren Fehler in sich: Sie schweigt, wenn man etwas vergisst.
+`Object.assign({}, stand, {…})` hätte den Fehler nicht zugelassen, aber jede
+ablaufende Wirkung zum Sonderfall gemacht.
+
+**Was jetzt anders ist — der Test, den niemand pflegen muss:**
+`tests\test-schach.js` vergleicht die SCHLÜSSEL eines frischen Standes mit denen
+nach einem Zug. Er nennt kein Feld beim Namen; wer eines ergänzt und die Zeile
+in `_ausfuehren` vergisst, fällt sofort auf. Genau dasselbe Muster wie der Test
+zu `partieAnlegen` aus v0.91 — und aus demselben Grund: **Eine Aufzählung, die
+man beim Erweitern mitpflegen muss, wird eines Tages nicht mitgepflegt.**
+
+**Die Lehre:** Wo ein Datensatz aus einzelnen Feldern NEU aufgebaut wird statt
+kopiert, ist die Liste dieser Felder eine Schnittstelle — und sie gehört
+abgesichert, nicht kommentiert. Dieselbe Falle steckt an drei weiteren Stellen
+dieses Projekts, die alle Feld für Feld aufbauen: `SCHACH.standNormalisieren`,
+`SCHACH_RUNDE.normalisieren` (dort auch die Verlaufseinträge) und
+`SCHACH_TAFEL.partieAnlegen`. Die letzte hat ihren Test seit v0.91, die erste
+seit v0.98.
+
+**Offen bleibt die DIEB-Hälfte der Meldung.** Sie ist im Modell weiterhin nicht
+nachstellbar; was dazu bereits ausgeschlossen wurde, steht unverändert unten.
+Zwei Dinge sind vor einer weiteren Suche zu klären: ob sie nach v0.98.0
+überhaupt noch auftritt, und ob nicht die graue Dieb-Marke aus v0.94 gemeint
+war (sie sieht seitdem absichtlich anders aus, wenn der Gegner nichts im Vorrat
+hat).
+
+## Was zur Meldung #36 schon gemessen wurde (Stand 20.08.2026)
 
 **Damit die nächste Sitzung nicht dieselbe Strecke noch einmal läuft — das
 ist bereits AUSGESCHLOSSEN**, gemessen mit einem Wegwerf-Skript gegen die
@@ -928,6 +976,13 @@ weiter gesucht wird.
 die Datenbank. Der nächste Schritt wäre, den Zugwechsel mit zwei Anmeldungen
 nachzustellen und dabei zu beobachten, ob der Vorrat über den Abgleich
 zurückgesetzt wird.
+
+**NACHTRAG v0.98:** Die Suche lief damals im VORRAT — dort, wo die Meldung
+hinzeigte. Gefunden wurde der Fehler eine Ebene tiefer, in der WIRKUNG (siehe
+den Abschnitt darüber). Auch das ist eine Lehre: Ein Nutzer beschreibt, was er
+sieht, nicht wo es herkommt. „Die Fähigkeit ist weg" und „die Fähigkeit tut
+nichts mehr" sehen am Brett gleich aus — die zweite Lesart war nie geprüft
+worden.
 
 ## Zwei Wege zum Partieende, aber nur einer wurde geprüft (v3.6, gefunden v0.94)
 

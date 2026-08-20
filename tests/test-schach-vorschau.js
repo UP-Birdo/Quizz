@@ -103,8 +103,10 @@ for (const art of alleArten) {
             || nachher.schildFeld >= 0 || nachher.fesselFeld >= 0
             || nachher.frostFeld >= 0 || nachher.glasFarbe
             /* Enttarnen (v0.88) wirkt wie das Glas: nicht aufs Brett, sondern
-               auf den Blick EINER Seite — und steht dafuer im Stand. */
+               auf den Blick EINER Seite — und steht dafuer im Stand.
+               Verstecken (v0.98) ist sein Gegenstueck und steht daneben. */
             || nachher.enttarntFarbe
+            || nachher.verstecktFarbe
             || SCHACH.mauern(nachher).length > 0
             || SCHACH.geliehene(nachher).length > 0);
 

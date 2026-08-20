@@ -940,6 +940,18 @@ schaltet alles ab.
 | `SCHACH.wegFelder` | Welche Felder ZEICHNET man? | das ganze L |
 | `SCHACH.betreteneFelder` | Welche betritt die Figur WIRKLICH? | nur das Ziel |
 
+**Beide nehmen seit v0.98 einen wahlfreien letzten Parameter `ohneWeg`**
+(Wunsch #35). Er sagt: Zwischen Start und Ziel liegt gar kein Weg — es bleiben
+die beiden Enden. Gesetzt wird er von den Teleport-Zügen selbst
+(`SCHACH._umkreiszuege` gibt jedem `ohneWeg: true` mit), gefragt von
+`_bonusEinsammeln`, `_zugAmRissAbbrechen` und der Zugspur am Brett.
+
+**Warum die Geometrie dafür nicht reicht:** Ein Teleport zwei Felder GERADEAUS
+sieht aus wie ein gewöhnlicher Zwei-Felder-Zug. Bis v0.97 zeichnete das Brett
+deshalb eine Linie durch das Feld dazwischen, und die Figur sammelte dort auch
+noch eine Lootbox ein — obwohl sie in Wahrheit darüber hinweggesetzt ist. Wer
+eine weitere Bewegung ohne Weg baut, SETZT die Angabe, statt sie zu raten.
+
 **Die Umwandlung hängt am ZUG, nicht an der Gangart** (seit v0.41):
 `SCHACH._mitUmwandlung` macht aus einem Zug vier, sobald ein Bauer damit die
 letzte Reihe erreicht — egal, ob er dorthin gelaufen ist oder über ein

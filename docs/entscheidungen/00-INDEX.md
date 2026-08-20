@@ -48,8 +48,16 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       EINZELN und übersprang zwei; die Vorschau las eine andere Quelle als
       das Ergebnis und bestätigte den Fehler. Merksatz: Eine Lehre, die nur
       als Satz in der Doku steht, hält bis zum nächsten Mal
-    - **Was zur Meldung #36 schon gemessen wurde** (offen) — Liste dessen,
-      was bereits AUSGESCHLOSSEN ist. **Vor jeder weiteren Suche lesen**
+    - **Ein Stand, der als Literal gebaut wird, verliert jedes vergessene
+      Feld** (Meldung #36, gefunden v0.98) — `SCHACH._ausfuehren` baut den
+      neuen Stand Feld für Feld; `enttarntFarbe`/`enttarntBis` und
+      `startSeiten` fehlten dort und waren nach jedem Zug weg. Ein Test
+      vergleicht jetzt die SCHLÜSSEL vorher/nachher und muss nie gepflegt
+      werden. Merksatz: Wo ein Datensatz neu aufgebaut statt kopiert wird,
+      ist die Feldliste eine Schnittstelle — und gehört abgesichert
+    - **Was zur Meldung #36 schon gemessen wurde** — Liste dessen, was für die
+      noch offene DIEB-Hälfte bereits AUSGESCHLOSSEN ist. **Vor jeder weiteren
+      Suche lesen**
     - **Zwei Wege zum Partieende, aber nur einer wurde geprueft** (v3.6,
       gefunden v0.94) — Matt und Patt wurden nur nach einem ZUG geprueft; eine
       Faehigkeit konnte mattsetzen, ohne die Partie zu beenden. Dazu derselbe

@@ -3,6 +3,52 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.98.0 — 2026-08-20
+
+**Neue Fähigkeit „Verstecken" — und vier Meldungen aus dem Wunsch-Knopf.**
+
+- **Neu: „Verstecken", das Gegenstück zum Enttarnen.** In einer Partie, die die
+  Seltenheit der Lootboxen zeigt, sieht dein Gegner nach dem Einsetzen 6
+  Halbzüge lang nur noch graue Boxen und muss raten, welche sich lohnt. Du
+  selbst siehst die Farben weiter, und du bleibst am Zug.
+
+  Es gibt sie nur, wo sie etwas bewirkt: Verbirgt eine Partie die Seltenheit
+  ohnehin, kommt stattdessen das Enttarnen vor. Die beiden schliessen einander
+  aus — in jeder Partie gibt es genau eine von ihnen. Damit ist das
+  Wunsch-Bündel R vollständig gebaut.
+
+- **[#36] Enttarnen hielt keinen einzigen Halbzug.** Die Fähigkeit versprach
+  sechs — tatsächlich war ihre Wirkung nach dem nächsten Zug weg. Der Stand
+  wird beim Ziehen neu gebaut, und die zwei Angaben zum Enttarnen standen dort
+  nicht mit drin. Behoben, und mit einer Prüfung abgesichert, die jedes künftig
+  vergessene Feld von selbst findet.
+
+  **Dabei ist ein zweiter Fehler derselben Art aufgefallen:** Auch die
+  Startseiten der Farben gingen bei jedem Zug verloren. Auf dem Kreuz-Brett
+  konnte sich die Ansicht dadurch mitten in der Partie drehen, sobald die
+  letzten Bauern einer Seite gefallen waren. Ebenfalls behoben.
+
+- **[#37] und [#38] Der Doppelschritt gehört jetzt dem Bauern, nicht der
+  Reihe.** Bisher durfte zwei Felder ziehen, wer auf einer Startreihe stand.
+  Neu zählt allein: Hat dieser Bauer schon selbst gezogen?
+
+  - Wer mit Nudelholz oder Bauernschub geschoben wurde, hat sich nicht selbst
+    bewegt und behält seinen Doppelschritt (#38).
+  - Wer schon gezogen ist, bekommt ihn nicht zurück — auch dann nicht, wenn
+    ihn etwas auf seine Startreihe zurückschiebt (#37).
+
+  Laufende Partien rechnen im Moment des Umstiegs genau wie vorher weiter.
+
+- **[#35] Der Teleport zieht keine Linie mehr.** Markiert werden nur noch
+  Startpunkt und Zielfeld. Dahinter steckte mehr als eine Anzeige: Ein Teleport
+  zwei Felder geradeaus galt als gewöhnlicher Zug — die Figur sammelte dabei
+  sogar eine Lootbox auf dem Feld dazwischen ein, über das sie in Wahrheit
+  hinweggesetzt ist. Beides ist weg.
+
+- **Und noch eine Lücke gleicher Art:** Bauern, die von einer Unglücks-Lootbox
+  geschoben wurden (Erdbeben, Erdrutsch, Meuterei), nahmen ihre Startseite
+  nicht mit — auf dem Kreuz liefen sie danach in die falsche Richtung.
+
 ## v0.97.0 — 2026-08-20
 
 **„Schach lernen" steht jetzt auf dem normalen Brett — und ohne Lootboxen.**

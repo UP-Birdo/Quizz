@@ -51,6 +51,8 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Verloren** | `runde.verloren` | Merkt sich nur **was** verloren ging. Dafür die Wiedergeburt (seit v0.92 ausgeblendet) und die Bilanz. |
 | **Zwei Leben** | `koenigeAlsLeben` | Wer mehr als einen König hat, dessen Könige sind gewöhnliche Figuren; beim letzten gelten wieder Schach und Matt. |
 | **Saat** | `_zufallsWert(saat)` | Der Text, aus dem der gerechnete Zufall entsteht. Statt `Math.random()` — sonst sähe jedes Gerät ein anderes Brett. Was sich unterscheidet, gehört an den ANFANG der Saat. |
+| **Enttarnen** | `FAEHIGKEITEN.enttarnen`, `sichtWirkung: "zeigen"` | Fähigkeit seit v0.88: gibt es nur, wenn eine Partie die Seltenheit der Lootboxen VERBIRGT (`nurOhneSeltenheit`) — zeigt sie dir selbst für 6 Halbzüge trotzdem. |
+| **Verstecken** | `FAEHIGKEITEN.verstecken`, `sichtWirkung: "verbergen"` | Das Gegenstück seit v0.98: gibt es nur, wenn eine Partie die Seltenheit ZEIGT (`nurMitSeltenheit`) — nimmt sie dem GEGNER für 6 Halbzüge weg. Enttarnen und Verstecken schliessen einander aus, in jeder Partie gibt es genau eine von beiden. |
 
 ## Am Bildschirm
 

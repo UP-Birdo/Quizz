@@ -69,6 +69,14 @@ const SCHACH_RUNDE = {
        zusammen, wie beim vollen Glas. */
     ENTTARNT_HALBZUEGE: 6,
 
+    /* Wie lange das Verstecken wirkt (seit v0.98). ABSICHTLICH dieselbe Zahl
+       wie beim Enttarnen: Die beiden sind ein Paar, in jeder Partie gibt es
+       genau eine von ihnen, und zwei verschiedene Dauern wären ein Unterschied
+       ohne Grund. Auch diese Zahl steht im Beschreibungstext
+       (`SCHACH_VARIANTEN.FAEHIGKEITEN.verstecken`) — ein Test hält beide
+       zusammen. */
+    VERSTECKT_HALBZUEGE: 6,
+
     /*
      * Wie lange auf die Zustimmung des Teams gewartet wird (in Sekunden), je
      * nachdem wie oft jemand schon nicht mitgestimmt hat.
@@ -1082,7 +1090,13 @@ const SCHACH_RUNDE = {
                                 .filter((weg) => weg && Number.isInteger(weg.von)
                                     && Number.isInteger(weg.nach) && weg.von >= 0 && weg.nach >= 0)
                                 .map((weg) => ({ von: weg.von, nach: weg.nach }))
-                            : []
+                            : [],
+                        /* Ein Teleport setzt über alles hinweg (seit v0.98):
+                           Das Brett zeichnet dann keine Linie, sondern nur
+                           Start und Ziel. Der Eintrag wird hier Feld für Feld
+                           neu gebaut — was hier fehlt, ist nach dem Laden
+                           weg. */
+                        ohneWeg: !!eintrag.ohneWeg
                     });
                 }
             }
@@ -1971,9 +1985,19 @@ const SCHACH_RUNDE = {
              * Ändert nichts am Brett — nur daran, wie EINE Seite es sieht.
              * Dasselbe Muster wie die Halluzination, nur mit umgekehrtem
              * Vorzeichen: Die zeigt weniger, diese zeigt mehr.
+             *
+             * ZWEI RICHTUNGEN seit v0.98: Enttarnen zeigt EINEM SELBST mehr,
+             * Verstecken zeigt dem GEGNER weniger. Welche von beiden gemeint
+             * ist, sagt `sichtWirkung` am Eintrag — nie der Name der
+             * Fähigkeit, sonst müsste diese Stelle jede neue kennen.
              */
-            neu.stand.enttarntFarbe = farbe;
-            neu.stand.enttarntBis = neu.zugZaehler + SCHACH_RUNDE.ENTTARNT_HALBZUEGE;
+            if (beschreibung.sichtWirkung === "verbergen") {
+                neu.stand.verstecktFarbe = SCHACH.gegner(farbe);
+                neu.stand.verstecktBis = neu.zugZaehler + SCHACH_RUNDE.VERSTECKT_HALBZUEGE;
+            } else {
+                neu.stand.enttarntFarbe = farbe;
+                neu.stand.enttarntBis = neu.zugZaehler + SCHACH_RUNDE.ENTTARNT_HALBZUEGE;
+            }
 
         } else if (beschreibung.art === "sofort") {
             const wirkung = SCHACH.bauernschub(neu.stand, farbe, umwandlung);
@@ -2454,9 +2478,9 @@ const SCHACH_RUNDE = {
      * `altStand` ist der Stand VOR dem Zug: Die Felder gehören zu seiner
      * Nummerierung, und ein Unglückswürfel kann das Brett vergrössern.
      */
-    _bonusEinsammeln(runde, altStand, von, nach, farbe, wer, bericht) {
+    _bonusEinsammeln(runde, altStand, von, nach, farbe, wer, bericht, ohneWeg) {
         return SCHACH_RUNDE._bonusEinsammelnAufFeldern(runde,
-            SCHACH.betreteneFelder(altStand, von, nach), farbe, wer,
+            SCHACH.betreteneFelder(altStand, von, nach, ohneWeg), farbe, wer,
             { vonZug: true, von: von, nach: nach, altStand: altStand,
                 bericht: bericht });
     },
@@ -2701,6 +2725,28 @@ const SCHACH_RUNDE = {
         if (wirkung) {
             runde.stand = wirkung.stand;
             text += " — " + wirkung.text;
+
+            /*
+             * GESCHOBENE BAUERN NEHMEN AUCH HIER IHRE EINTRÄGE MIT (seit
+             * v0.98). Bis dahin galt das nur für die FÄHIGKEITEN — ein
+             * Unglück (Erdbeben, Erdrutsch, Meuterei) schob Bauern, ohne die
+             * Einträge nachzuführen. Das ist dieselbe Lücke wie beim
+             * Erdrutsch in v0.81, nur eine Ebene höher: Wer eine Bewegung
+             * baut, muss sie an EINER Stelle melden.
+             *
+             * Zwei Dinge hängen daran: die Startseite des Bauern (auf dem
+             * Kreuz läuft er sonst in die falsche Richtung) und sein Recht
+             * auf den ersten Doppelschritt.
+             *
+             * NICHT bei einer Brettgrössen-Änderung: Dort tragen die Wege noch
+             * die ALTEN Feldnummern, während der Stand schon die neuen führt —
+             * `SCHACH._feldnummernUmrechnen` hat beide Listen dann bereits
+             * selbst umgerechnet. Erkennbar an `wirkung.umrechnen`.
+             */
+            if (typeof wirkung.umrechnen !== "function") {
+                runde.stand = SCHACH.bauernSeitenVerschieben(
+                    runde.stand, wirkung.wege);
+            }
 
             /*
              * ÄNDERT SICH DIE BRETTGRÖSSE, WANDERN DIE LIEGENDEN WÜRFEL MIT
@@ -3928,7 +3974,15 @@ const SCHACH_RUNDE = {
             farbe: farbe,
             von: von,
             nach: nach,
-            wege: wege
+            wege: wege,
+
+            /*
+             * Der Teleport setzt über alles hinweg (seit v0.98, Wunsch #35):
+             * Das Brett zeichnet dann keine Linie, sondern nur Start und Ziel.
+             * Die Angabe kommt aus dem ZUG, nicht aus der Geometrie — siehe
+             * `SCHACH.wegFelder`.
+             */
+            ohneWeg: !!ergebnis.zug.ohneWeg
         };
 
         neu.verlauf.push(zugEintrag);
@@ -3937,7 +3991,8 @@ const SCHACH_RUNDE = {
         /* Würfel einsammeln — auf dem ganzen Weg, nicht nur auf dem Zielfeld. */
         const bericht = {};
         const pechFelder = SCHACH_RUNDE._bonusEinsammeln(
-            neu, alt.stand, von, nach, farbe, wer, bericht);
+            neu, alt.stand, von, nach, farbe, wer, bericht,
+            !!ergebnis.zug.ohneWeg);
 
         /*
          * Hat der eingesammelte Würfel den weiteren Weg gesperrt, endet der Zug
@@ -4054,7 +4109,10 @@ const SCHACH_RUNDE = {
             return false;
         }
 
-        const weg = SCHACH.betreteneFelder(altStand, von, nach);
+        /* Ein Teleport hat keinen Weg, auf dem etwas aufreissen könnte — er
+           setzt über alles hinweg (seit v0.98). */
+        const weg = SCHACH.betreteneFelder(altStand, von, nach,
+            !!(zug && zug.ohneWeg));
         if (weg.length < 2) {
             return false;
         }

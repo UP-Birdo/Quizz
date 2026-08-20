@@ -1201,11 +1201,49 @@ const SCHACH_VARIANTEN = {
             titel: "Enttarnen",
             stufe: "blau",
             art: "sicht",
+            sichtWirkung: "zeigen",
             nurOhneSeltenheit: true,
             beschreibung: "Nur in Partien, die die Seltenheit verbergen: Du allein "
                 + "siehst 6 Halbzüge lang, wie selten die liegenden Lootboxen sind — "
                 + "ihre Farbe. WAS drin steckt, verrät sie weiterhin nicht, und der "
                 + "Gegner merkt nichts. Du bleibst am Zug."
+        },
+
+        /*
+         * VERSTECKEN (seit v0.98, Wunsch R4) — das Gegenstück zum Enttarnen
+         * und die zweite Fähigkeit, deren Existenz an einer EINSTELLUNG hängt.
+         *
+         * `nurMitSeltenheit: true` ist die Umkehrung: Sie kommt ausschliesslich
+         * in Partien vor, die die Seltenheit ZEIGEN
+         * (`regeln.seltenheitZeigen !== false`). Wo die Farbe ohnehin verborgen
+         * ist, gäbe es nichts mehr zu verbergen — und eine Fähigkeit, die
+         * nichts tut, ist schlimmer als keine.
+         *
+         * DIE BEIDEN SCHLIESSEN EINANDER AUS, und das ist Absicht: In jeder
+         * Partie gibt es genau eine der zwei. Deshalb tragen sie dieselbe Stufe
+         * und dieselbe Dauer — welche von beiden man bekommt, entscheidet die
+         * Partie, nicht das Glück.
+         *
+         * SIE WIRKT AUF DEN GEGNER, nicht auf einen selbst — als einzige der
+         * Art „sicht". Damit der Wirkungs-Zweig das nicht am Namen ablesen
+         * muss, sagt `sichtWirkung` es ausdrücklich: "zeigen" oder "verbergen".
+         *
+         * KEIN BRUCH DER EISERNEN REGEL „die Oberfläche verrät nie, was in
+         * einer Lootbox steckt": Verborgen wird die FARBE (wie selten?), nicht
+         * der Inhalt — dieselbe Auskunft, die eine Partie ohne
+         * `seltenheitZeigen` dauerhaft verweigert, hier eben auf Zeit und nur
+         * für eine Seite.
+         */
+        verstecken: {
+            titel: "Verstecken",
+            stufe: "blau",
+            art: "sicht",
+            sichtWirkung: "verbergen",
+            nurMitSeltenheit: true,
+            beschreibung: "Nur in Partien, die die Seltenheit zeigen: Dein Gegner "
+                + "sieht 6 Halbzüge lang nicht mehr, wie selten die liegenden "
+                + "Lootboxen sind — für ihn sieht jede aus wie jede andere. Du "
+                + "selbst siehst die Farben weiterhin. Du bleibst am Zug."
         },
 
         dieb: {

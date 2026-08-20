@@ -1289,6 +1289,224 @@ pruefe("Ohne gemerkte Seiten antworten die Bauern (v0.72)", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Ein Zug darf kein Feld des Standes verlieren (seit v0.98)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein Zug verliert KEIN Feld des Standes (v0.98)", () => {
+    /*
+     * DER TEST, DER SICH NIE PFLEGEN LAESST — und genau das ist der Punkt.
+     *
+     * `SCHACH._ausfuehren` baut den neuen Stand als Objekt-LITERAL, nicht als
+     * Kopie des alten. Wer dort ein Feld vergisst, verliert es bei jedem Zug
+     * still. Genau das war jahrelang der Fall: `enttarntFarbe`/`enttarntBis`
+     * (die Faehigkeit hielt keinen einzigen Halbzug statt sechs — Meldung #36)
+     * und `startSeiten` (die Ansicht auf dem Kreuz fiel auf die Bauern
+     * zurueck, obwohl v0.72 genau das verhindern sollte).
+     *
+     * Dieser Test nennt kein einziges Feld beim Namen: Er vergleicht die
+     * Schluessel eines frischen Standes mit denen nach einem Zug. Wer ein
+     * neues Feld ergaenzt und die Zeile in `_ausfuehren` vergisst, faellt hier
+     * auf — ohne dass jemand den Test nachziehen muesste.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "e2": "B" }, "weiss");
+    const ergebnis = SCHACH.ziehen(stand, SCHACH.feldNummer("e2"),
+        SCHACH.feldNummer("e3"));
+
+    wahr(ergebnis !== null, "der Zug geht");
+
+    const fehlen = Object.keys(stand)
+        .filter((schluessel) => !(schluessel in ergebnis.stand));
+
+    gleich(fehlen.join(", "), "", "kein Feld faellt beim Ziehen weg");
+});
+
+pruefe("Enttarnen und Verstecken ueberleben den naechsten Zug (v0.98)", () => {
+    /*
+     * MELDUNG #36, die gemessene Haelfte: „Enttarnen ist sofort verschwunden
+     * nach dem Einsammeln und Zugwechsel." Die Wirkung laeuft nach dem
+     * Zugzaehler ab und muss deshalb ueber die Zuege hinweg stehen bleiben —
+     * wie das volle Glas, neben dem sie im Stand steht.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "e2": "B" }, "weiss", {
+        enttarntFarbe: "weiss",
+        enttarntBis: 6,
+        verstecktFarbe: "schwarz",
+        verstecktBis: 6,
+        glasFarbe: "schwarz",
+        glasBis: 4
+    });
+
+    const ergebnis = SCHACH.ziehen(stand, SCHACH.feldNummer("e2"),
+        SCHACH.feldNummer("e3"));
+
+    gleich(ergebnis.stand.enttarntFarbe, "weiss", "Enttarnen bleibt");
+    gleich(ergebnis.stand.enttarntBis, 6, "und behaelt seine Frist");
+    gleich(ergebnis.stand.verstecktFarbe, "schwarz", "Verstecken bleibt");
+    gleich(ergebnis.stand.verstecktBis, 6, "und behaelt seine Frist");
+    gleich(ergebnis.stand.glasFarbe, "schwarz", "das Glas ebenso");
+});
+
+pruefe("Die Startseiten ueberstehen jeden Zug (v0.72, gefunden v0.98)", () => {
+    /*
+     * `startSeiten` steht seit v0.72 im Stand, damit sich die Ansicht NICHT
+     * dreht, wenn der letzte Bauer einer Seite faellt. Die Zusage galt nur bis
+     * zum ersten Zug: Danach war der Eintrag weg und `startSeitenVon` fiel auf
+     * seinen zweiten Weg zurueck, die Bauern.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "e2": "B" }, "weiss", {
+        startSeiten: { weiss: ["links"], schwarz: ["rechts"] }
+    });
+
+    const ergebnis = SCHACH.ziehen(stand, SCHACH.feldNummer("e2"),
+        SCHACH.feldNummer("e3"));
+
+    gleich(SCHACH.startSeitenVon(ergebnis.stand, "weiss").join(","), "links",
+        "Weiss behaelt seine Startseite");
+    gleich(SCHACH.startSeitenVon(ergebnis.stand, "schwarz").join(","), "rechts",
+        "Schwarz behaelt seine Startseite");
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Doppelschritt gehoert dem Bauern, nicht der Reihe (v0.98, #37/#38)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein geschobener Bauer behaelt seinen Doppelschritt (#38, v0.98)", () => {
+    /*
+     * WUNSCH #38: „Bauernschub und Verschieben sollen nicht den ersten Zug des
+     * Bauern beeinflussen." Wer geschoben wurde, hat sich nicht selbst bewegt.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "b2": "B" }, "weiss");
+
+    wahr(SCHACH.bauernDarfDoppelt(stand, SCHACH.feldNummer("b2"), "weiss"),
+        "auf der Startreihe darf er");
+
+    /* Ein Schub nach b3 — kein Zug, nur eine Bewegung. */
+    const geschoben = SCHACH.bauernSeitenVerschieben(
+        SCHACH.standNormalisieren(Object.assign({}, stand, {
+            brett: brettAus({ "e1": "K", "e8": "k", "b3": "B" })
+        })),
+        [{ von: SCHACH.feldNummer("b2"), nach: SCHACH.feldNummer("b3") }]);
+
+    wahr(SCHACH.bauernDarfDoppelt(geschoben, SCHACH.feldNummer("b3"), "weiss"),
+        "nach dem Schub darf er immer noch");
+    gleich(ziele(geschoben, "b3"), "b4,b5", "und zwar wirklich zwei Felder weit");
+});
+
+pruefe("Ein Bauer springt nie zweimal (#37, v0.98)", () => {
+    /*
+     * WUNSCH #37: „Ein Bauer soll nie zweimal springen duerfen, nur beim
+     * ersten Mal Bewegen." Bis v0.97 hing das an der REIHE — wer
+     * zurueckgeschoben wurde, bekam den Doppelschritt ein zweites Mal.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "b2": "B" }, "weiss");
+
+    const gezogen = SCHACH.ziehen(stand, SCHACH.feldNummer("b2"),
+        SCHACH.feldNummer("b3")).stand;
+
+    wahr(!SCHACH.bauernDarfDoppelt(gezogen, SCHACH.feldNummer("b3"), "weiss"),
+        "nach dem eigenen Zug ist der Doppelschritt weg");
+
+    /* Jetzt schiebt ihn etwas auf seine Startreihe zurueck. `amZug` wird dabei
+       auf Weiss zurueckgesetzt: Nach dem Zug ist Schwarz dran, und wir wollen
+       die Zuege des weissen Bauern sehen. */
+    const zurueck = SCHACH.bauernSeitenVerschieben(
+        Object.assign({}, gezogen, {
+            brett: brettAus({ "e1": "K", "e8": "k", "b2": "B" }),
+            amZug: "weiss"
+        }),
+        [{ von: SCHACH.feldNummer("b3"), nach: SCHACH.feldNummer("b2") }]);
+
+    wahr(!SCHACH.bauernDarfDoppelt(zurueck, SCHACH.feldNummer("b2"), "weiss"),
+        "und er bekommt ihn auch auf der Startreihe nicht zurueck");
+    gleich(ziele(zurueck, "b2"), "b3", "nur noch ein Feld");
+});
+
+pruefe("Der Doppelschritt ueberlebt das Speichern und Laden (v0.98)", () => {
+    /*
+     * Der Datenvertrag: Die Liste reist im Stand mit, und `bauernZugFassung`
+     * sagt, dass dieser Stand schon nach ihr rechnet. Ohne die Fassung wuerde
+     * `standNormalisieren` sie bei jedem Laden aus der Reihen-Regel neu bauen
+     * — und der geschobene Bauer verloere seinen Doppelschritt doch wieder.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "b2": "B" }, "weiss");
+    const gezogen = SCHACH.ziehen(stand, SCHACH.feldNummer("b2"),
+        SCHACH.feldNummer("b4")).stand;
+
+    const geladen = SCHACH.standNormalisieren(JSON.parse(JSON.stringify(gezogen)));
+
+    gleich(geladen.bauernZugFassung, 1, "die Fassung reist mit");
+    wahr(!SCHACH.bauernDarfDoppelt(geladen, SCHACH.feldNummer("b4"), "weiss"),
+        "und der Bauer bleibt bei seinem einen Doppelschritt");
+
+    /* Zweimal Normalisieren aendert nichts mehr. */
+    const nochmal = SCHACH.standNormalisieren(geladen);
+    gleich(nochmal.bauernZog.join(","), geladen.bauernZog.join(","),
+        "Normalisieren ist stabil");
+});
+
+pruefe("Eine Partie von vor v0.98 rechnet im Umstieg wie vorher (v0.98)", () => {
+    /*
+     * DER UMSTIEG, wie bei `bonusFassung`: Ein Stand ohne Fassung bekommt die
+     * Liste EINMAL aus der alten Reihen-Regel. Im Moment des Umstiegs muss
+     * jede Antwort dieselbe sein wie vorher — sonst aendert sich eine laufende
+     * Partie unter der Hand.
+     */
+    const roh = {
+        brett: brettAus({ "e1": "K", "e8": "k", "b2": "B", "c4": "B", "g7": "b" }),
+        amZug: "weiss"
+    };
+
+    const stand = SCHACH.standNormalisieren(roh);
+
+    gleich(stand.bauernZugFassung, 1, "die Fassung wird gesetzt");
+    wahr(SCHACH.bauernDarfDoppelt(stand, SCHACH.feldNummer("b2"), "weiss"),
+        "b2 steht auf der Startreihe und darf");
+    wahr(!SCHACH.bauernDarfDoppelt(stand, SCHACH.feldNummer("c4"), "weiss"),
+        "c4 steht mittendrin und darf nicht");
+    wahr(SCHACH.bauernDarfDoppelt(stand, SCHACH.feldNummer("g7"), "schwarz"),
+        "g7 ist die schwarze Startreihe");
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Teleport hat keinen Weg (v0.98, Wunsch #35)
+ * ------------------------------------------------------------------ */
+
+pruefe("Ein Teleport hat weder Linie noch Weg (#35, v0.98)", () => {
+    /*
+     * WUNSCH #35: „Bei Teleport soll keine Linie gezeigt werden, nur der
+     * Startpunkt und der Zielort werden markiert."
+     *
+     * Der Wunsch betraf die ANZEIGE — dahinter steckte aber eine Regel: Ein
+     * Teleport zwei Felder GERADEAUS sah fuer `wegFelder` aus wie ein
+     * gewoehnlicher Zug. Das Brett zog eine Linie durch das Feld dazwischen,
+     * und die Figur sammelte dort auch noch eine Lootbox ein. Beides kommt
+     * jetzt aus derselben Angabe.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "d4": "T" }, "weiss", {
+        zusatzFarbe: "weiss",
+        zusatzMuster: "umkreis2",
+        zusatzNurDieses: true
+    });
+
+    const von = SCHACH.feldNummer("d4");
+    const nach = SCHACH.feldNummer("d6");
+    const zug = SCHACH.zuege(stand, von).find((eintrag) => eintrag.nach === nach);
+
+    wahr(!!zug, "der Teleport zwei Felder geradeaus ist moeglich");
+    gleich(zug.ohneWeg, true, "und er ist als Zug ohne Weg gekennzeichnet");
+
+    gleich(SCHACH.wegFelder(stand, von, nach, zug.ohneWeg).length, 2,
+        "gezeichnet werden nur Start und Ziel");
+    gleich(SCHACH.betreteneFelder(stand, von, nach, zug.ohneWeg).join(","),
+        String(nach), "betreten wird nur das Zielfeld");
+
+    /* Ohne die Angabe rechnet dieselbe Strecke weiter wie bisher — der
+       Parameter ist wahlfrei, jeder Aufruf von frueher gilt unveraendert. */
+    gleich(SCHACH.wegFelder(stand, von, nach).length, 3,
+        "ohne die Angabe bleibt es die gerade Strecke");
+});
+
+/* ------------------------------------------------------------------ *
  * Ergebnis
  * ------------------------------------------------------------------ */
 
