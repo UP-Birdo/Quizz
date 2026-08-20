@@ -1,11 +1,11 @@
-# Quizz
+# Quiz
 
-Zwei Spiele auf einer Seite: **Würfel Quizz** (Ratespiel um verdeckte Würfel)
+Zwei Spiele auf einer Seite: **Würfel Quiz** (Ratespiel um verdeckte Würfel)
 und **Team Schach** (Schach für zwei Mannschaften, in mehreren Spielarten und
 beliebig vielen Partien gleichzeitig). Man meldet sich einmal an und ist in
 beiden dabei. Ein dritter Tab, die **Rangliste**, zählt beides zusammen.
 
-## Würfel Quizz
+## Würfel Quiz
 
 Ein Ratespiel unter Freunden. Jeder würfelt fünf
 Würfel und hält sie geheim. Über den Tag stellt man sich gegenseitig Fragen und
@@ -302,7 +302,7 @@ nicht mehr eindeutig, wann eine Partie durch Schachmatt endet.
 ## Der dritte Tab: Rangliste
 
 Ein Punktestand über **beide Spiele**. Gezählt werden die Punkte aus dem Würfel
-Quizz plus die Punkte aus beendeten Schachpartien:
+Quiz plus die Punkte aus beendeten Schachpartien:
 
 | Was | Punkte |
 |---|---|
