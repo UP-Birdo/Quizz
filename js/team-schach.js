@@ -625,6 +625,31 @@ const TEAM_SCHACH = {
         }
 
         /*
+         * WENN NIEMAND ZIEHEN KANN, STEHT ES DA (seit v0.94).
+         *
+         * Bis v0.93 konnte eine Fähigkeit den Gegner mattsetzen, ohne dass die
+         * Partie endete — die Leiste sagte weiter „am Zug", und man tippte ins
+         * Leere. Im Modell ist das gleich zweifach abgestellt: Seit v0.95 wird
+         * eine Fähigkeit, die dorthin führen würde, gar nicht erst angenommen
+         * (`_wirkungVerboten`), und was doch noch endet — ein Unglück beim
+         * Einsammeln — beendet die Partie ordentlich (`SCHACH.lage`).
+         *
+         * Diese Marke bleibt trotzdem: Sie ist die Absicherung für JEDEN
+         * künftigen Weg, auf dem eine Stellung ohne Zug entsteht. Lieber eine
+         * Marke zu viel als ein Brett, das sich totstellt.
+         *
+         * Gefragt wird das Modell, nicht selbst gerechnet — und nur bei einer
+         * laufenden Partie, damit `alleZuege` nicht bei jedem Bild einer
+         * beendeten Partie umsonst läuft.
+         */
+        if (partie.laeuft && !partie.ergebnis
+            && SCHACH.alleZuege(partie.stand).length === 0) {
+
+            leiste.appendChild(TEAM_SCHACH._element("span", "chip chip-fehler",
+                "Kein Zug möglich"));
+        }
+
+        /*
          * WIE LANGE DAS VOLLE GLAS NOCH TRÜBT (seit v0.69, Wunsch #33).
          *
          * Jede andere ablaufende Wirkung trägt ihre Restzeit am FELD
@@ -782,6 +807,17 @@ const TEAM_SCHACH = {
         const leiste = TEAM_SCHACH._element("div", "fussleiste");
         const meinTeam = SCHACH_RUNDE.teamVon(partie, person.id);
 
+        /*
+         * EIN WORT FÜR EINE SACHE (seit v0.94).
+         *
+         * Beide Knöpfe rufen `neuAufstellen` — bis v0.93 hiess derselbe
+         * Vorgang bei beendeter Partie „Neu aufstellen" und bei laufender
+         * „Partie zurücksetzen". Sie stehen nie gleichzeitig da, deshalb fiel
+         * es nicht auf; wer aber beides einmal gesehen hat, sucht danach zwei
+         * verschiedene Dinge. Jetzt heisst es überall „Neu aufstellen" — der
+         * Unterschied bleibt in der FARBE (Hauptaktion, sobald die Partie
+         * vorbei ist) und in der Rückfrage, die `neuAufstellen` ohnehin stellt.
+         */
         if (partie.ergebnis) {
             leiste.appendChild(TEAM_SCHACH._knopf("Neu aufstellen", "knopf-haupt",
                 () => TEAM_SCHACH.neuAufstellen(partie)));
@@ -794,7 +830,7 @@ const TEAM_SCHACH = {
             () => TEAM_SCHACH.umbenennen(partie)));
 
         if (!partie.ergebnis) {
-            leiste.appendChild(TEAM_SCHACH._knopf("Partie zurücksetzen", "knopf-still knopf-klein",
+            leiste.appendChild(TEAM_SCHACH._knopf("Neu aufstellen", "knopf-still knopf-klein",
                 () => TEAM_SCHACH.neuAufstellen(partie)));
         }
 
@@ -1607,15 +1643,17 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /* Oben ein Satz, darunter die Bilder, die ganze Beschreibung im
+           Aufklapper darunter (seit v0.94, siehe `_anleitungMitBeschreibung`). */
         await DIALOG.hinweis(
             SCHACH_VARIANTEN.faehigkeitTitel(art),
-            SCHACH_VARIANTEN.faehigkeitBeschreibung(art)
+            SCHACH_VARIANTEN.faehigkeitKurz(art)
                 + "\n\n" + TEAM_SCHACH._kostenSatz(beschreibung)
                 + (beschreibung.imGegenzug
                     ? "\n\nBlitz: Sie geht auch, während der Gegner am Zug ist."
                     : "")
                 + (grund ? "\n\n" + grund : ""),
-            TEAM_SCHACH._anleitungBauen(art)
+            TEAM_SCHACH._anleitungMitBeschreibung(art)
         );
     },
 
@@ -1650,6 +1688,32 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /*
+         * ERST NACHSEHEN, OB ES ÜBERHAUPT EIN FELD GIBT (seit v0.94).
+         *
+         * Die Prüfung stand bis v0.93 NACH der Rückfrage: Man las die
+         * Beschreibung, sah sich die Bilder an, drückte „Einsetzen" — und
+         * bekam dann zu hören, dass es gerade gar kein Feld gibt. Jetzt kommt
+         * die Absage sofort, und die Rückfrage bleibt aus.
+         *
+         * Die Liste wird gleich weiterverwendet; ein zweites Rechnen nach der
+         * Rückfrage wäre auch ein zweites Ergebnis, wenn inzwischen jemand
+         * gezogen hat.
+         */
+        let felder = null;
+        if (beschreibung.art === "ziel") {
+            felder = SCHACH_RUNDE.zielFelder(partie, person.id, art,
+                TEAM_SCHACH.mauerRichtung);
+
+            if (felder.length === 0) {
+                await DIALOG.hinweis("Kein Ziel möglich",
+                    "Für " + SCHACH_VARIANTEN.faehigkeitTitel(art)
+                        + " gibt es auf diesem Brett gerade kein gültiges Feld. "
+                        + "Die Fähigkeit bleibt dir erhalten.");
+                return;
+            }
+        }
+
         /* Dieselbe Frage wie beim Pluszeichen am Vorrat, dieselbe Antwort —
            sie kommt aus dem Modell (SCHACH_RUNDE.behaeltZug). */
         const meineFarbe = SCHACH_RUNDE.teamVon(partie, person.id);
@@ -1657,7 +1721,7 @@ const TEAM_SCHACH = {
 
         const ja = await DIALOG.frage(
             SCHACH_VARIANTEN.faehigkeitTitel(art) + " einsetzen?",
-            SCHACH_VARIANTEN.faehigkeitBeschreibung(art)
+            SCHACH_VARIANTEN.faehigkeitKurz(art)
                 + "\n\nSie ist danach verbraucht."
                 + (behaeltZug
                     ? " Dein normaler Zug bleibt dir."
@@ -1670,26 +1734,17 @@ const TEAM_SCHACH = {
                                 + "nicht dran."))),
             "Einsetzen",
             false,
-            /* Zwei Bilder statt eines langen Satzes: was die Fähigkeit tut,
-               sieht man schneller, als man es liest. */
-            TEAM_SCHACH._anleitungBauen(art)
+            /* Bilder statt eines langen Satzes: was die Fähigkeit tut, sieht
+               man schneller, als man es liest. Der ganze Text steht seit v0.94
+               im Aufklapper DARUNTER — vorher stand er darüber und schob die
+               Bilder aus dem Bild. */
+            TEAM_SCHACH._anleitungMitBeschreibung(art)
         );
         if (!ja) {
             return;
         }
 
         if (beschreibung.art === "ziel") {
-            const felder = SCHACH_RUNDE.zielFelder(partie, person.id, art,
-                TEAM_SCHACH.mauerRichtung);
-
-            if (felder.length === 0) {
-                await DIALOG.hinweis("Kein Ziel möglich",
-                    "Für " + SCHACH_VARIANTEN.faehigkeitTitel(art)
-                        + " gibt es auf diesem Brett gerade kein gültiges Feld. "
-                        + "Die Fähigkeit bleibt dir erhalten.");
-                return;
-            }
-
             TEAM_SCHACH.gewaehltesFeld = -1;
             TEAM_SCHACH.moeglicheZiele = [];
             TEAM_SCHACH.zielFaehigkeit = art;
@@ -1879,14 +1934,32 @@ const TEAM_SCHACH = {
         if (!neu) {
             const beschreibung = SCHACH_VARIANTEN.FAEHIGKEITEN[art] || {};
 
+            /*
+             * DEN ECHTEN GRUND NENNEN, WENN ER BEKANNT IST (seit v0.94).
+             *
+             * Bis v0.93 zählte dieser Hinweis drei mögliche Gründe auf und
+             * überliess es dem Spieler, den richtigen zu erraten. In der
+             * Praxis war es fast immer derselbe: Der eigene König stünde
+             * danach im Schach. Seit v0.94 markiert das Brett solche Felder
+             * gar nicht mehr (`zielFelder` fragt `_wirkungVerboten` mit) —
+             * hierher kommt man deshalb nur noch, wenn sich der Stand
+             * zwischendurch geändert hat. Genau das soll dann auch dastehen.
+             */
+            const imSchach = meineFarbeJetzt
+                && SCHACH.imSchach(partie.stand, meineFarbeJetzt);
+
             await DIALOG.hinweis("Geht gerade nicht",
-                (beschreibung.imGegenzug
-                    ? "Die Fähigkeit lässt sich nur einsetzen, solange die Partie "
-                        + "läuft und du in einem Team bist."
-                    : "Die Fähigkeit lässt sich nur einsetzen, solange dein Team am "
-                        + "Zug ist — und nur auf ein gültiges Feld.")
-                + " Wenn dein König im Schach steht, geht ausserdem nichts, was "
-                + "deinen Zug beendet: Du müsstest das Schach dabei ja auflösen.");
+                imSchach
+                    ? "Dein König steht im Schach. Dann geht nichts, was deinen "
+                        + "Zug beendet — du müsstest das Schach dabei ja auflösen. "
+                        + "Die Fähigkeit bleibt dir erhalten."
+                    : (beschreibung.imGegenzug
+                        ? "Die Fähigkeit lässt sich nur einsetzen, solange die "
+                            + "Partie läuft und du in einem Team bist. Sie bleibt "
+                            + "dir erhalten."
+                        : "Auf dem Brett hat sich etwas geändert — dein Team ist "
+                            + "gerade nicht am Zug, oder das Feld geht nicht mehr. "
+                            + "Die Fähigkeit bleibt dir erhalten."));
             TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
             return;
         }

@@ -50,6 +50,20 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
       als Satz in der Doku steht, hält bis zum nächsten Mal
     - **Was zur Meldung #36 schon gemessen wurde** (offen) — Liste dessen,
       was bereits AUSGESCHLOSSEN ist. **Vor jeder weiteren Suche lesen**
+    - **Zwei Wege zum Partieende, aber nur einer wurde geprueft** (v3.6,
+      gefunden v0.94) — Matt und Patt wurden nur nach einem ZUG geprueft; eine
+      Faehigkeit konnte mattsetzen, ohne die Partie zu beenden. Dazu derselbe
+      Fehlertyp in der Anzeige: `zielFelder` markierte Felder, die
+      `faehigkeitEinsetzen` ablehnte. Merksatz: Wer eine Regel aufhebt, sucht
+      die Stellen, die sich auf sie verlassen haben
+    - **Ein aktives Zugmuster sieht aus wie ein frisches Schach** (v0.95) —
+      `imSchach` rechnet `zusatzMuster` mit; wer zwei Staende damit vergleicht,
+      misst sonst die Regelaenderung statt der Stellungsaenderung. Merksatz:
+      Wer keine Figur versetzt, kann kein Schach geben
+    - **Ein Hintergrund macht keine Ebene** (v0.67, gefunden v0.94) — die
+      klebende Knopfleiste des Dialogs hatte keinen `z-index`; Figuren, Marken
+      und der schwebende Zurueck-Knopf lagen darueber. Die Ebenen stehen
+      seither als Variablen an einer Stelle in `css\stil.css`
 
 ## entschieden.md - Entschieden - und warum
 
@@ -191,8 +205,9 @@ nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
 - Zwei neue gewöhnliche Fähigkeiten — und warum genau diese zwei (v0.79) —
   **Grün hatte nach v0.78 kein Pluszeichen mehr**
 - Warum die Halluzination halb so lang dauert (v0.79)
-- Der Frost darf matt setzen (v0.80) — **hebt eine eiserne Regel auf; erste
-  FÄHIGKEIT, die Schachmatt herbeiführen darf**
+- Der Frost darf matt setzen (v0.80) — **am 20.08. zurückgenommen, siehe den
+  Eintrag zu v0.95 ganz unten.** Der Abschnitt erklärt weiter, WAS aufgehoben
+  wurde; die geltende Regel steht dort
 - Warum das Nudelholz sein Pluszeichen verloren hat (v0.80)
 - Warum die Lage der Mauer nirgends gespeichert wird (v0.81)
 - Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
@@ -206,6 +221,13 @@ nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
 - Der begrenzte Item-Vorrat (v0.87) — Vorrat gehoert zur Partie und wird
   gerechnet; Filter an EINER Stelle (`faehigkeitenDerStufe`), leere Stufe
   bekommt Gewicht 0, Bibliothek bleibt bewusst ungefiltert
+- **Kein Item fuehrt direkt zu Schach, Matt oder Patt** (v0.95, Entscheidung
+  20.08.) — **hebt zwei fruehere Entscheidungen auf** (Frost v0.80 und die
+  Folge daraus in v0.94). Trennlinie DIREKT gegen INDIREKT: Das Item bereitet
+  vor, den Angriff fuehrt der ZUG. Geprueft in `_wirkungVerboten`, gefragt von
+  `faehigkeitEinsetzen` UND `zielFelder`. **Ungluecks-Lootboxen bleiben
+  ausgenommen** (Entscheidung 09.08.) — deshalb steht die Abweisung VOR dem
+  Einsammeln und die Ende-Pruefung dahinter
 
 ## offen-und-abgelehnt.md - Offen, Nutzer-Entscheidungen noetig, bewusst abgelehnt
 

@@ -30,7 +30,7 @@ es im CODE heisst. Die zweite Spalte ist die, nach der man greppt.
 | **Unglücks-Lootbox** | `PECH`, `pech: true` | Was Schlechtes darin stecken kann. Wirkt sofort beim Einsammeln — und darf seit v0.73 eine Partie beenden. |
 | **Halluzination** | `vollesGlas` | Der Unglückswürfel, der die gegnerischen Figuren falsch aussehen lässt. Hiess bis v0.72 „Volles Glas"; die Kennung im Code bleibt. |
 | **Stufe / Seltenheit** | `STUFEN` | Gewöhnlich, Ungewöhnlich, Episch, Legendär — sichtbar an der Farbe, wenn der Haken es zulässt. |
-| **Versteckte Fähigkeit** | `versteckt: true` | Kommt in keiner neuen Lootbox und in keiner Liste mehr vor, bleibt aber im Vorrat einsetzbar. Gefiltert in `faehigkeitenDerStufe`. Bisher nur **Ausweichen** (seit v0.78). Nicht mit dem Löschen verwechseln — Gelöschtes fliegt beim nächsten Laden aus jedem Vorrat. |
+| **Versteckte Fähigkeit** | `versteckt: true` | Kommt in keiner neuen Lootbox und in keiner Liste mehr vor, bleibt aber im Vorrat einsetzbar. Gefiltert in `faehigkeitenDerStufe`. Bisher **Ausweichen** (seit v0.78) und **Wiedergeburt** (seit v0.92). Nicht mit dem Löschen verwechseln — Gelöschtes fliegt beim nächsten Laden aus jedem Vorrat. |
 | **Schubs** | `SCHACH.schubs` | Gewöhnliche Fähigkeit seit v0.79: Eine gegnerische Figur neben einer eigenen weicht ein Feld zurück. Die Ein-Feld-Fassung des Nudelholzes; kein Schlag, keine Könige, der Zug bleibt. |
 | **Platztausch** | `SCHACH.platztausch` | Gewöhnliche Fähigkeit seit v0.79: Zwei eigene Figuren tauschen die Plätze — die angetippte mit der direkt davor. Kein König, der Zug bleibt. |
 | **Vorrat** | `runde.faehigkeiten[farbe]` | Die gesammelten Fähigkeiten eines Teams, die Marken unter dem Brett. |

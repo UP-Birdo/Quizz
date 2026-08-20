@@ -1410,6 +1410,13 @@ const SCHACH_RUNDE = {
 
         if (gerundet >= 60) {
             const stunden = Math.round(gerundet / 30) / 2;
+
+            /* GENAU EINE STUNDE HEISST „Stunde" (seit v0.94). Bis v0.93 stand
+               dort „etwa 1 Stunden" — der Fall trat bei jeder gut gefüllten
+               Partie auf (klassisches Brett, 31 Figuren, viele Lootboxen). */
+            if (stunden === 1) {
+                return "etwa 1 Stunde";
+            }
             return "etwa " + String(stunden).replace(".", ",") + " Stunden";
         }
 
@@ -2052,11 +2059,7 @@ const SCHACH_RUNDE = {
          * Fähigkeit die andere wert.
          */
         if (beschreibung.beendetZug) {
-            if (neu.stand.extraZug === farbe) {
-                neu.stand.extraZug = "";
-            } else {
-                neu.stand = SCHACH.zugAbgeben(neu.stand);
-            }
+            neu.stand = SCHACH_RUNDE._zugAbgebenNachFaehigkeit(neu.stand, farbe);
         }
 
         /*
@@ -2079,13 +2082,10 @@ const SCHACH_RUNDE = {
          *
          * Auf Brettern ohne Schachbegriff (Doppelbrett) entfällt das alles.
          */
-        if (!SCHACH.varianteVon(neu.stand).koenigSchlagbar) {
-            const vorher = SCHACH.imSchach(alt.stand, farbe);
-            const nachher = SCHACH.imSchach(neu.stand, farbe);
+        if (SCHACH_RUNDE._wirkungVerboten(alt.stand, neu.stand, farbe,
+            !!beschreibung.beendetZug)) {
 
-            if (nachher && (beschreibung.beendetZug || !vorher)) {
-                return null;
-            }
+            return null;
         }
 
         /*
@@ -2179,8 +2179,178 @@ const SCHACH_RUNDE = {
         });
         SCHACH_RUNDE._verlaufKuerzen(neu);
 
+        /*
+         * IST DIE PARTIE DAMIT VORBEI? (seit v0.94, gefunden im Spieltest)
+         *
+         * Bis v0.93 wurde Matt und Patt AUSSCHLIESSLICH in `ziehen` geprüft.
+         * Eine Fähigkeit konnte deshalb mattsetzen, ohne dass die Partie
+         * endete: Der Gegner war am Zug, hatte keinen einzigen erlaubten Zug,
+         * und die Leiste sagte trotzdem „am Zug" — die Partie stand still.
+         *
+         * SEIT v0.95 KANN DIE FÄHIGKEIT SELBST DAS NICHT MEHR: `_wirkungVerboten`
+         * oben weist sie ab, bevor es dazu kommt (Nutzer-Entscheidung 20.08.).
+         * Diese Prüfung hier ist trotzdem kein toter Code — sie steht NACH dem
+         * Einsammeln, und dort liegt der eine Weg, der weiterhin erlaubt ist:
+         * Eine Fähigkeit, die eine Lootbox berührt, löst deren Unglück aus, und
+         * ein Unglück DARF die Partie beenden (Entscheidung 09.08.: „eine
+         * Fähigkeit wählt man, ein Unglück trifft einen"). Wer eine Figur mit
+         * dem Nudelholz über einen Riss schiebt, kann so mattgesetzt werden.
+         *
+         * Gefragt wird dieselbe Funktion und in derselben Reihenfolge wie in
+         * `ziehen` — erst nachziehen lassen, dann `SCHACH.lage`. Zwei Wege zu
+         * demselben Urteil würden auseinanderlaufen.
+         */
+        const lage = SCHACH.lage(neu.stand);
+        if (lage.art === "matt") {
+            neu.ergebnis = lage.sieger;
+            neu.laeuft = false;
+        } else if (lage.art === "patt" || lage.art === "remis") {
+            neu.ergebnis = "remis";
+            neu.laeuft = false;
+        }
+
         neu.geaendertAm = (zeitpunkt === undefined) ? Date.now() : zeitpunkt;
         return neu;
+    },
+
+    /*
+     * DARF DER KÖNIG DAS? — die eine Stelle, die es beantwortet (seit v0.94).
+     *
+     * Zwei Fälle sind verboten, und beide stehen seit v3.6 im Regelwerk:
+     *
+     *   1. Man stellt sich mit der Fähigkeit selbst ins Schach. Das darf man
+     *      mit einem Zug auch nicht, und eine Fähigkeit ist kein Freibrief.
+     *   2. Man steht im Schach und gibt den Zug ab, ohne es aufzulösen. Dann
+     *      wäre der König beim nächsten Zug einfach weg — die Partie endete,
+     *      ohne dass Schachmatt gesagt wurde.
+     *
+     * Wer im Schach steht, darf dagegen weiter eine Fähigkeit einsetzen, die
+     * den Zug NICHT beendet: Er muss danach ohnehin noch aus dem Schach
+     * ziehen, und genau dabei kann sie helfen.
+     *
+     * WARUM DAS SEIT v0.94 EINE EIGENE FUNKTION IST: Bis dahin stand die
+     * Prüfung nur in `faehigkeitEinsetzen`. `zielFelder` — die Liste, aus der
+     * das Brett seine Markierungen macht — kannte sie nicht und bot deshalb
+     * Felder an, die das Einsetzen hinterher ablehnte. Man tippte ein
+     * markiertes Feld an und bekam „Geht gerade nicht". Im Spieltest über
+     * 111.000 Halbzüge war das mit Abstand der häufigste Fund. Jetzt fragen
+     * beide dieselbe Funktion; das Brett kann gar nichts mehr anbieten, was
+     * das Modell danach verweigert.
+     *
+     * Auf Brettern ohne Schachbegriff (Doppelbrett) entfällt das alles.
+     */
+    _koenigVerbietet(altStand, neuStand, farbe, beendetZug) {
+        if (SCHACH.varianteVon(neuStand).koenigSchlagbar) {
+            return false;
+        }
+        if (!SCHACH.imSchach(neuStand, farbe)) {
+            return false;
+        }
+
+        return beendetZug || !SCHACH.imSchach(altStand, farbe);
+    },
+
+    /*
+     * WER GIBT NACH EINER FÄHIGKEIT DEN ZUG AB — und wie (seit v0.95).
+     *
+     * Zwei Zeilen, die aber an zwei Stellen gebraucht werden: beim Einsetzen
+     * selbst und beim Anbieten der Zielfelder (`zielFelder` muss wissen, WER
+     * danach am Zug ist, sonst kann es die Regel unten nicht prüfen).
+     *
+     * Der Doppelzug geht vor: Wer ihn offen hat, behält sein Recht auf einen
+     * weiteren Zug, sonst wäre die eine Fähigkeit die andere wert.
+     */
+    _zugAbgebenNachFaehigkeit(stand, farbe) {
+        if (stand.extraZug === farbe) {
+            const ohne = Object.assign({}, stand);
+            ohne.extraZug = "";
+            return ohne;
+        }
+        return SCHACH.zugAbgeben(stand);
+    },
+
+    /*
+     * DARF DIESE WIRKUNG SO STEHEN BLEIBEN? (seit v0.95)
+     *
+     * ------------------------------------------------------------------
+     * NUTZER-ENTSCHEIDUNG VOM 20.08.2026, im Wortlaut:
+     *
+     *   „items sollen nie direkt zu schach oder matt führen … da mauer und so
+     *    soll durch cleveres platzieren schon große bis massive auswirkungen
+     *    haben, also soll denken belohnt werden. ganz beheben kann man es ja
+     *    nie mit items im schach"
+     *
+     * Sie hebt zwei frühere Entscheidungen auf: das Recht des Frostes,
+     * mattzusetzen (18.08., v0.80), und die Folge daraus, dass eine Fähigkeit
+     * die Partie beenden kann (v0.94). Die Abwägung dahinter ist DIREKT gegen
+     * INDIREKT: Ein Item soll die Stellung vorbereiten, den Angriff führt der
+     * ZUG. Wer mit der Mauer clever sperrt, gewinnt weiterhin — nur eben einen
+     * Halbzug später und aus eigener Hand.
+     *
+     * Auf Nachfrage ausdrücklich bestätigt: **auch kein Patt** (sonst liesse
+     * sich eine verlorene Partie per Item zum Unentschieden machen), und
+     * **Unglücks-Lootboxen bleiben ausgenommen** — für die gilt weiter die
+     * Entscheidung vom 09.08. („eine Fähigkeit wählt man, ein Unglück trifft
+     * einen"). Deshalb steht diese Prüfung VOR dem Einsammeln in
+     * `faehigkeitEinsetzen` und die Ende-Prüfung dahinter: Was die Fähigkeit
+     * selbst anrichtet, wird abgewiesen; was ein dabei aufgesammeltes Unglück
+     * anrichtet, zählt.
+     * ------------------------------------------------------------------
+     *
+     * Drei Fälle sind verboten. `neuStand` ist die Lage NACH dem Einsetzen,
+     * einschliesslich der Zugabgabe — nur so steht fest, wer als Nächster
+     * zieht.
+     *
+     *   1. Der EIGENE König stünde im Schach (seit v3.6, `_koenigVerbietet`).
+     *   2. Der GEGNERISCHE König stünde im Schach, und die Fähigkeit hat es
+     *      verursacht. Stand er schon vorher darin, liegt es nicht am Item.
+     *   3. Wer als Nächster zieht, hätte keinen einzigen Zug. Das ist Matt
+     *      oder Patt, je nach Schach — beides ist untersagt, und der Fall
+     *      trifft BEIDE Seiten: Wer den Zug behält und sich selbst die letzte
+     *      Möglichkeit nimmt (Mauer vor den eigenen König), stünde sonst fest.
+     *      Bis v0.93 blieb die Partie dabei einfach stehen.
+     *
+     * ------------------------------------------------------------------
+     * FALL 2 GILT NUR, WENN SICH AUF DEM BRETT WIRKLICH ETWAS BEWEGT HAT —
+     * und das ist keine Feinheit, sondern die Stelle, an der die Regel beim
+     * Bauen zuerst falsch war (gemessen am 20.08.):
+     *
+     * `SCHACH.imSchach` rechnet ein aktives ZUSATZMUSTER mit. Sobald der
+     * Sprung an ist, gilt der gegnerische König als angegriffen, weil jetzt
+     * jede eigene Figur wie ein Springer ziehen könnte — obwohl auf dem Brett
+     * keine Figur ihren Platz verlassen hat. Ohne die Einschränkung unten
+     * verbot die Regel den Sprung in fast jeder zweiten Stellung (278 von 579
+     * Versuchen im Spieltest).
+     *
+     * Das ist auch sachlich richtig so: Sprung, Teleport und Doppelzug geben
+     * nur ein Zugmuster oder ein Zugrecht aus. Was danach passiert, ist ein
+     * ZUG — und ein Zug darf Schach geben, matt setzen und alles andere. Der
+     * Vergleich der Brett-Zeichenketten trennt beides sauber: Wer keine Figur
+     * versetzt, kann auch kein Schach geben.
+     *
+     * Mauer, Frost, Fessel und Schild versetzen ebenfalls nichts; sie können
+     * eine Angriffslinie nur SPERREN, also Schach wegnehmen statt geben.
+     * ------------------------------------------------------------------
+     *
+     * Auf Brettern ohne Schachbegriff (Doppelbrett) entfallen 1 und 2; Fall 3
+     * gilt auch dort, denn ein Brett ohne Zug steht auch dort still.
+     */
+    _wirkungVerboten(altStand, neuStand, farbe, beendetZug) {
+        if (SCHACH_RUNDE._koenigVerbietet(altStand, neuStand, farbe, beendetZug)) {
+            return true;
+        }
+
+        const gegner = SCHACH.gegner(farbe);
+
+        if (altStand.brett !== neuStand.brett
+            && !SCHACH.varianteVon(neuStand).koenigSchlagbar
+            && SCHACH.imSchach(neuStand, gegner)
+            && !SCHACH.imSchach(altStand, gegner)) {
+
+            return true;
+        }
+
+        return SCHACH.alleZuege(neuStand).length === 0;
     },
 
     /*
@@ -2620,11 +2790,39 @@ const SCHACH_RUNDE = {
             return [];
         }
 
+        /*
+         * NUR FELDER, DIE DAS EINSETZEN AUCH ANNIMMT (seit v0.94).
+         *
+         * Dass die Wirkung zustande kommt, ist nur die halbe Frage. Die andere
+         * stellt `_wirkungVerboten` — dieselbe Funktion, die auch
+         * `faehigkeitEinsetzen` fragt. Bis v0.93 kannte sie nur das Einsetzen;
+         * das Brett markierte deshalb Felder, die es hinterher ablehnte.
+         *
+         * Seit v0.95 wiegt das doppelt: Die Regel ist strenger geworden (kein
+         * Schach, kein Matt, kein Patt durch ein Item), also fielen ohne diese
+         * Zeile umso mehr Felder erst beim Antippen durch. Die Zugabgabe wird
+         * dafür mitgerechnet — sonst wüsste die Regel nicht, wer als Nächster
+         * zieht.
+         */
         const liste = [];
         for (let feld = 0; feld < SCHACH.felderVon(alt.stand); feld++) {
-            if (SCHACH_RUNDE._zielWirkung(SCHACH_RUNDE.kopieren(alt), art, farbe, feld, wahl)) {
-                liste.push(feld);
+            const wirkung = SCHACH_RUNDE._zielWirkung(
+                SCHACH_RUNDE.kopieren(alt), art, farbe, feld, wahl);
+
+            if (!wirkung) {
+                continue;
             }
+
+            const danach = beschreibung.beendetZug
+                ? SCHACH_RUNDE._zugAbgebenNachFaehigkeit(wirkung.stand, farbe)
+                : wirkung.stand;
+
+            if (SCHACH_RUNDE._wirkungVerboten(alt.stand, danach, farbe,
+                !!beschreibung.beendetZug)) {
+
+                continue;
+            }
+            liste.push(feld);
         }
 
         return liste;
@@ -3472,6 +3670,24 @@ const SCHACH_RUNDE = {
         }
 
         /*
+         * DASSELBE FÜR DIEB UND HÄNDLER (seit v0.94).
+         *
+         * Beide hängen an einem Vorrat, den man nicht sieht: Der Dieb greift
+         * in den Vorrat des GEGNERS, der Händler braucht die Figuren, die er
+         * eintauschen will. Ist dort nichts, kommt nichts — bis v0.93 liess
+         * sich die Marke trotzdem antippen, und man erfuhr es erst im Fenster
+         * danach. Im Spieltest war das der zweithäufigste Griff ins Leere
+         * (861 mal Dieb, 386 mal Händler in 440 Partien).
+         *
+         * Warum es hier steht und nicht im Bildschirm: Es ist eine Regel, und
+         * Regeln stehen im Modell. Der Bildschirm fragt dieselbe Funktion und
+         * macht die Marke grau, genau wie beim leeren Friedhof.
+         */
+        if (!SCHACH_RUNDE._etwasZuHolen(stand, spielerId, art)) {
+            return false;
+        }
+
+        /*
          * NUR IM GEGENZUG (seit v0.58) — bisher nur das Ausweichen.
          *
          * Es ist die Notbremse: eine Figur weicht aus, während der Gegner
@@ -3533,6 +3749,42 @@ const SCHACH_RUNDE = {
             return (stand.gefallen[farbe] || []).length > 0;
         }
         return (stand.verloren[farbe] || []).length > 0;
+    },
+
+    /*
+     * GIBT ES FÜR DIEB UND HÄNDLER GERADE ÜBERHAUPT ETWAS? (seit v0.94)
+     *
+     * Dieselbe Frage wie in `_gefalleneVorhanden`, nur für die zwei
+     * Fähigkeiten, die weder das Brett verändern noch ein Zielfeld verlangen —
+     * sie handeln mit VORRÄTEN, und ein leerer Vorrat ist am Brett nicht zu
+     * sehen. Beide behalten ihren eigenen Weg im Bildschirm (Fenster mit
+     * Angebot statt Zielfeldern); ohne diese Prüfung war der Weg dorthin eine
+     * Sackgasse.
+     *
+     * Wie die Schwester bleibt sie BILLIG, wo sie es kann: Der Dieb ist eine
+     * Listenlänge. Der Händler muss sein Angebot rechnen — das ist der
+     * einzige Weg, ehrlich zu antworten, denn ob er zustande kommt, hängt an
+     * den Figuren auf dem Brett. `handelsAngebot` liest das Brett wenige Male
+     * ab; das ist verkraftbar, weil höchstens ein Händler im Vorrat liegt und
+     * die Frage nur beim Neuzeichnen kommt.
+     *
+     * Für alle anderen Fähigkeiten liefert sie `true`.
+     */
+    _etwasZuHolen(runde, spielerId, art) {
+        if (art !== "dieb" && art !== "haendler") {
+            return true;
+        }
+
+        const stand = SCHACH_RUNDE.normalisieren(runde);
+        const farbe = SCHACH_RUNDE.teamVon(stand, spielerId);
+        if (!farbe) {
+            return true;
+        }
+
+        if (art === "dieb") {
+            return (stand.faehigkeiten[SCHACH.gegner(farbe)] || []).length > 0;
+        }
+        return !!SCHACH_RUNDE.handelsAngebot(stand, farbe);
     },
 
     /*

@@ -515,10 +515,26 @@ Object.assign(TEAM_SCHACH, {
         const leererVorrat = meineFarbe
             && !SCHACH_RUNDE._gefalleneVorhanden(partie, person.id, art);
 
-        const grund = leererVorrat
-            ? "Gerade nicht möglich: Es ist niemand mehr da, den sie zurückholen "
-                + "könnte. Sobald wieder eine Figur fällt, geht sie."
-            : "";
+        /*
+         * DASSELBE FÜR DIEB UND HÄNDLER (seit v0.94). Auch ihr Vorrat ist am
+         * Brett nicht zu sehen: Der Dieb greift in den des Gegners, der
+         * Händler braucht die Figuren, die er eintauschen will. Beide waren
+         * bis v0.93 antippbar und sagten erst im Fenster danach ab.
+         */
+        const nichtsZuHolen = meineFarbe && !leererVorrat
+            && !SCHACH_RUNDE._etwasZuHolen(partie, person.id, art);
+
+        let grund = "";
+        if (leererVorrat) {
+            grund = "Gerade nicht möglich: Es ist niemand mehr da, den sie "
+                + "zurückholen könnte. Sobald wieder eine Figur fällt, geht sie.";
+        } else if (nichtsZuHolen && art === "dieb") {
+            grund = "Gerade nicht möglich: Der Gegner hat keine einzige Fähigkeit "
+                + "im Vorrat. Sobald er eine Lootbox einsammelt, geht es wieder.";
+        } else if (nichtsZuHolen) {
+            grund = "Gerade nicht möglich: Für den Tausch fehlen dir die Figuren, "
+                + "die er haben will. Sein Angebot wechselt mit jedem Zug.";
+        }
 
         const marke = TEAM_SCHACH._knopf(SCHACH_VARIANTEN.faehigkeitTitel(art),
             "knopf-still knopf-klein faehigkeit-knopf"
@@ -540,7 +556,18 @@ Object.assign(TEAM_SCHACH, {
         /* Die Farbe der Stufe trägt die Marke — so sieht man sofort, wie
            selten die Fähigkeit war. */
         marke.style.setProperty("--stufe-farbe", stufe.farbe);
-        marke.title = stufe.titel + " — " + SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+
+        /*
+         * NUR EIN SATZ IM KURZHINWEIS (seit v0.94).
+         *
+         * Bis v0.93 stand hier die ganze Beschreibung — bei der Mauer 668
+         * Zeichen. Der Kurzhinweis gehört dem BROWSER: Er zeichnet ihn in
+         * seiner eigenen Schriftgrösse, und keine Zeile in dieser Stildatei
+         * ändert daran etwas. Wer ihn kleiner haben will, muss weniger
+         * hineinschreiben. Genau so wurde es gemeldet („zeigt den Riesentext").
+         * Die ganze Beschreibung steht weiter im Fenster und in der Bibliothek.
+         */
+        marke.title = stufe.titel + " — " + SCHACH_VARIANTEN.faehigkeitKurz(art);
 
         return marke;
     },
@@ -877,6 +904,53 @@ Object.assign(TEAM_SCHACH, {
      * Liefert null, wenn es kein Beispiel gibt (ein Test hält fest, dass das
      * für keine Fähigkeit vorkommt).
      */
+    /*
+     * DIE ANLEITUNG MIT DER GANZEN BESCHREIBUNG DARUNTER (seit v0.94).
+     *
+     * WAS DAS LÖST: Bis v0.93 stand die vollständige Beschreibung als Text
+     * ÜBER den Bildern — bei der Mauer 668 Zeichen, auf dem Handy rund zwanzig
+     * Zeilen. Die Bilder, die den langen Satz eigentlich ersetzen sollen,
+     * standen damit unter dem Bildrand: Man musste erst durch die Erklärung
+     * scrollen, um zu der Erklärung zu kommen. Gemeldet mit einem Bild, auf
+     * dem vom Brett nur die obere Hälfte zu sehen war.
+     *
+     * Jetzt steht oben EIN Satz (`faehigkeitKurz`), darunter sofort die
+     * Bilder, und darunter der ganze Text in einem Aufklapper. Verloren geht
+     * nichts — es ist nur einen Tipp weiter weg als vorher, und zwar genau
+     * für die, die es lesen wollen.
+     *
+     * Der Aufklapper entfällt, wenn die Beschreibung ohnehin nur aus einem
+     * Satz besteht (Doppelzug, Spiegel): Dort stünde derselbe Text zweimal.
+     */
+    _anleitungMitBeschreibung(art) {
+        const anleitung = TEAM_SCHACH._anleitungBauen(art);
+        const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+        const kurz = SCHACH_VARIANTEN.faehigkeitKurz(art);
+
+        if (voll === kurz) {
+            return anleitung;
+        }
+
+        const aufklapper = document.createElement("details");
+        aufklapper.className = "mehr-text";
+
+        const griff = document.createElement("summary");
+        griff.textContent = "Die ganze Beschreibung";
+        aufklapper.appendChild(griff);
+
+        aufklapper.appendChild(TEAM_SCHACH._element("p", "mehr-text-satz", voll));
+
+        if (!anleitung) {
+            return aufklapper;
+        }
+
+        const halter = TEAM_SCHACH._element("div", "anleitung-mitbeschreibung");
+        halter.appendChild(anleitung);
+        halter.appendChild(aufklapper);
+
+        return halter;
+    },
+
     _anleitungBauen(art) {
         const schritte = SCHACH_VORSCHAU.schritte(art);
         if (!schritte || schritte.length === 0) {

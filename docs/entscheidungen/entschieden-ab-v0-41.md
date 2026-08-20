@@ -818,7 +818,16 @@ haben soll.
 Beschreibungstext, den der Nutzer liest). Das ist genau die Art Dopplung, die
 auseinanderläuft; ein Test hält beide zusammen.
 
-## Der Frost darf matt setzen (v0.80) — **hebt eine eiserne Regel auf**
+## Der Frost darf matt setzen (v0.80) — **am 20.08. wieder zurückgenommen**
+
+> **ÜBERHOLT SEIT v0.95.** Der Nutzer hat die Aufhebung am 20.08.2026 wieder
+> kassiert: „items sollen nie direkt zu schach oder matt führen." Der Abschnitt
+> bleibt stehen, weil die Abwägung darin erklärt, WAS zurückgenommen wurde —
+> die geltende Regel steht im Abschnitt „Kein Item führt direkt zu Schach, Matt
+> oder Patt" weiter unten. **Was vom Frost bleibt:** Der König zählt weiterhin
+> im Block mit und kann sich darin bewegen (die zwei Halbheiten unten). Nur das
+> Ergebnis „damit ist er matt" gibt es nicht mehr — eine solche Wirkung wird
+> abgewiesen.
 
 Bis v0.79 galt ohne Ausnahme: „König und Matt bleiben unangetastet — von
 FÄHIGKEITEN." Der Frost verschonte den König deshalb komplett
@@ -1126,3 +1135,64 @@ Erkenntnis, dass eine Namensfrage vor dem Bauen in die Runde gehört, nicht
 danach. Nicht rückgängig gemacht wurde nichts: v0.89.0 bleibt als
 ausgelieferte Nummer stehen (eine ausgelieferte Version wird nie mit anderem
 Inhalt erneut veröffentlicht), der Rückbau ist v0.90.0.
+
+## Kein Item führt direkt zu Schach, Matt oder Patt (v0.95) — **hebt zwei frühere Entscheidungen auf**
+
+Nutzer-Entscheidung vom 20.08.2026, im Wortlaut:
+
+> „naja items sollen nie direkt zu schach oder mat führen das soll nicht mehr
+> so richtig sein da mauer und so soll durch cleveres plazieren schon große bis
+> massive auswirkungen haben also soll denken belohnt werden ganz es beheben
+> kann man es ja nie mit items im schach"
+
+**Was damit fällt.** Zwei Dinge, beide vom Nutzer selbst zwei Tage vorher
+beschlossen:
+
+1. **Das Recht des Frostes, mattzusetzen** (18.08., v0.80) — siehe den
+   Abschnitt „Der Frost darf matt setzen" weiter oben.
+2. **Die Folge daraus in v0.94**, dass eine Fähigkeit die Partie beenden kann.
+   Der Fehler, den v0.94 behoben hat, war ein anderer und bleibt behoben: dass
+   eine mattsetzende Wirkung die Partie ANHIELT, statt sie zu beenden. Nur die
+   Antwort darauf ist jetzt eine andere — nicht „beenden", sondern „gar nicht
+   erst zulassen".
+
+**Die Abwägung, in den Worten des Nutzers.** Die Trennlinie ist DIREKT gegen
+INDIREKT. Ein Item soll die Stellung vorbereiten; den Angriff führt der ZUG.
+Genau deshalb bleibt die Mauer so mächtig, wie sie war: Sie gibt nie Schach,
+sie sperrt Felder — „durch cleveres platzieren schon große bis massive
+auswirkungen". Was der Nutzer verhindern will, ist nicht die Wirkung, sondern
+der geschenkte Abschluss: Wer gewinnt, soll den letzten Schritt selbst tun.
+Der Halbsatz „ganz es beheben kann man es ja nie mit items im schach" sagt
+zugleich, dass ihm die Grenze bewusst ist — ein Item, das dem Gegner den
+letzten Fluchtweg nimmt, macht den Zug danach trivial. Das ist gewollt.
+
+**Zwei Punkte auf Rückfrage entschieden (20.08.):**
+
+- **Auch kein PATT.** Sonst liesse sich eine verlorene Partie per Item zum
+  Unentschieden machen — dasselbe Geschenk, nur in Grün.
+- **Unglücks-Lootboxen bleiben ausgenommen.** Für sie gilt weiter die
+  Entscheidung vom 09.08.: „Eine Fähigkeit wählt man, ein Unglück trifft
+  einen." Damit ist die Trennlinie von v0.73 wiederhergestellt, die v0.80
+  aufgeweicht hatte — die Regel ist nach dieser Runde also **wieder
+  geradliniger als vorher**, nicht verwickelter.
+
+**Wie es gebaut ist.** Eine Funktion, `SCHACH_RUNDE._wirkungVerboten`, und
+zwei Aufrufer: `faehigkeitEinsetzen` (weist ab, die Fähigkeit bleibt im Vorrat)
+und `zielFelder` (markiert solche Felder gar nicht erst). Drei Fälle sind
+verboten — eigener König im Schach, gegnerischer König im Schach, und die
+Seite am Zug hat danach keinen Zug mehr. Der dritte Fall deckt Matt und Patt
+zugleich ab und gilt für BEIDE Seiten: Wer sich mit einer Mauer selbst
+einsperrt, wird ebenso abgewiesen.
+
+**Wo die Ausnahme sitzt.** Die Abweisung steht in `faehigkeitEinsetzen` VOR dem
+Einsammeln der berührten Lootboxen, die Ende-Prüfung (`SCHACH.lage`) dahinter.
+Damit gilt: Was die Fähigkeit selbst anrichtet, wird verhindert; was ein dabei
+aufgesammeltes Unglück anrichtet, zählt. Wer die Reihenfolge umdreht, macht
+mit der einen Entscheidung die andere kaputt.
+
+**Was es im Spiel kostet.** Auf leeren Endspiel-Brettern werden Verstärkung,
+Nekromant, Wiederbelebung, Nachschub und Spiegel spürbar öfter abgewiesen — eine
+neue starke Figur neben einem freistehenden König gibt fast immer Schach. Drei
+bestehende Tests mussten ihre Stellungen ändern, weil sie genau solche kahlen
+Bretter benutzten. Im vollen Spiel fällt es kaum auf; gemessen im Spieltest
+über 528 Partien.

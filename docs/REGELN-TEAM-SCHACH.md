@@ -223,16 +223,39 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   `SCHACH_RUNDE.ziehen` NACH dem Rückwurf, nicht über `lage()` — die kennt nur
   Matt und Patt. Der Unterschied ist der Kern: Eine Fähigkeit wählt man, ein
   Unglück trifft einen.
-  **UND SEIT v0.80 GILT SIE AUCH FÜR DEN FROST NICHT MEHR** (Nutzer-Ansage
-  18.08., ausdrücklich mit der Folge: „kann bei richtigem Nutzen zu Schach
-  führen"). Er sperrt seither auch Könige in seinen Block; wem darin kein Feld
-  mehr bleibt, der ist matt. Damit ist es die erste FÄHIGKEIT, die Schachmatt
-  herbeiführen darf — die Abwägung dazu steht in `entscheidungen\entschieden.md`.
-  **Dass das überhaupt aufgeht, hängt an einer Feinheit:** `imSchach` rechnet
-  über `_feldBedroht` rein geometrisch und fragt den Frost nicht. Sonst wäre
-  ein eingefrorener König durch „eingefroren heisst unantastbar" unangreifbar
-  geworden — und die Regel hätte das Gegenteil bewirkt. Wer an einer der beiden
-  Stellen etwas ändert, prüft die andere mit.
+  **ZWISCHEN v0.80 UND v0.94 DURFTE DER FROST MATTSETZEN** (Nutzer-Ansage
+  18.08.). **Seit v0.95 nicht mehr** — und keine andere Fähigkeit auch:
+
+  > **KEIN ITEM FÜHRT DIREKT ZU SCHACH, MATT ODER PATT** (Nutzer-Entscheidung
+  > 20.08.2026: „items sollen nie direkt zu schach oder matt führen … da mauer
+  > und so soll durch cleveres platzieren schon große bis massive auswirkungen
+  > haben, also soll denken belohnt werden").
+
+  Gemeint ist DIREKT gegen INDIREKT: Ein Item bereitet die Stellung vor, den
+  Angriff führt der ZUG. Wer mit der Mauer clever sperrt, gewinnt weiterhin —
+  nur einen Halbzug später und aus eigener Hand. Geprüft wird in
+  **`SCHACH_RUNDE._wirkungVerboten`**, und `zielFelder` fragt dieselbe
+  Funktion: Was zu Schach, Matt oder Patt führen würde, wird am Brett gar nicht
+  erst markiert und beim Einsetzen abgewiesen; die Fähigkeit bleibt im Vorrat.
+  Verboten sind drei Fälle — eigener König im Schach (seit v3.6), gegnerischer
+  König im Schach (neu), und die Seite, die als Nächste zieht, hat keinen Zug
+  (neu, das deckt Matt und Patt ab und trifft beide Seiten).
+  **Die Ausnahme bleibt das Unglück:** Sammelt eine Fähigkeit dabei eine
+  Lootbox ein und darin steckt ein Unglück, darf DAS weiterhin die Partie
+  beenden (Entscheidung 09.08.). Deshalb steht die Abweisung in
+  `faehigkeitEinsetzen` VOR dem Einsammeln und die Ende-Prüfung dahinter.
+  **Sprung, Teleport und Doppelzug brauchen keine Ausnahme:** Sie rühren das
+  Brett nicht an, sondern setzen nur ein Muster oder ein Zugrecht — was danach
+  passiert, ist ein Zug und darf alles. **Erkannt wird das an der
+  Brett-Zeichenkette, nicht am Namen:** Wer keine Figur versetzt, kann kein
+  Schach geben. Das ist wichtiger, als es aussieht — `imSchach` rechnet ein
+  aktives Zusatzmuster MIT, ein laufender Sprung sähe sonst wie ein frisches
+  Schach aus und wäre in jeder zweiten Stellung verboten
+  (`erkenntnisse.md`, „Ein aktives Zugmuster sieht aus wie ein frisches Schach").
+  **Eine Feinheit aus der Frost-Zeit gilt weiter:** `imSchach` rechnet über
+  `_feldBedroht` rein geometrisch und fragt den Frost nicht. Sonst wäre ein
+  eingefrorener König durch „eingefroren heisst unantastbar" unangreifbar. Wer
+  an einer der beiden Stellen etwas ändert, prüft die andere mit.
 - **Die Rochade wird aus der Stellung gelesen**, nicht aus festen Plätzen:
   `rochadeFelder` (Türme) und `rochadeKoenige` (Könige) tragen die Rechte,
   `rochade` (KDkd) läuft als Altbestand mit. Je Richtung zählt der
@@ -318,9 +341,23 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   (`TEAM_SCHACH.infoGezeichnet`) — sie hängt an keinem Spielstand. Sonst
   klappte bei jeder Abfrage jeder Eintrag wieder zu. Wer dort etwas ändert,
   denkt an die laufenden Takte der Anleitungen (`_anleitungTakteBeenden`).
-- **Eine Fähigkeit darf den eigenen König nie im Schach zurücklassen.** Zwei
-  Fälle sind gesperrt: sich selbst ins Schach stellen, und im Schach den Zug
-  abgeben. Geprüft am Ende von `SCHACH_RUNDE.faehigkeitEinsetzen`.
+- **Alle Bedingungen fürs Einsetzen stehen in `SCHACH_RUNDE._wirkungVerboten`**
+  (seit v0.95; der Kern davon, der eigene König, seit v3.6 als
+  `_koenigVerbietet`) — **und `zielFelder` fragt dieselbe Funktion**. Bis v0.93
+  kannte nur `faehigkeitEinsetzen` sie; das Brett markierte deshalb Felder, die
+  es hinterher ablehnte (`erkenntnisse.md`, „Zwei Wege zum Partieende"). Wer
+  eine Bedingung ergänzt, ergänzt sie in dieser einen Funktion — nie am Ende
+  von `faehigkeitEinsetzen`, sonst weiss die Anzeige nichts davon.
+- **Die Partie kann während einer Fähigkeit trotzdem enden** — aber nur durch
+  ein Unglück, das sie dabei einsammelt. `faehigkeitEinsetzen` fragt am Ende
+  dieselbe `SCHACH.lage` wie `ziehen` und setzt Ergebnis und `laeuft`. Bis
+  v0.93 fehlte diese Zeile ganz, und eine mattsetzende Wirkung hielt die Partie
+  an, statt sie zu beenden.
+- **Was am Brett nicht zu sehen ist, prüft `darfEinsetzen` vorher.** Drei
+  Fähigkeiten hängen an gefallenen Figuren (`_gefalleneVorhanden`, seit v0.59),
+  zwei an einem fremden oder eigenen Vorrat (`_etwasZuHolen`, seit v0.94: Dieb
+  und Händler). Ist dort nichts, bleibt die Marke grau und nennt beim Antippen
+  den Grund — statt den Spieler erst im Fenster danach abzuweisen.
 - **Zwei Fragen an einen Weg, zwei Funktionen.** `SCHACH.wegFelder` sagt, welche
   Felder man ZEICHNET (beim Springer das L), `SCHACH.betreteneFelder`, welche
   die Figur wirklich BETRITT (beim Springer nur das Ziel). An der zweiten hängt,
@@ -353,6 +390,14 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   Zugzähler dazu** (`auswahlZaehler`, `animiertBis`, `wirkungBis`). Ohne ihn
   überlebt er die nächste Änderung: Die Zielpunkte blieben so nach einem Zug auf
   dem Brett stehen, obwohl man gar nicht mehr am Zug war.
+- **Ebenen kommen aus der Stildatei, nie aus dem Bauteil** (seit v0.94). Die
+  vier Stufen stehen als Variablen ganz oben in `css\stil.css`:
+  `--ebene-feldmarke` (1 bis 5, alles IM Brettfeld), `--ebene-leiste` (10,
+  klebende Leisten), `--ebene-schwebend` (50) und `--ebene-dialog` (100). Wer
+  sich eine Zahl selbst ausdenkt, baut den Fehler von v0.94 nach: Eine
+  Schachfigur lag über dem Knopf „Abbrechen", weil die klebende Knopfleiste
+  keine Nummer hatte. **Ein Hintergrund verdeckt nur, was VOR ihm gezeichnet
+  wird** — Elemente mit positiver Nummer kommen danach.
 - **Jede Markierung auf dem Brett ist zweifarbig** — heller Rand, dunkler Kern.
   Das Brett hat helle UND dunkle Felder; eine einzelne Farbe verschwindet immer
   auf einer der beiden. Genau so ging in v1.5 die Zugvorhersage verloren (blauer

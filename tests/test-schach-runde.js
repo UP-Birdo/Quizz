@@ -444,6 +444,45 @@ pruefe("Die Dauer-Schaetzung lernt aus echten Partien (v0.93)", () => {
     wahr(satz.indexOf("etwa") === 0, "der Satz beginnt mit \"etwa\": " + satz);
 });
 
+pruefe("Kein Satz unter der Kachel sagt \"1 Stunden\" (v0.94)", () => {
+    /*
+     * DER GRAMMATIKFEHLER AUS v0.93. Genau bei 60 Minuten rundete die Rechnung
+     * auf 1 und haengte trotzdem "Stunden" an — getroffen hat es das
+     * klassische Brett mit 31 Figuren und vielen Lootboxen, also keinen
+     * Sonderfall. Geprueft wird nicht die eine Stelle, sondern ALLE Saetze,
+     * die dort ueberhaupt stehen koennen.
+     */
+    const saetze = new Set();
+
+    for (const felder of [36, 64, 100, 128, 196]) {
+        for (const menge of ["wenig", "normal", "viele", "regen"]) {
+            for (const mitFaehigkeiten of [false, true]) {
+                for (let figuren = 1; figuren <= 32; figuren++) {
+                    saetze.add(SCHACH_RUNDE.dauerText(figuren, felder,
+                        { faehigkeiten: mitFaehigkeiten, lootboxMenge: menge }, []));
+                }
+            }
+        }
+    }
+
+    wahr(saetze.size > 5, "es kommen mehrere Saetze zusammen: " + saetze.size);
+
+    for (const satz of saetze) {
+        wahr(satz !== "etwa 1 Stunden", "kein \"etwa 1 Stunden\"");
+        wahr(!/\b1 (Minuten|Stunden)\b/.test(satz), "keine Eins mit Mehrzahl: " + satz);
+        wahr(satz.indexOf("etwa") === 0, "jeder Satz beginnt mit \"etwa\": " + satz);
+    }
+
+    /* Und die eine Stunde heisst wirklich so. */
+    let eineStunde = false;
+    for (const satz of saetze) {
+        if (satz === "etwa 1 Stunde") {
+            eineStunde = true;
+        }
+    }
+    wahr(eineStunde, "der Fall \"etwa 1 Stunde\" kommt vor und ist richtig geschrieben");
+});
+
 pruefe("Die Spielzeit wird still ergaenzt und ueberlebt das Laden (v0.93)", () => {
     const runde = faehigkeitenPartie();
     gleich(runde.spielzeit, 0, "eine neue Partie startet bei 0");
@@ -1574,14 +1613,22 @@ pruefe("Bauernschub: geschobene Bauern auf der letzten Reihe wandeln um (v0.56)"
      * sie stillschweigend zu Damen; jetzt sagt der Aufrufer, was sie werden,
      * und zwar EINMAL fuer alle.
      */
+    /*
+     * DER SCHWARZE KOENIG STEHT SEIT v0.95 AUF h4, nicht mehr auf e8. Grund:
+     * Die beiden Bauern wandeln auf a8 und c8 zu Damen um, und die Dame auf c8
+     * gaebe dem Koenig auf e8 Schach — seit der Nutzer-Entscheidung vom 20.08.
+     * weist das Modell die Faehigkeit dann ab. Geprueft werden soll hier die
+     * UMWANDLUNG, nicht die Abweisung; auf h4 steht der Koenig ausserhalb
+     * beider Damen und hat weiter Zuege.
+     */
     let runde = faehigkeitenPartie();
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
-        brett: "....k..."
+        brett: "........"
             + "B.B....."
             + "........"
             + "........"
-            + "........"
+            + ".......k"
             + "........"
             + "........"
             + "....K...",
@@ -1691,11 +1738,19 @@ pruefe("Dame zu Koenig heisst zwei Leben, und der Weg geht zurueck (v0.56)", () 
      * Maschinerie wie bei der Zufallsarmee. Ohne diesen Schalter waere
      * "Schachmatt" nicht mehr eindeutig.
      */
+    /*
+     * DER SCHWARZE KOENIG SITZT SEIT v0.95 HINTER ZWEI EIGENEN BAUERN. Grund:
+     * Beim Rueckweg (Koenig zurueck zu zwei Damen) erscheint die zweite Dame
+     * auf einem Nachbarfeld von d5, und mehrere davon gaeben einem freien
+     * Koenig Schach — seit dem 20.08. weist das Modell die Faehigkeit dann ab.
+     * Hier geht es um die AUFWERTUNGSKETTE, nicht um die Abweisung: Hinter g7
+     * und h7 ist der Koenig gedeckt und hat trotzdem Zuege.
+     */
     let runde = faehigkeitenPartie();
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
-        brett: "....k..."
-            + "........"
+        brett: ".......k"
+            + "......bb"
             + "........"
             + "...D...."
             + "........"
@@ -4939,7 +4994,13 @@ pruefe("Nur der ZULETZT Gefallene laesst sich holen (nachgemessen v0.57)", () =>
      * einem Feld mehrere Gefallene, zaehlt der letzte — und zwar bei BEIDEN
      * Faehigkeiten. Das galt schon seit v0.54; dieser Test haelt es fest.
      */
-    const leer = "....k..." + "........" + "........" + "........"
+    /*
+     * Der schwarze Koenig sitzt seit v0.95 gedeckt in der Ecke: Eine Figur,
+     * die per Friedhof oder Wiederbelebung erscheint, darf ihm kein Schach
+     * geben, sonst weist das Modell die Faehigkeit ab (Entscheidung 20.08.).
+     * Geprueft wird hier, WELCHER Gefallene geholt wird.
+     */
+    const leer = ".......k" + "......bb" + "........" + "........"
         + "........" + "........" + "........" + "....K...";
 
     const bauen = () => {
@@ -6825,6 +6886,455 @@ pruefe("Der Vergleich erkennt Zuege, Teams und Bereitschaft", () => {
     wahr(!SCHACH_RUNDE.inhaltGleich(runde, gezogen), "Zug erkannt");
     wahr(!SCHACH_RUNDE.inhaltGleich(runde,
         SCHACH_RUNDE.teamBeitreten(runde, "id-cem", "weiss", 2000)), "Team erkannt");
+});
+
+/* ------------------------------------------------------------------ *
+ * Ein Item fuehrt nie direkt zu Schach, Matt oder Patt (seit v0.95)
+ *
+ * NUTZER-ENTSCHEIDUNG 20.08.2026. Sie hebt das Recht des Frostes auf,
+ * mattzusetzen (18.08.), und damit auch die Folge aus v0.94, dass eine
+ * Faehigkeit die Partie beenden kann. Die Abwaegung ist DIREKT gegen INDIREKT:
+ * Ein Item bereitet die Stellung vor, den Angriff fuehrt der ZUG.
+ *
+ * Ungluecks-Lootboxen bleiben ausgenommen (Entscheidung 09.08.) — sie duerfen
+ * weiterhin eine Partie beenden, auch wenn eine Faehigkeit sie einsammelt.
+ * ------------------------------------------------------------------ */
+
+/* Ein 6x6-Brett, auf dem Schwarz genau einen Zug hat und Weiss den Spiegel. */
+function fastMattPartie() {
+    const runde = SCHACH_RUNDE.leereRunde(1000, "klein", "p-matt", "Fast matt");
+
+    runde.regeln.faehigkeiten = true;
+
+    const gestartet = SCHACH_RUNDE.bereitSetzen(
+        SCHACH_RUNDE.bereitSetzen(
+            SCHACH_RUNDE.teamBeitreten(
+                SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000),
+                "id-bert", "schwarz", 1000),
+            "weiss", true, 1000),
+        "schwarz", true, 1000);
+
+    gestartet.stand = SCHACH.standNormalisieren({
+        variante: "klein",
+        brett: "..B..."
+            + "......"
+            + ".....k"
+            + "...D.."
+            + "......"
+            + "BK....",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    return gestartet;
+}
+
+pruefe("Die Ausgangslage stimmt: Schwarz hat noch genau einen Zug (v0.94)", () => {
+    const runde = fastMattPartie();
+    const schwarzAmZug = Object.assign({}, runde.stand, { amZug: "schwarz" });
+
+    gleich(SCHACH.alleZuege(schwarzAmZug).length, 1, "genau ein Zug fuer Schwarz");
+    wahr(runde.laeuft, "die Partie laeuft");
+    gleich(runde.ergebnis, "", "und hat noch kein Ergebnis");
+});
+
+pruefe("Eine Faehigkeit, die mattsetzen wuerde, wird abgewiesen (v0.95)", () => {
+    /*
+     * NUTZER-ENTSCHEIDUNG 20.08.: „items sollen nie direkt zu schach oder matt
+     * fuehren". Der Spiegel wuerde hier die Dame verdoppeln und Schwarz damit
+     * mattsetzen — also geht er gar nicht erst.
+     *
+     * Bis v0.93 lief er durch und die Partie stand still; in v0.94 lief er
+     * durch und beendete die Partie. Beides ist jetzt falsch.
+     */
+    const runde = fastMattPartie();
+    const neu = einsetzen(runde, "spiegel", SCHACH.feldNummer("d3", 6, 6));
+
+    gleich(neu, null, "der Spiegel wird abgewiesen");
+});
+
+pruefe("Die abgewiesene Faehigkeit bleibt im Vorrat (v0.95)", () => {
+    const runde = fastMattPartie();
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+    mitVorrat.faehigkeiten.weiss.push("spiegel");
+
+    const neu = SCHACH_RUNDE.faehigkeitEinsetzen(mitVorrat, "id-anna", "spiegel",
+        SCHACH.feldNummer("d3", 6, 6), "Anna", 3000);
+
+    gleich(neu, null, "abgewiesen");
+    gleich(mitVorrat.faehigkeiten.weiss.indexOf("spiegel") !== -1, true,
+        "der Spiegel liegt weiter im Vorrat");
+    gleich(mitVorrat.laeuft, true, "und die Partie laeuft unveraendert weiter");
+});
+
+pruefe("Auch Schach allein reicht schon zur Abweisung (v0.95)", () => {
+    /*
+     * Nicht erst Matt: Schon ein Schach darf nicht vom Item kommen. Geprueft
+     * mit dem Nachschub — er setzt einen Bauern auf die eigene Grundreihe und
+     * gibt den Zug ab.
+     */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "klein", "p-schach", "Schach durchs Item");
+    runde.regeln.faehigkeiten = true;
+
+    let gestartet = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
+    gestartet = SCHACH_RUNDE.teamBeitreten(gestartet, "id-bert", "schwarz", 1000);
+    gestartet = SCHACH_RUNDE.bereitSetzen(gestartet, "weiss", true, 1000);
+    gestartet = SCHACH_RUNDE.bereitSetzen(gestartet, "schwarz", true, 1000);
+
+    /* Der schwarze Koenig steht auf f6 (oben rechts), die weisse Grundreihe
+       ist unten. Ein Bauer auf f1 gibt kein Schach — ein Turm schon, aber der
+       Nachschub setzt nur Bauern. Also wird hier der Spiegel genommen: Die
+       weisse Dame steht so, dass ihre Kopie den Koenig angreift. */
+    gestartet.stand = SCHACH.standNormalisieren({
+        variante: "klein",
+        brett: ".....k"
+            + "......"
+            + "......"
+            + "...D.."
+            + "......"
+            + "K.....",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    const felder = [];
+    const mitVorrat = SCHACH_RUNDE.kopieren(gestartet);
+    mitVorrat.faehigkeiten.weiss.push("spiegel");
+
+    for (const feld of SCHACH_RUNDE.zielFelder(mitVorrat, "id-anna", "spiegel")) {
+        felder.push(feld);
+    }
+
+    /* Jedes angebotene Feld muss durchgehen — und keines darf Schach geben. */
+    for (const feld of felder) {
+        const neu = SCHACH_RUNDE.faehigkeitEinsetzen(mitVorrat, "id-anna", "spiegel",
+            feld, "Anna", 3000);
+
+        wahr(!!neu, "Feld " + feld + " wird angeboten und angenommen");
+        wahr(!SCHACH.imSchach(neu.stand, "schwarz"),
+            "Feld " + feld + " gibt dem Gegner kein Schach");
+    }
+});
+
+pruefe("Der Sprung bleibt erlaubt, auch wenn er den Koenig bedroht (v0.95)", () => {
+    /*
+     * DIE FALLE, IN DIE DIE REGEL BEIM BAUEN ZUERST GETAPPT IST.
+     *
+     * `SCHACH.imSchach` rechnet ein aktives Zusatzmuster MIT: Sobald der
+     * Sprung an ist, gilt der gegnerische Koenig als angegriffen, weil jede
+     * eigene Figur wie ein Springer ziehen koennte — obwohl keine Figur ihren
+     * Platz verlassen hat. Eine Regel, die nur `imSchach` vergleicht, verbietet
+     * den Sprung deshalb in fast jeder zweiten Stellung (278 von 579 Versuchen,
+     * gemessen am 20.08.).
+     *
+     * Sprung, Teleport und Doppelzug geben nur ein Muster oder ein Zugrecht
+     * aus; was danach kommt, ist ein ZUG und darf alles. Erkannt wird das am
+     * unveraenderten Brett.
+     */
+    const runde = faehigkeitenPartie();
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+
+    /* Ein weisser Turm auf d5 — als Springer erreicht er von dort e7 und c7,
+       aber eben nur, weil das Muster laeuft. */
+    mitVorrat.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "......T."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    mitVorrat.faehigkeiten.weiss.push("sprung");
+
+    /* Ohne Muster gibt der Turm auf g6 kein Schach. */
+    gleich(SCHACH.imSchach(mitVorrat.stand, "schwarz"), false, "vorher kein Schach");
+
+    const neu = SCHACH_RUNDE.faehigkeitEinsetzen(mitVorrat, "id-anna", "sprung",
+        -1, "Anna", 3000);
+
+    wahr(!!neu, "der Sprung laesst sich einsetzen");
+    gleich(neu.stand.brett, mitVorrat.stand.brett, "und hat keine Figur bewegt");
+    gleich(neu.stand.sprungAktiv, "weiss", "das Muster laeuft");
+});
+
+pruefe("Ein Item darf den Gegner auch nicht patt setzen (v0.95)", () => {
+    /*
+     * Auf Nachfrage ausdruecklich mitentschieden: Sonst liesse sich eine
+     * verlorene Partie per Item zum Unentschieden machen. Geprueft wird die
+     * Regel selbst — sie ist die eine Stelle, an der beides haengt.
+     */
+    const runde = fastMattPartie();
+    const nachSpiegel = SCHACH.spiegel(runde.stand, "weiss",
+        SCHACH.feldNummer("d3", 6, 6));
+
+    wahr(!!nachSpiegel, "die Wirkung selbst kaeme zustande");
+
+    const danach = SCHACH_RUNDE._zugAbgebenNachFaehigkeit(nachSpiegel.stand, "weiss");
+    gleich(SCHACH.alleZuege(danach).length, 0, "der Gegner haette keinen Zug");
+    gleich(SCHACH_RUNDE._wirkungVerboten(runde.stand, danach, "weiss", true), true,
+        "und genau das verbietet die Regel");
+});
+
+pruefe("Wer den Zug behaelt, darf sich auch selbst nicht festsetzen (v0.95)", () => {
+    /*
+     * Der Fall trifft BEIDE Seiten. Wer mit einer Faehigkeit ohne Zugabgabe
+     * die eigene letzte Zugmoeglichkeit nimmt, stuende sonst fest — bis v0.93
+     * blieb die Partie dabei einfach stehen, in v0.94 verlor er.
+     *
+     * Nachgestellt mit der Mauer: Der weisse Koenig steht in der Ecke, sein
+     * einziges freies Feld ist b1. Eine Mauer darueber nimmt es ihm — und
+     * genau deshalb wird sie abgewiesen.
+     */
+    const runde = SCHACH_RUNDE.leereRunde(1000, "klein", "p-selbst", "Selbst festgesetzt");
+    runde.regeln.faehigkeiten = true;
+
+    let gestartet = SCHACH_RUNDE.teamBeitreten(runde, "id-anna", "weiss", 1000);
+    gestartet = SCHACH_RUNDE.teamBeitreten(gestartet, "id-bert", "schwarz", 1000);
+    gestartet = SCHACH_RUNDE.bereitSetzen(gestartet, "weiss", true, 1000);
+    gestartet = SCHACH_RUNDE.bereitSetzen(gestartet, "schwarz", true, 1000);
+
+    /* 6x6: Der weisse Koenig steht in der Ecke, Schwarz weit weg. */
+    gestartet.stand = SCHACH.standNormalisieren({
+        variante: "klein",
+        brett: ".....k"
+            + "......"
+            + "......"
+            + "......"
+            + "......"
+            + "K.....",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    wahr(SCHACH.alleZuege(gestartet.stand).length > 0, "so hat Weiss noch Zuege");
+
+    /*
+     * Dieselbe Ecke, aber die schwarze Dame auf c2 nimmt dem Koenig alle drei
+     * Nachbarfelder — Weiss steht dann ohne einen einzigen Zug da, ohne im
+     * Schach zu sein. Genau diese Lage darf eine Faehigkeit nicht herbeifuehren,
+     * gleich ob sie den Zug abgibt oder behaelt.
+     */
+    const festgesetzt = SCHACH.standNormalisieren({
+        variante: "klein",
+        brett: ".....k"
+            + "......"
+            + "......"
+            + "......"
+            + "..d..."
+            + "K.....",
+        amZug: "weiss",
+        rochade: ""
+    });
+
+    gleich(SCHACH.alleZuege(festgesetzt).length, 0, "kein einziger Zug fuer Weiss");
+    gleich(SCHACH.imSchach(festgesetzt, "weiss"), false, "und trotzdem kein Schach");
+
+    gleich(SCHACH_RUNDE._wirkungVerboten(gestartet.stand, festgesetzt, "weiss", false),
+        true, "eine Faehigkeit, die dorthin fuehrt, ist verboten");
+    gleich(SCHACH_RUNDE._wirkungVerboten(gestartet.stand, festgesetzt, "schwarz", true),
+        true, "und aus der anderen Richtung genauso");
+});
+
+pruefe("Ohne Matt beendet dieselbe Faehigkeit gar nichts (v0.94)", () => {
+    const runde = fastMattPartie();
+
+    /* Dieselbe Faehigkeit, aber ein Feld, das Schwarz nicht einsperrt: der
+       Bauer unten links. Das Feld kommt aus dem Modell, damit der Test keine
+       Stellung auswendig kennt. */
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+    mitVorrat.faehigkeiten.weiss.push("spiegel");
+
+    const bauer = SCHACH.feldNummer("a1", 6, 6);
+    const felder = SCHACH_RUNDE.zielFelder(mitVorrat, "id-anna", "spiegel");
+    wahr(felder.indexOf(bauer) !== -1, "der Bauer steht zur Auswahl");
+
+    const neu = einsetzen(runde, "spiegel", bauer);
+
+    wahr(!!neu, "der Spiegel laesst sich einsetzen");
+    gleich(neu.ergebnis, "", "kein Matt, also kein Ergebnis");
+    gleich(neu.laeuft, true, "die Partie laeuft weiter");
+});
+
+/* ------------------------------------------------------------------ *
+ * Das Brett bietet nur an, was auch geht (seit v0.94)
+ * ------------------------------------------------------------------ */
+
+pruefe("Jedes Feld aus zielFelder laesst sich auch wirklich einsetzen (v0.94)", () => {
+    /*
+     * Bis v0.93 pruefte `zielFelder` nur, ob die Wirkung zustande kommt — die
+     * zweite Bedingung ("der eigene Koenig darf danach nicht im Schach
+     * stehen") kannte allein `faehigkeitEinsetzen`. Das Brett markierte
+     * deshalb Felder, die es hinterher ablehnte: 624 Faelle im Spieltest.
+     *
+     * Geprueft wird die Zusage selbst: Was `zielFelder` nennt, MUSS
+     * `faehigkeitEinsetzen` annehmen — auf einem Brett, auf dem der eigene
+     * Koenig im Schach steht, und auf einem gewoehnlichen.
+     */
+    const bretter = [faehigkeitenPartie(), partieImSchach()];
+    let geprueft = 0;
+
+    for (const runde of bretter) {
+        for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+            if (SCHACH_VARIANTEN.FAEHIGKEITEN[art].art !== "ziel") {
+                continue;
+            }
+
+            const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+            mitVorrat.faehigkeiten.weiss.push(art);
+
+            for (const feld of SCHACH_RUNDE.zielFelder(mitVorrat, "id-anna", art)) {
+                const neu = SCHACH_RUNDE.faehigkeitEinsetzen(
+                    mitVorrat, "id-anna", art, feld, "Anna", 3000, "D");
+
+                wahr(!!neu, art + " auf Feld " + feld
+                    + " steht in zielFelder, wird aber abgelehnt");
+                geprueft++;
+            }
+        }
+    }
+
+    wahr(geprueft > 50, "es wurden genug Felder geprueft: " + geprueft);
+});
+
+pruefe("Ein Feld, das den eigenen Koenig im Schach liesse, wird nicht angeboten (v0.94)", () => {
+    /*
+     * Der Nachschub setzt einen Bauern auf die eigene Grundreihe und gibt den
+     * Zug ab. Steht der eigene Koenig im Schach, ist das verboten — und darf
+     * deshalb auch nicht markiert werden.
+     */
+    const runde = partieImSchach();
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+    mitVorrat.faehigkeiten.weiss.push("nachschub");
+
+    wahr(SCHACH.imSchach(mitVorrat.stand, "weiss"), "Weiss steht im Schach");
+    gleich(SCHACH_RUNDE.zielFelder(mitVorrat, "id-anna", "nachschub").length, 0,
+        "kein einziges Feld wird angeboten");
+});
+
+pruefe("Ohne Schach bietet dieselbe Faehigkeit ihre Felder an (v0.94)", () => {
+    const runde = faehigkeitenPartie();
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+
+    /* Platz auf der Grundreihe schaffen — sonst gibt es dort nichts zu setzen. */
+    mitVorrat.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "tlsdkslt"
+            + "bbbbbbbb"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "BBBBBBBB"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    mitVorrat.faehigkeiten.weiss.push("nachschub");
+
+    wahr(!SCHACH.imSchach(mitVorrat.stand, "weiss"), "Weiss steht nicht im Schach");
+    wahr(SCHACH_RUNDE.zielFelder(mitVorrat, "id-anna", "nachschub").length > 0,
+        "es gibt Felder");
+});
+
+/* ------------------------------------------------------------------ *
+ * Dieb und Haendler sagen vorher ab (seit v0.94)
+ * ------------------------------------------------------------------ */
+
+pruefe("Der Dieb laesst sich nicht einsetzen, wenn der Gegner nichts hat (v0.94)", () => {
+    const runde = faehigkeitenPartie();
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+
+    mitVorrat.faehigkeiten.weiss.push("dieb");
+    mitVorrat.faehigkeiten.schwarz = [];
+
+    gleich(SCHACH_RUNDE.darfEinsetzen(mitVorrat, "id-anna", "dieb"), false,
+        "leerer gegnerischer Vorrat: die Marke bleibt grau");
+    gleich(SCHACH_RUNDE._etwasZuHolen(mitVorrat, "id-anna", "dieb"), false,
+        "und der Grund steht im Modell");
+});
+
+pruefe("Mit gegnerischem Vorrat geht der Dieb wieder (v0.94)", () => {
+    const runde = faehigkeitenPartie();
+    const mitVorrat = SCHACH_RUNDE.kopieren(runde);
+
+    mitVorrat.faehigkeiten.weiss.push("dieb");
+    mitVorrat.faehigkeiten.schwarz = ["sprung"];
+
+    gleich(SCHACH_RUNDE.darfEinsetzen(mitVorrat, "id-anna", "dieb"), true,
+        "jetzt gibt es etwas zu holen");
+});
+
+pruefe("Der Haendler laesst sich nicht einsetzen, wenn der Tausch nicht aufgeht (v0.94)", () => {
+    const runde = faehigkeitenPartie();
+    const leer = SCHACH_RUNDE.kopieren(runde);
+
+    /* Nur die beiden Koenige: Es gibt nichts zu tauschen. */
+    leer.stand = SCHACH.standNormalisieren({
+        variante: "faehigkeiten",
+        brett: "....k..."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "....K...",
+        amZug: "weiss",
+        rochade: ""
+    });
+    leer.faehigkeiten.weiss.push("haendler");
+
+    gleich(SCHACH_RUNDE.handelsAngebot(leer, "weiss"), null, "es gibt kein Angebot");
+    gleich(SCHACH_RUNDE.darfEinsetzen(leer, "id-anna", "haendler"), false,
+        "also bleibt die Marke grau");
+});
+
+pruefe("Alle anderen Faehigkeiten beruehrt die neue Pruefung nicht (v0.94)", () => {
+    const runde = faehigkeitenPartie();
+
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        if (art === "dieb" || art === "haendler") {
+            continue;
+        }
+        gleich(SCHACH_RUNDE._etwasZuHolen(runde, "id-anna", art), true,
+            art + " haengt an keinem fremden Vorrat");
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Kurztext einer Faehigkeit (seit v0.94)
+ * ------------------------------------------------------------------ */
+
+pruefe("Jede Faehigkeit hat einen kurzen Satz, und er passt zur Beschreibung (v0.94)", () => {
+    /*
+     * Der Kurztext steht im Maus-Hinweis (`title`) und als Einstieg im
+     * Einsetzen-Fenster. Er wird GERECHNET statt zweitgeschrieben — zwei Texte
+     * laufen auseinander. Geprueft wird deshalb, dass die Rechnung fuer jede
+     * Faehigkeit etwas Brauchbares liefert.
+     */
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+        const kurz = SCHACH_VARIANTEN.faehigkeitKurz(art);
+
+        wahr(kurz.length > 0, art + ": der Kurztext ist nicht leer");
+        wahr(kurz.length <= voll.length, art + ": nicht laenger als das Ganze");
+        wahr(voll.indexOf(kurz) === 0, art + ": er steht am Anfang der Beschreibung");
+        wahr(kurz.length <= 200, art + ": hoechstens 200 Zeichen, war " + kurz.length);
+        wahr(/[.!?]$/.test(kurz), art + ": er endet mit einem Satzzeichen: " + kurz);
+    }
+});
+
+pruefe("Die Mauer war der Anlass und ist jetzt kurz (v0.94)", () => {
+    const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung("mauer");
+    const kurz = SCHACH_VARIANTEN.faehigkeitKurz("mauer");
+
+    wahr(voll.length > 500, "die ganze Beschreibung ist lang: " + voll.length);
+    wahr(kurz.length < 150, "der Kurztext nicht: " + kurz.length);
 });
 
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");

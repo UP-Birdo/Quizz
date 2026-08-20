@@ -22,7 +22,19 @@ Object.assign(TEAM_SCHACH, {
         const kopf = TEAM_SCHACH._element("div", "partie-kopf");
         kopf.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still knopf-klein",
             () => TEAM_SCHACH.auswahlSchliessen()));
-        kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Welche Spielart?"));
+        /*
+         * „NEUE PARTIE" STATT „WELCHE SPIELART?" (seit v0.94).
+         *
+         * Die Überschrift stammte aus v0.44, als hier wirklich nur Kacheln
+         * standen. Inzwischen kommen davor die Figurenzahl, sechs
+         * Einstellungen, die Lootbox-Menge, der Item-Vorrat und die Brettform
+         * — die Spielart ist der LETZTE Schritt, nicht der erste. Eine
+         * Überschrift, die nach etwas fragt, das erst nach zwei Bildschirmen
+         * kommt, führt in die Irre. Die Reihenfolge selbst bleibt, wie sie
+         * ist: Die Kachel legt die Partie sofort an, also müssen die
+         * Einstellungen davor stehen.
+         */
+        kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Neue Partie"));
 
         /*
          * DER ERKLÄRSATZ STEHT HINTER DEM i (seit v0.52). Er sagt etwas, das man

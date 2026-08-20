@@ -3,6 +3,101 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.95.0 — 2026-08-20
+
+**Items führen nie mehr direkt zu Schach oder Matt.**
+
+- **Eine Fähigkeit darf den gegnerischen König nicht mehr angreifen.** Wenn die
+  Wirkung Schach geben, mattsetzen oder patt stellen würde, lässt sie sich
+  nicht einsetzen — sie bleibt dir erhalten, und das Brett bietet solche Felder
+  gar nicht erst an. Der Gedanke dahinter: Das Item bereitet die Stellung vor,
+  **den Angriff führst du mit einem ZUG**. Damit ist auch das Recht des
+  Frostes, mattzusetzen (aus v0.80), wieder zurückgenommen.
+
+- **Cleveres Platzieren wird dadurch nicht schwächer.** Die Mauer gibt nie
+  Schach — sie sperrt Felder, und das darf sie weiter in voller Härte. Wer dem
+  gegnerischen König mit ihr die Fluchtwege nimmt, gewinnt genauso; nur eben
+  einen Halbzug später und aus eigener Hand.
+
+- **Das gilt auch für dich selbst:** Eine Fähigkeit, mit der du dir deine
+  letzte Zugmöglichkeit nehmen würdest (etwa eine Mauer vor dem eigenen König),
+  wird ebenfalls abgewiesen.
+
+- **Unglücks-Lootboxen bleiben, wie sie sind.** Sie dürfen weiterhin eine
+  Partie beenden — auch dann, wenn eine Fähigkeit eine solche Box beim
+  Einsetzen mit aufsammelt. Ein Unglück wählt man ja nicht, es trifft einen.
+
+In vollen Stellungen merkt man davon wenig. Im Endspiel mit wenigen Figuren
+sind Verstärkung, Nekromant, Wiederbelebung, Nachschub und Spiegel jetzt öfter
+grau — dort steht der gegnerische König frei, und fast jede neue starke Figur
+würde ihn angreifen.
+
+## v0.94.0 — 2026-08-20
+
+> **Diese Nummer ist nie einzeln rausgegangen** — sie steckt vollständig in
+> v0.95.0. Der erste Punkt unten („beendet die Partie jetzt auch") gilt in
+> dieser Form nicht mehr: Seit v0.95.0 kommt es gar nicht mehr so weit, weil
+> eine Fähigkeit den Gegner nicht mehr mattsetzen darf. Alles andere gilt
+> unverändert.
+
+**Aus einem Spieltest über 111.000 Halbzüge: ein Fehler, der Partien anhalten
+liess, und sieben Stellen, an denen die Anzeige etwas anderes sagte als das
+Spiel.**
+
+- **Eine Fähigkeit, die den Gegner mattsetzt, beendet die Partie jetzt auch.**
+  Bisher wurde Schachmatt nur nach einem ZUG geprüft. Wer also mit dem Spiegel
+  eine zweite Dame bekam und damit mattsetzte, gab den Zug ab — und dann stand
+  alles still: Der Gegner war am Zug, konnte keinen einzigen Zug machen, und
+  oben stand weiter „am Zug". Heraus kam man nur über Aufgeben oder Neu
+  aufstellen, und der Sieger bekam weder den Abschluss noch seine Punkte. Das
+  gilt genauso für Patt und für Fähigkeiten, bei denen der Zug bei dir bleibt.
+
+- **Das Brett markiert keine Felder mehr, die es danach ablehnt.** Bei
+  Fähigkeiten mit Zielfeld waren Felder markiert, die anschliessend „Geht
+  gerade nicht" ergaben — immer aus demselben Grund: Dein König hätte danach im
+  Schach gestanden. Solche Felder leuchten jetzt gar nicht mehr auf.
+
+- **Und wenn wirklich einmal nichts geht, steht der Grund da.** Der Hinweis
+  zählte bisher drei mögliche Gründe auf; jetzt nennt er den, der zutrifft.
+
+- **Dieb und Händler sagen vorher ab.** Hat der Gegner keine einzige Fähigkeit
+  oder fehlen dir die Figuren für den Tausch, ist die Marke grau — mit einem
+  Satz, warum. Vorher konntest du sie antippen und erfuhrst es erst im Fenster
+  danach.
+
+- **Im Fenster einer Fähigkeit stehen die Bilder jetzt oben.** Darüber ein
+  Satz, was sie tut; die ganze Beschreibung klappt darunter auf. Bei der Mauer
+  waren das vorher zwanzig Zeilen Text, bevor das erste Bild kam. **Und wenn es
+  gar kein gültiges Feld gibt, wird gleich abgesagt** statt erst nach dem
+  Bestätigen.
+
+- **Der Kurzhinweis der Maus ist wieder kurz.** Wer mit dem Zeiger über eine
+  Fähigkeit fuhr, bekam die vollständige Beschreibung als riesigen Kasten
+  angezeigt — bei der Mauer knapp 700 Zeichen. Jetzt steht dort ein Satz.
+
+- **Im Fenster liegt nichts mehr über den Knöpfen.** Beim Einsetzen einer
+  Fähigkeit schob sich eine Schachfigur des Anleitungsbretts quer über
+  „Abbrechen". Dieselbe Ursache lag an zwei weiteren Stellen: Die Restzeit-Zahl
+  eines Feldes legte sich beim Scrollen über die Leiste „am Zug", und der
+  schwebende Zurück-Knopf der Fähigkeiten-Bibliothek lag über einem offenen
+  Fenster und liess sich anklicken.
+
+- **„etwa 1 Stunden" heisst jetzt „etwa 1 Stunde".** Die Dauer-Zeile unter den
+  Spielart-Kacheln (aus v0.93) traf den Fall bei jeder gut gefüllten Partie.
+
+- **Wenn die Seite am Zug keinen einzigen Zug hat, sagt die Leiste das** —
+  „Kein Zug möglich" statt „am Zug". Das ist die Absicherung für den Fall, dass
+  so eine Stellung auf einem noch unbekannten Weg doch einmal entsteht.
+
+- **Kleinigkeiten:** Der Anlege-Bildschirm heisst „Neue Partie" statt „Welche
+  Spielart?" — die Spielart ist dort der letzte Schritt, nicht der erste. Und
+  derselbe Knopf heisst nicht mehr einmal „Neu aufstellen" und einmal „Partie
+  zurücksetzen".
+
+An den Spielregeln selbst ändert sich nichts. Laufende Partien laufen weiter;
+eine, die durch eine Fähigkeit längst matt war, wird beim nächsten Zug
+ordentlich beendet.
+
 ## v0.93.0 — 2026-08-20
 
 **Unter jeder Spielart steht jetzt, wie lange eine Runde ungefähr dauert.**

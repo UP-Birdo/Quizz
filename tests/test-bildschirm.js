@@ -1680,6 +1680,55 @@ function ersterBibliothekEintrag() {
     return eintrag;
 }
 
+pruefe("Das Einsetzen-Fenster zeigt Bilder oben und den langen Text im Aufklapper (v0.94)", () => {
+    /*
+     * Bis v0.93 stand die ganze Beschreibung als Text UEBER den Bildern — bei
+     * der Mauer 668 Zeichen, auf dem Handy rund zwanzig Zeilen. Die Bilder,
+     * die den Text ersetzen sollen, standen damit unter dem Bildrand.
+     */
+    const halter = TEAM_SCHACH._anleitungMitBeschreibung("mauer");
+    if (!halter) {
+        throw new Error("es kommt gar kein Element zustande");
+    }
+
+    if (!halter.querySelector(".anleitung")) {
+        throw new Error("die Bildanleitung fehlt");
+    }
+
+    const aufklapper = halter.querySelector(".mehr-text");
+    if (!aufklapper) {
+        throw new Error("der Aufklapper mit der ganzen Beschreibung fehlt");
+    }
+    if (aufklapper.tagName !== "details") {
+        throw new Error("der Aufklapper ist kein details-Element");
+    }
+
+    const satz = aufklapper.querySelector(".mehr-text-satz");
+    if (!satz || satz.textContent !== SCHACH_VARIANTEN.faehigkeitBeschreibung("mauer")) {
+        throw new Error("die ganze Beschreibung steht nicht darin");
+    }
+});
+
+pruefe("Wo die Beschreibung nur ein Satz ist, gibt es keinen Aufklapper (v0.94)", () => {
+    /* Sonst stuende derselbe Text zweimal im Fenster. */
+    let einSatz = "";
+    for (const art of Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)) {
+        if (SCHACH_VARIANTEN.faehigkeitKurz(art)
+            === SCHACH_VARIANTEN.faehigkeitBeschreibung(art)) {
+
+            einSatz = art;
+        }
+    }
+    if (!einSatz) {
+        return;
+    }
+
+    const halter = TEAM_SCHACH._anleitungMitBeschreibung(einSatz);
+    if (halter && halter.querySelector(".mehr-text")) {
+        throw new Error(einSatz + ": doppelter Text im Fenster");
+    }
+});
+
 pruefe("Ein Eintrag der Bibliothek klappt seine Anleitung auf", () => {
     /*
      * v0.41: Der Eintrag SELBST ist der Knopf — wer auf die Fähigkeit tippt,

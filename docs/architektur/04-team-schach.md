@@ -340,11 +340,33 @@ war — das Rennen um den Zugzähler und die entfallende Abstimmung — steht in
 `DECISIONS.md`. Geprüft wird beides in `SCHACH_RUNDE.darfEinsetzen`; wer eine
 Fähigkeit einsetzt, fragt nie mehr `darfZiehen`.
 
-**Der eigene König darf dabei nie im Schach bleiben** (seit v3.6). Verboten sind
-zwei Fälle: sich selbst ins Schach stellen, und im Schach stehen und mit einer
-`beendetZug`-Fähigkeit den Zug abgeben. Was den Zug nicht beendet, bleibt
-erlaubt. Die Prüfung steht am Ende von `faehigkeitEinsetzen` und entfällt auf
-Brettern mit `koenigSchlagbar`.
+**Was eine Fähigkeit anrichten darf, steht in `SCHACH_RUNDE._wirkungVerboten`**
+(seit v0.95; der Kern, der eigene König, seit v3.6). Drei Fälle sind verboten:
+
+1. Der **eigene** König stünde im Schach — sich selbst hineinstellen, oder im
+   Schach mit einer `beendetZug`-Fähigkeit den Zug abgeben. Was den Zug nicht
+   beendet, bleibt erlaubt (man muss danach ohnehin herausziehen).
+2. Der **gegnerische** König stünde im Schach, und die Fähigkeit hat es
+   verursacht.
+3. Wer als **Nächster zieht**, hätte keinen einzigen Zug — das deckt Matt und
+   Patt zugleich ab und trifft beide Seiten.
+
+2 und 3 kommen aus der Nutzer-Entscheidung vom 20.08.2026 („items sollen nie
+direkt zu schach oder matt führen"); sie nehmen das Recht des Frostes aus v0.80
+zurück. 1 und 2 entfallen auf Brettern mit `koenigSchlagbar`, 3 gilt überall.
+
+Gefragt wird die Funktion an ZWEI Stellen: beim Einsetzen
+(`faehigkeitEinsetzen` weist ab, die Fähigkeit bleibt im Vorrat) und beim
+Anbieten (`zielFelder` markiert solche Felder gar nicht erst). Bis v0.93 kannte
+nur die erste sie — das Brett markierte deshalb Felder, die es hinterher
+ablehnte. **Wer eine Bedingung ergänzt, ergänzt sie dort und nirgends sonst.**
+
+**Beenden kann eine Fähigkeit die Partie trotzdem** — aber nur mittelbar:
+`faehigkeitEinsetzen` fragt am Ende `SCHACH.lage` und setzt `ergebnis` und
+`laeuft`, dieselben Zeilen wie in `ziehen`. Erreichbar ist das seit v0.95 nur
+noch über ein UNGLÜCK, das die Fähigkeit beim Einsetzen aufsammelt — dafür
+steht die Abweisung oben VOR dem Einsammeln und diese Prüfung dahinter. Bis
+v0.93 fehlte sie ganz, und eine mattsetzende Wirkung hielt die Partie an.
 
 Die Wirkung liegt in Feldern des Standes und ist damit gespeichert und für alle
 sichtbar:

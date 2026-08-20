@@ -2150,6 +2150,31 @@ const SCHACH_VARIANTEN = {
     },
 
     /*
+     * DERSELBE TEXT IN EINEM SATZ (seit v0.94).
+     *
+     * Gebraucht überall dort, wo kein Platz für die ganze Beschreibung ist:
+     * im Kurzhinweis der Maus (dem `title`-Attribut) und als Einstieg im
+     * Einsetzen-Fenster, über den Bildern.
+     *
+     * WARUM GERECHNET UND NICHT ZWEITER TEXT JE FÄHIGKEIT: Zwei Texte laufen
+     * auseinander — der kurze wird beim Ändern einer Regel vergessen, und dann
+     * sagt die Maus etwas anderes als das Fenster. Der erste Satz einer
+     * Beschreibung sagt ohnehin, WAS die Fähigkeit tut; alles danach sind
+     * Bedingungen und Feinheiten. Nachgemessen über alle 21 Fähigkeiten: 62
+     * bis 179 Zeichen, im Mittel 110 — bei der Mauer 113 statt 668.
+     *
+     * Der Punkt zählt nur als Satzende, wenn ein Leerzeichen oder das
+     * Textende folgt; sonst zerschnitte „2×2-Feld" oder eine Abkürzung den
+     * Satz mittendrin.
+     */
+    faehigkeitKurz(art) {
+        const voll = SCHACH_VARIANTEN.faehigkeitBeschreibung(art);
+        const treffer = voll.match(/^[\s\S]*?[.!?](\s|$)/);
+
+        return (treffer ? treffer[0] : voll).trim();
+    },
+
+    /*
      * TRÄGT DIESE FÄHIGKEIT DAS PLUSZEICHEN? (seit v0.58 an einer Stelle)
      *
      * Das Zeichen sagt: „Danach bleibt dir dein normaler Zug." Drei Schalter

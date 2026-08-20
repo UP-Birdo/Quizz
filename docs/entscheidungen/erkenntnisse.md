@@ -928,3 +928,113 @@ weiter gesucht wird.
 die Datenbank. Der nächste Schritt wäre, den Zugwechsel mit zwei Anmeldungen
 nachzustellen und dabei zu beobachten, ob der Vorrat über den Abgleich
 zurückgesetzt wird.
+
+## Zwei Wege zum Partieende, aber nur einer wurde geprüft (v3.6, gefunden v0.94)
+
+**Was zu sehen war:** Eine Partie stand still. Der Gegner war am Zug, die
+Leiste sagte „am Zug", und kein einziges Feld liess sich antippen. Herauskommen
+konnte man nur über Aufgeben oder Neu aufstellen; der Sieger bekam weder den
+Abschluss-Bildschirm noch seine Ranglistenpunkte.
+
+**Die Ursache:** `SCHACH.lage` — die Funktion, die Matt und Patt erkennt —
+wurde ausschliesslich in `SCHACH_RUNDE.ziehen` gefragt. Eine Partie kann aber
+auf ZWEI Wegen weitergehen: durch einen Zug und durch eine Fähigkeit, die den
+Zug abgibt. Der zweite Weg prüfte nichts. Wer mit dem Spiegel eine zweite Dame
+bekam und damit mattsetzte, beendete die Partie deshalb nicht — er stellte sie
+ab.
+
+**Warum es so lange unbemerkt blieb:** Bis v0.80 durfte gar keine Fähigkeit
+mattsetzen („König und Matt bleiben unangetastet"), und solange stimmte die
+Annahme, dass nur ein Zug eine Partie beenden kann. Mit dem Frost (v0.80) fiel
+die Regel, mit ihr die Annahme — nur hat niemand die Stelle nachgezogen, die
+auf ihr stand. Eine aufgehobene Regel hinterlässt Code, der sie noch glaubt.
+
+**Die Lehre:** Wenn ein Zustand auf mehreren Wegen erreichbar ist, gehört die
+Abschlussprüfung an jeden davon — oder in eine Funktion, die alle aufrufen.
+`faehigkeitEinsetzen` fragt jetzt dieselbe `SCHACH.lage` in derselben
+Reihenfolge wie `ziehen`. Und: Wer eine Regel aufhebt, sucht die Stellen, die
+sich auf sie verlassen haben; die stehen selten dort, wo die Regel stand.
+
+**NACHTRAG VOM SELBEN TAG (v0.95):** Der Nutzer hat auf den Befund hin die
+REGEL geändert statt nur den Fehler zu nehmen — „items sollen nie direkt zu
+schach oder matt führen". Damit ist die Frage „was tun, wenn eine Fähigkeit
+mattsetzt" gegenstandslos: Sie darf es nicht mehr, und `_wirkungVerboten` weist
+sie vorher ab. Die Prüfung mit `SCHACH.lage` bleibt trotzdem stehen, denn ein
+Unglück, das die Fähigkeit beim Einsetzen aufsammelt, darf weiterhin beenden.
+**Auch das ist eine Lehre:** Ein Fehlerbericht kann die Antwort „so soll es
+nicht sein" bekommen — dann ist der Fix nicht der Fix, sondern die Vorlage für
+eine Entscheidung. Erst fragen, welche der beiden Antworten gemeint ist.
+
+**Zweiter Fund derselben Runde — dieselbe Sorte Fehler in der Anzeige:**
+`zielFelder` beantwortete die Frage „welche Felder gehen" mit der halben
+Bedingung. Dass die Wirkung zustande kommt, prüfte sie; dass der eigene König
+danach nicht im Schach steht, prüfte nur `faehigkeitEinsetzen`. Das Brett
+markierte deshalb Felder, die es hinterher ablehnte — 624 mal im Spieltest.
+Beide fragen jetzt `_koenigVerbietet`. **Merksatz:** Eine Liste möglicher
+Aktionen und die Prüfung beim Ausführen müssen aus derselben Funktion kommen;
+sonst lügt die Anzeige, und zwar genau in den Fällen, die selten genug sind,
+um beim Ausprobieren nicht aufzufallen.
+
+**Und zur Methode:** Gefunden wurde beides nicht durch Lesen, sondern durch
+einen Testspieler gegen die echten Dateien — 528 Partien über alle Spielarten
+und Regel-Sätze, 111.000 Halbzüge, nach jedem Schritt dieselben Invarianten
+geprüft (Brettmass, Zugrecht, Könige vorhanden, Lootbox-Felder, stabiles
+Normalisieren). Er fand keinen einzigen Absturz — aber sechs Partien, die
+stillstanden, und die 624 markierten Felder, die keine waren. Beides hätte
+kein Regressionstest gefunden, weil beides erst in Stellungen auftritt, die
+niemand von Hand aufbaut.
+
+## Ein Hintergrund macht keine Ebene (v0.67, gefunden v0.94)
+
+**Was zu sehen war:** Im Fenster „Mauer einsetzen?" lag eine Schachfigur des
+Anleitungsbretts quer über dem Knopf „Abbrechen" — mitten im Wort.
+
+**Die Ursache:** Die Knopfleiste des Dialogs klebt seit v0.67 unten fest
+(`position: sticky`) und hat einen eigenen Hintergrund, damit der Inhalt hinter
+ihr durchscrollt. Sie hatte aber keine Ebenen-Nummer. Der Browser zeichnet erst
+alles ohne eigene Nummer und DANACH alles mit positiver Nummer — und die Figur
+trägt `z-index: 1`. Sie wurde also nach der Leiste gezeichnet, quer über sie
+hinweg. **Ein Hintergrund verdeckt nur, was VOR ihm gezeichnet wird.**
+
+**Dieselbe Ursache lag an zwei weiteren Stellen** und war dort noch nicht
+gemeldet: Die Restzeit-Marke eines Feldes (`z-index: 5`) schob sich über die
+klebende Standleiste (`3`), und der schwebende Zurück-Knopf der Bibliothek
+(`40`) lag über dem Dialog-Hintergrund (`10`) — er liess sich anklicken,
+während ein Fenster offen war, und schloss die Ansicht dahinter.
+
+**Die Lehre:** Ebenen-Nummern sind kein Bauteil-Detail, sondern eine
+Eigenschaft der ganzen Seite. Wer sie je Bauteil vergibt, vergibt sie gegen
+niemanden — und merkt es erst, wenn zwei Bauteile aufeinandertreffen, die
+vorher nie gleichzeitig sichtbar waren. Sie stehen seit v0.94 als vier
+Variablen an einer Stelle in `css\stil.css` (`--ebene-feldmarke`,
+`--ebene-leiste`, `--ebene-schwebend`, `--ebene-dialog`), mit Abstand
+dazwischen; wer eine neue braucht, trägt sie dort ein.
+
+## Ein aktives Zugmuster sieht aus wie ein frisches Schach (v0.95, beim Bauen gefunden)
+
+**Was zu sehen war:** Die neue Regel „kein Item führt direkt zu Schach" wies
+den **Sprung** in fast jeder zweiten Stellung ab — 278 von 579 Versuchen im
+Spieltest. Dabei bewegt der Sprung gar keine Figur.
+
+**Die Ursache:** `SCHACH.imSchach` rechnet ein aktives **Zusatzmuster** mit.
+Sobald `zusatzMuster: "springer"` im Stand steht, kann jede eigene Figur wie
+ein Springer ziehen — also gilt der gegnerische König als angegriffen, sobald
+irgendeine eigene Figur ihn im Springer-Abstand hat. Die Regel verglich
+`imSchach` vorher und nachher, sah einen Unterschied und schloss daraus: „Das
+Item hat Schach gegeben." Auf dem Brett hatte sich aber nichts bewegt.
+
+**Die Lehre:** `imSchach` beantwortet nicht die Frage „steht der König im
+Schach", sondern „ist sein Feld nach den GERADE geltenden Gangarten
+erreichbar". Wer zwei Stände damit vergleicht, muss sicher sein, dass beide
+dieselben Gangarten kennen — sonst misst er die Regeländerung statt der
+Stellungsänderung. Die Prüfung hängt jetzt zusätzlich daran, dass sich die
+Brett-Zeichenkette überhaupt geändert hat: **Wer keine Figur versetzt, kann
+kein Schach geben.** Sprung, Teleport und Doppelzug fallen damit von selbst
+heraus, ohne dass sie namentlich als Ausnahme dastehen müssten.
+
+**Und zur Methode:** Aufgefallen ist es nicht im Test, sondern an einer Zahl,
+die nicht passte — dieselbe Auswertung wie vorher, ein Wert von 4 auf 1146
+gesprungen. Ein Wegwerf-Skript, das je Abweisung nachrechnet, WELCHE der drei
+Regeln greift, hat die Ursache in zwei Minuten gezeigt. Eine Auswertung, die
+man vor und nach einer Änderung nebeneinanderlegen kann, ist mehr wert als ein
+weiterer Test.
