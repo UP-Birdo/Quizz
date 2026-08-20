@@ -1381,7 +1381,7 @@ pruefe("Ein geschobener Bauer behaelt seinen Doppelschritt (#38, v0.98)", () => 
         "auf der Startreihe darf er");
 
     /* Ein Schub nach b3 — kein Zug, nur eine Bewegung. */
-    const geschoben = SCHACH.bauernSeitenVerschieben(
+    const geschoben = SCHACH.figurMarkenVerschieben(
         SCHACH.standNormalisieren(Object.assign({}, stand, {
             brett: brettAus({ "e1": "K", "e8": "k", "b3": "B" })
         })),
@@ -1409,7 +1409,7 @@ pruefe("Ein Bauer springt nie zweimal (#37, v0.98)", () => {
     /* Jetzt schiebt ihn etwas auf seine Startreihe zurueck. `amZug` wird dabei
        auf Weiss zurueckgesetzt: Nach dem Zug ist Schwarz dran, und wir wollen
        die Zuege des weissen Bauern sehen. */
-    const zurueck = SCHACH.bauernSeitenVerschieben(
+    const zurueck = SCHACH.figurMarkenVerschieben(
         Object.assign({}, gezogen, {
             brett: brettAus({ "e1": "K", "e8": "k", "b2": "B" }),
             amZug: "weiss"
@@ -1504,6 +1504,103 @@ pruefe("Ein Teleport hat weder Linie noch Weg (#35, v0.98)", () => {
        Parameter ist wahlfrei, jeder Aufruf von frueher gilt unveraendert. */
     gleich(SCHACH.wegFelder(stand, von, nach).length, 3,
         "ohne die Angabe bleibt es die gerade Strecke");
+});
+
+/* ------------------------------------------------------------------ *
+ * Status-Marken haengen an der Figur (v0.102)
+ * ------------------------------------------------------------------ */
+
+pruefe("Schild und Fessel wandern mit der geschobenen Figur (v0.102)", () => {
+    /*
+     * NUTZER-ANSAGE 20.08.: „Alle Status-Items sind an die Figur gebunden, also
+     * Fessel und Schild — wenn die Figur durch Nudelholz oder Bauernschub
+     * bewegt wird, soll es auf der Figur bleiben."
+     *
+     * Bis v0.101 stand im Stand nur eine FELDNUMMER, und die blieb liegen. Wer
+     * eine geschuetzte Figur schob, liess ihr Schild auf dem leeren Feld
+     * zurueck; wer eine gefesselte schob, machte sie frei und fesselte
+     * stattdessen das, was danach auf dem alten Feld stand.
+     */
+    const vorher = standAus(
+        { "e1": "K", "e8": "k", "b2": "B", "d4": "L", "g5": "t" }, "weiss", {
+            schildFeld: SCHACH.feldNummer("d4"),
+            schildFarbe: "weiss",
+            fesselFeld: SCHACH.feldNummer("g5"),
+            fesselFarbe: "weiss",
+            fesselBis: 20
+        });
+
+    /* Beide Figuren werden geschoben, ohne dass ein Zug stattfindet. */
+    const geschoben = SCHACH.figurMarkenVerschieben(
+        SCHACH.standNormalisieren(Object.assign({}, vorher, {
+            brett: brettAus({ "e1": "K", "e8": "k", "b2": "B", "d5": "L", "g6": "t" }),
+            schildFeld: SCHACH.feldNummer("d4"),
+            schildFarbe: "weiss",
+            fesselFeld: SCHACH.feldNummer("g5"),
+            fesselFarbe: "weiss",
+            fesselBis: 20
+        })),
+        [
+            { von: SCHACH.feldNummer("d4"), nach: SCHACH.feldNummer("d5") },
+            { von: SCHACH.feldNummer("g5"), nach: SCHACH.feldNummer("g6") }
+        ]);
+
+    gleich(geschoben.schildFeld, SCHACH.feldNummer("d5"),
+        "das Schild zieht mit dem Laeufer mit");
+    gleich(geschoben.schildFarbe, "weiss", "und behaelt seine Seite");
+
+    gleich(geschoben.fesselFeld, SCHACH.feldNummer("g6"),
+        "die Fessel bleibt an der gefesselten Figur");
+    gleich(geschoben.fesselBis, 20, "und behaelt ihre Frist");
+
+    /* Und das alte Feld traegt nichts mehr — sonst erbte es die naechste
+       Figur, die dort hinzieht. */
+    wahr(!SCHACH.gefesselt(geschoben, SCHACH.feldNummer("g5")),
+        "auf dem alten Feld ist keine Fessel mehr");
+});
+
+pruefe("Wo keine Figur mehr steht, faellt die Marke weg (v0.102)", () => {
+    /*
+     * Ein Erdbeben kann die geschuetzte Figur auch vom Brett nehmen. Bliebe die
+     * Marke liegen, zeichnete das Brett einen Ring um ein leeres Feld — und die
+     * naechste Figur, die dort hinzieht, waere ploetzlich geschuetzt.
+     */
+    const stand = SCHACH.standNormalisieren(standAus(
+        { "e1": "K", "e8": "k", "d4": "L" }, "weiss", {
+            schildFeld: SCHACH.feldNummer("d4"),
+            schildFarbe: "weiss"
+        }));
+
+    /* Der Laeufer verschwindet, und ein Weg fuehrt ins Leere. */
+    const ohne = SCHACH.figurMarkenVerschieben(
+        Object.assign({}, stand, {
+            brett: brettAus({ "e1": "K", "e8": "k" })
+        }),
+        [{ von: SCHACH.feldNummer("d4"), nach: SCHACH.feldNummer("d5") }]);
+
+    gleich(ohne.schildFeld, -1, "das Schild ist weg");
+    gleich(ohne.schildFarbe, "", "und seine Seite auch");
+});
+
+pruefe("Ein eigener ZUG verbraucht das Schild weiterhin (v3.3, geprueft v0.102)", () => {
+    /*
+     * DIE GRENZE, auf die es ankommt: Geschoben zu werden ist kein Zug. Zieht
+     * die geschuetzte Figur selbst, verfaellt ihr Schild wie seit jeher —
+     * sonst waere aus der neuen Regel versehentlich ein dauerhafter Schutz
+     * geworden.
+     */
+    const stand = standAus({ "e1": "K", "e8": "k", "d4": "L" }, "weiss", {
+        schildFeld: SCHACH.feldNummer("d4"),
+        schildFarbe: "weiss"
+    });
+
+    /* Ein Laeufer zieht schraeg — d4 nach e5. */
+    const gezogen = SCHACH.ziehen(stand, SCHACH.feldNummer("d4"),
+        SCHACH.feldNummer("e5"));
+
+    wahr(gezogen !== null, "der Zug geht");
+    gleich(gezogen.stand.schildFeld, -1,
+        "wer selbst zieht, nimmt sein Schild nicht mit");
 });
 
 /* ------------------------------------------------------------------ *

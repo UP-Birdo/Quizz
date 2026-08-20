@@ -2262,7 +2262,7 @@ const SCHACH_RUNDE = {
          * Für jedes andere Brett ist der Aufruf wirkungslos — dort ist die
          * Liste leer.
          */
-        neu.stand = SCHACH.bauernSeitenVerschieben(neu.stand, wege);
+        neu.stand = SCHACH.figurMarkenVerschieben(neu.stand, wege);
 
         neu.faehigkeiten[farbe].splice(stelle, 1);
         neu.zugZaehler = alt.zugZaehler + 1;
@@ -2935,7 +2935,7 @@ const SCHACH_RUNDE = {
              * selbst umgerechnet. Erkennbar an `wirkung.umrechnen`.
              */
             if (typeof wirkung.umrechnen !== "function") {
-                runde.stand = SCHACH.bauernSeitenVerschieben(
+                runde.stand = SCHACH.figurMarkenVerschieben(
                     runde.stand, wirkung.wege);
             }
 

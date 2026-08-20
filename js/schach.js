@@ -1039,24 +1039,34 @@ const SCHACH = {
     },
 
     /*
-     * Verschiebt Startseiten entlang beliebiger Wege — für die Fähigkeiten,
-     * die Figuren bewegen, ohne dass ein Zug stattfindet (Nudelholz,
-     * Bauernschub, Erdbeben, Erdrutsch). Ohne das bliebe der Eintrag auf dem
-     * alten Feld liegen, und der geschobene Bauer fiele auf die Farbregel
-     * zurück — auf dem Kreuz liefe er danach in die falsche Richtung.
+     * ALLES, WAS AN EINER FIGUR HÄNGT, ZIEHT MIT IHR MIT (seit v0.102).
      *
-     * SEIT v0.98 WANDERT `bauernZog` MIT (Wunsch #38). Das ist der Kern des
-     * Wunsches: Wer geschoben wird, hat sich nicht selbst bewegt — sein
-     * Eintrag (oder eben sein Fehlen) zieht deshalb einfach mit um, und der
-     * Doppelschritt bleibt ihm erhalten. Beide Listen werden hier zusammen
-     * nachgeführt, damit niemand die eine pflegt und die andere vergisst.
+     * Diese eine Funktion führt jede figurgebundene Angabe entlang beliebiger
+     * Wege nach — für die Fähigkeiten und Unglücke, die Figuren bewegen, OHNE
+     * dass ein Zug stattfindet (Nudelholz, Bauernschub, Erdbeben, Erdrutsch,
+     * Spiegel, Platztausch). Nachgeführt werden inzwischen vier Dinge:
+     *
+     *     bauernSeiten   die Startseite je Bauer (seit v0.65)
+     *     bauernZog      wer seinen ersten Zug schon gemacht hat (seit v0.98)
+     *     schildFeld     das Schutzschild (seit v0.102)
+     *     fesselFeld     die Fessel (seit v0.102)
+     *
+     * SIE HIESS BIS v0.101 `bauernSeitenVerschieben`. Der Name stimmte schon
+     * seit v0.98 nicht mehr, und genau daran wäre die nächste Erweiterung
+     * vorbeigelaufen: Wer „Schild an die Figur binden" bauen will, sucht keine
+     * Funktion, die nach Bauern klingt. **Wer eine fünfte figurgebundene
+     * Angabe erfindet, trägt sie hier ein** — es gibt keinen zweiten Ort dafür.
+     *
+     * DER GEMEINSAME NENNER: Geschoben zu werden ist KEIN Zug. Was eine Figur
+     * bei sich trägt, verliert sie durch einen eigenen Zug (das Schild) oder
+     * behält sie über ihn hinweg (die Startseite) — aber ein Schub ändert
+     * nichts als den Platz.
      */
-    bauernSeitenVerschieben(stand, wege) {
+    figurMarkenVerschieben(stand, wege) {
         const liste = Array.isArray(stand.bauernSeiten) ? stand.bauernSeiten : [];
         const gezogen = Array.isArray(stand.bauernZog) ? stand.bauernZog : [];
 
-        if (!Array.isArray(wege) || wege.length === 0
-            || (liste.length === 0 && gezogen.length === 0)) {
+        if (!Array.isArray(wege) || wege.length === 0) {
             return stand;
         }
 
@@ -1083,8 +1093,46 @@ const SCHACH = {
             .filter((feld, stelle, alle) => alle.indexOf(feld) === stelle)
             .filter(istBauer);
 
-        return Object.assign({}, stand,
-            { bauernSeiten: neu, bauernZog: neuGezogen });
+        /*
+         * SCHILD UND FESSEL HÄNGEN AN DER FIGUR, NICHT AM FELD (seit v0.102,
+         * Nutzer-Ansage 20.08.: „alle Status-Items sind an die Figur gebunden,
+         * also Fessel und Schild — wenn die Figur durch Nudelholz oder
+         * Bauernschub bewegt wird, soll es auf der Figur bleiben").
+         *
+         * Bis v0.101 stand im Stand nur eine Feldnummer, und die blieb liegen,
+         * wo sie war. Wer eine geschützte Figur schob, liess ihr Schild auf dem
+         * leeren Feld zurück; wer eine gefesselte schob, machte sie damit frei
+         * und fesselte stattdessen das, was danach auf dem alten Feld stand.
+         *
+         * WARUM DAS HIER STEHT UND NICHT IN `_ausfuehren`: Ein eigener ZUG ist
+         * etwas anderes als ein Schub. Zieht die geschützte Figur selbst,
+         * verfällt das Schild weiterhin (Regel seit v3.3) — geschoben zu werden
+         * ist kein Zug, genau wie beim Doppelschritt-Recht der Bauern (v0.98).
+         *
+         * WO KEINE FIGUR MEHR STEHT, gibt es nichts mehr zu schützen oder zu
+         * fesseln: Die Marke fällt weg. Sonst zeichnete das Brett einen Ring um
+         * ein leeres Feld, und die nächste Figur, die dort hinzieht, erbte ihn.
+         */
+        const marke = (feld) => (Number.isInteger(umzug[feld]) ? umzug[feld] : feld);
+        const besetzt = (feld) => SCHACH.figurAuf(stand, feld) !== ".";
+
+        const schildNeu = (stand.schildFeld >= 0) ? marke(stand.schildFeld) : -1;
+        const fesselNeu = (stand.fesselFeld >= 0) ? marke(stand.fesselFeld) : -1;
+
+        const schildBleibt = (schildNeu >= 0) && besetzt(schildNeu);
+        const fesselBleibt = (fesselNeu >= 0) && besetzt(fesselNeu);
+
+        return Object.assign({}, stand, {
+            bauernSeiten: neu,
+            bauernZog: neuGezogen,
+
+            schildFeld: schildBleibt ? schildNeu : -1,
+            schildFarbe: schildBleibt ? stand.schildFarbe : "",
+
+            fesselFeld: fesselBleibt ? fesselNeu : -1,
+            fesselFarbe: fesselBleibt ? stand.fesselFarbe : "",
+            fesselBis: fesselBleibt ? stand.fesselBis : 0
+        });
     },
 
     /* ---------------------------------------------------------------- *
@@ -3516,7 +3564,7 @@ const SCHACH = {
         return {
             stand: Object.assign({}, stand, { brett: brett, enPassant: "" }),
             felder: [feld, davor],
-            /* Beide Wege, damit `bauernSeitenVerschieben` die Startseite jedes
+            /* Beide Wege, damit `figurMarkenVerschieben` die Startseite jedes
                getauschten Bauern mitnimmt und der Bildschirm beide zeichnet. */
             wege: [{ von: feld, nach: davor }, { von: davor, nach: feld }],
             text: SCHACH.artName(SCHACH.artVon(figur)) + " tauscht mit "

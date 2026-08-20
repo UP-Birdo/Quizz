@@ -41,7 +41,7 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   alten Farbregel** — Weiss unten, Schwarz oben; deshalb rechnet jedes Brett
   von früher und jede laufende Partie unverändert weiter. Wer einen Bauern
   bewegt, ohne dass ein Zug stattfindet (Nudelholz, Bauernschub, Erdbeben),
-  führt die Einträge mit `SCHACH.bauernSeitenVerschieben` nach — sonst läuft
+  führt die Einträge mit `SCHACH.figurMarkenVerschieben` nach — sonst läuft
   der geschobene Bauer danach in die falsche Richtung. **Seit v0.98 gilt das
   auch für die Unglücks-Lootboxen:** `_pechAusloesen` reicht sein `wege`
   dorthin weiter; bis dahin tat es das nicht, und ein vom Erdbeben geschobener
@@ -231,6 +231,20 @@ Stil) stehen weiter in der [CLAUDE.md](../CLAUDE.md) — sie gelten zusätzlich.
   die Figur am Bildschirm auf ein Feld, auf dem sie nicht steht. Und:
   `SCHACH.zuege` bleibt unangetastet — als der Zug gewählt wurde, war der Weg
   frei.
+- **WAS AN EINER FIGUR HÄNGT, ZIEHT MIT IHR MIT — an EINER Stelle**
+  (`SCHACH.figurMarkenVerschieben`, seit v0.102; hiess bis v0.101
+  `bauernSeitenVerschieben`). Nachgeführt werden vier Angaben: die Startseite
+  je Bauer (`bauernSeiten`), das Erstzug-Recht (`bauernZog`), das Schutzschild
+  (`schildFeld`) und die Fessel (`fesselFeld`). **Wer eine fünfte
+  figurgebundene Angabe erfindet, trägt sie dort ein** — es gibt keinen zweiten
+  Ort dafür, und der alte Name war schon seit v0.98 falsch.
+  **Der gemeinsame Nenner: Geschoben zu werden ist KEIN Zug.** Deshalb
+  verbraucht ein eigener Zug das Schild weiterhin (Regel seit v3.3), ein Schub
+  aber nicht — genau wie beim Doppelschritt-Recht der Bauern. Wo nach dem Schub
+  keine Figur mehr steht, fällt die Marke weg; sonst erbt sie die nächste
+  Figur, die dort hinzieht.
+  **DER FROST GEHÖRT NICHT DAZU:** Er sperrt eine FLÄCHE (2×2) und ist eine
+  Mauer um den Block, kein Anhängsel einer Figur — er bleibt liegen, wo er ist.
 - **Frost und Fessel sind seit v0.56 zwei verschiedene Dinge.** Frost sperrt
   eine FLÄCHE (2×2) für EINEN Zug und macht unantastbar; er trifft **jeden** im
   Block, auch die eigenen Figuren. Die Fessel hält EINE gegnerische Figur über

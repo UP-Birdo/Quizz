@@ -3,6 +3,26 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.102.0 — 2026-08-20
+
+**Schild und Fessel hängen jetzt an der Figur, nicht am Feld.**
+
+- **Wer geschoben wird, nimmt seinen Status mit.** Bisher blieben Schutzschild
+  und Fessel auf dem Feld liegen: Wurde die Figur mit Nudelholz, Bauernschub,
+  Erdbeben oder Erdrutsch verschoben, stand ihr Schild danach auf einem leeren
+  Feld — und eine gefesselte Figur wurde durch einen Schub einfach frei,
+  während die Fessel an dem hängen blieb, was danach dort stand. Jetzt zieht
+  beides mit.
+
+- **Ein eigener Zug zählt weiter nicht als Schub.** Zieht die geschützte Figur
+  selbst, verfällt ihr Schild wie bisher — sonst wäre daraus ein dauerhafter
+  Schutz geworden. Es ist dieselbe Grenze wie beim Doppelschritt der Bauern:
+  Geschoben zu werden ist kein Zug.
+
+- **Und wo keine Figur mehr steht, fällt die Marke weg.** Nimmt ein Erdbeben
+  die geschützte Figur vom Brett, verschwindet ihr Schild mit ihr, statt als
+  Ring auf einem leeren Feld liegen zu bleiben.
+
 ## v0.101.0 — 2026-08-20
 
 **Der Platztausch geht jetzt in alle vier Richtungen — und auch mit dem Gegner.**
