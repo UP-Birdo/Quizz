@@ -1306,6 +1306,7 @@ body {
  * Schieberegler von v0.60 samt seiner `.regler`-Klassen.
  */
 .mengen-zeile,
+.vorrat-zeile,
 .armee-zeile {
     display: flex;
     flex-direction: column;
@@ -1314,6 +1315,7 @@ body {
 }
 
 .mengen-leiste,
+.vorrat-leiste,
 .armee-leiste {
     display: flex;
     flex-wrap: wrap;
@@ -1321,12 +1323,14 @@ body {
 }
 
 .mengen-knopf,
+.vorrat-knopf,
 .armee-knopf {
     flex: 1 1 auto;
     min-width: 70px;
 }
 
 .mengen-knopf-aktiv,
+.vorrat-knopf-aktiv,
 .armee-knopf-aktiv {
     background: var(--haupt);
     color: #fff;

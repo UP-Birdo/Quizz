@@ -91,6 +91,9 @@ const TEAM_SCHACH = {
            Stufen aus `SCHACH_VARIANTEN.ARMEE_STAERKEN`. */
         armeeStaerke: "normal",
 
+        /* Wie viele verschiedene Items es geben soll (seit v0.87). */
+        itemVorrat: "alle",
+
         /*
          * EINIGKEIT IST DIE VORGABE (seit v0.76, Eingangskorb vom 18.08.:
          * „Team muss einig sein soll andersrum da stehen").
@@ -559,6 +562,26 @@ const TEAM_SCHACH = {
         kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", partie.titel));
         kopf.appendChild(TEAM_SCHACH._element("span", "chip chip-offen",
             SCHACH_RUNDE.varianteVon(partie).titel));
+
+        /*
+         * WELCHE ITEMS IN DIESER PARTIE VORKOMMEN (seit v0.87, Wunsch R6:
+         * „Am Anfang vom Match soll gezeigt werden, welche Items alle drin
+         * sind — ausser bei dem Modus, wo alle da sind").
+         *
+         * Es steht im Kopf und nicht in einem einmaligen Fenster: Die Liste
+         * ist keine Nachricht, sondern eine REGEL dieser Partie — man will
+         * sie auch im dreissigsten Zug noch nachsehen können, ohne dass
+         * jemand sie sich gemerkt haben muss.
+         */
+        const vorrat = SCHACH_RUNDE.itemVorrat(partie);
+
+        if (vorrat) {
+            kopf.appendChild(TEAM_SCHACH._infoZeichenBauen(
+                "Diese Items gibt es (" + vorrat.length + ")",
+                "In dieser Partie kommen nur diese Items vor — ausgelost beim "
+                + "Anlegen und für beide Seiten gleich:\n\n"
+                + vorrat.map((art) => SCHACH_VARIANTEN.faehigkeitTitel(art)).join(", ")));
+        }
 
         return kopf;
     },
@@ -1272,6 +1295,7 @@ const TEAM_SCHACH = {
             zufallsArmee: false,
             armeeUnterschiedlich: false,
             armeeStaerke: "normal",
+            itemVorrat: "alle",
 
             /* Einigkeit ist die Vorgabe (seit v0.76) — siehe `neueRegeln`. */
             einigkeit: true
@@ -1330,6 +1354,7 @@ const TEAM_SCHACH = {
             zufallsArmee: TEAM_SCHACH.neueRegeln.zufallsArmee,
             armeeUnterschiedlich: TEAM_SCHACH.neueRegeln.armeeUnterschiedlich,
             armeeStaerke: TEAM_SCHACH.neueRegeln.armeeStaerke,
+            itemVorrat: TEAM_SCHACH.neueRegeln.itemVorrat,
             einigkeit: TEAM_SCHACH.neueRegeln.einigkeit
         };
 

@@ -1012,3 +1012,47 @@ und v0.77.1 hat gezeigt, dass zusätzlich die FORM mitgeführt werden muss
 (`_eckenFortsetzen`), sonst frisst sich ein Kreuz von den Rändern auf. Wer die
 beiden zurückholt, prüft sie als PAAR: Hin und zurück muss dasselbe Brett
 ergeben.
+
+## Der begrenzte Item-Vorrat (v0.87)
+
+**Wunsch R5+R6, vom Nutzer am 20.08. als V3 bestätigt:** Nicht alle Items
+sollen in jeder Partie vorkommen — am Anfang wird ausgelost, welche es gibt,
+und am Matchbeginn wird gezeigt, welche das sind.
+
+**Warum der Vorrat in die PARTIE gehört und nicht ins Gerät.** Beide Seiten
+müssen dasselbe Angebot haben, sonst zieht eine Lootbox bei dir etwas, das es
+beim Gegner nicht gibt. Der Vorrat steht deshalb in `regeln.itemPool`, neben
+der Spielart — und wie sie steht er mit dem Anlegen fest.
+
+**Warum gerechnet und nicht gewürfelt.** `itemVorratAuslosen` zieht aus der
+Partie-Kennung (`_zufallsWert`), nicht aus `Math.random()`. Damit kommt jedes
+Gerät auf dieselbe Liste, ohne dass jemand sie schreiben müsste — dieselbe
+eiserne Regel wie bei der Zufallsarmee und beim Kreuz. Gezogen wird mit
+denselben Stufen-Chancen wie im Spiel: Seltenes bleibt selten, auch im Vorrat.
+
+**Warum an EINER Stelle gefiltert wird.** `faehigkeitenDerStufe` hat einen
+wahlfreien zweiten Parameter `erlaubt` bekommen. An dieser einen Funktion
+hängen Ziehung, Prozentrechnung, Erklärtext und Bibliothek; wer eine fünfte
+Verwendung baut, erbt den Filter mit. Vier getrennte Filter wären vier
+Gelegenheiten, einen zu vergessen. Der Parameter ist wahlfrei, damit jeder
+Aufruf von früher unverändert dasselbe liefert (additiver Vertrag).
+
+**Warum eine leere Stufe Gewicht 0 bekommt.** Mit begrenztem Vorrat kann eine
+ganze Seltenheitsstufe leer bleiben. Ohne Gegenmassnahme zöge `stufeZiehen`
+sie trotzdem, und beim Einsammeln käme nichts heraus — eine Lootbox, die nichts
+tut. `_stufenGewichte` setzt solche Stufen deshalb auf 0; die Chance verteilt
+sich auf die übrigen. Es ist dieselbe Rechnung wie bei den Unglücken seit v0.84
+und dieselbe Nutzer-Entscheidung vom 18.08.
+
+**Warum die Bibliothek weiterhin ALLES zeigt.** Sie ist auch ausserhalb einer
+Partie erreichbar und ist das allgemeine Nachschlagewerk — „was es im Spiel
+gibt", nicht „was diese Partie hat". Was die laufende Partie hat, steht im
+Partie-Kopf hinter „Diese Items gibt es". Die Bibliothek zu filtern hiesse, die
+Partie bis in einen Bildschirm durchzureichen, der sie nicht kennt.
+
+**Ein Fund am Rande:** Es gibt nur **19 sichtbare** Fähigkeiten (20 minus die
+versteckte „Ausweichen"). Die Stufe „viele" stand zuerst auf 20 und wäre damit
+stillschweigend dasselbe wie „alle" gewesen — ein Knopf ohne Wirkung. Sie steht
+jetzt auf 15, und ein Test besteht darauf, dass jede Stufe wirklich mehr
+liefert als die darunter. Wer Fähigkeiten ergänzt, darf die Zahlen anheben; der
+Test sagt, wann es nötig wird.

@@ -283,6 +283,10 @@ Object.assign(TEAM_SCHACH, {
             if (eintrag.schluessel === "faehigkeiten"
                 && TEAM_SCHACH.neueRegeln.faehigkeiten) {
                 karte.appendChild(TEAM_SCHACH._mengenLeisteBauen());
+
+                /* Und darunter, WELCHE Items vorkommen (seit v0.87, V3:
+                   „nicht nur die Anzahl, sondern auch welche Items"). */
+                karte.appendChild(TEAM_SCHACH._vorratLeisteBauen());
             }
         }
 
@@ -372,6 +376,46 @@ Object.assign(TEAM_SCHACH, {
      * eigene Aufstellung mitbringt — die Reihe verschwindet nicht, sonst
      * springt der Bildschirm beim Haken-Setzen.
      */
+    /*
+     * WELCHE ITEMS ES IN DER PARTIE GIBT (seit v0.87, Wunsch R5/V3).
+     *
+     * Wieder dieselbe Knopfreihe. Eigene Klassen (`vorrat-*`) aus demselben
+     * Grund wie bei der Armee-Stärke: Drei gleich aussehende Reihen auf einem
+     * Bildschirm müssen im Test und im CSS unterscheidbar bleiben.
+     *
+     * Welche Items ausgelost werden, entscheidet sich erst beim ANLEGEN und
+     * hängt an der Partie-Kennung — hier steht deshalb nur, WIE VIELE es sein
+     * sollen. Die Liste selbst zeigt die Partie danach oben an.
+     */
+    _vorratLeisteBauen() {
+        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt vorrat-zeile");
+
+        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-titel",
+            "Welche Items kommen vor?"));
+
+        const leiste = TEAM_SCHACH._element("div", "vorrat-leiste");
+
+        for (const groesse of SCHACH_VARIANTEN.ITEM_VORRAETE) {
+            const aktiv = (groesse.id === TEAM_SCHACH.neueRegeln.itemVorrat);
+
+            const knopf = TEAM_SCHACH._knopf(groesse.titel,
+                "knopf-klein vorrat-knopf" + (aktiv ? " vorrat-knopf-aktiv" : " knopf-still"),
+                () => {
+                    TEAM_SCHACH.neueRegeln.itemVorrat = groesse.id;
+                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                });
+
+            knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+            leiste.appendChild(knopf);
+        }
+
+        zeile.appendChild(leiste);
+        zeile.appendChild(TEAM_SCHACH._element("span", "schalter-hinweis",
+            SCHACH_VARIANTEN.itemVorratVon(TEAM_SCHACH.neueRegeln.itemVorrat).hinweis));
+
+        return zeile;
+    },
+
     _armeeStaerkeLeisteBauen() {
         /*
          * EIGENE KLASSEN (`armee-zeile`/`armee-leiste`), nicht die der

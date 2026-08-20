@@ -191,6 +191,9 @@ nachschlagen, dann in der Themendatei ueber die Ueberschrift ansteuern.
 - Warum eine leere Seltenheitsstufe nicht neu gewürfelt wird (v0.83, entschieden)
 - Ausdehnung und Einsturz aus dem Spiel genommen (v0.84) — **auf Zeit**;
   versteckt statt gelöscht, liegende Boxen fliegen vom Brett, Stufe Blau leer
+- Der begrenzte Item-Vorrat (v0.87) — Vorrat gehoert zur Partie und wird
+  gerechnet; Filter an EINER Stelle (`faehigkeitenDerStufe`), leere Stufe
+  bekommt Gewicht 0, Bibliothek bleibt bewusst ungefiltert
 
 ## offen-und-abgelehnt.md - Offen, Nutzer-Entscheidungen noetig, bewusst abgelehnt
 

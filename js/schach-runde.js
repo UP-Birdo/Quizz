@@ -264,6 +264,15 @@ const SCHACH_RUNDE = {
                  */
                 armeeStaerke: "normal",
 
+                /*
+                 * WELCHE ITEMS es in dieser Partie gibt (seit v0.87, R5/V3).
+                 * `itemVorrat` ist die Einstellung („alle" ist die Vorgabe und
+                 * das Spiel wie vorher), `itemPool` die beim Anlegen einmal
+                 * ausgeloste Liste. Leere Liste heisst: alles ist dabei.
+                 */
+                itemVorrat: "alle",
+                itemPool: [],
+
                 /* Muss sich das Team über einen Zug einig werden? */
                 einigkeit: false
             },
@@ -911,6 +920,22 @@ const SCHACH_RUNDE = {
             runde.regeln.armeeStaerke = SCHACH_VARIANTEN
                 .armeeStaerkeVon(roh.regeln.armeeStaerke).id;
 
+            /*
+             * Der Item-Vorrat (seit v0.87). Ohne Angabe „alle" — eine Partie
+             * von früher spielt mit dem vollen Angebot weiter. Aus dem
+             * gespeicherten Pool werden nur Arten übernommen, die es WIRKLICH
+             * gibt: Eine versteckte oder entfernte Fähigkeit soll nicht über
+             * eine alte Liste zurückkommen.
+             */
+            runde.regeln.itemVorrat = SCHACH_VARIANTEN
+                .itemVorratVon(roh.regeln.itemVorrat).id;
+
+            runde.regeln.itemPool = Array.isArray(roh.regeln.itemPool)
+                ? roh.regeln.itemPool.filter((art) =>
+                    SCHACH_VARIANTEN.FAEHIGKEITEN[art]
+                    && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt)
+                : [];
+
             runde.regeln.einigkeit = (roh.regeln.einigkeit === true);
         }
 
@@ -1354,7 +1379,117 @@ const SCHACH_RUNDE = {
             }
         }
 
-        return SCHACH_VARIANTEN.stufenGewichte(abstaende);
+        const gewichte = SCHACH_VARIANTEN.stufenGewichte(abstaende);
+
+        /*
+         * EINE STUFE OHNE ITEMS BEKOMMT GEWICHT 0 (seit v0.87).
+         *
+         * Mit begrenztem Vorrat kann eine ganze Seltenheitsstufe leer bleiben —
+         * das ist ausdrücklich erlaubt (Nutzer-Entscheidung 18.08.). Ohne diese
+         * Zeilen zöge `stufeZiehen` sie trotzdem, und die Lootbox wäre beim
+         * Einsammeln leer. Es ist dieselbe Rechnung wie bei den Unglücken seit
+         * v0.84: Die Chance verteilt sich auf die übrigen Stufen.
+         */
+        const erlaubt = SCHACH_RUNDE.itemVorrat(runde);
+
+        if (erlaubt) {
+            for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+                if (SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id, erlaubt).length === 0) {
+                    gewichte[stufe.id] = 0;
+                }
+            }
+        }
+
+        return gewichte;
+    },
+
+    /*
+     * DER ITEM-VORRAT DIESER PARTIE (seit v0.87, Wunsch R5/V3).
+     *
+     * Gibt die Liste der Arten zurück, die es in dieser Partie gibt — oder
+     * `null` für „alle", und dann filtert nichts.
+     *
+     * Der Vorrat steht in den REGELN und wird beim Anlegen EINMAL gerechnet
+     * (`itemVorratAuslosen`), nicht bei jedem Aufruf: Er gehört zur Partie wie
+     * die Spielart, und jedes Gerät muss dieselbe Liste sehen.
+     */
+    itemVorrat(runde) {
+        const regeln = (runde && runde.regeln) ? runde.regeln : {};
+
+        if (!Array.isArray(regeln.itemPool) || regeln.itemPool.length === 0) {
+            return null;
+        }
+
+        return regeln.itemPool;
+    },
+
+    /*
+     * LOST DEN VORRAT AUS — einmalig beim Anlegen.
+     *
+     * Gezogen wird MIT DENSELBEN CHANCEN wie im Spiel („es soll zufällig mit
+     * denselben Chancen aus dem Fähigkeiten-Pool ausgewählt werden"): erst
+     * eine Stufe nach ihrer Chance, dann eine Art daraus. Wer schon drin ist,
+     * wird übersprungen.
+     *
+     * GERECHNET, NICHT GEWÜRFELT (eiserne Regel): Die Saat hängt an der
+     * Partie-Kennung, jedes Gerät kommt also auf dieselbe Liste, ohne dass
+     * jemand sie schreiben müsste.
+     *
+     * Der König unter den Sonderfällen ist die Abbruchbedingung: Sind alle
+     * verfügbaren Arten gezogen, hört es auf — auch wenn die Wunschzahl
+     * grösser ist als das Angebot.
+     */
+    itemVorratAuslosen(runde) {
+        const groesse = SCHACH_VARIANTEN.itemVorratVon(
+            runde.regeln ? runde.regeln.itemVorrat : "");
+
+        if (!groesse.anzahl) {
+            runde.regeln.itemPool = [];
+            return runde;
+        }
+
+        const alle = [];
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            for (const art of SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id)) {
+                alle.push(art);
+            }
+        }
+
+        const ziel = Math.min(groesse.anzahl, alle.length);
+        const gezogen = [];
+        const basis = (runde.id || "partie") + "|vorrat";
+
+        /*
+         * Die Obergrenze ist eine Sicherung gegen eine Endlosschleife, nicht
+         * Teil der Regel: Je voller die Liste, desto öfter kommt eine schon
+         * gezogene Art. Wird sie erreicht, füllen die restlichen Arten der
+         * Reihe nach auf — das Ergebnis bleibt vollständig und gerechnet.
+         */
+        for (let schritt = 0; gezogen.length < ziel && schritt < 500; schritt++) {
+            const wahl = SCHACH_VARIANTEN.stufeZiehen(
+                SCHACH_RUNDE._zufallsWert(basis + "|stufe|" + schritt));
+
+            const art = SCHACH_VARIANTEN.faehigkeitAusStufe(
+                wahl.stufe.id,
+                SCHACH_RUNDE._zufallsWert(basis + "|art|" + schritt),
+                []);
+
+            if (art && gezogen.indexOf(art) === -1) {
+                gezogen.push(art);
+            }
+        }
+
+        for (const art of alle) {
+            if (gezogen.length >= ziel) {
+                break;
+            }
+            if (gezogen.indexOf(art) === -1) {
+                gezogen.push(art);
+            }
+        }
+
+        runde.regeln.itemPool = gezogen.sort();
+        return runde;
     },
 
     _bonusNachziehen(runde) {
@@ -1986,7 +2121,9 @@ const SCHACH_RUNDE = {
                 bonus.stufe,
                 SCHACH_RUNDE._zufallsWert(bonus.feld + "|inhalt|"
                     + runde.zugZaehler + "|" + (runde.id || "partie")),
-                runde.faehigkeiten[farbe]);
+                runde.faehigkeiten[farbe],
+                /* Nur, was es in dieser Partie gibt (seit v0.87). */
+                SCHACH_RUNDE.itemVorrat(runde));
 
             if (!art) {
                 continue;

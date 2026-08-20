@@ -44,3 +44,35 @@ Begründungs-Abschnitte liegen **unverändert** in drei Themendateien:
 [00-INDEX.md](00-INDEX.md)** — dort nachschlagen, dann in der Themendatei den
 Abschnitt über seine Überschrift ansteuern, nie eine ganze Datei lesen.
 Neue Abschnitte: in die passende Themendatei schreiben UND im Index eintragen.
+
+## Timer-Modus: Zeitablauf kostet den Zug, nicht die Partie (Ansage 2026-08-20)
+
+**Nutzer-Ansage:** „Wenn beide Spieler 2 mal hintereinander nicht gezogen
+haben in der Zeit, soll das Spiel geschlossen werden, und der gewinnt mit der
+höheren Punktzahl."
+
+Das beantwortet die Frage, an der der Timer-Modus (S8/V2) seit dem Einordnen
+hing: Wer gibt den Zug ab, wenn niemand die Seite offen hat?
+
+**Die Antwort ist gut, weil sie das eigentliche Problem umgeht.** Ein Timer,
+der bei Ablauf die Partie verliert, verlangt eine verlässliche Uhr — und die
+gibt es hier nicht: Niemand ist verpflichtet, die Seite offen zu halten, und
+ein Gerät im Hintergrund fragt die Datenbank nicht. Wer unter dieser Bedingung
+„Zeit abgelaufen heisst verloren" baut, verschenkt Partien an Funklöcher.
+
+Hier verliert der Zeitablauf **nur den Zug**. Beide Seiten dürfen versäumen,
+ohne dass etwas kaputtgeht; erst wenn VIER Versäumnisse in Folge zeigen, dass
+niemand mehr davor sitzt, schliesst die Partie — und dann entscheidet der
+Stand auf dem Brett, nicht der Zufall, wer zuletzt online war. Ein einziger
+echter Zug setzt den Zähler zurück.
+
+**Folge für den Bau:** Die Uhr muss nicht laufen, sie muss nur nachrechenbar
+sein. Es genügt ein Zeitstempel am letzten Zug; jedes Gerät rechnet beim
+Zeichnen, wie viele Fristen seither verstrichen sind. Damit bleibt die
+eiserne Regel „im Modell wird gerechnet, nicht gewürfelt" unangetastet, und
+es braucht keinen neuen Schreibweg.
+
+**Offen bleibt** (beim Bauen zu entscheiden, siehe ROADMAP V2): welche
+„Punktzahl" zählt. Vorschlag ist die Material-Bilanz — sie ist im Spiel
+sichtbar und braucht keine neue Regel; bei Gleichstand endet die Partie
+unentschieden.

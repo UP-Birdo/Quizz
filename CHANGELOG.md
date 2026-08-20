@@ -3,6 +3,27 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.87.0 — 2026-08-20
+
+**Du bestimmst, welche Items es in einer Partie überhaupt gibt.**
+
+- **Neue Knopfreihe „Welche Items kommen vor?"** — direkt unter der Frage, wie
+  viele Lootboxen es geben soll. Vier Stufen: wenig (5), 10, viele (15), alle (derzeit 19).
+  „Alle" ist die Vorgabe und ändert nichts am bisherigen Spiel.
+
+- **Der Vorrat wird beim Anlegen einmal ausgelost** und gilt für beide Seiten
+  gleich — mit denselben Chancen wie im Spiel, seltene Items bleiben also
+  selten. Aus einer Lootbox kommt danach nur noch, was in diesem Vorrat steht.
+
+- **Oben in der Partie steht, welche Items drin sind.** Ein Tippen auf
+  „Diese Items gibt es" zeigt die ganze Liste — auch im dreissigsten Zug noch,
+  man muss sie sich nicht merken. Bei „alle" erscheint die Anzeige nicht.
+
+- Bleibt eine Seltenheitsstufe dabei ganz leer, wird sie nicht mehr gezogen:
+  Es erscheint also keine Lootbox, aus der nichts herauskommt.
+
+- Angefangene Partien ändern sich nicht — ohne gespeicherte Angabe gilt „alle".
+
 ## v0.86.0 — 2026-08-20
 
 **Du bestimmst, wie viele Figuren auf dem Brett stehen.**

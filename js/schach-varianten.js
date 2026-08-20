@@ -2186,11 +2186,79 @@ const SCHACH_VARIANTEN = {
      * Aufteilung wie bei den Spielarten: `liste` ist vollständig,
      * `zurAuswahl()` filtert, `holen()` findet weiterhin alles.
      */
-    faehigkeitenDerStufe(stufeId) {
+    /*
+     * DIE FÄHIGKEITEN EINER STUFE — die EINE Stelle, die filtert.
+     *
+     * `erlaubt` ist wahlfrei (seit v0.87, Wunsch V3/R5): die Liste der Arten,
+     * die es IN DIESER PARTIE überhaupt gibt. Ohne Angabe zählen alle — damit
+     * liefert jeder Aufruf von früher unverändert dasselbe, und wer keine
+     * Partie zur Hand hat (Bibliothek ohne Partie, Tests), sieht das volle
+     * Angebot.
+     *
+     * Dass hier gefiltert wird und nicht an vier Stellen, ist Absicht: Ziehung,
+     * Prozentrechnung, Erklärtext und Bibliothek hängen alle an dieser
+     * Funktion. Wer eine fünfte Verwendung baut, erbt den Filter mit.
+     */
+    faehigkeitenDerStufe(stufeId, erlaubt) {
+        const nurDiese = Array.isArray(erlaubt) ? erlaubt : null;
+
         return Object.keys(SCHACH_VARIANTEN.FAEHIGKEITEN)
             .filter((art) => SCHACH_VARIANTEN.FAEHIGKEITEN[art].stufe === stufeId
-                && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt)
+                && !SCHACH_VARIANTEN.FAEHIGKEITEN[art].versteckt
+                && (nurDiese === null || nurDiese.indexOf(art) !== -1))
             .sort();
+    },
+
+    /*
+     * DIE VIER GRÖSSEN DES ITEM-VORRATS (seit v0.87, Wunsch R5/V3).
+     *
+     * „Ein Unter-Spielmodus, wo am Anfang zufällig gewählt wird, welche Items
+     * es gibt — nicht alle, sondern nur eine Handvoll."
+     *
+     * `anzahl: 0` heisst „alle" — die Vorgabe, also das Spiel wie vor v0.87.
+     * Die Zahlen sind Wünsche, keine Zusagen: Gibt es weniger Fähigkeiten als
+     * verlangt, kommen eben alle vor.
+     */
+    ITEM_VORRAETE: [
+        {
+            id: "wenig",
+            titel: "wenig",
+            anzahl: 5,
+            hinweis: "Nur fünf verschiedene Items in dieser Partie — man lernt "
+                + "sie schnell und kann mit ihnen rechnen."
+        },
+        {
+            id: "zehn",
+            titel: "10",
+            anzahl: 10,
+            hinweis: "Zehn verschiedene Items."
+        },
+        {
+            id: "viele",
+            titel: "viele",
+            /*
+             * FÜNFZEHN, NICHT ZWANZIG. Es gibt derzeit 19 sichtbare
+             * Fähigkeiten — mit 20 wäre diese Stufe stillschweigend dasselbe
+             * wie „alle" gewesen, also ein Knopf ohne Wirkung. Wer Fähigkeiten
+             * ergänzt, darf die Zahl mit anheben; ein Test besteht nur darauf,
+             * dass jede Stufe weniger liefert als die darüber.
+             */
+            anzahl: 15,
+            hinweis: "Fünfzehn verschiedene Items — Abwechslung, aber nicht alles."
+        },
+        {
+            id: "alle",
+            titel: "alle",
+            anzahl: 0,
+            hinweis: "Alles, was es gibt. Am Anfang wird nichts ausgelost, und "
+                + "es wird auch nichts angezeigt."
+        }
+    ],
+
+    /* Ohne Angabe „alle" — der Zustand vor v0.87. */
+    itemVorratVon(id) {
+        return SCHACH_VARIANTEN.ITEM_VORRAETE.find((eintrag) => eintrag.id === id)
+            || SCHACH_VARIANTEN.ITEM_VORRAETE.find((eintrag) => eintrag.id === "alle");
     },
 
     /*
@@ -2245,8 +2313,8 @@ const SCHACH_VARIANTEN = {
      * Ohne Vorrat ist das Ergebnis dasselbe wie vorher: Alle Gewichte sind 1,
      * die Verteilung damit gleichmässig.
      */
-    faehigkeitAusStufe(stufeId, wert, vorrat) {
-        const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufeId);
+    faehigkeitAusStufe(stufeId, wert, vorrat, erlaubt) {
+        const arten = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufeId, erlaubt);
         if (arten.length === 0) {
             return "";
         }
@@ -2298,14 +2366,19 @@ const SCHACH_VARIANTEN = {
      * Wert der noch erreichbaren heraus, weil sie im Nenner gar nicht mehr
      * steht: eine Zahl, die niemandem gehört.
      */
-    chanceVon(art) {
+    chanceVon(art, erlaubt) {
         const eintrag = SCHACH_VARIANTEN.FAEHIGKEITEN[art];
         if (eintrag && eintrag.versteckt) {
             return 0;
         }
 
+        /* Was es in dieser Partie nicht gibt, hat auch keine Chance (v0.87). */
+        if (Array.isArray(erlaubt) && erlaubt.indexOf(art) === -1) {
+            return 0;
+        }
+
         const stufe = SCHACH_VARIANTEN.stufeVon(art);
-        const anzahl = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length;
+        const anzahl = SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id, erlaubt).length;
         return anzahl > 0 ? (stufe.chance / anzahl) : 0;
     },
 

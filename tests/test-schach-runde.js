@@ -328,6 +328,173 @@ function faehigkeitenPartie() {
     return runde;
 }
 
+/* ------------------------------------------------------------------ *
+ * Der begrenzte Item-Vorrat (seit v0.87, Wunsch R5/R6 alias V3)
+ * ------------------------------------------------------------------ */
+
+/* Eine Faehigkeiten-Partie mit ausgelostem Vorrat. */
+function vorratPartie(groesse, kennung) {
+    const runde = SCHACH_RUNDE.leereRunde(1000, "faehigkeiten",
+        kennung || ("p-v-" + groesse), "Vorrat");
+
+    runde.regeln.faehigkeiten = true;
+    runde.regeln.itemVorrat = groesse;
+
+    return SCHACH_RUNDE.itemVorratAuslosen(runde);
+}
+
+pruefe("Der Vorrat hat die verlangte Groesse und wird GERECHNET (v0.87)", () => {
+    for (const groesse of SCHACH_VARIANTEN.ITEM_VORRAETE) {
+        const runde = vorratPartie(groesse.id);
+        const pool = runde.regeln.itemPool;
+
+        if (!groesse.anzahl) {
+            gleich(pool.length, 0, "alle: kein ausgeloster Vorrat");
+            gleich(SCHACH_RUNDE.itemVorrat(runde), null, "alle: kein Filter");
+            continue;
+        }
+
+        /*
+         * Die Zahl ist ein WUNSCH, keine Zusage: Gibt es weniger Faehigkeiten
+         * als verlangt, kommen eben alle vor. Geprueft wird deshalb gegen das
+         * Angebot, nicht gegen die Wunschzahl.
+         */
+        let verfuegbar = 0;
+        for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+            verfuegbar += SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length;
+        }
+
+        gleich(pool.length, Math.min(groesse.anzahl, verfuegbar),
+            groesse.id + ": so viele wie verlangt (oder alle, wenn es weniger gibt)");
+
+        /* Jede Art gibt es wirklich und nur einmal. */
+        for (const art of pool) {
+            wahr(!!SCHACH_VARIANTEN.FAEHIGKEITEN[art], groesse.id + ": " + art + " gibt es");
+            gleich(pool.filter((anderer) => anderer === art).length, 1,
+                groesse.id + ": " + art + " steht nur einmal drin");
+        }
+
+        /* GERECHNET, NICHT GEWUERFELT: zweimal dieselbe Kennung, dasselbe
+           Ergebnis — sonst saehe jedes Geraet einen anderen Vorrat. */
+        const nochmal = vorratPartie(groesse.id);
+        gleich(nochmal.regeln.itemPool.join(","), pool.join(","),
+            groesse.id + ": dieselbe Kennung, derselbe Vorrat");
+    }
+
+    /* Verschiedene Partien bekommen verschiedene Vorraete. */
+    const eine = vorratPartie("zehn", "p-v-eins").regeln.itemPool.join(",");
+    const andere = vorratPartie("zehn", "p-v-zwei").regeln.itemPool.join(",");
+    wahr(eine !== andere, "zwei Partien, zwei Vorraete");
+});
+
+pruefe("Jede Vorrat-Stufe liefert WENIGER als die darueber (v0.87)", () => {
+    /*
+     * SONST IST EIN KNOPF WIRKUNGSLOS. Genau das war beim Bauen der Fall:
+     * „viele" stand auf 20, es gibt aber nur 19 sichtbare Faehigkeiten — die
+     * Stufe war stillschweigend dasselbe wie „alle". Wer kuenftig
+     * Faehigkeiten ergaenzt oder versteckt, faellt hier auf, bevor es jemand
+     * im Spiel merkt.
+     */
+    let verfuegbar = 0;
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        verfuegbar += SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id).length;
+    }
+
+    const stufen = SCHACH_VARIANTEN.ITEM_VORRAETE;
+    let vorher = 0;
+
+    for (const groesse of stufen) {
+        const wirklich = groesse.anzahl
+            ? Math.min(groesse.anzahl, verfuegbar) : verfuegbar;
+
+        wahr(wirklich > vorher, groesse.id + " liefert mehr als die Stufe davor ("
+            + wirklich + " gegen " + vorher + ")");
+        vorher = wirklich;
+    }
+
+    gleich(vorher, verfuegbar, "die oberste Stufe ist wirklich alles");
+});
+
+pruefe("Aus einer Lootbox kommt nur, was im Vorrat steht (v0.87)", () => {
+    /*
+     * DER KERN DES WUNSCHES: Ist der Vorrat begrenzt, darf beim Einsammeln
+     * NICHTS anderes herauskommen. Geprueft wird ueber die Ziehung selbst,
+     * ueber die ganze Breite der Zufallswerte und jede Stufe.
+     */
+    const runde = vorratPartie("wenig");
+    const pool = runde.regeln.itemPool;
+
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        for (let schritt = 0; schritt < 200; schritt++) {
+            const art = SCHACH_VARIANTEN.faehigkeitAusStufe(
+                stufe.id, schritt / 200, [], pool);
+
+            if (art === "") {
+                /* Erlaubt: Diese Stufe hat im Vorrat nichts. */
+                gleich(SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id, pool).length, 0,
+                    stufe.id + ": leer, also darf nichts kommen");
+                continue;
+            }
+
+            wahr(pool.indexOf(art) !== -1, stufe.id + ": " + art + " steht im Vorrat");
+        }
+    }
+});
+
+pruefe("Eine Stufe ohne Items im Vorrat wird nicht mehr gezogen (v0.87)", () => {
+    /*
+     * Sonst erschiene eine Lootbox, aus der beim Einsammeln nichts kommt.
+     * Dieselbe Rechnung wie bei den Ungluecken seit v0.84: Gewicht 0, die
+     * Chance verteilt sich auf die uebrigen Stufen.
+     */
+    const runde = vorratPartie("wenig");
+    const pool = runde.regeln.itemPool;
+    const gewichte = SCHACH_RUNDE._stufenGewichte(runde);
+
+    let leere = 0;
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        if (SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id, pool).length === 0) {
+            leere++;
+            gleich(gewichte[stufe.id], 0, stufe.id + ": leere Stufe hat Gewicht 0");
+        }
+    }
+
+    /* Und mindestens eine Stufe traegt noch etwas — sonst gaebe es gar
+       nichts mehr zu ziehen. */
+    let belegte = 0;
+    for (const stufe of SCHACH_VARIANTEN.STUFEN) {
+        if (SCHACH_VARIANTEN.faehigkeitenDerStufe(stufe.id, pool).length > 0) {
+            belegte++;
+        }
+    }
+    wahr(belegte > 0, "es bleibt etwas zu ziehen (" + leere + " leer)");
+});
+
+pruefe("Ohne Vorrat-Angabe spielt eine Partie wie vor v0.87", () => {
+    /*
+     * ADDITIVER DATENVERTRAG. Und die zweite Haelfte: Ein gespeicherter Pool
+     * darf keine Fähigkeit zurueckholen, die es nicht mehr gibt oder die
+     * versteckt ist.
+     */
+    const runde = faehigkeitenPartie();
+    const roh = JSON.parse(JSON.stringify(runde));
+    delete roh.regeln.itemVorrat;
+    delete roh.regeln.itemPool;
+
+    const wieder = SCHACH_RUNDE.normalisieren(roh);
+    gleich(wieder.regeln.itemVorrat, "alle", "fehlende Angabe wird alle");
+    gleich(SCHACH_RUNDE.itemVorrat(wieder), null, "und filtert nichts");
+
+    const erfunden = JSON.parse(JSON.stringify(runde));
+    erfunden.regeln.itemVorrat = "zehn";
+    erfunden.regeln.itemPool = ["sprung", "gibtesnicht", "ausweichen"];
+
+    const geputzt = SCHACH_RUNDE.normalisieren(erfunden).regeln.itemPool;
+    wahr(geputzt.indexOf("gibtesnicht") === -1, "erfundene Art faellt raus");
+    wahr(geputzt.indexOf("ausweichen") === -1, "versteckte Art faellt raus");
+    wahr(geputzt.indexOf("sprung") !== -1, "echte Art bleibt");
+});
+
 /* Zieht die Springer hin und her — so lassen sich beliebig viele Halbzuege
    machen, ohne die Stellung zu veraendern. */
 function springerZuege(runde, anzahl) {

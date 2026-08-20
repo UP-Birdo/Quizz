@@ -352,6 +352,10 @@ const SCHACH_TAFEL = {
         SCHACH_RUNDE.kreuzAufstellen(partie);
         SCHACH_RUNDE.armeeAufstellen(partie);
 
+        /* Welche Items es in dieser Partie gibt — einmalig, gerechnet aus der
+           Partie-Kennung (seit v0.87). */
+        SCHACH_RUNDE.itemVorratAuslosen(partie);
+
         neu.partien[id] = partie;
         neu.geaendertAm = wann;
 
