@@ -1607,6 +1607,21 @@ const SCHACH_RUNDE = {
             betroffen = wirkung.felder;
             zusatzText = wirkung.text ? (": " + wirkung.text) : "";
 
+        } else if (beschreibung.art === "diebstahl") {
+            /*
+             * Auch hier wird die Beute NEU gerechnet und nicht vom Bildschirm
+             * übernommen — derselbe Grund wie beim Handel eine Zeile höher.
+             * `_diebstahlAusfuehren` ändert die Vorräte in `neu` unmittelbar;
+             * der Stand bleibt, wie er ist.
+             */
+            const wirkung = SCHACH_RUNDE._diebstahlAusfuehren(neu, farbe);
+            if (!wirkung) {
+                return null;
+            }
+            neu.stand = wirkung.stand;
+            betroffen = wirkung.felder;
+            zusatzText = wirkung.text ? (": " + wirkung.text) : "";
+
         } else {
             return null;
         }
@@ -2760,6 +2775,98 @@ const SCHACH_RUNDE = {
      * Figur wieder weg. Dieselbe Falle wie bei der Rochade auf schmalen
      * Brettern (siehe docs\DECISIONS.md).
      */
+    /* Wie viele Fähigkeiten der Dieb höchstens mitnimmt (seit v0.85). */
+    DIEB_BEUTE: 2,
+
+    /*
+     * WAS DER DIEB DIESMAL ERWISCHT — gerechnet, nicht gewürfelt.
+     *
+     * Dieselbe Vorsichtsmassnahme wie beim Händler: Der Bildschirm fragt das
+     * hier ab, um die Beute ZU ZEIGEN, und das Modell rechnet sie beim
+     * Einsetzen NEU. Sonst könnte ein Gerät mit veraltetem Stand eine Beute
+     * durchsetzen, die es so nicht mehr gibt.
+     *
+     * Die Saat hängt am Zugzähler — nach dem nächsten Zug greift der Dieb also
+     * woanders zu. Wer ablehnt, kann damit nicht so lange neu fragen, bis ihm
+     * die Auswahl passt.
+     *
+     * Rückgabe: `{ opfer, stellen, arten }` oder `null`, wenn nichts zu holen
+     * ist. `stellen` steht ABSTEIGEND — nur so bleiben die Positionen gültig,
+     * während sie der Reihe nach aus dem Vorrat entfernt werden.
+     */
+    diebesBeute(runde, farbe) {
+        const voll = SCHACH_RUNDE.normalisieren(runde);
+
+        if (farbe !== "weiss" && farbe !== "schwarz") {
+            return null;
+        }
+
+        const opfer = SCHACH.gegner(farbe);
+        const vorrat = Array.isArray(voll.faehigkeiten[opfer])
+            ? voll.faehigkeiten[opfer] : [];
+
+        if (vorrat.length === 0) {
+            return null;
+        }
+
+        const marke = (voll.id || "partie") + "|dieb|" + voll.zugZaehler + "|" + farbe;
+        const wieViele = Math.min(SCHACH_RUNDE.DIEB_BEUTE, vorrat.length);
+
+        /* Aus den noch nicht gegriffenen Plätzen wird gezogen — so kommt
+           dieselbe Stelle nie zweimal, auch wenn zwei gleiche Fähigkeiten
+           nebeneinander liegen. */
+        const uebrig = vorrat.map((art, stelle) => stelle);
+        const stellen = [];
+
+        for (let nummer = 0; nummer < wieViele; nummer++) {
+            const wert = SCHACH_RUNDE._zufallsWert(marke + "|" + nummer);
+            const wahl = Math.min(Math.floor(wert * uebrig.length), uebrig.length - 1);
+
+            stellen.push(uebrig[wahl]);
+            uebrig.splice(wahl, 1);
+        }
+
+        stellen.sort((eine, andere) => andere - eine);
+
+        return {
+            opfer: opfer,
+            stellen: stellen,
+            arten: stellen.map((stelle) => vorrat[stelle])
+        };
+    },
+
+    /*
+     * Der Diebstahl selbst. Er fasst als einzige Wirkung NICHT das Brett an,
+     * sondern die beiden Vorräte — deshalb gibt er den Stand unverändert
+     * zurück und meldet keine betroffenen Felder.
+     */
+    _diebstahlAusfuehren(runde, farbe) {
+        const beute = SCHACH_RUNDE.diebesBeute(runde, farbe);
+        if (!beute) {
+            return null;
+        }
+
+        /* Erst wegnehmen (von hinten nach vorn, sonst verrutschen die
+           Positionen), dann gutschreiben. Angehängt wird hinten — die Stelle,
+           an der der Dieb selbst liegt, muss gültig bleiben: Der Aufrufer
+           entfernt ihn gleich über genau diesen Index. */
+        for (const stelle of beute.stellen) {
+            runde.faehigkeiten[beute.opfer].splice(stelle, 1);
+        }
+
+        for (const art of beute.arten) {
+            runde.faehigkeiten[farbe].push(art);
+        }
+
+        return {
+            stand: runde.stand,
+            felder: [],
+            text: beute.arten
+                .map((art) => SCHACH_VARIANTEN.faehigkeitTitel(art))
+                .join(" und ")
+        };
+    },
+
     _handelAusfuehren(runde, farbe) {
         const angebot = SCHACH_RUNDE.handelsAngebot(runde, farbe);
         if (!angebot) {

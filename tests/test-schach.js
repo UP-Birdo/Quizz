@@ -922,13 +922,95 @@ pruefe("Eine Mauer braucht drei freie Felder in einer Reihe", () => {
         "am rechten Rand fehlt das Feld dahinter");
 });
 
-pruefe("Eine Mauer legt sich nicht auf eine andere", () => {
+/* Wie lange steht auf diesem Feld noch eine Mauer? 0 heisst: keine. */
+function fristAuf(stand, name) {
+    const feld = SCHACH.feldNummer(name);
+    const treffer = SCHACH.mauern(stand)
+        .filter((eintrag) => eintrag.felder.indexOf(feld) !== -1)
+        .map((eintrag) => eintrag.bis);
+
+    return treffer.length > 0 ? Math.max.apply(null, treffer) : 0;
+}
+
+pruefe("Eine Mauer darf auf einer anderen liegen (v0.85)", () => {
+    /*
+     * BIS v0.84 WAR DAS VERBOTEN — `mauerLegen` fragte `gesperrt`, und das
+     * schliesst Mauern ein. Der Wunsch T4 dreht das um: Mauer auf Mauer ist
+     * erlaubt, auch auf einer gegnerischen (Mauern haben keinen Besitzer).
+     */
     const stand = mitMauer(standAus({ "e1": "K", "e8": "k" }), ["c4", "d4", "e4"]);
 
-    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("b4")), null,
-        "c4 gehoert schon zu einer Mauer");
+    wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("b4")) !== null,
+        "mitten auf die bestehende Mauer geht jetzt");
     wahr(SCHACH.mauerLegen(stand, SCHACH.feldNummer("g4")) !== null,
-        "weiter rechts geht es");
+        "weiter rechts sowieso");
+});
+
+pruefe("Die Zeit addiert sich NUR auf den ueberlappenden Feldern (v0.85)", () => {
+    /*
+     * DER WUNSCH IM WORTLAUT: „auch wenn nur zwei Felder mit der alten Mauer
+     * uebereinstimmen, soll sich die Zeit nur bei den zwei erhoehen, und das
+     * einzelne Feld soll die einfache Zeit haben."
+     *
+     * Ausgangslage: c4-d4-e4 stehen bis 6 (Takt 0). Die neue Mauer wird auf
+     * f4 getippt und deckt e4-f4-g4 — es ueberlappt genau e4.
+     */
+    const stand = mitMauer(standAus({ "e1": "K", "e8": "k" }), ["c4", "d4", "e4"]);
+    gleich(fristAuf(stand, "e4"), SCHACH.MAUER_HALBZUEGE, "vorher die einfache Zeit");
+
+    const wirkung = SCHACH.mauerLegen(stand, SCHACH.feldNummer("f4"));
+    wahr(wirkung !== null, "die Mauer laesst sich legen");
+    const neu = wirkung.stand;
+
+    gleich(fristAuf(neu, "e4"), 2 * SCHACH.MAUER_HALBZUEGE,
+        "das ueberlappende Feld traegt beide Zeiten");
+    gleich(fristAuf(neu, "f4"), SCHACH.MAUER_HALBZUEGE,
+        "das neue Feld nur die einfache");
+    gleich(fristAuf(neu, "g4"), SCHACH.MAUER_HALBZUEGE,
+        "und das zweite neue auch");
+
+    /* Was von der alten Mauer daneben steht, bleibt unveraendert. */
+    gleich(fristAuf(neu, "c4"), SCHACH.MAUER_HALBZUEGE, "c4 unberuehrt");
+    gleich(fristAuf(neu, "d4"), SCHACH.MAUER_HALBZUEGE, "d4 unberuehrt");
+
+    /* Und jedes Feld traegt genau EINEN Eintrag — sonst zaehlte die Restzeit
+       doppelt. */
+    for (const name of ["c4", "d4", "e4", "f4", "g4"]) {
+        const feld = SCHACH.feldNummer(name);
+        const wieOft = SCHACH.mauern(neu)
+            .filter((eintrag) => eintrag.felder.indexOf(feld) !== -1).length;
+        gleich(wieOft, 1, name + ": genau ein Eintrag");
+    }
+});
+
+pruefe("Eine abgelaufene Mauer verlaengert nichts (v0.85)", () => {
+    /*
+     * Addiert wird die RESTZEIT, nicht die urspruengliche Dauer: Eine Mauer,
+     * die schon weg ist, darf die neue nicht laenger machen.
+     */
+    const stand = mitMauer(standAus({ "e1": "K", "e8": "k" }), ["c4", "d4", "e4"]);
+    const spaet = Object.assign({}, stand, { takt: SCHACH.MAUER_HALBZUEGE + 3 });
+
+    gleich(fristAuf(spaet, "d4"), 0, "die alte Mauer ist abgelaufen");
+
+    const wirkung = SCHACH.mauerLegen(spaet, SCHACH.feldNummer("d4"));
+    gleich(fristAuf(wirkung.stand, "d4"),
+        spaet.takt + SCHACH.MAUER_HALBZUEGE, "also die einfache Zeit");
+});
+
+pruefe("Auf einen Riss laesst sich keine Mauer legen (v0.85)", () => {
+    /*
+     * Mauer auf Mauer ja — Mauer auf Riss nein: Dort ist der Boden weg.
+     * Diese Grenze musste beim Umbau ausdruecklich bleiben.
+     */
+    const stand = SCHACH.standNormalisieren(Object.assign(
+        {}, standAus({ "e1": "K", "e8": "k" }),
+        { risse: [SCHACH.feldNummer("d4")] }));
+
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("d4")), null,
+        "mitten auf den Riss geht nicht");
+    gleich(SCHACH.mauerLegen(stand, SCHACH.feldNummer("c4")), null,
+        "und auch nicht mit dem Riss am Rand der Mauer");
 });
 
 pruefe("Die gelegte Mauer deckt genau drei Felder", () => {

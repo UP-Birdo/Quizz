@@ -1138,19 +1138,66 @@ const SCHACH = {
             const ziel = SCHACH._feld(stand,
                 startReihe + schritt * dr, startSpalte + schritt * ds);
 
-            /* Frei heisst: keine Figur UND keine andere Mauer. */
-            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.gesperrt(stand, ziel)) {
+            /*
+             * Frei heisst: keine Figur und kein Riss.
+             *
+             * EINE MAUER DARF SEIT v0.85 AUF EINER MAUER LIEGEN (Wunsch T4).
+             * Vorher stand hier `gesperrt`, und das schliesst Mauern mit ein —
+             * genau deshalb ging es bisher nicht. Ein Riss bleibt verboten:
+             * Dort ist der Boden weg, da lässt sich nichts aufstellen.
+             * Wem die alte Mauer gehört, spielt keine Rolle — Mauern haben
+             * keinen Besitzer, sie stehen einfach.
+             */
+            if (SCHACH.figurAuf(stand, ziel) !== "." || SCHACH.rissAuf(stand, ziel)) {
                 return null;
             }
             felder.push(ziel);
         }
 
-        /* Nur die noch stehenden übernehmen — so räumt sich die Liste beim
-           Legen von selbst auf. */
-        const mauern = SCHACH.mauern(stand).concat([{
-            felder: felder,
-            bis: stand.takt + SCHACH.MAUER_HALBZUEGE
-        }]);
+        /*
+         * DIE FRIST GILT JE FELD, NICHT JE MAUER (seit v0.85).
+         *
+         * Liegt auf einem Zielfeld schon eine Mauer, ADDIERT sich ihre
+         * Restzeit auf die neuen sechs Halbzüge; die übrigen Felder bekommen
+         * die einfache Dauer. Genau so war der Wunsch: „auch wenn nur zwei
+         * Felder mit der alten Mauer übereinstimmen, soll sich die Zeit nur
+         * bei den zwei erhöhen, und das einzelne Feld hat die einfache Zeit."
+         *
+         * Am Datenvertrag ändert das nichts: `stand.mauern` bleibt
+         * `[{felder, bis}]` — es stehen nur mehr Einträge darin, jeder mit
+         * genau EINEM Feld. Eine ältere Fassung der App liest das unverändert
+         * richtig (`felder` ist weiterhin eine Liste, `bis` weiterhin eine
+         * Zahl); sie sieht lediglich drei kurze Mauern statt einer langen.
+         */
+        const bestand = SCHACH.mauern(stand);
+        const fristen = {};
+
+        for (const ziel of felder) {
+            let rest = 0;
+            for (const eintrag of bestand) {
+                if (eintrag.felder.indexOf(ziel) !== -1) {
+                    rest = Math.max(rest, eintrag.bis - stand.takt);
+                }
+            }
+            fristen[ziel] = stand.takt + rest + SCHACH.MAUER_HALBZUEGE;
+        }
+
+        /*
+         * Die Zielfelder aus dem Bestand herausschneiden — sie bekommen gleich
+         * ihren eigenen Eintrag. Was von einer überbauten Mauer daneben noch
+         * steht, behält seine alte Frist. Nur die noch stehenden übernehmen,
+         * so räumt sich die Liste beim Legen von selbst auf.
+         */
+        const mauern = bestand
+            .map((eintrag) => ({
+                felder: eintrag.felder.filter((wo) => felder.indexOf(wo) === -1),
+                bis: eintrag.bis
+            }))
+            .filter((eintrag) => eintrag.felder.length > 0)
+            .concat(felder.map((ziel) => ({ felder: [ziel], bis: fristen[ziel] })));
+
+        const verstaerkt = felder.some((ziel) =>
+            fristen[ziel] > stand.takt + SCHACH.MAUER_HALBZUEGE);
 
         return {
             stand: Object.assign({}, stand, { mauern: mauern }),
@@ -1158,6 +1205,7 @@ const SCHACH = {
             text: "Mauer auf " + SCHACH.feldName(felder[0], breite, SCHACH.hoeheVon(stand))
                 + " bis " + SCHACH.feldName(felder[felder.length - 1], breite,
                     SCHACH.hoeheVon(stand))
+                + (verstaerkt ? " (verstärkt)" : "")
         };
     },
 

@@ -658,6 +658,35 @@ const SCHACH_VORSCHAU = {
             nachher: "Angenommen: Der Tausch ist vollzogen, ungefähr gleichwertig. "
                 + "Was er anbietet, wechselt mit jedem Zug — und danach ist der "
                 + "Gegner am Zug."
+        },
+
+        /*
+         * Der Dieb ist die einzige Fähigkeit, die auf dem BRETT gar nichts
+         * ändert — sie räumt nur den Vorrat des Gegners. Das Bild kann davon
+         * also nichts zeigen; beide Seiten sehen gleich aus, und der Text
+         * erklärt, wo es stattfindet. Ein erfundenes Bild wäre hier
+         * irreführender als keines.
+         */
+        dieb: {
+            brett: [
+                ".....t",
+                "......",
+                "..s...",
+                ".B....",
+                "TT..L.",
+                "....D."
+            ],
+            figur: -1,
+            ziel: -1,
+            /* Der Gegner muss etwas haben, sonst greift der Dieb ins Leere und
+               das Beispiel liesse sich nicht bauen. */
+            gegnerVorrat: ["sprung", "mauer"],
+            vorher: "Der Griff geht nicht aufs Brett, sondern in den Vorrat: "
+                + "Du siehst vorher, welche bis zu zwei Fähigkeiten du dem Gegner "
+                + "abnimmst.",
+            nachher: "Angenommen: Die Fähigkeiten liegen jetzt in DEINEM Vorrat, "
+                + "beim Gegner fehlen sie. Auf dem Brett ändert sich dabei nichts — "
+                + "und danach ist der Gegner am Zug."
         }
     },
 
@@ -957,6 +986,18 @@ const SCHACH_VORSCHAU = {
             verloren: {
                 weiss: Array.isArray(beispiel.verloren) ? beispiel.verloren : [],
                 schwarz: []
+            },
+            /*
+             * `gegnerVorrat` gibt dem Gegner Fähigkeiten in die Hand (seit
+             * v0.85, für den Dieb). Bisher brauchte keine Anleitung das: Jede
+             * Fähigkeit wirkte auf das BRETT, und dort steht ohnehin alles.
+             * Der Dieb greift als erste in den Vorrat des Gegners — ohne
+             * Inhalt liesse er sich im Beispiel gar nicht einsetzen.
+             */
+            faehigkeiten: {
+                weiss: [],
+                schwarz: Array.isArray(beispiel.gegnerVorrat)
+                    ? beispiel.gegnerVorrat : []
             },
             /* Die Gefallenen tragen ihren ORT: Die Wiederbelebung holt die
                eigene Figur genau dorthin zurück, der Friedhof lässt gefallene

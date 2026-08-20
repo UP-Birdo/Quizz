@@ -1111,12 +1111,16 @@ const SCHACH_VARIANTEN = {
             stufe: "blau",
             art: "ziel",
             zielArt: "mauerplatz",
-            beschreibung: "Legt eine Mauer über drei freie Felder derselben Reihe — auf "
-                + "das angetippte Feld und je eines links und rechts davon. Niemand zieht "
+            beschreibung: "Legt eine Mauer über drei freie Felder — auf das angetippte "
+                + "Feld und je eines daneben, wahlweise quer oder längs. Niemand zieht "
                 + "hindurch, aber Springer setzen darüber hinweg. Nach 6 Halbzügen — "
                 + "also je drei Zügen für dich und den Gegner — zerfällt sie. "
+                + "Du darfst sie auch auf eine bestehende Mauer legen, auch auf die des "
+                + "Gegners: Dort, wo sich beide überdecken, zählt die Restzeit der alten "
+                + "Mauer dazu — die übrigen Felder halten die üblichen 6 Halbzüge. "
                 + "Am äussersten Rand geht sie nicht: Dort fehlt der Nachbar, den sie "
-                + "auf einer Seite braucht. Lootboxen unter der Mauer werden gefressen — "
+                + "auf einer Seite braucht. Auf einen Riss kann sie nicht, dort ist der "
+                + "Boden weg. Lootboxen unter der Mauer werden gefressen — "
                 + "sie sind danach weg."
         },
 
@@ -1136,6 +1140,40 @@ const SCHACH_VARIANTEN = {
             beschreibung: "Ein Angebot: Figuren gegen andere Figuren, ungefähr "
                 + "gleich viel wert. Du darfst ablehnen — dann bleibt die Fähigkeit "
                 + "dir erhalten. Nimmst du an, ist danach der Gegner am Zug."
+        },
+
+        /*
+         * Dieb (seit v0.85, Wunsch T4 vom 18.08.) — die zweite Fähigkeit mit
+         * einer Rückfrage, nach dem Muster des Händlers.
+         *
+         * Sie nimmt dem Gegner bis zu zwei Fähigkeiten weg und legt sie in den
+         * eigenen Vorrat. Damit ist sie die einzige, die den Gegner ÄRMER
+         * macht, statt einen selbst reicher — der Unterschied zählt: Wer
+         * nichts hat, dem kann sie nichts nehmen, und dann lässt sie sich
+         * nicht einsetzen.
+         *
+         * WARUM SIE LILA IST und nicht legendär: Sie verschiebt Material,
+         * erschafft aber keins. Was sie bringt, hängt davon ab, was der
+         * Gegner gerade hat — im Schnitt also eine gewöhnliche Fähigkeit,
+         * gelegentlich eine gute. Der Friedhof (gelb) bringt dagegen
+         * verlässlich vier Figuren zurück.
+         *
+         * WER WAS VERLIERT, WIRD GERECHNET, nicht gewürfelt (`_zufallsWert`
+         * aus Partie-Kennung und Zugzähler) — sonst sähe jedes Gerät eine
+         * andere Beute, und der erste Schreibvorgang würde die anderen
+         * überstimmen.
+         */
+        dieb: {
+            titel: "Dieb",
+            stufe: "lila",
+            art: "diebstahl",
+            beendetZug: true,
+            beschreibung: "Du nimmst dem Gegner bis zu zwei Fähigkeiten weg — sie "
+                + "wandern in deinen Vorrat. Vorher siehst du, was du bekommst, und "
+                + "darfst ablehnen; dann behältst du den Dieb, und nach dem nächsten "
+                + "Zug greift er woanders zu. Hat der Gegner nichts, geht es nicht. "
+                + "Der Bestohlene sieht im Verlauf, was ihm fehlt. "
+                + "Nimmst du an, ist danach der Gegner am Zug."
         },
 
         /*

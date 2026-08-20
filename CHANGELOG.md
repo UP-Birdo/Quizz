@@ -3,6 +3,24 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.85.0 — 2026-08-20
+
+**Eine neue Fähigkeit und eine stapelbare Mauer.**
+
+- **Neu: der Dieb.** Er nimmt dem Gegner bis zu zwei Fähigkeiten weg und legt
+  sie in deinen Vorrat. Vorher siehst du in einem Fenster, was du bekommst,
+  und darfst ablehnen — dann behältst du den Dieb, und nach dem nächsten Zug
+  greift er woanders zu. Hat der Gegner gerade nichts, geht es nicht. Der
+  Bestohlene sieht im Verlauf, was ihm genommen wurde. Der Dieb ist selten
+  (lila) und kostet den Zug.
+
+- **Die Mauer lässt sich jetzt auf eine bestehende Mauer legen** — auch auf
+  die des Gegners. Wo sich beide überdecken, zählt die Restzeit der alten
+  Mauer dazu; die übrigen Felder halten die üblichen 6 Halbzüge. Legst du
+  also eine Mauer so, dass nur zwei Felder auf der alten liegen, stehen genau
+  diese zwei länger — das dritte ganz normal. Auf einen Riss kommt sie
+  weiterhin nicht.
+
 ## v0.84.0 — 2026-08-19
 
 **Ausdehnung und Einsturz sind vorerst aus dem Spiel.**

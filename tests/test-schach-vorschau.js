@@ -105,6 +105,21 @@ for (const art of alleArten) {
             || SCHACH.mauern(nachher).length > 0
             || SCHACH.geliehene(nachher).length > 0);
 
+        /*
+         * EINE FÄHIGKEIT WIRKT NICHT AUFS BRETT: der Dieb (seit v0.85). Er
+         * raeumt den VORRAT des Gegners, und davon steht nichts in der
+         * Stellung — beide Bilder sehen zwangslaeufig gleich aus, der Text
+         * erklaert es. Statt die Pruefung fuer ihn zu ueberspringen, wird sie
+         * umgedreht: Er MUSS das Brett in Ruhe lassen. Faengt er eines Tages
+         * an, dort etwas zu aendern, faellt das hier auf.
+         */
+        if (SCHACH_VARIANTEN.FAEHIGKEITEN[art]
+            && SCHACH_VARIANTEN.FAEHIGKEITEN[art].art === "diebstahl") {
+            wahr(!brettAnders && !wirkungImStand,
+                art + ": greift in den Vorrat, nicht aufs Brett");
+            return;
+        }
+
         wahr(brettAnders || wirkungImStand || bilder.nachher.marken.length > 0,
             "Vorher und Nachher unterscheiden sich sichtbar");
     });
@@ -505,12 +520,22 @@ pruefe("Die Mauer liegt um das angetippte Feld herum", () => {
      */
     const schritte = SCHACH_VORSCHAU.schritte("mauer");
     const beispiel = SCHACH_VORSCHAU.beispielVon("mauer");
-    const mauern = SCHACH.mauern(schritte[schritte.length - 1].runde.stand);
+    const stand = schritte[schritte.length - 1].runde.stand;
 
-    gleich(mauern.length, 1, "eine Mauer");
-    wahr(mauern[0].felder.indexOf(beispiel.ziel) !== -1,
+    /*
+     * SEIT v0.85 TRAEGT JEDES FELD SEINEN EIGENEN EINTRAG (die Frist gilt je
+     * Feld, damit sich gestapelte Mauern addieren). Gezaehlt werden deshalb
+     * die FELDER, nicht die Eintraege — an der Mauer selbst hat sich nichts
+     * geaendert: drei Felder, das angetippte in der Mitte.
+     */
+    const felder = SCHACH.mauern(stand)
+        .reduce((alle, eintrag) => alle.concat(eintrag.felder), [])
+        .sort((eine, andere) => eine - andere);
+
+    gleich(felder.length, SCHACH.MAUER_LAENGE, "drei Mauerfelder");
+    wahr(felder.indexOf(beispiel.ziel) !== -1,
         "das angetippte Feld gehoert zur Mauer");
-    gleich(mauern[0].felder[1], beispiel.ziel, "und liegt in ihrer Mitte");
+    gleich(felder[1], beispiel.ziel, "und liegt in ihrer Mitte");
 });
 
 pruefe("Das Nudelholz schiebt von der eigenen Grundreihe nach vorn", () => {
@@ -643,10 +668,13 @@ pruefe("Ausweichen: die Notbremse fuehrt auf ein SICHERES Feld (v0.74)", () => {
 
 pruefe("Mauer: das Nachher-Bild traegt drei gesperrte Felder", () => {
     const bilder = SCHACH_VORSCHAU.bilder("mauer");
-    const mauern = SCHACH.mauern(bilder.nachher.runde.stand);
 
-    gleich(mauern.length, 1, "eine Mauer");
-    gleich(mauern[0].felder.length, SCHACH.MAUER_LAENGE, "ueber drei Felder");
+    /* Seit v0.85 ein Eintrag JE FELD (Frist je Feld) — gezaehlt werden die
+       gesperrten Felder, und das sind unveraendert drei. */
+    const felder = SCHACH.mauern(bilder.nachher.runde.stand)
+        .reduce((alle, eintrag) => alle.concat(eintrag.felder), []);
+
+    gleich(felder.length, SCHACH.MAUER_LAENGE, "ueber drei Felder");
 });
 
 pruefe("Ausdehnung: das Brett im Nachher-Bild ist groesser", () => {

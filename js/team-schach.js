@@ -1537,6 +1537,12 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /* Der Dieb fragt genauso: Er zeigt, was er greifen würde. */
+        if (beschreibung.art === "diebstahl") {
+            await TEAM_SCHACH.diebstahlAnbieten(partie, person, art);
+            return;
+        }
+
         /* Dieselbe Frage wie beim Pluszeichen am Vorrat, dieselbe Antwort —
            sie kommt aus dem Modell (SCHACH_RUNDE.behaeltZug). */
         const meineFarbe = SCHACH_RUNDE.teamVon(partie, person.id);
@@ -1666,6 +1672,51 @@ const TEAM_SCHACH = {
                 + "behältst du die Fähigkeit — und nach dem nächsten Zug hat der "
                 + "Händler ein anderes Angebot.",
             "Annehmen",
+            false
+        );
+
+        if (!ja) {
+            return;
+        }
+
+        await TEAM_SCHACH.faehigkeitAusfuehren(partie, art, -1);
+    },
+
+    /*
+     * Der Dieb zeigt seine Beute, bevor er zugreift (seit v0.85).
+     *
+     * Aufgebaut wie der Händler eine Funktion höher — und aus demselben
+     * Grund: Was eine Fähigkeit einem BRINGT, will man sehen, bevor man sie
+     * ausgibt. Angezeigt werden die Titel, nicht die Beschreibungen; wer
+     * wissen will, was eine davon kann, findet sie danach im eigenen Vorrat.
+     */
+    async diebstahlAnbieten(partie, person, art) {
+        const farbe = SCHACH_RUNDE.teamVon(partie, person.id);
+        const beute = SCHACH_RUNDE.diebesBeute(partie, farbe);
+
+        if (!beute) {
+            await DIALOG.hinweis("Beim Gegner ist nichts zu holen",
+                "Der Gegner hat gerade keine einzige Fähigkeit im Vorrat. Sobald er "
+                + "eine Lootbox einsammelt, lohnt sich der Griff wieder — die "
+                + "Fähigkeit bleibt dir so lange erhalten.");
+            return;
+        }
+
+        const titel = beute.arten
+            .map((eine) => SCHACH_VARIANTEN.faehigkeitTitel(eine));
+
+        const ja = await DIALOG.frage(
+            "Der Dieb greift zu",
+            "Du nimmst dem Gegner ab:\n\n"
+                + titel.map((eine) => "• " + eine).join("\n") + "\n\n"
+                + (titel.length === 1
+                    ? "Mehr hat er nicht — das ist alles, was er besitzt.\n\n"
+                    : "")
+                + "Sie wandern sofort in deinen Vorrat, und im Verlauf steht, was "
+                + "du genommen hast. Nimmst du an, ist danach der Gegner am Zug. "
+                + "Lehnst du ab, behältst du den Dieb — nach dem nächsten Zug "
+                + "greift er woanders zu.",
+            "Klauen",
             false
         );
 

@@ -140,5 +140,34 @@ pruefe("Version aus konfig.js steht im CHANGELOG", () => {
     }
 });
 
+/*
+ * UND SIE MUSS IN DER STATUS.md STEHEN (seit v0.85).
+ *
+ * Die STATUS.md ist der Einstieg jeder neuen Sitzung — steht dort eine alte
+ * Nummer, arbeitet die nächste Sitzung mit einem falschen Bild vom Projekt.
+ * Genau das ist nach v0.84.0 passiert: ausgeliefert war 0.84.0, die STATUS.md
+ * nannte weiter 0.83.1. Dieselbe Prüfung wie beim CHANGELOG, nur eine Datei
+ * weiter — sie kostet nichts und fängt eine Drift ab, die sonst erst beim
+ * Lesen auffällt.
+ */
+pruefe("Version aus konfig.js steht in der STATUS.md", () => {
+    const konfig = dateisystem.readFileSync(pfad.join(jsOrdner, "konfig.js"), "utf8");
+    const treffer = konfig.match(/APP_VERSION:\s*"([^"]+)"/);
+    if (!treffer) {
+        throw new Error("APP_VERSION nicht in js/konfig.js gefunden");
+    }
+
+    const version = treffer[1];
+    const status = dateisystem.readFileSync(pfad.join(projekt, "STATUS.md"), "utf8");
+
+    /* Nur die Kopfzeile zählt — weiter unten stehen ältere Nummern in der
+       Rückschau, die hier nichts beweisen. */
+    const kopf = status.split(/^## /m)[0];
+    if (kopf.indexOf("v" + version) === -1) {
+        throw new Error("v" + version + " fehlt im Kopf der STATUS.md"
+            + " (dort steht noch ein älterer Stand)");
+    }
+});
+
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
 process.exit(anzahlFehler === 0 ? 0 : 1);

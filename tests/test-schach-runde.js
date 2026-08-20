@@ -2259,11 +2259,14 @@ pruefe("Auch die Abstimmung traegt die Lage der Mauer (v0.80)", () => {
     wahr(fertig !== null, "mitgetragen");
     gleich(fertig.vorschlag, null, "der Vorschlag ist abgearbeitet");
 
-    const gelegt = SCHACH.mauern(fertig.stand);
-    gleich(gelegt.length, 1, "eine Mauer steht");
+    /* Seit v0.85 traegt jedes Mauerfeld seinen eigenen Eintrag (Frist je
+       Feld) — gezaehlt werden deshalb die Felder. */
+    const gelegt = SCHACH.mauern(fertig.stand)
+        .reduce((alle, eintrag) => alle.concat(eintrag.felder), []);
+    gleich(gelegt.length, SCHACH.MAUER_LAENGE, "eine Mauer steht");
 
     const breite = SCHACH.breiteVon(fertig.stand);
-    const spalten = gelegt[0].felder
+    const spalten = gelegt
         .map((f) => SCHACH.spalteVon(f, breite))
         .filter((s, stelle, alle) => alle.indexOf(s) === stelle);
     gleich(spalten.length, 1, "und sie steht senkrecht");
@@ -2434,8 +2437,12 @@ pruefe("Wer Material oder einen Angriff bekommt, gibt den Zug ab", () => {
     /* `nachschub` (v0.61) steht hier, weil er MATERIAL schenkt — einen neuen
        Bauern. Der Nutzer hat es ohnehin so gewuenscht; hier faellt beides
        zusammen. */
+    /* `dieb` (v0.85) gehoert hierher, weil er MATERIAL nimmt — Faehigkeiten
+       sind Material. Dieselbe Einordnung wie beim Haendler, der Material
+       tauscht. */
     const kostetDenZug = ["bauernschub", "verstaerkung", "spiegel",
         "wiedergeburt", "wiederbelebung", "friedhof", "haendler", "nachschub",
+        "dieb",
         /* Seit v0.80: zweiter Anwendungsfall von „zu stark heisst Plus weg,
            nicht Stufe verschieben" (v0.47), nach dem Bauernschub in v0.56. */
         "nudelholz"];
@@ -2621,6 +2628,95 @@ pruefe("Alle Geraete sehen dasselbe Angebot", () => {
     const anderer = SCHACH_RUNDE.handelsAngebot(SCHACH_RUNDE.kopieren(runde), "weiss");
 
     gleich(JSON.stringify(einer), JSON.stringify(anderer), "gerechnet, nicht gewuerfelt");
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Dieb (seit v0.85, Wunsch T3)
+ * ------------------------------------------------------------------ */
+
+pruefe("Der Dieb nimmt bis zu zwei Faehigkeiten des Gegners", () => {
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = ["sprung", "mauer", "fessel"];
+
+    const neu = einsetzen(runde, "dieb");
+    wahr(neu !== null, "eingesetzt");
+
+    gleich(neu.faehigkeiten.schwarz.length, 1, "dem Gegner fehlen zwei");
+    gleich(neu.faehigkeiten.weiss.length, 2, "und zwei sind dazugekommen");
+
+    /* Was weg ist, ist genau das, was angekommen ist. */
+    const weg = ["sprung", "mauer", "fessel"]
+        .filter((art) => neu.faehigkeiten.schwarz.indexOf(art) === -1);
+    for (const art of weg) {
+        wahr(neu.faehigkeiten.weiss.indexOf(art) !== -1, art + " ist herueber");
+    }
+});
+
+pruefe("Der Dieb nimmt auch nur eine, wenn mehr nicht da ist", () => {
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = ["frost"];
+
+    const neu = einsetzen(runde, "dieb");
+    wahr(neu !== null, "eingesetzt");
+
+    gleich(neu.faehigkeiten.schwarz.length, 0, "der Gegner ist leer");
+    gleich(neu.faehigkeiten.weiss.indexOf("frost") !== -1, true, "der Frost ist da");
+});
+
+pruefe("Beim leeren Gegner laesst sich der Dieb nicht einsetzen", () => {
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = [];
+
+    gleich(SCHACH_RUNDE.diebesBeute(runde, "weiss"), null, "nichts zu holen");
+    gleich(einsetzen(runde, "dieb"), null, "und damit kein Einsatz");
+});
+
+pruefe("Alle Geraete sehen dieselbe Beute", () => {
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = ["sprung", "mauer", "fessel", "frost"];
+
+    const einer = SCHACH_RUNDE.diebesBeute(runde, "weiss");
+    const anderer = SCHACH_RUNDE.diebesBeute(SCHACH_RUNDE.kopieren(runde), "weiss");
+
+    gleich(JSON.stringify(einer), JSON.stringify(anderer), "gerechnet, nicht gewuerfelt");
+});
+
+pruefe("Der Dieb greift zweimal verschiedene Stellen ab", () => {
+    /*
+     * Zwei gleiche Faehigkeiten nebeneinander sind die Falle: Wenn die
+     * Ziehung zweimal dieselbe STELLE waehlt, verschwindet nur eine und der
+     * Vorrat stimmt nicht mehr.
+     */
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = ["sprung", "sprung"];
+
+    const beute = SCHACH_RUNDE.diebesBeute(runde, "weiss");
+    gleich(beute.stellen.length, 2, "zwei Stellen");
+    wahr(beute.stellen[0] !== beute.stellen[1], "und zwar verschiedene");
+
+    const neu = einsetzen(runde, "dieb");
+    gleich(neu.faehigkeiten.schwarz.length, 0, "beide sind weg");
+});
+
+pruefe("Der Diebstahl steht im Verlauf", () => {
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = ["frost"];
+
+    const neu = einsetzen(runde, "dieb");
+    const letzter = neu.verlauf[neu.verlauf.length - 1];
+
+    wahr(letzter.text.indexOf("Dieb") !== -1, "die Faehigkeit steht drin");
+    wahr(letzter.text.indexOf("Frost") !== -1,
+        "und was genommen wurde — der Bestohlene soll es sehen");
+});
+
+pruefe("Der Dieb laesst das Brett in Ruhe", () => {
+    const runde = faehigkeitenPartie();
+    runde.faehigkeiten.schwarz = ["sprung", "mauer"];
+
+    const neu = einsetzen(runde, "dieb");
+    gleich(neu.stand.brett, runde.stand.brett, "kein Feld hat sich geaendert");
+    gleich(neu.stand.amZug, "schwarz", "aber der Zug ist abgegeben");
 });
 
 pruefe("Der Haendler nimmt die hintersten Figuren", () => {
@@ -5894,6 +5990,11 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
             /* Der gegnerische Bauer, der geschoben werden soll. */
             runde.stand.brett = SCHACH._brettMit(runde.stand.brett, feld, "b");
         }
+        if (art === "dieb") {
+            /* Er greift als Einziger in den VORRAT des Gegners — ist der leer,
+               laesst er sich zu Recht nicht einsetzen (v0.85). */
+            runde.faehigkeiten.schwarz.push("frost");
+        }
 
         /* Ausweichen geht seit v0.58 NUR im Gegenzug — sonst waere es hier
            zu Recht abgewiesen. */
@@ -5903,7 +6004,11 @@ pruefe("Jede Faehigkeit laesst sich einsetzen und wird dabei verbraucht", () => 
 
         const nachher = einsetzen(runde, art, feld);
         wahr(nachher !== null, "einsetzbar: " + art);
-        gleich(nachher.faehigkeiten.weiss.length, 0, "verbraucht: " + art);
+
+        /* Der Dieb ist verbraucht wie jede andere — nur liegt danach seine
+           BEUTE im eigenen Vorrat, und die zaehlt hier mit. */
+        const uebrig = (art === "dieb") ? 1 : 0;
+        gleich(nachher.faehigkeiten.weiss.length, uebrig, "verbraucht: " + art);
         gleich(nachher.zugZaehler, runde.zugZaehler + 1, "Zugzaehler steigt: " + art);
 
         const letzter = nachher.verlauf[nachher.verlauf.length - 1];
