@@ -276,6 +276,7 @@ const DIALOG = {
                         behaelter.hidden = true;
                         behaelter.innerHTML = "";
                         behaelter.classList.remove("dialog-geht-hintergrund");
+                        document.body.classList.remove("dialog-offen");
                     }
                     erfuellen(antwort);
                 }, 100);
@@ -339,6 +340,10 @@ const DIALOG = {
             kasten.appendChild(leiste);
             behaelter.appendChild(kasten);
             behaelter.hidden = false;
+
+            /* Die Seite dahinter steht fest, solange der Dialog offen ist —
+               siehe `body.dialog-offen` in der Stildatei (seit v0.108). */
+            document.body.classList.add("dialog-offen");
 
             document.addEventListener("keydown", beiTaste);
 

@@ -64,6 +64,16 @@ wünscht, bekommt die App ohne. Drei Mechanismen:
   Nutzer-Aktionen**; die regelmässige Abfrage zeichnet hart, sonst blendete
   jeder fremde Zug und zwei Übergänge brächen einander ab.
 
+Seit v0.108 dazu: Die Einstellungs-Haken sind **Kipp-Schalter** (reines CSS
+auf dem unveränderten `<input type="checkbox">`), der Fokus-Ring erscheint
+nur bei Tastatur (`:focus-visible`), und ein offener Dialog **hält die Seite
+fest** (`body.dialog-offen` setzt `dialog.js`, dazu `overscroll-behavior:
+contain` am Kasten und `scrollbar-gutter: stable` gegen das Seitwärts-Rucken
+am Rechner). Animationen beim Aufklappen gibt es nur in STATISCHEN Ansichten
+(`stufen-eintrag` — Bibliothek und Anleitung): Was die regelmässige Abfrage
+neu baut, darf keine Eintritts-Animation tragen, sonst flackert es bei jedem
+fremden Zug.
+
 ## Code-Konventionen
 
 - **Deutsch**, durchgehend: Bezeichner, Kommentare, sichtbare Texte.

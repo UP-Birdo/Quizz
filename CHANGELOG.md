@@ -3,6 +3,36 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.108.0 — 2026-08-22
+
+**Aufgeräumte Bedienelemente — zweiter Teil der UI-Runde.**
+
+Wieder nach den Mustern moderner Komponenten-Galerien, wieder komplett mit
+Bordmitteln:
+
+- **Die Haken der Einstellungen sind jetzt Kipp-Schalter** — eine Pille mit
+  gleitendem Knubbel, wie in den Einstellungen jedes Handys. An ist auf einen
+  Blick von Aus zu unterscheiden; technisch ist es dasselbe Häkchen wie vorher,
+  Tastatur und Vorlesen funktionieren unverändert.
+
+- **In Popups scrollen scrollt nicht mehr die Seite dahinter** (dein gemeldeter
+  Fehler). Solange ein Dialog offen ist, steht die Seite hinter ihm fest; wer
+  im Dialog ans Ende rollt, rollt nirgendwo weiter. Am Rechner bleibt dabei der
+  Platz des Rollbalkens reserviert, damit die Seite nicht zur Seite ruckt.
+
+- **Der Fokus-Ring erscheint nur noch bei Tastatur-Bedienung.** Beim Tippen auf
+  dem Handy blieb bisher nach jedem Druck ein blauer Ring am Knopf stehen —
+  der ist weg. Wer mit der Tastatur navigiert, sieht ihn unverändert.
+
+- **Aufklapper in Bibliothek und Anleitung öffnen weich** — der Inhalt tritt
+  kurz ein, statt hart dazustehen.
+
+Wie in v0.107 gilt: Wer in den Systemeinstellungen weniger Bewegung wünscht,
+bekommt alles ohne Animation.
+
+Tests: 1530 Prüfungen, 0 Fehler.
+
+
 ## v0.107.0 — 2026-08-22
 
 **Die App bewegt sich jetzt flüssig — überall, mit Bordmitteln.**

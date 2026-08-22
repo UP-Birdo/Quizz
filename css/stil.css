@@ -60,6 +60,13 @@
     box-sizing: border-box;
 }
 
+/* Der Platz des Rollbalkens bleibt reserviert (seit v0.108). Ohne das ruckte
+   am Rechner die ganze Seite zur Seite, sobald ein Dialog sie festhält und
+   der Rollbalken verschwindet (`body.dialog-offen`). */
+html {
+    scrollbar-gutter: stable;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -687,7 +694,7 @@ body {
     background: transparent;
 }
 
-.auge-knopf:focus {
+.auge-knopf:focus-visible {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
 }
@@ -918,7 +925,7 @@ body {
     border-color: var(--haupt);
 }
 
-.info-knopf:focus {
+.info-knopf:focus-visible {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
 }
@@ -979,9 +986,17 @@ body {
     color: var(--karte);
 }
 
-.wuerfel-feld:focus,
-.knopf:focus,
-.tab-knopf:focus,
+/*
+ * DER FOKUS-RING ERSCHEINT NUR BEI TASTATUR-BEDIENUNG (seit v0.108,
+ * `:focus-visible` statt `:focus`). Beim Tippen und Klicken weiss man selbst,
+ * was man gedrückt hat — der Ring blieb aber stehen und liess jeden Knopf
+ * „hängen" aussehen. Für die Tastatur bleibt er unverändert; nur das
+ * EINGABEFELD zeigt seinen Rahmen weiterhin immer, denn dort ist der Fokus
+ * die Einfügemarke.
+ */
+.wuerfel-feld:focus-visible,
+.knopf:focus-visible,
+.tab-knopf:focus-visible,
 .dialog-feld:focus {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
@@ -1322,7 +1337,11 @@ body {
 
 .schalter-zeile {
     display: flex;
-    align-items: flex-start;
+
+    /* Mittig statt oben (seit v0.108): Seit die Erklärsätze hinter dem i
+       stehen, ist jede Zeile einzeilig — der Kipp-Schalter sitzt auf halber
+       Höhe neben seinem Titel. */
+    align-items: center;
     gap: 10px;
     padding: 8px 0;
     cursor: pointer;
@@ -1346,12 +1365,46 @@ body {
     margin-left: 8px;
 }
 
+/*
+ * DER HAKEN IST EIN KIPP-SCHALTER (seit v0.108): eine Pille mit Knubbel, wie
+ * man sie aus jeder Handy-Einstellung kennt. Technisch bleibt es dasselbe
+ * `<input type="checkbox">` — nur die eingebaute Optik ist abgeschaltet
+ * (`appearance: none`) und neu gezeichnet. An/aus, Tastatur und Vorlesen
+ * funktionieren unverändert.
+ */
 .schalter-kasten {
-    width: 20px;
-    height: 20px;
-    margin: 2px 0 0 0;
+    appearance: none;
+    width: 40px;
+    height: 24px;
+    margin: 0;
     flex: none;
-    accent-color: var(--haupt);
+    border: 1px solid var(--rahmen);
+    border-radius: 12px;
+    background: var(--karte-leise);
+    position: relative;
+    cursor: pointer;
+}
+
+.schalter-kasten::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--karte);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.schalter-kasten:checked {
+    background: var(--haupt);
+    border-color: var(--haupt);
+}
+
+.schalter-kasten:checked::after {
+    transform: translateX(16px);
+    background: var(--haupt-schrift);
 }
 
 /*
@@ -2287,7 +2340,7 @@ body {
     padding: 2px 0;
 }
 
-.verlauf-titel:focus {
+.verlauf-titel:focus-visible {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
 }
@@ -2466,7 +2519,7 @@ body {
     border-color: var(--haupt);
 }
 
-.spielart-kachel:focus {
+.spielart-kachel:focus-visible {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
 }
@@ -3279,6 +3332,20 @@ body {
     justify-content: center;
     padding: var(--abstand);
     z-index: var(--ebene-dialog);
+
+    /* Wer im Dialog ans Ende rollt, rollt NICHT die Seite dahinter weiter
+       (seit v0.108, gemeldet 22.08.: „wenn man in Popups scrollt und zurück
+       geht, dann hat man dort auch gescrollt"). */
+    overscroll-behavior: contain;
+}
+
+/*
+ * Die zweite Hälfte desselben Fixes: Solange ein Dialog offen ist, ist die
+ * Seite dahinter festgehalten (`dialog.js` setzt die Klasse). Ohne das rollte
+ * ein Wisch auf dem SCHLEIER — neben dem Kasten — weiterhin die Seite.
+ */
+body.dialog-offen {
+    overflow: hidden;
 }
 
 .dialog-hintergrund[hidden] {
@@ -3309,6 +3376,10 @@ body {
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
+
+    /* Am Ende des Kastens endet auch das Rollen — nichts läuft auf die
+       Seite dahinter über (siehe `.dialog-hintergrund`). */
+    overscroll-behavior: contain;
 }
 
 .dialog-kasten h2 {
@@ -3388,7 +3459,7 @@ body {
     border-color: var(--haupt);
 }
 
-.dialog-listeneintrag:focus {
+.dialog-listeneintrag:focus-visible {
     outline: 2px solid var(--haupt);
     outline-offset: 1px;
 }
@@ -3534,9 +3605,20 @@ body {
 
     /* Die Einstellungen: großer Kasten, Text darunter statt daneben
        gequetscht. */
+    /* Der Kipp-Schalter ist auf dem Handy etwas grösser — Fingerziel. */
     .schalter-kasten {
-        width: 24px;
-        height: 24px;
+        width: 46px;
+        height: 28px;
+        border-radius: 14px;
+    }
+
+    .schalter-kasten::after {
+        width: 22px;
+        height: 22px;
+    }
+
+    .schalter-kasten:checked::after {
+        transform: translateX(18px);
     }
 
     .schalter-zeile {
@@ -3751,5 +3833,25 @@ body {
             opacity: 0;
             transform: translateY(4px);
         }
+    }
+
+    /* Der Knubbel des Kipp-Schalters gleitet, die Pille färbt weich um
+       (seit v0.108 — der Schalter selbst steht bei `.schalter-kasten`). */
+    .schalter-kasten {
+        transition: background-color 0.18s ease, border-color 0.18s ease;
+    }
+
+    .schalter-kasten::after {
+        transition: transform 0.18s ease, background-color 0.18s ease;
+    }
+
+    /*
+     * Der Inhalt eines Aufklappers der BIBLIOTHEK und der Anleitung tritt
+     * weich ein (seit v0.108). Nur dort: Diese Ansichten stehen still, sobald
+     * sie gebaut sind. Die Verlaufs-Kästen baut die regelmässige Abfrage neu —
+     * eine Animation dort spielte bei jedem fremden Zug erneut.
+     */
+    details.stufen-eintrag[open] > :not(summary) {
+        animation: bereich-auf 0.16s ease-out;
     }
 }
