@@ -670,26 +670,18 @@ Object.assign(TEAM_SCHACH, {
     },
 
     _infoZeichnen(wurzel) {
-        const kopf = TEAM_SCHACH._element("div", "partie-kopf");
+        /*
+         * EIN Zurück-Knopf, oben links wie überall (seit v0.110, Nutzer-Ansage
+         * 22.08.: „entferne einen, gleich zu finden in der ganzen App"). Bis
+         * v0.109 schwebte hier ein ZWEITER am unteren Rand, weil die
+         * Bibliothek lang ist — jetzt KLEBT stattdessen die Kopfzeile beim
+         * Rollen oben fest (`partie-kopf-klebt`): derselbe Nutzen, ein Knopf.
+         */
+        const kopf = TEAM_SCHACH._element("div", "partie-kopf partie-kopf-klebt");
         kopf.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still knopf-klein",
             () => TEAM_SCHACH.infoSchliessen()));
         kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Fähigkeiten"));
         wurzel.appendChild(kopf);
-
-        /*
-         * DER ZURÜCK-KNOPF SCHWEBT MIT (seit v0.59, Wunsch #5).
-         *
-         * Die Bibliothek ist die längste Ansicht der App: fünf Stufen, 23
-         * Einträge, und ein aufgeklappter Eintrag spielt seine Anleitung ab.
-         * Wer unten steht, hat den Knopf im Kopf längst aus dem Bild
-         * gescrollt und kommt nur durch Zurückwischen wieder heraus.
-         *
-         * Der schwebende Knopf hängt deshalb am Bildschirmrand statt am Text
-         * (`position: fixed` in der Stildatei) und tut dasselbe wie der oben —
-         * es bleibt bei EINER Aktion, nur an zwei Orten erreichbar.
-         */
-        wurzel.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still schwebe-zurueck",
-            () => TEAM_SCHACH.infoSchliessen()));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             "Wer mit einer Figur über eine Lootbox oder auf sie zieht, sammelt ein, "

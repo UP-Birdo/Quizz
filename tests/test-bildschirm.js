@@ -707,9 +707,35 @@ pruefe("Ein Haken zeigt seine Unterpunkte SOFORT (v0.71)", () => {
         throw new Error("die vier Stufen erscheinen nicht sofort");
     }
 
-    /* Und die Unterpunkte des Hakens sind auch da (Seltenheit, Unglueck). */
-    if (suchen("schalter-unterpunkt").length < 3) {
-        throw new Error("die Unterpunkte fehlen");
+    /* Und die Unterpunkte des Hakens sind auch da — seit v0.110 liegen sie
+       in einem GRUPPEN-KASTEN statt an einem Einrueck-Strich. Geprueft wird
+       beides: Der Kasten steht da, und die abhaengigen Zeilen (Seltenheit,
+       Unglueck) stecken mit den beiden Reihen DARIN. */
+    const gruppen = suchen("schalter-gruppe");
+    if (gruppen.length !== 1) {
+        throw new Error("genau ein Gruppen-Kasten unter dem Lootbox-Haken, "
+            + "gezaehlt: " + gruppen.length);
+    }
+
+    const inGruppe = (klasse) => {
+        const treffer = [];
+        const absteigen = (element) => {
+            for (const kind of element.kinder || []) {
+                if (String(kind.className || "").indexOf(klasse) !== -1) {
+                    treffer.push(kind);
+                }
+                absteigen(kind);
+            }
+        };
+        absteigen(gruppen[0]);
+        return treffer;
+    };
+
+    if (inGruppe("schalter-zeile").length < 2) {
+        throw new Error("Seltenheit und Unglueck gehoeren in den Kasten");
+    }
+    if (inGruppe("vorrat-leiste").length !== 1) {
+        throw new Error("die Vorrat-Reihe gehoert in den Kasten");
     }
 
     /* Eine Stufe antippen setzt sie und zeichnet neu. */
@@ -1935,25 +1961,39 @@ pruefe("Die Faehigkeiten-Uebersicht zeigt jede Stufe mit ihren Eintraegen", () =
 });
 
 /*
- * Der schwebende Zurück-Knopf (v0.59, Wunsch #5). Er hängt am Bildschirm statt
- * am Text — deshalb steht er als eigenes Kind unter der Wurzel und nicht im
- * Kopf. Wer ihn wegnimmt, macht die längste Ansicht der App wieder zur
- * Sackgasse für alle, die unten stehen.
+ * EIN Zurueck-Knopf, oben links, und die Kopfzeile KLEBT (seit v0.110 —
+ * Nutzer-Ansage 22.08.: „entferne einen, gleich zu finden in der ganzen
+ * App"). Der schwebende Zweitknopf von v0.59 ist raus; damit die laengste
+ * Ansicht keine Sackgasse wird, muss ihr Kopf die Klebe-Klasse tragen.
  */
-pruefe("Die Bibliothek hat einen schwebenden Zurueck-Knopf (v0.59)", () => {
+pruefe("Die Bibliothek hat EINEN Zurueck-Knopf im klebenden Kopf (v0.110)", () => {
     TEAM_SCHACH.faehigkeitenOeffnen();
 
     const schwebend = TEAM_SCHACH.wurzelEl.kinder.find(
         (kind) => String(kind.className || "").indexOf("schwebe-zurueck") !== -1);
-
-    if (!schwebend) {
-        throw new Error("kein schwebender Zurueck-Knopf");
+    if (schwebend) {
+        throw new Error("der schwebende Zweitknopf sollte seit v0.110 weg sein");
     }
 
-    /* Und er tut dasselbe wie der Knopf im Kopf. */
-    schwebend.ausloesen("click");
+    const kopf = TEAM_SCHACH.wurzelEl.kinder.find(
+        (kind) => String(kind.className || "").indexOf("partie-kopf") !== -1);
+    if (!kopf) {
+        throw new Error("kein Kopf in der Bibliothek");
+    }
+    if (String(kopf.className).indexOf("partie-kopf-klebt") === -1) {
+        throw new Error("ohne Klebe-Klasse ist die lange Ansicht eine "
+            + "Sackgasse fuer alle, die unten stehen");
+    }
+
+    /* Und der eine Knopf im Kopf schliesst wirklich. */
+    const zurueck = (kopf.kinder || []).find(
+        (kind) => kind.textContent === "Zurück");
+    if (!zurueck) {
+        throw new Error("kein Zurueck-Knopf im Kopf");
+    }
+    zurueck.ausloesen("click");
     if (TEAM_SCHACH.infoOffen) {
-        throw new Error("der schwebende Knopf schliesst die Bibliothek nicht");
+        throw new Error("der Zurueck-Knopf schliesst die Bibliothek nicht");
     }
 });
 

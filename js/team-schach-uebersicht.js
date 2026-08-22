@@ -220,6 +220,35 @@ Object.assign(TEAM_SCHACH, {
          */
         const obenDrueber = { nurMitWuerfeln: "faehigkeiten", nurMitArmee: "zufallsArmee" };
 
+        /*
+         * UNTERPUNKTE LIEGEN IN EINEM GRUPPEN-KASTEN (seit v0.110). Bis
+         * v0.109 zeigte ein Einrück-Strich die Zugehörigkeit — weg damit
+         * (Nutzer-Ansage 22.08.): Jetzt sammelt ein leise hinterlegter Kasten
+         * alles, was zu einem Haken gehört, wie in den Einstellungen moderner
+         * Apps. `ablegen` sortiert jede Zeile an ihren Platz: ohne Oberpunkt
+         * in die Karte (und der Kasten ist zu), mit Oberpunkt in den Kasten
+         * ihres Oberpunkts.
+         */
+        let gruppe = null;
+        let gruppeFuer = "";
+
+        const ablegen = (element, unter) => {
+            if (!unter) {
+                karte.appendChild(element);
+                gruppe = null;
+                gruppeFuer = "";
+                return;
+            }
+
+            if (!gruppe || gruppeFuer !== unter) {
+                gruppe = TEAM_SCHACH._element("div", "schalter-gruppe");
+                gruppeFuer = unter;
+                karte.appendChild(gruppe);
+            }
+
+            gruppe.appendChild(element);
+        };
+
         for (const eintrag of schalter) {
             const oben = eintrag.nurMitWuerfeln
                 ? obenDrueber.nurMitWuerfeln
@@ -229,8 +258,7 @@ Object.assign(TEAM_SCHACH, {
                 continue;
             }
 
-            const zeile = TEAM_SCHACH._element("label",
-                "schalter-zeile" + (oben ? " schalter-unterpunkt" : ""));
+            const zeile = TEAM_SCHACH._element("label", "schalter-zeile");
 
             const kasten = document.createElement("input");
             kasten.type = "checkbox";
@@ -296,17 +324,18 @@ Object.assign(TEAM_SCHACH, {
                 ? TEAM_SCHACH._bibliothekZeichenBauen(eintrag)
                 : TEAM_SCHACH._infoZeichenBauen(eintrag.titel, eintrag.hinweis));
 
-            karte.appendChild(halter);
+            ablegen(halter, oben);
 
             /* Wie viele Lootboxen es sein sollen, steht direkt unter ihrem
-               Haken — es ist die erste Frage, die man danach hat. */
+               Haken — es ist die erste Frage, die man danach hat. Beide
+               Reihen liegen im Gruppen-Kasten des Lootbox-Hakens. */
             if (eintrag.schluessel === "faehigkeiten"
                 && TEAM_SCHACH.neueRegeln.faehigkeiten) {
-                karte.appendChild(TEAM_SCHACH._mengenLeisteBauen());
+                ablegen(TEAM_SCHACH._mengenLeisteBauen(), "faehigkeiten");
 
                 /* Und darunter, WELCHE Items vorkommen (seit v0.87, V3:
                    „nicht nur die Anzahl, sondern auch welche Items"). */
-                karte.appendChild(TEAM_SCHACH._vorratLeisteBauen());
+                ablegen(TEAM_SCHACH._vorratLeisteBauen(), "faehigkeiten");
             }
         }
 
@@ -326,7 +355,7 @@ Object.assign(TEAM_SCHACH, {
      * Bildschirm zeigt hier nur an, was das Modell sagt.
      */
     _mengenLeisteBauen() {
-        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt mengen-zeile");
+        const zeile = TEAM_SCHACH._element("div", "mengen-zeile");
 
         zeile.appendChild(TEAM_SCHACH._leistenKopfBauen("Wie viele Lootboxen?",
             SCHACH_VARIANTEN.LOOTBOX_MENGEN));
@@ -487,7 +516,7 @@ Object.assign(TEAM_SCHACH, {
      * `eigeneWahl`, nicht am Namen.
      */
     _vorratLeisteBauen() {
-        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt vorrat-zeile");
+        const zeile = TEAM_SCHACH._element("div", "vorrat-zeile");
 
         zeile.appendChild(TEAM_SCHACH._leistenKopfBauen("Welche Items kommen vor?",
             SCHACH_VARIANTEN.ITEM_VORRAETE));

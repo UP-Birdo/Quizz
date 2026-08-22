@@ -46,16 +46,14 @@ Object.assign(TEAM_SCHACH, {
     },
 
     _grundlagenZeichnen(wurzel) {
-        const kopf = TEAM_SCHACH._element("div", "partie-kopf");
+        /* EIN Zurück-Knopf oben links; die Kopfzeile klebt beim Rollen fest —
+           dieselbe Lösung wie in der Bibliothek (seit v0.110, dort steht das
+           Warum). */
+        const kopf = TEAM_SCHACH._element("div", "partie-kopf partie-kopf-klebt");
         kopf.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still knopf-klein",
             () => TEAM_SCHACH.grundlagenSchliessen()));
         kopf.appendChild(TEAM_SCHACH._element("h2", "partie-titel", "Schach lernen"));
         wurzel.appendChild(kopf);
-
-        /* Derselbe schwebende Knopf wie in der Bibliothek: Diese Ansicht ist
-           lang, und wer unten steht, findet den oberen nicht mehr. */
-        wurzel.appendChild(TEAM_SCHACH._knopf("Zurück", "knopf-still schwebe-zurueck",
-            () => TEAM_SCHACH.grundlagenSchliessen()));
 
         wurzel.appendChild(TEAM_SCHACH._element("p", "erklaerung",
             "Alles fürs normale Schach — in der "

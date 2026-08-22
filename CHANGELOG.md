@@ -3,6 +3,31 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.110.0 — 2026-08-22
+
+**Der Anlege-Bildschirm im Stil moderner App-Einstellungen — und nur noch EIN
+Zurück-Knopf.**
+
+- **Alle Einrück-Striche sind weg.** Was zu einem Kipp-Schalter gehört
+  (Seltenheit, Unglücks-Anzeige, Lootbox-Menge, Item-Vorrat unter „Lootboxen";
+  „Unterschiedliche Armeen" unter „Zufallsarmee"), liegt jetzt in einem leise
+  hinterlegten Gruppen-Kasten direkt unter seinem Schalter — wie in den
+  Einstellungen des Handys.
+
+- **Die vier Knopfreihen sind echte Segment-Schalter:** ein Kasten, die Stufen
+  als gleich breite Felder darin, und die blaue Markierung gleitet beim
+  Umschalten von Feld zu Feld. Vorher waren es lose Einzel-Knöpfe mit Rahmen.
+
+- **Ein Zurück-Knopf für die ganze App** (dein Punkt aus dem Eingangskorb):
+  Bibliothek und „Schach lernen" hatten ZWEI — einen oben, einen schwebend am
+  unteren Rand. Der schwebende ist raus. Damit die langen Ansichten trotzdem
+  keine Sackgasse werden, bleibt die Kopfzeile mit dem Zurück-Knopf beim
+  Rollen oben am Bildschirm kleben. Ergebnis: Zurück ist überall an derselben
+  Stelle — oben links.
+
+Tests: 1531 Prüfungen, 0 Fehler.
+
+
 ## v0.109.0 — 2026-08-22
 
 **Zwei Nachbesserungen an der neuen Optik (deine Meldungen von heute).**
