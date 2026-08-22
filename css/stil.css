@@ -3514,6 +3514,59 @@ body.dialog-offen {
     line-height: 1.4;
 }
 
+/*
+ * DIE SCHWEBENDE BESCHRIFTUNG (seit v0.114): Sie steht im leeren Feld und
+ * wandert bei Eingabe oder Fokus klein an den oberen Rand — `dialog.js`
+ * setzt `dialog-feld-gefuellt`, sobald etwas im Feld steht.
+ */
+.dialog-feld-halter {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.dialog-feld-halter .dialog-feld {
+    margin-bottom: 0;
+}
+
+.dialog-feld-marke {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--schrift-leise);
+    pointer-events: none;
+    padding: 0 4px;
+}
+
+.dialog-feld-halter:focus-within .dialog-feld-marke,
+.dialog-feld-gefuellt .dialog-feld-marke {
+    top: 0;
+    font-size: 0.72rem;
+    color: var(--haupt);
+    background: var(--karte);
+}
+
+/*
+ * DIE KURZMELDUNG (seit v0.114): kleine „hat geklappt"-Meldung am unteren
+ * Rand, geht von selbst wieder (`DIALOG.kurzmeldung`). Dunkel auf hell und
+ * umgekehrt — sie soll sich abheben, aber nichts verdecken.
+ */
+.kurzmeldung {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    background: var(--schrift);
+    color: var(--karte);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    z-index: var(--ebene-dialog);
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
+}
+
 /* PIN-Eingabe: wenige Ziffern, groß und gut lesbar. */
 .dialog-feld-zahlen {
     font-size: 1.6rem;
@@ -3635,6 +3688,15 @@ body.dialog-offen {
 
         /* Der Inhalt läuft nicht unter dem Dock hindurch. */
         padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Die Kurzmeldung schwebt über dem Dock, nicht dahinter. */
+    .kurzmeldung {
+        bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.runde-offen .kurzmeldung {
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
 
     /* Im Runden-Fenster gibt es kein Dock und keinen Kopf — der ganze
@@ -3873,6 +3935,54 @@ body.dialog-offen {
     /* Der frisch geöffnete Tab-Inhalt steigt kurz ein. */
     .tab-bereich-zeigt {
         animation: bereich-auf 0.18s ease-out;
+    }
+
+    /*
+     * AUFKLAPPEN GLEITET (seit v0.114, Bündel X5): Der Zug-Verlauf, die
+     * Bibliothekseinträge und die Regel-Kapitel (alles `details`-Elemente)
+     * öffnen und schliessen weich statt schlagartig. Browser ohne
+     * `interpolate-size` klappen einfach hart wie bisher — kein Schaden.
+     */
+    :root {
+        interpolate-size: allow-keywords;
+    }
+
+    ::details-content {
+        transition: height 0.25s ease, content-visibility 0.25s allow-discrete;
+        height: 0;
+        overflow: clip;
+    }
+
+    [open]::details-content {
+        height: auto;
+    }
+
+    /* Die Kurzmeldung steigt kurz auf und blendet am Ende aus. */
+    .kurzmeldung {
+        animation: kurzmeldung-auf 0.2s ease-out;
+    }
+
+    @keyframes kurzmeldung-auf {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(10px);
+        }
+    }
+
+    .kurzmeldung-geht {
+        animation: kurzmeldung-zu 0.25s ease-in forwards;
+    }
+
+    @keyframes kurzmeldung-zu {
+        to {
+            opacity: 0;
+            transform: translateX(-50%) translateY(6px);
+        }
+    }
+
+    /* Die schwebende Beschriftung wandert weich nach oben. */
+    .dialog-feld-marke {
+        transition: top 0.15s ease, font-size 0.15s ease, color 0.15s ease;
     }
 
     @keyframes bereich-auf {

@@ -465,8 +465,9 @@ const RANGLISTE = {
 
             const punkteZelle = document.createElement("td");
             punkteZelle.className = "ergebnis-punkte";
-            punkteZelle.appendChild(RANGLISTE._element("span", "punkte-zahl",
-                String(eintrag.gesamt)));
+            const punkteEl = RANGLISTE._element("span", "punkte-zahl");
+            RANGLISTE._zahlSetzen(punkteEl, eintrag.id, eintrag.gesamt);
+            punkteZelle.appendChild(punkteEl);
             zeile.appendChild(punkteZelle);
 
             koerper.appendChild(zeile);
@@ -512,8 +513,9 @@ const RANGLISTE = {
         const summen = RANGLISTE._element("section", "karte karte-ergebnis");
         const summenKopf = RANGLISTE._element("div", "karte-kopf");
         summenKopf.appendChild(RANGLISTE._element("h3", "", "Punkte"));
-        summenKopf.appendChild(RANGLISTE._element("span", "punkte-zahl",
-            String(person.gesamt)));
+        const summeEl = RANGLISTE._element("span", "punkte-zahl");
+        RANGLISTE._zahlSetzen(summeEl, "profil-" + person.id, person.gesamt);
+        summenKopf.appendChild(summeEl);
         summen.appendChild(summenKopf);
 
         const aufteilung = RANGLISTE._element("div", "profil-summen");
@@ -749,6 +751,45 @@ const RANGLISTE = {
             element.textContent = text;
         }
         return element;
+    },
+
+    /* Was zuletzt angezeigt wurde, je Zeile — damit `_zahlSetzen` weiss,
+       WOHER es zählen soll. Kein Spielstand, nur Anzeige-Gedächtnis. */
+    _punkteVorher: {},
+
+    /*
+     * ROLLENDE ZAHLEN (seit v0.114, ROADMAP Bündel X3): Ändert sich eine
+     * Punktzahl, zählt die Anzeige sichtbar von der alten zur neuen, statt
+     * hart umzuspringen. Beim ersten Zeichnen, ohne Änderung, ohne Browser-
+     * Taktgeber oder bei „weniger Bewegung" steht die Zahl sofort da —
+     * die Animation ist reine Zugabe, nie Voraussetzung.
+     */
+    _zahlSetzen(element, schluessel, neu) {
+        const alt = RANGLISTE._punkteVorher[schluessel];
+        RANGLISTE._punkteVorher[schluessel] = neu;
+
+        const darf = (typeof window !== "undefined")
+            && (typeof window.requestAnimationFrame === "function")
+            && (typeof window.matchMedia === "function")
+            && window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+
+        if (!darf || alt === undefined || alt === neu) {
+            element.textContent = String(neu);
+            return;
+        }
+
+        const dauer = 600;
+        const start = Date.now();
+        const schritt = () => {
+            const anteil = Math.min(1, (Date.now() - start) / dauer);
+            /* Erst schnell, dann auslaufend — wie ein Zählwerk. */
+            const weich = 1 - Math.pow(1 - anteil, 3);
+            element.textContent = String(Math.round(alt + (neu - alt) * weich));
+            if (anteil < 1) {
+                window.requestAnimationFrame(schritt);
+            }
+        };
+        window.requestAnimationFrame(schritt);
     }
 };
 

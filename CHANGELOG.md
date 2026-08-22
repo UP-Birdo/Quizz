@@ -3,6 +3,31 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.114.0 — 2026-08-22
+
+**Vier kleine UI-Verbesserungen aus dem Watermelon-Bündel (Etappen X2 bis
+X5).**
+
+- **Kurzmeldung statt Wegklick-Fenster:** Reine „hat geklappt"-Meldungen
+  („PIN geändert", „12 Wörter hinzugefügt") erscheinen jetzt als kleine
+  Meldung am unteren Rand und verschwinden von selbst. Alles, was man lesen
+  muss (Fehler, Erklärungen), bleibt ein Fenster.
+
+- **Punkte zählen sichtbar hoch:** Ändert sich in der Rangliste eine
+  Punktzahl, rollt die Anzeige von der alten zur neuen Zahl, statt hart
+  umzuspringen.
+
+- **Eingabefelder mit schwebender Beschriftung:** In Eingabe-Fenstern steht
+  die Beschriftung im leeren Feld und wandert beim Tippen klein an den
+  oberen Rand — sie verschwindet nicht mehr einfach.
+
+- **Weiches Aufklappen überall:** Zug-Verlauf, Fähigkeiten-Bibliothek und
+  Regel-Kapitel gleiten beim Öffnen und Schliessen, statt aufzuschnappen
+  (auf älteren Browsern klappen sie einfach wie bisher).
+
+Wie immer gilt: Wer am Gerät „weniger Bewegung" eingestellt hat, bekommt
+keine der Animationen.
+
 ## v0.113.0 — 2026-08-22
 
 **Am Handy sitzen die Tabs jetzt unten — und eine offene Runde ist ein

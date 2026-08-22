@@ -105,6 +105,40 @@ const DIALOG = {
     },
 
     /*
+     * DIE KURZMELDUNG (seit v0.114, ROADMAP Bündel X2): eine kleine Meldung
+     * am unteren Rand, die von selbst wieder geht — für reine „hat
+     * geklappt"-Rückmeldungen, die niemand wegklicken soll. Alles, was der
+     * Nutzer LESEN muss (Fehler, Erklärungen), bleibt bei `DIALOG.hinweis`.
+     */
+    kurzmeldung(text) {
+        if (typeof document === "undefined" || !document.body) {
+            return;
+        }
+
+        /* Immer nur eine: Eine neue Meldung löst die alte ab. */
+        const alte = document.body.querySelector
+            ? document.body.querySelector(".kurzmeldung") : null;
+        if (alte && alte.parentNode) {
+            alte.parentNode.removeChild(alte);
+        }
+
+        const meldung = document.createElement("div");
+        meldung.className = "kurzmeldung";
+        meldung.setAttribute("role", "status");
+        meldung.textContent = text;
+        document.body.appendChild(meldung);
+
+        setTimeout(() => {
+            meldung.classList.add("kurzmeldung-geht");
+            setTimeout(() => {
+                if (meldung.parentNode) {
+                    meldung.parentNode.removeChild(meldung);
+                }
+            }, 250);
+        }, 2200);
+    },
+
+    /*
      * Abfrage eines kurzen Textes (z. B. des eigenen Namens).
      * Liefert den eingegebenen Text oder null bei Abbruch.
      * Mit `abbrechbar = false` gibt es keinen Abbrechen-Knopf — für die Frage
@@ -276,7 +310,38 @@ const DIALOG = {
                     feld.type = "text";
                 }
 
-                kasten.appendChild(feld);
+                /*
+                 * DIE SCHWEBENDE BESCHRIFTUNG (seit v0.114, ROADMAP Bündel
+                 * X4): Bei einzeiligen Textfeldern steht die Beschriftung IM
+                 * leeren Feld und wandert beim Tippen klein an den oberen
+                 * Rand — statt eines Platzhalters, der beim ersten Zeichen
+                 * verschwindet. Ziffernfelder (PIN) und mehrzeilige Felder
+                 * bleiben, wie sie sind.
+                 */
+                const schwebend = !langerText && !vorgabe.eingabe.nurZiffern
+                    && (vorgabe.eingabe.platzhalter || "") !== "";
+
+                if (schwebend) {
+                    const halter = document.createElement("div");
+                    halter.className = "dialog-feld-halter";
+
+                    const marke = document.createElement("span");
+                    marke.className = "dialog-feld-marke";
+                    marke.textContent = vorgabe.eingabe.platzhalter;
+                    marke.setAttribute("aria-hidden", "true");
+
+                    feld.placeholder = "";
+                    const fuellstand = () => halter.classList.toggle(
+                        "dialog-feld-gefuellt", feld.value !== "");
+                    feld.addEventListener("input", fuellstand);
+                    fuellstand();
+
+                    halter.appendChild(feld);
+                    halter.appendChild(marke);
+                    kasten.appendChild(halter);
+                } else {
+                    kasten.appendChild(feld);
+                }
             }
 
             const leiste = document.createElement("div");

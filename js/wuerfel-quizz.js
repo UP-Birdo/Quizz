@@ -1148,10 +1148,8 @@ const WUERFEL_QUIZZ = {
             true
         );
 
-        await DIALOG.hinweis(
-            "PIN geändert",
-            "Ab sofort meldest du dich auf anderen Geräten mit der neuen PIN an."
-        );
+        /* Reine Erfolgs-Rückmeldung — Kurzmeldung statt Dialog (v0.114). */
+        DIALOG.kurzmeldung("PIN geändert");
     },
 
     async austreten() {

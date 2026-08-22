@@ -548,11 +548,15 @@ const IMPOSTER = {
         });
 
         if (geschrieben && bericht) {
-            await DIALOG.hinweis("Eingefügt",
-                bericht.hinzugefuegt + " Wörter hinzugefügt"
-                + (bericht.uebersprungen > 0
-                    ? ", " + bericht.uebersprungen + " übersprungen (schon vorhanden)."
-                    : "."));
+            /* Glatter Erfolg als Kurzmeldung (v0.114); sobald etwas
+               übersprungen wurde, gibt es etwas zu LESEN — dann Dialog. */
+            if (bericht.uebersprungen > 0) {
+                await DIALOG.hinweis("Eingefügt",
+                    bericht.hinzugefuegt + " Wörter hinzugefügt, "
+                    + bericht.uebersprungen + " übersprungen (schon vorhanden).");
+            } else {
+                DIALOG.kurzmeldung(bericht.hinzugefuegt + " Wörter hinzugefügt");
+            }
         }
     },
 

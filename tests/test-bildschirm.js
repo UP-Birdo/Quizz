@@ -319,6 +319,9 @@ umgebung.DIALOG = {
     eingabe: async () => null,
     liste: async () => null,
 
+    /* Die Kurzmeldung (v0.114) ist reine Anzeige — im Test ein Nichtstuer. */
+    kurzmeldung() { },
+
     /* Wie `frage: () => true`: Die Zwei-Schritt-Bestätigung (v0.112) sagt im
        Test sofort zu — ein Klick führt aus. Die echte Mechanik (erster Druck
        fragt, zweiter führt aus) prüft ein eigener Test weiter unten gegen
