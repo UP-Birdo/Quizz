@@ -269,7 +269,12 @@ body {
     font: inherit;
     color: var(--schrift-leise);
     cursor: pointer;
-    border-bottom: 3px solid transparent;
+    border-radius: 999px;
+
+    /* Der Text liegt ÜBER der Pille (`.tab-marker`), die als Geschwister-
+       Element hinter ihm gleitet. */
+    position: relative;
+    z-index: 1;
 }
 
 .tab-knopf:hover {
@@ -277,21 +282,22 @@ body {
 }
 
 /*
- * Der Strich unter dem aktiven Tab ist seit v0.107 ein EIGENES Element
- * (`tabs.js` setzt Lage und Breite) und gleitet beim Wechsel dorthin. Der
- * Rahmen am Knopf bleibt als unsichtbarer Platzhalter stehen, damit sich die
- * Höhe der Leiste nicht ändert.
+ * Die Markierung des aktiven Tabs ist seit v0.107 ein EIGENES Element
+ * (`tabs.js` setzt Lage und Grösse) und gleitet beim Wechsel dorthin. Seit
+ * v0.111 ist sie eine PILLE hinter dem Knopf statt eines Strichs darunter —
+ * dasselbe Muster wie die Segment-Reihen beim Anlegen (`.reihen-pille`),
+ * nach dem Vorbild der Komponenten-Galerien.
  */
 .tab-marker {
     position: absolute;
-    height: 3px;
     background: var(--haupt);
-    border-radius: 2px;
+    border-radius: 999px;
     pointer-events: none;
+    z-index: 0;
 }
 
 .tab-knopf-aktiv {
-    color: var(--haupt);
+    color: var(--haupt-schrift);
     font-weight: 600;
 }
 
@@ -3784,9 +3790,30 @@ body.dialog-offen {
         animation: none;
     }
 
-    /* Der Strich unter den Tabs gleitet zum neuen Tab (`tabs.js`). */
+    /* Die Pille hinter dem aktiven Tab gleitet zum neuen Tab (`tabs.js`). */
     .tab-marker-weich {
-        transition: left 0.25s ease, top 0.25s ease, width 0.25s ease;
+        transition: left 0.25s ease, top 0.25s ease, width 0.25s ease,
+            height 0.25s ease;
+    }
+
+    /*
+     * Der Status-Punkt im Kopf atmet, solange die App lädt oder schreibt —
+     * so sieht man auf einen Blick, dass gerade etwas unterwegs ist. Der
+     * Farbwechsel zwischen den Zuständen blendet weich über.
+     */
+    .status-punkt {
+        transition: background-color 0.3s ease;
+    }
+
+    .status[data-status="laedt"] .status-punkt,
+    .status[data-status="schreibt"] .status-punkt {
+        animation: status-atmen 1.2s ease-in-out infinite;
+    }
+
+    @keyframes status-atmen {
+        50% {
+            opacity: 0.35;
+        }
     }
 
     /* Der frisch geöffnete Tab-Inhalt steigt kurz ein. */

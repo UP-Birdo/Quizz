@@ -3,6 +3,29 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.111.0 — 2026-08-22
+
+**Die Spiele-Tabs oben tragen jetzt dieselbe gleitende Pille wie die
+Segment-Schalter beim Anlegen.**
+
+- **Pille statt Strich:** Der aktive Tab (Team Schach, Imposter, Würfel
+  Quizz, Rangliste) wird nicht mehr durch einen Strich darunter markiert,
+  sondern durch eine blaue Pille hinter der Beschriftung — sie gleitet beim
+  Wechsel zum neuen Tab. Damit sieht die oberste Leiste genauso aus wie die
+  Segment-Reihen im Anlege-Bildschirm: EIN Muster für die ganze App.
+  (Vorbild: die Tab-Bausteine moderner Komponenten-Galerien, gebaut wie
+  immer mit Bordmitteln — kein fremder Code.)
+
+- **Der Status-Punkt im Kopf atmet,** solange die App lädt oder schreibt —
+  man sieht jetzt auf einen Blick, dass gerade etwas unterwegs ist. Steht
+  alles, steht auch der Punkt. Wie alle Bewegung der App entfällt das
+  automatisch, wenn das Gerät „weniger Bewegung" eingestellt hat.
+
+Hintergrund dieser Runde: Die Komponenten-Bibliothek ui.watermelon.sh wurde
+komplett gesichtet (319 Bausteine) und mit der App abgeglichen. Was sich
+davon noch lohnt, steht geordnet als Bündel X in der `ROADMAP.md` — diese
+Runde ist Etappe 1.
+
 ## v0.110.0 — 2026-08-22
 
 **Der Anlege-Bildschirm im Stil moderner App-Einstellungen — und nur noch EIN

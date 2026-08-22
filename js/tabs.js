@@ -27,7 +27,8 @@ const TABS = {
     inhaltEl: null,
     aufgebaut: {},
 
-    /* Der gleitende Strich unter dem aktiven Tab (seit v0.107). */
+    /* Die gleitende Markierung des aktiven Tabs (seit v0.107; seit v0.111
+       eine Pille hinter dem Knopf statt eines Strichs darunter). */
     markerEl: null,
 
     registrieren(tab) {
@@ -52,10 +53,11 @@ const TABS = {
         }
 
         /*
-         * DER STRICH UNTER DEM AKTIVEN TAB IST EIN EIGENES ELEMENT (seit
-         * v0.107): Er GLEITET beim Wechsel zum neuen Tab, statt hart
-         * umzuspringen. Ein Rahmen am Knopf selbst kann das nicht — er hängt
-         * am Element und kennt keine Position. Bei Grössenänderung des
+         * DIE MARKIERUNG DES AKTIVEN TABS IST EIN EIGENES ELEMENT (seit
+         * v0.107, seit v0.111 eine Pille hinter dem Knopf statt eines
+         * Strichs darunter): Sie GLEITET beim Wechsel zum neuen Tab, statt
+         * hart umzuspringen. Ein Rahmen am Knopf selbst kann das nicht — er
+         * hängt am Element und kennt keine Position. Bei Grössenänderung des
          * Fensters wird nachgemessen, ohne Gleiten.
          */
         TABS.markerEl = document.createElement("span");
@@ -73,8 +75,10 @@ const TABS = {
     },
 
     /*
-     * Schiebt den Strich unter den aktiven Knopf. Gemessen wird die echte
-     * Lage im Leisten-Element — damit stimmt es auch, wenn die Leiste auf
+     * Schiebt die Pille hinter den aktiven Knopf (seit v0.111 eine volle
+     * Fläche statt des Strichs darunter — dasselbe Muster wie die
+     * Segment-Reihen beim Anlegen). Gemessen wird die echte Lage im
+     * Leisten-Element — damit stimmt es auch, wenn die Leiste auf
      * schmalen Geräten umbricht (`offsetTop`). `weich = false` setzt ohne
      * Gleiten: beim ersten Zeichnen und nach Fenster-Grössenänderung.
      */
@@ -88,8 +92,9 @@ const TABS = {
 
         TABS.markerEl.classList.toggle("tab-marker-weich", weich === true);
         TABS.markerEl.style.left = aktiv.offsetLeft + "px";
-        TABS.markerEl.style.top = (aktiv.offsetTop + aktiv.offsetHeight - 3) + "px";
+        TABS.markerEl.style.top = (aktiv.offsetTop + 6) + "px";
         TABS.markerEl.style.width = aktiv.offsetWidth + "px";
+        TABS.markerEl.style.height = (aktiv.offsetHeight - 12) + "px";
     },
 
     wechseln(id) {
