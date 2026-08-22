@@ -719,6 +719,17 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: -1,
+
+            /* Drei Lootboxen im Bild (seit v0.118, Nutzer-Zuruf): Im
+               Vorher-Bild sind sie grau (die Partie verbirgt die
+               Seltenheit — `regeln`), im Nachher-Bild farbig. */
+            boxen: [
+                { feld: 7, stufe: "gruen" },
+                { feld: 16, stufe: "blau" },
+                { feld: 21, stufe: "lila" }
+            ],
+            regeln: { seltenheitZeigen: false },
+
             vorher: "Diese Partie verbirgt die Seltenheit: Jede liegende "
                 + "Lootbox "
                 + "sieht aus wie jede andere, man weiss nie, ob sich das "
@@ -730,10 +741,10 @@ const SCHACH_VORSCHAU = {
         },
 
         /*
-         * Verstecken (seit v0.98) — wie das Enttarnen ein Bild, das die
-         * WIRKUNG nicht zeigen kann: Sie liegt in der Ansicht des GEGNERS, und
-         * gezeichnet wird immer die eigene. Der Text trägt sie deshalb allein;
-         * ein erfundenes Bild wäre irreführender als keines.
+         * Verstecken (seit v0.98) — die Wirkung liegt in der Ansicht des
+         * GEGNERS. Seit v0.118 (Nutzer-Zuruf) zeigt das Nachher-Bild genau
+         * DIESE Sicht: farbige Lootboxen vorher, graue nachher — der Text
+         * sagt dazu, dass es die Sicht des Gegners ist.
          */
         verstecken: {
             brett: [
@@ -746,13 +757,20 @@ const SCHACH_VORSCHAU = {
             ],
             figur: -1,
             ziel: -1,
+
+            boxen: [
+                { feld: 7, stufe: "gruen" },
+                { feld: 16, stufe: "blau" },
+                { feld: 21, stufe: "lila" }
+            ],
+
             vorher: "Diese Partie zeigt die Seltenheit: Jeder sieht an der "
                 + "Farbe, "
                 + "welche Lootbox sich lohnt — und der Gegner rechnet damit.",
-            nachher: "Versteckt: Für 6 Halbzüge sieht der Gegner nur noch "
-                + "graue "
-                + "Lootboxen und muss raten, welche etwas taugt. Du siehst die "
-                + "Farben weiter. Du bleibst am Zug."
+            nachher: "Versteckt: So sieht der GEGNER das Brett jetzt — für "
+                + "6 Halbzüge nur noch graue Lootboxen, er muss raten, welche "
+                + "etwas taugt. Du selbst siehst die Farben weiter. Du bleibst "
+                + "am Zug."
         },
 
         dieb: {
@@ -1080,9 +1098,19 @@ const SCHACH_VORSCHAU = {
             teams: { weiss: [SCHACH_VORSCHAU.SPIELER], schwarz: ["id-gegner"] },
             bereit: { weiss: true, schwarz: true },
             bonusFassung: 2,
-            bonus: Number.isInteger(beispiel.wuerfel)
-                ? [{ feld: beispiel.wuerfel, art: beispiel.art || "", pech: true }]
-                : [],
+
+            /* `boxen` legt mehrere Lootboxen frei ins Bild (seit v0.118,
+               für Enttarnen/Verstecken: `[{ feld, stufe }]`); `wuerfel` ist
+               der ältere Weg für den EINEN Unglückswürfel. */
+            bonus: Array.isArray(beispiel.boxen)
+                ? beispiel.boxen
+                : (Number.isInteger(beispiel.wuerfel)
+                    ? [{ feld: beispiel.wuerfel, art: beispiel.art || "", pech: true }]
+                    : []),
+
+            /* Wahlfreie Regel-Abweichung des Beispiels (seit v0.118) —
+               Enttarnen spielt in einer Partie OHNE sichtbare Seltenheit. */
+            regeln: beispiel.regeln,
             verloren: {
                 weiss: Array.isArray(beispiel.verloren) ? beispiel.verloren : [],
                 schwarz: []
@@ -1524,6 +1552,11 @@ const SCHACH_VORSCHAU = {
             runde: gezogen,
             marken: [ziel],
             wege: [{ von: figur, nach: ziel }],
+
+            /* Die Hand liegt auf dem Ziel — dorthin tippt man (seit v0.118:
+               JEDES Bild, in dem der Betrachter tippt, zeigt die Hand). */
+            tipp: ziel,
+
             text: "So sieht der Zug aus: Die Figur geht von "
                 + name(figur) + " nach " + name(ziel) + "."
         });
@@ -1557,6 +1590,10 @@ const SCHACH_VORSCHAU = {
             runde: gezogen,
             marken: [beispiel.nachspiel[1]],
             wege: [{ von: beispiel.nachspiel[0], nach: beispiel.nachspiel[1] }],
+
+            /* Auch hier tippt der Betrachter — die Hand aufs Ziel (v0.118). */
+            tipp: beispiel.nachspiel[1],
+
             text: beispiel.nachsatz || ("Dein Zug bleibt dir: Die Figur geht "
                 + "von "
                 + name(beispiel.nachspiel[0]) + " nach "
@@ -1600,6 +1637,12 @@ const SCHACH_VORSCHAU = {
             runde: gezogen,
             marken: [beispiel.nachschlag[1]],
             wege: [{ von: beispiel.nachschlag[0], nach: beispiel.nachschlag[1] }],
+
+            /* Der Schlag ist ein Tipp auf die gegnerische Figur — die Hand
+               liegt darauf (v0.118, Nutzer-Zuruf: „beim Schlagen sieht man
+               den Finger nicht"). */
+            tipp: beispiel.nachschlag[1],
+
             text: beispiel.nachschlagSatz || ("Und eine Runde später: von "
                 + name(beispiel.nachschlag[0]) + " nach "
                 + name(beispiel.nachschlag[1]) + ".")

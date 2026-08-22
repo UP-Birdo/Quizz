@@ -172,7 +172,10 @@ pruefe("Faehigkeiten mit Zielfeld zeigen den Handgriff als eigenen Schritt", () 
         const zielSchritt = schritte.filter((schritt) => schritt.tipp >= 0);
 
         wahr(schritte.length >= 4, art + ": mindestens vier Schritte");
-        gleich(zielSchritt.length, 1, art + ": genau ein Handgriff aufs Brett");
+
+        /* Seit v0.118 duerfen WEITERE Bilder eine Hand tragen (Nachspiel,
+           Nachschlag) — das ERSTE Tipp-Bild bleibt die Zielwahl. */
+        wahr(zielSchritt.length >= 1, art + ": mindestens ein Handgriff aufs Brett");
         gleich(zielSchritt[0].marken.length, 1, art + ": genau ein angetipptes Feld");
         gleich(zielSchritt[0].marken[0], beispiel.ziel,
             art + ": und zwar das aus dem Beispiel");
@@ -360,18 +363,23 @@ pruefe("Wo gezogen wird, sind es vier Schritte", () => {
         const beispiel = SCHACH_VORSCHAU.beispielVon(art);
         const mitFinger = schritte.filter((schritt) => schritt.tipp >= 0);
 
-        gleich(mitFinger.length, 2, art + ": zwei Tipper aufs Brett");
+        /* Seit v0.118 duerfen dahinter weitere Tipp-Bilder folgen
+           (Nachspiel, Nachschlag) — die ersten zwei bleiben Figur und Ziel. */
+        wahr(mitFinger.length >= 2, art + ": zwei Tipper aufs Brett");
         gleich(mitFinger[0].tipp, beispiel.zug[0], art + ": erst die Figur antippen");
         gleich(mitFinger[1].tipp, beispiel.zug[1], art + ": dann ihr Ziel");
         wahr(mitFinger[0].ziele.length > 0, art + ": die Zugpunkte sind dabei");
     }
 });
 
-pruefe("Jeder Handgriff traegt einen Fingerabdruck", () => {
+pruefe("Jeder Handgriff traegt die Hand (v0.118)", () => {
     /*
-     * Der Fingerabdruck beantwortet die Frage, die Bilder sonst offen lassen:
-     * WO muss ich hindrücken? Er gehört auf jeden Schritt, in dem getippt wird
-     * — und auf keinen anderen.
+     * Die Hand beantwortet die Frage, die Bilder sonst offen lassen: WO muss
+     * ich hindrücken? Seit v0.118 (Nutzer-Zuruf) liegt sie auf JEDEM Bild,
+     * in dem der Betrachter tippt — auch auf dem vorgeführten Zug am Ende
+     * (Sprung, Nachspiel, Nachschlag) und damit auch auf der gegnerischen
+     * Figur beim Schlagen. Nur auf reinen Anschauungs-Bildern (Ausgangslage,
+     * Wirkung, Züge des Gegners) fehlt sie.
      */
     for (const art of alleArten) {
         const schritte = SCHACH_VORSCHAU.schritte(art);
@@ -379,18 +387,24 @@ pruefe("Jeder Handgriff traegt einen Fingerabdruck", () => {
         const mitFinger = schritte.filter((schritt) => schritt.tipp >= 0);
 
         if (Number.isInteger(beispiel.ziel) && beispiel.ziel >= 0) {
-            gleich(mitFinger.length, 1, art + ": ein Tipper (das Zielfeld)");
-            gleich(mitFinger[0].tipp, beispiel.ziel, art + ": auf dem Zielfeld");
+            wahr(mitFinger.length >= 1, art + ": das Zielfeld hat seine Hand");
+            gleich(mitFinger[0].tipp, beispiel.ziel, art + ": zuerst auf dem Zielfeld");
         } else if (beispiel.zug) {
-            gleich(mitFinger.length, 2, art + ": zwei Tipper (Figur und Ziel)");
-        } else {
-            gleich(mitFinger.length, 0, art + ": hier wird das Brett nicht getippt");
+            wahr(mitFinger.length >= 2, art + ": Figur und Ziel haben ihre Hand");
+            gleich(mitFinger[0].tipp, beispiel.zug[0], art + ": erst die Figur");
+            gleich(mitFinger[1].tipp, beispiel.zug[1], art + ": dann das Ziel");
         }
 
-        /* Der erste und der letzte Schritt zeigen nie einen Finger — dort ist
-           nichts zu drücken, sondern etwas zu sehen. */
+        /* Wo eine Hand auf einem Zug-Bild liegt, liegt sie auf dem ZIEL des
+           gezeigten Wegs — beim Schlagen also auf der gegnerischen Figur. */
+        for (const schritt of mitFinger) {
+            if (schritt.wege.length > 0) {
+                gleich(schritt.tipp, schritt.wege[schritt.wege.length - 1].nach,
+                    art + ": die Hand liegt auf dem Ziel des gezeigten Zugs");
+            }
+        }
+
         gleich(schritte[0].tipp, -1, art + ": kein Finger auf der Ausgangsstellung");
-        gleich(schritte[schritte.length - 1].tipp, -1, art + ": keiner auf der Wirkung");
     }
 });
 

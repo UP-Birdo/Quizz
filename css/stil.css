@@ -3397,13 +3397,8 @@ body.runde-offen .tab-leiste {
     stroke-linejoin: round;
 }
 
-/* Die zwei Funken über der Fingerkuppe: der Tipper. */
-.anleitung-hand-funken {
-    fill: none;
-    stroke: var(--ziel-rand);
-    stroke-width: 1.4;
-    stroke-linecap: round;
-}
+/* Die Funken-Bögen über der Kuppe sind seit 22.08. wieder raus (Nutzer:
+   „der Strich vorne weg") — die Tipp-Bewegung der Hand sagt schon alles. */
 
 /* ------------------------------------------------------------------ *
  * Der Konfettiregen zum Sieg (seit v0.116). Erzeugt in

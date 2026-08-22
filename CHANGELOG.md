@@ -3,6 +3,26 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.118.0 — 2026-08-22
+
+**Bessere Anleitungen: Lootboxen bei Enttarnen und Verstecken, die Hand auf
+jedem Tipp-Ziel — und ohne den Strich über der Kuppe.** (Deine Zurufe vom
+22.08.)
+
+- **Enttarnen und Verstecken zeigen jetzt Lootboxen im Bild:** Drei Boxen
+  (grün, blau, lila) liegen auf dem Beispielbrett. Beim Enttarnen sind sie
+  vorher grau und tragen nachher ihre Farbe; beim Verstecken zeigt das
+  Nachher-Bild die Sicht des Gegners — nur noch graue Boxen. Vorher standen
+  beide Anleitungen ohne eine einzige Box da, obwohl sich alles um sie
+  dreht.
+
+- **Die tippende Hand liegt jetzt in JEDEM Bild, in dem man tippt** — auch
+  auf dem Zielfeld der Beispiel-Züge und auf der gegnerischen Figur beim
+  Schlagen. Vorher zeigten diese Bilder nur den Pfeil.
+
+- **Der Strich über der Fingerkuppe ist weg** — die Hand tippt ja sichtbar,
+  das reicht.
+
 ## v0.117.1 — 2026-08-22
 
 **Nachbesserung: Das Hüpfen beim Nudelholz-Schub ist weg.** Die geschobenen

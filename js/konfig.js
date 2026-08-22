@@ -17,7 +17,7 @@ const KONFIG = {
        Entwicklung", 1.0.0 erst bei erfuellten Fertig-Kriterien der ROADMAP).
        Wird im Kopf angezeigt und muss zu CHANGELOG.md passen.
        Umstellung 08/2026: aus v4.0 wurde v0.40.0 (alte v3.7 = 0.37). */
-    APP_VERSION: "0.117.1",
+    APP_VERSION: "0.118.0",
 
     speicher: {
 

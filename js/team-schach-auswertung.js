@@ -1171,9 +1171,28 @@ Object.assign(TEAM_SCHACH, {
 
             const wuerfel = runde.bonus.find((eintrag) => eintrag.feld === feld);
             if (wuerfel) {
+                /*
+                 * DIE SICHT ZÄHLT AUCH IM BEISPIEL (seit v0.118, für
+                 * Enttarnen und Verstecken): Verbirgt die Beispiel-Partie
+                 * die Seltenheit, sind die Würfel grau; das Enttarnen macht
+                 * sie für den Betrachter farbig. Beim Verstecken zeigt das
+                 * Nachher-Bild bewusst die Sicht des BETROFFENEN — deshalb
+                 * fragt `versteckt` nur, OB verborgen ist, nicht für wen
+                 * (der Text des Bildes sagt, wessen Sicht das ist).
+                 */
+                const versteckt = !!runde.stand.verstecktFarbe
+                    && runde.zugZaehler < runde.stand.verstecktBis;
+                const enttarnt = (runde.stand.enttarntFarbe === SCHACH_VORSCHAU.FARBE)
+                    && runde.zugZaehler < runde.stand.enttarntBis;
+                const farbeZeigen = ((runde.regeln.seltenheitZeigen !== false)
+                    && !versteckt) || enttarnt;
+
                 zelle.classList.add("feld-bonus");
                 zelle.appendChild(TEAM_SCHACH._wuerfelBauen(
-                    SCHACH_RUNDE.bonusStufe(wuerfel), wuerfel.pech));
+                    farbeZeigen
+                        ? SCHACH_RUNDE.bonusStufe(wuerfel)
+                        : SCHACH_VARIANTEN.STUFE_UNBEKANNT,
+                    wuerfel.pech));
             }
 
             /* Ränder wie am echten Brett: nur aussen, damit die drei Felder
@@ -1354,8 +1373,8 @@ Object.assign(TEAM_SCHACH, {
     /*
      * DIE TIPPENDE HAND — sie sagt: Hier tippst du hin. Seit v0.116 ersetzt
      * sie auf Nutzer-Wunsch (22.08.) den Fingerabdruck von v0.45: eine Hand
-     * mit ausgestrecktem Zeigefinger, darüber zwei Funken für den Tipper;
-     * im Takt der Anleitung tippt sie sichtbar nach unten (CSS).
+     * mit ausgestrecktem Zeigefinger, die im Takt der Anleitung sichtbar
+     * nach unten tippt (CSS).
      *
      * GEZEICHNET, NICHT EINGEFÜGT. Dieselbe Entscheidung wie beim Würfel
      * (siehe `docs\entscheidungen\entschieden.md`, „Warum der Würfel gezeichnet
@@ -1371,24 +1390,15 @@ Object.assign(TEAM_SCHACH, {
         + "A 3.5 3.5 0 0 1 14.5 20.5 L 12.2 20.5 A 4 4 0 0 1 9.1 19 "
         + "L 6.2 15.4 A 1.5 1.5 0 0 1 8.4 13.4 Z",
 
-    /* Zwei Funken-Bögen über der Fingerkuppe: der Tipper. */
-    HAND_FUNKEN: [
-        "M 5.6 4.2 A 5.8 5.8 0 0 1 15.8 4.2",
-        "M 7.6 2.9 A 3.5 3.5 0 0 1 13.8 2.9"
-    ],
+    /* Die Funken-Bögen über der Kuppe sind seit dem Nutzer-Zuruf vom 22.08.
+       wieder raus („der Strich vorne weg") — die tippende Bewegung sagt
+       schon alles. */
 
     _fingerBauen() {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "anleitung-finger anleitung-hand");
         svg.setAttribute("viewBox", "0 0 24 24");
         svg.setAttribute("aria-hidden", "true");
-
-        for (const linie of TEAM_SCHACH.HAND_FUNKEN) {
-            const pfad = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            pfad.setAttribute("d", linie);
-            pfad.setAttribute("class", "anleitung-hand-funken");
-            svg.appendChild(pfad);
-        }
 
         const hand = document.createElementNS("http://www.w3.org/2000/svg", "path");
         hand.setAttribute("d", TEAM_SCHACH.HAND_FLAECHE);
