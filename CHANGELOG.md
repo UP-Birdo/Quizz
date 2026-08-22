@@ -3,6 +3,37 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.107.0 — 2026-08-22
+
+**Die App bewegt sich jetzt flüssig — überall, mit Bordmitteln.**
+
+Vorbild waren die Bewegungsmuster moderner Komponenten-Galerien; eingebaut ist
+alles ohne fremde Bibliothek, nur mit CSS-Übergängen und einer eingebauten
+Browser-Schnittstelle (View Transitions).
+
+- **Der Strich unter den Tabs gleitet** zum angetippten Tab, statt hart
+  umzuspringen — und der Inhalt des neuen Tabs blendet kurz ein.
+
+- **Die Markierung der Knopfreihen wandert.** Wer beim Anlegen eine andere
+  Figurenzahl, Lootbox-Menge, Item-Auswahl oder Brettform antippt, sieht die
+  farbige Markierung zum gedrückten Knopf gleiten; die Vorschau-Kacheln
+  blenden weich auf den neuen Stand über.
+
+- **Dialoge und Popups öffnen sanft** (der Kasten steigt kurz auf, der
+  Schleier blendet ein) und schliessen mit einem kurzen Ausblenden. Die
+  Einträge einer Auswahl-Liste treten kurz nacheinander ein.
+
+- **Knöpfe reagieren spürbar:** weicher Farbwechsel, ein kurzes Eindrücken
+  beim Tippen, die Spielart-Kacheln heben sich unter dem Zeiger leicht an.
+
+**Wer in den Systemeinstellungen weniger Bewegung wünscht, merkt nichts davon:**
+Alles Neue hängt an dieser Einstellung und bleibt dann aus — die App verhält
+sich exakt wie vorher. Auch ältere Browser ohne die Schnittstelle bekommen
+einfach das bisherige Verhalten.
+
+Tests: 1530 Prüfungen, 0 Fehler.
+
+
 ## v0.106.0 — 2026-08-21
 
 **Zweiter Durchgang: Jetzt sind ALLE Texte der App kürzer.**

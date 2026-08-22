@@ -47,6 +47,23 @@ registriert ihn, `TABS.starten(...)` zeichnet die Leiste und baut den Inhalt
 beim ersten Öffnen einmalig auf. Ein weiterer Tab kostet eine neue Datei und eine
 Zeile in `app.js`. Heute sind es drei: Würfel Quizz, Team Schach, Rangliste.
 
+## Bewegung (seit v0.107)
+
+Alles Gleiten und Blenden steht in EINEM Block am Ende der `stil.css`, hinter
+`@media (prefers-reduced-motion: no-preference)` — wer weniger Bewegung
+wünscht, bekommt die App ohne. Drei Mechanismen:
+
+- **CSS-Übergänge und -Animationen** für Knöpfe, Dialoge (`dialog-geht` beim
+  Schliessen, 100 ms über `DIALOG.schliessen`) und den Tab-Inhalt.
+- **Der Tab-Strich ist ein eigenes Element** (`TABS.markerEl`), das `tabs.js`
+  unter den aktiven Knopf misst — nur so kann er GLEITEN.
+- **`TEAM_SCHACH.weichZeichnen`** hüllt das Neuzeichnen des Anlege-Bildschirms
+  in `document.startViewTransition` (eingebaute Browser-Schnittstelle, keine
+  Bibliothek). Die aktiven Knöpfe der vier Reihen tragen je einen
+  `view-transition-name` — die Markierung wandert dadurch sichtbar. **Nur für
+  Nutzer-Aktionen**; die regelmässige Abfrage zeichnet hart, sonst blendete
+  jeder fremde Zug und zwei Übergänge brächen einander ab.
+
 ## Code-Konventionen
 
 - **Deutsch**, durchgehend: Bezeichner, Kommentare, sichtbare Texte.

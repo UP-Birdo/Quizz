@@ -97,7 +97,7 @@ Object.assign(TEAM_SCHACH, {
                 "knopf-klein form-knopf" + (aktiv ? " form-knopf-aktiv" : " knopf-still"),
                 () => {
                     TEAM_SCHACH.gewaehlteForm = form.id;
-                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    TEAM_SCHACH.weichZeichnen();
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
@@ -260,7 +260,7 @@ Object.assign(TEAM_SCHACH, {
                  * nichts: `neueRegeln` ist reiner Bildschirm-Zustand, die
                  * Ansicht baut sich aus ihm auf.
                  */
-                TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                TEAM_SCHACH.weichZeichnen();
             });
             zeile.appendChild(kasten);
 
@@ -336,7 +336,7 @@ Object.assign(TEAM_SCHACH, {
                 "knopf-klein mengen-knopf" + (aktiv ? " mengen-knopf-aktiv" : " knopf-still"),
                 () => {
                     TEAM_SCHACH.neueRegeln.lootboxMenge = menge.id;
-                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    TEAM_SCHACH.weichZeichnen();
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
@@ -492,7 +492,7 @@ Object.assign(TEAM_SCHACH, {
                 "knopf-klein vorrat-knopf" + (aktiv ? " vorrat-knopf-aktiv" : " knopf-still"),
                 () => {
                     TEAM_SCHACH.neueRegeln.itemVorrat = groesse.id;
-                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    TEAM_SCHACH.weichZeichnen();
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
@@ -593,7 +593,7 @@ Object.assign(TEAM_SCHACH, {
         DIALOG.hinweis("Welche Items kommen vor?",
             "Angehakt ist, was in dieser Partie vorkommen kann. Mindestens eins "
             + "bleibt stehen.",
-            halter).then(() => TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten));
+            halter).then(() => TEAM_SCHACH.weichZeichnen());
     },
 
     _itemAuswahlFuellen(halter) {
@@ -670,7 +670,7 @@ Object.assign(TEAM_SCHACH, {
                 "knopf-klein armee-knopf" + (aktiv ? " armee-knopf-aktiv" : " knopf-still"),
                 () => {
                     TEAM_SCHACH.neueRegeln.armeeStaerke = staerke.id;
-                    TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+                    TEAM_SCHACH.weichZeichnen();
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");

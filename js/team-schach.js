@@ -355,6 +355,38 @@ const TEAM_SCHACH = {
      * Zeichnen
      * ---------------------------------------------------------------- */
 
+    /*
+     * WEICH NEU ZEICHNEN (seit v0.107) — für Knopfdrücke im Anlege-Bildschirm.
+     *
+     * `document.startViewTransition` ist eine eingebaute Browser-Schnittstelle
+     * (keine Bibliothek): Sie macht ein Bild vom Bildschirm VOR dem Neuzeichnen
+     * und blendet weich zum Stand DANACH über. Elemente mit einem
+     * `view-transition-name` (die aktiven Knöpfe der Reihen, `stil.css`)
+     * wandern dabei sichtbar von der alten zur neuen Position — die Markierung
+     * gleitet zum gedrückten Knopf, statt hart umzuspringen.
+     *
+     * NUR FÜR NUTZER-AKTIONEN. Die regelmässige Abfrage ruft weiter das harte
+     * `zeichnen`: Ein fremder Zug soll einfach dastehen, nicht überblenden —
+     * und zwei überlappende Übergänge brechen einander ab.
+     *
+     * Ohne die Schnittstelle (ältere Browser, die Tests) oder mit
+     * eingeschalteter Bewegungs-Reduzierung wird hart gezeichnet — die App
+     * verhält sich exakt wie vor v0.107.
+     */
+    weichZeichnen() {
+        const malen = () => TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+
+        const ruhig = (typeof window !== "undefined" && window.matchMedia
+            && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+        if (ruhig || typeof document.startViewTransition !== "function") {
+            malen();
+            return;
+        }
+
+        document.startViewTransition(malen);
+    },
+
     zeichnen(tafel) {
         const wurzel = TEAM_SCHACH.wurzelEl;
         if (!wurzel) {

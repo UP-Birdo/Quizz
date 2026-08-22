@@ -27,6 +27,9 @@ const TABS = {
     inhaltEl: null,
     aufgebaut: {},
 
+    /* Der gleitende Strich unter dem aktiven Tab (seit v0.107). */
+    markerEl: null,
+
     registrieren(tab) {
         TABS.liste.push(tab);
     },
@@ -48,9 +51,45 @@ const TABS = {
             TABS.leisteEl.appendChild(knopf);
         }
 
+        /*
+         * DER STRICH UNTER DEM AKTIVEN TAB IST EIN EIGENES ELEMENT (seit
+         * v0.107): Er GLEITET beim Wechsel zum neuen Tab, statt hart
+         * umzuspringen. Ein Rahmen am Knopf selbst kann das nicht — er hängt
+         * am Element und kennt keine Position. Bei Grössenänderung des
+         * Fensters wird nachgemessen, ohne Gleiten.
+         */
+        TABS.markerEl = document.createElement("span");
+        TABS.markerEl.className = "tab-marker";
+        TABS.markerEl.setAttribute("aria-hidden", "true");
+        TABS.leisteEl.appendChild(TABS.markerEl);
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("resize", () => TABS._markerSetzen(false));
+        }
+
         if (TABS.liste.length > 0) {
             TABS.wechseln(TABS.liste[0].id);
         }
+    },
+
+    /*
+     * Schiebt den Strich unter den aktiven Knopf. Gemessen wird die echte
+     * Lage im Leisten-Element — damit stimmt es auch, wenn die Leiste auf
+     * schmalen Geräten umbricht (`offsetTop`). `weich = false` setzt ohne
+     * Gleiten: beim ersten Zeichnen und nach Fenster-Grössenänderung.
+     */
+    _markerSetzen(weich) {
+        const aktiv = TABS.leisteEl
+            ? TABS.leisteEl.querySelector(".tab-knopf-aktiv") : null;
+
+        if (!aktiv || !TABS.markerEl || typeof aktiv.offsetLeft !== "number") {
+            return;
+        }
+
+        TABS.markerEl.classList.toggle("tab-marker-weich", weich === true);
+        TABS.markerEl.style.left = aktiv.offsetLeft + "px";
+        TABS.markerEl.style.top = (aktiv.offsetTop + aktiv.offsetHeight - 3) + "px";
+        TABS.markerEl.style.width = aktiv.offsetWidth + "px";
     },
 
     wechseln(id) {
@@ -58,6 +97,10 @@ const TABS = {
         if (!tab) {
             return;
         }
+
+        /* Beim ersten Aufruf steht der Strich noch nirgends — dann wird er
+           gesetzt statt geschoben. */
+        const ersterWechsel = (TABS.aktiveId === null);
 
         TABS.aktiveId = id;
 
@@ -67,14 +110,27 @@ const TABS = {
             knopf.setAttribute("aria-selected", istAktiv ? "true" : "false");
         }
 
+        TABS._markerSetzen(!ersterWechsel);
+
         for (const bereich of TABS.inhaltEl.querySelectorAll(".tab-bereich")) {
-            bereich.hidden = bereich.dataset.tabId !== id;
+            const zeigen = bereich.dataset.tabId === id;
+
+            /* Der neu sichtbare Bereich blendet kurz ein (seit v0.107): Die
+               Klasse wird entfernt und frisch gesetzt, damit die Animation
+               bei JEDEM Wechsel spielt, nicht nur beim ersten. */
+            if (zeigen && bereich.hidden && bereich.classList) {
+                bereich.classList.remove("tab-bereich-zeigt");
+                void bereich.offsetWidth;
+                bereich.classList.add("tab-bereich-zeigt");
+            }
+
+            bereich.hidden = !zeigen;
         }
 
         /* Das Gerüst wird beim ersten Öffnen einmal aufgebaut. */
         if (!TABS.aufgebaut[id]) {
             const bereich = document.createElement("section");
-            bereich.className = "tab-bereich";
+            bereich.className = "tab-bereich tab-bereich-zeigt";
             bereich.dataset.tabId = id;
             TABS.inhaltEl.appendChild(bereich);
             tab.aufbauen(bereich);

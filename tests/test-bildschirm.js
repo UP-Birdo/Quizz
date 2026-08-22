@@ -1074,6 +1074,31 @@ pruefe("Item-Vorrat: drei Mengen in einer Reihe, die eigene Wahl im Popup (v0.10
     }
 });
 
+pruefe("Weiches Zeichnen faellt ohne Browser-Hilfe auf hartes zurueck (v0.107)", () => {
+    /*
+     * `weichZeichnen` benutzt `document.startViewTransition` — eine
+     * Browser-Schnittstelle, die es hier im Test (und in aelteren Browsern)
+     * nicht gibt. Dann MUSS sofort und synchron gezeichnet werden: Die sechs
+     * Knopf-Reihen des Anlege-Bildschirms rufen seit v0.107 nur noch diesen
+     * Weg. Bliebe der Rueckfall aus, staende der Bildschirm nach jedem
+     * Knopfdruck still.
+     */
+    const echt = TEAM_SCHACH.zeichnen;
+    let gerufen = 0;
+
+    try {
+        TEAM_SCHACH.zeichnen = () => { gerufen++; };
+        TEAM_SCHACH.weichZeichnen();
+    } finally {
+        TEAM_SCHACH.zeichnen = echt;
+    }
+
+    if (gerufen !== 1) {
+        throw new Error("ohne startViewTransition muss weichZeichnen sofort "
+            + "zeichnen (gerufen: " + gerufen + ")");
+    }
+});
+
 pruefe("Die Einstellungen tragen keinen offenen Erklaertext mehr (v0.105)", () => {
     /*
      * NUTZER-ANSAGE 21.08.: „Generell zu viel Texte ueberall — kuerze die Infos

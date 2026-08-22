@@ -129,10 +129,19 @@ const DIALOG = {
         });
     },
 
+    /*
+     * Zählt die geöffneten Dialoge durch (seit v0.107). Der Aufräum-Zeitgeber
+     * des Schliessens räumt nur auf, wenn dazwischen kein NEUER Dialog
+     * geöffnet wurde — sonst versteckte er den gerade erschienenen gleich mit.
+     */
+    _laufnummer: 0,
+
     _zeigen(vorgabe) {
         return new Promise((erfuellen) => {
             const behaelter = DIALOG.behaelter;
+            const meineNummer = ++DIALOG._laufnummer;
             behaelter.innerHTML = "";
+            behaelter.classList.remove("dialog-geht-hintergrund");
 
             const kasten = document.createElement("div");
             kasten.className = "dialog-kasten";
@@ -233,16 +242,43 @@ const DIALOG = {
              *   ohne Eingabefeld -> true / false
              *   mit Eingabefeld  -> der Text bei Bestätigung, sonst null
              */
-            const schliessen = (wert) => {
-                document.removeEventListener("keydown", beiTaste);
-                behaelter.hidden = true;
-                behaelter.innerHTML = "";
+            /*
+             * SCHLIESSEN IN ZWEI SCHRITTEN (seit v0.107): Erst spielt eine
+             * kurze Ausblende-Animation (die Klasse `dialog-geht`, rund 100
+             * Millisekunden), dann verschwindet der Dialog wirklich und das
+             * Versprechen wird erfüllt. Der Riegel `zu` sorgt dafür, dass ein
+             * zweiter Druck während des Ausblendens nichts doppelt auslöst.
+             *
+             * Ohne Animations-Unterstützung (die Tests, Bewegungs-Reduzierung
+             * über die Stildatei) läuft die Wartezeit trotzdem — 100 ms sind
+             * unterhalb der Wahrnehmungsschwelle für eine Antwort.
+             */
+            let zu = false;
 
-                if (!feld) {
-                    erfuellen(wert);
+            const schliessen = (wert) => {
+                if (zu) {
                     return;
                 }
-                erfuellen(wert ? feld.value.trim() : null);
+                zu = true;
+
+                document.removeEventListener("keydown", beiTaste);
+                kasten.classList.add("dialog-geht");
+                behaelter.classList.add("dialog-geht-hintergrund");
+
+                const antwort = feld
+                    ? (wert ? feld.value.trim() : null)
+                    : wert;
+
+                setTimeout(() => {
+                    /* Nur aufräumen, wenn nicht längst der nächste Dialog
+                       dasteht — siehe `_laufnummer`. */
+                    if (DIALOG._laufnummer === meineNummer) {
+                        behaelter.hidden = true;
+                        behaelter.innerHTML = "";
+                        behaelter.classList.remove("dialog-geht-hintergrund");
+                    }
+                    erfuellen(antwort);
+                }, 100);
             };
 
             /* Bei erzwungener Eingabe (nur ein Knopf) bleibt Escape wirkungslos. */

@@ -249,6 +249,9 @@ body {
     padding: 0 var(--abstand);
     background: var(--karte);
     border-bottom: 1px solid var(--rahmen);
+
+    /* Bezugspunkt für den gleitenden Strich (`tab-marker`). */
+    position: relative;
 }
 
 .tab-knopf {
@@ -266,9 +269,22 @@ body {
     color: var(--schrift);
 }
 
+/*
+ * Der Strich unter dem aktiven Tab ist seit v0.107 ein EIGENES Element
+ * (`tabs.js` setzt Lage und Breite) und gleitet beim Wechsel dorthin. Der
+ * Rahmen am Knopf bleibt als unsichtbarer Platzhalter stehen, damit sich die
+ * Höhe der Leiste nicht ändert.
+ */
+.tab-marker {
+    position: absolute;
+    height: 3px;
+    background: var(--haupt);
+    border-radius: 2px;
+    pointer-events: none;
+}
+
 .tab-knopf-aktiv {
     color: var(--haupt);
-    border-bottom-color: var(--haupt);
     font-weight: 600;
 }
 
@@ -3568,5 +3584,172 @@ body {
        Platz für den Finger an der Aufklapp-Zeile. */
     .verlauf-titel {
         padding: 10px 0;
+    }
+}
+
+/* ------------------------------------------------------------------ *
+ * UI-Politur (seit v0.107) — alles Gleiten und Blenden an einem Ort.
+ *
+ * Nutzer-Ansage 21.08.: „dass generell alles viel flüssiger wird."
+ * Vorbild sind die Bewegungsmuster moderner Komponenten-Galerien;
+ * gebaut ist alles mit Bordmitteln — CSS-Übergänge und die eingebaute
+ * View-Transitions-Schnittstelle (`TEAM_SCHACH.weichZeichnen`).
+ *
+ * ALLES BEWEGTE STEHT IM no-preference-BLOCK: Wer in den
+ * Systemeinstellungen weniger Bewegung wünscht, bekommt die App exakt
+ * wie vor v0.107. Deshalb gibt es hier kein reduce-Gegenstück — was
+ * nie anspringt, muss nicht abgeschaltet werden.
+ * ------------------------------------------------------------------ */
+
+/*
+ * DIE AKTIVEN KNÖPFE DER VIER REIHEN TRAGEN EINEN NAMEN für die
+ * View-Transition: Beim weichen Neuzeichnen wandert die Markierung
+ * dadurch sichtbar vom alten zum neuen Knopf, statt hart umzuspringen.
+ * Je Reihe ist höchstens EIN Knopf aktiv — die Namen bleiben eindeutig,
+ * sonst bräche der Browser den Übergang ab.
+ */
+.armee-knopf-aktiv {
+    view-transition-name: armee-aktiv;
+}
+
+.mengen-knopf-aktiv {
+    view-transition-name: mengen-aktiv;
+}
+
+.vorrat-knopf-aktiv {
+    view-transition-name: vorrat-aktiv;
+}
+
+.form-knopf-aktiv {
+    view-transition-name: form-aktiv;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+
+    /* Die gleitende Markierung braucht nur ihren Takt. */
+    ::view-transition-group(*) {
+        animation-duration: 0.22s;
+    }
+
+    /* Der Strich unter den Tabs gleitet zum neuen Tab (`tabs.js`). */
+    .tab-marker-weich {
+        transition: left 0.25s ease, top 0.25s ease, width 0.25s ease;
+    }
+
+    /* Der frisch geöffnete Tab-Inhalt steigt kurz ein. */
+    .tab-bereich-zeigt {
+        animation: bereich-auf 0.18s ease-out;
+    }
+
+    @keyframes bereich-auf {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+    }
+
+    /*
+     * KNÖPFE REAGIEREN SPÜRBAR: Farbwechsel weich, beim Drücken ein
+     * kurzes Eindrücken. `:active` statt einer Skript-Lösung — der
+     * Browser nimmt die Hand nie zu spät weg.
+     */
+    .knopf,
+    .tab-knopf,
+    .info-knopf,
+    .dialog-listeneintrag {
+        transition: background-color 0.15s ease, color 0.15s ease,
+            border-color 0.15s ease, transform 0.08s ease;
+    }
+
+    .knopf:active:not(:disabled),
+    .info-knopf:active {
+        transform: scale(0.96);
+    }
+
+    /* Die Spielart-Kacheln heben sich unter dem Zeiger leicht an. */
+    .spielart-kachel {
+        transition: transform 0.15s ease, border-color 0.15s ease,
+            box-shadow 0.15s ease;
+    }
+
+    .spielart-kachel:hover {
+        transform: translateY(-2px);
+    }
+
+    /*
+     * DIALOGE: Schleier blendet ein, der Kasten steigt kurz auf.
+     * Beide Animationen spielen von selbst bei jedem Öffnen, weil der
+     * Kasten jedes Mal neu gebaut wird (`DIALOG._zeigen`).
+     */
+    .dialog-hintergrund:not([hidden]) {
+        animation: dialog-schleier 0.15s ease-out;
+    }
+
+    .dialog-kasten {
+        animation: dialog-auf 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+    }
+
+    @keyframes dialog-schleier {
+        from {
+            opacity: 0;
+        }
+    }
+
+    @keyframes dialog-auf {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+    }
+
+    /*
+     * Beim Schliessen blendet alles kurz aus — die Klassen setzt
+     * `DIALOG.schliessen`, nach 100 ms räumt es auf. `forwards` hält
+     * das Endbild, sonst spränge der Dialog fürs letzte Einzelbild
+     * zurück.
+     */
+    .dialog-geht {
+        animation: dialog-zu 0.1s ease-in forwards;
+    }
+
+    /* Gleiche Stärke wie die Einblende-Regel oben — bei Gleichstand
+       gewinnt die spätere, also diese. */
+    .dialog-hintergrund.dialog-geht-hintergrund {
+        animation: dialog-schleier-zu 0.1s ease-in forwards;
+    }
+
+    @keyframes dialog-zu {
+        to {
+            opacity: 0;
+            transform: scale(0.97);
+        }
+    }
+
+    @keyframes dialog-schleier-zu {
+        to {
+            opacity: 0;
+        }
+    }
+
+    /*
+     * Die Einträge einer Dialog-Liste (Anmeldung, Item-Übersicht)
+     * treten kurz nacheinander ein — `backwards` hält jeden unsichtbar,
+     * bis seine Verzögerung abgelaufen ist. Ab dem sechsten Eintrag
+     * kommt alles gleichzeitig, sonst wartete man bei langen Listen.
+     */
+    .dialog-listeneintrag {
+        animation: eintrag-auf 0.18s ease-out backwards;
+    }
+
+    .dialog-listeneintrag:nth-child(2) { animation-delay: 0.03s; }
+    .dialog-listeneintrag:nth-child(3) { animation-delay: 0.06s; }
+    .dialog-listeneintrag:nth-child(4) { animation-delay: 0.09s; }
+    .dialog-listeneintrag:nth-child(5) { animation-delay: 0.12s; }
+
+    @keyframes eintrag-auf {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
     }
 }
