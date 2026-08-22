@@ -3,6 +3,34 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.122.0 — 2026-08-22
+
+**Die Figuren stehen jetzt wirklich auf den Kacheln.** (Deine Ansage vom
+22.08. mit dem Dribbble-Vorbild.)
+
+- **Von schräg oben statt von der Seite.** Die Figuren sind neu gerendert,
+  die Kamera schaut jetzt mit 50 Grad auf sie herab statt mit 20. Man sieht
+  den Sockel als Ellipse — genau das lässt sie auf der Kachel STEHEN, statt
+  davor zu kleben.
+- **Rund ein Viertel dicker.** Breiter Sockel, kräftiger Körper, großer
+  Kopf: der Spielzeug-Eindruck aus dem Vorbild. Die Größenverhältnisse
+  bleiben unverändert — der König ist weiter der höchste, der Bauer der
+  kleinste.
+- **Sie ragen über ihre Kachel hinaus** und überlappen die dahinter, wie im
+  Vorbild. Angeklickt wird trotzdem immer das Feld, das man sieht.
+- **Zwei Figuren nachgebessert:** Der Springer hat eine kurze, dicke
+  Schnauze bekommen — von oben sah die lange aus wie ein Vogelschnabel. Und
+  der Läufer trägt statt der Kugel eine Spitze, sonst wäre er von oben nicht
+  vom Bauern zu unterscheiden gewesen.
+- **Das Brett selbst ist NICHT gekippt** — im Vorbild ist es das auch nicht,
+  nachgemessen an den Kachelbreiten oben und unten. Der 3D-Eindruck kommt
+  allein von den Kacheln und den Figuren.
+- Die Bilder sind jetzt 384 statt 512 Punkte groß und zusammen 723 statt
+  1193 KB. Zu sehen ist davon nichts; die alten sprengten nur die
+  1-MB-Grenze der Vorgabe.
+- Die schlanken Figuren aus v0.121 sind aufgehoben (`Backup\Quizz\
+  figuren-flach-v0.121.0\`) — falls die neuen am Handy doch nicht taugen.
+
 ## v0.121.0 — 2026-08-22
 
 **Der 3D-Look bekommt seine Spielzeug-Figuren.** Statt der

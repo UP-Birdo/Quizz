@@ -1832,75 +1832,71 @@ body.design-3d .verpufft-schlag {
     }
 }
 
-
 /*
- * Z3 — DIE GEMALTEN FIGUREN (seit v0.121): Im 3D-Look zeigt jede Figur ihr
- * in Blender gerendertes Bild aus `img\figuren\` statt des Schriftzeichens.
- * Die Bilder erzeugt `tools\Figuren-Blender.py`; gestartet wird es per
- * Doppelklick auf `tools\Figuren rendern.cmd` (NICHT aus dem Blender-Fenster
- * — Begründung in `docs\FIGUREN-BLENDER.md`).
+ * Z3 — DIE GEMALTEN FIGUREN (seit v0.121, auf die Kachel gestellt in v0.122)
  *
- * DAS SCHRIFTZEICHEN BLEIBT STEHEN und wird nur durchsichtig geschaltet.
- * Drei Gründe: Es hält weiterhin die Grösse (die ganze Rechnung um
- * `--figur-groesse` und `FIGUR_ANTEIL` bleibt unverändert gültig), es bleibt
- * für Vorlese-Programme lesbar, und es ist die Rückfallebene. Fällt eine
+ * Im 3D-Look zeigt jede Figur ihr in Blender gerendertes Bild aus
+ * `img\figuren\` statt des Schriftzeichens. Die Bilder erzeugt
+ * `tools\Figuren-Blender.py`; gestartet wird es per Doppelklick auf
+ * `tools\Figuren rendern.cmd` (NICHT aus dem Blender-Fenster — Begründung in
+ * `docs\FIGUREN-BLENDER.md`).
+ *
+ * DAS SCHRIFTZEICHEN BLEIBT STEHEN und wird nur durchsichtig geschaltet. Es
+ * bleibt für Vorlese-Programme lesbar und ist die Rückfallebene: Fällt eine
  * Figur durch — unbekannte Art, fehlendes Bild —, greift keine der Regeln
  * unten und das Zeichen ist einfach wieder da. Die Rückfallebene ist nicht
  * gebaut, sondern übrig.
  *
- * Die Klasse `figur-art-*` kommt aus `TEAM_SCHACH._figurKlasse`. Sie steht
- * bewusst NICHT im klassischen Look zur Debatte: Alle Regeln hier hängen an
- * `body.design-3d`, das gewohnte Brett bleibt Zeichen-Brett.
+ * Die Klassen kommen aus `TEAM_SCHACH._figurKlasse`: `figur-bild` sagt „hier
+ * steht ein Bild", `figur-art-*` sagt welches. Alles hier hängt an
+ * `body.design-3d` — das gewohnte Brett bleibt Zeichen-Brett.
  */
-body.design-3d .figur-art-bauer,
-body.design-3d .figur-art-springer,
-body.design-3d .figur-art-laeufer,
-body.design-3d .figur-art-turm,
-body.design-3d .figur-art-dame,
-body.design-3d .figur-art-koenig {
+body.design-3d .figur-bild {
     color: transparent;
     text-shadow: none;
-    /*
-     * Ein eigener, quadratischer Kasten. Er ist GRÖSSER als das Feld, und das
-     * ist Absicht: Im Bild steht die Figur mittig mit viel Luft an den Seiten
-     * — der Sockel misst nur gut ein Drittel der Bildbreite. Was über das Feld
-     * hinausragt, ist also durchsichtig; sichtbar bleibt die Figur.
-     *
-     * 1.6em heisst am Ende: Der König steht fast so hoch wie ein Feld breit
-     * ist, der Bauer halb so hoch. Die Verhältnisse aus der Vorgabe
-     * (`docs\FIGUREN-BLENDER.md`) stecken in den Bildern selbst, nicht hier.
-     *
-     * `flex: 0 0 auto` ist PFLICHT, kein Zierat: Das Feld ist ein Flex-Kasten,
-     * und ein Flex-Kind, das breiter ist als sein Platz, wird sonst
-     * stillschweigend zusammengedrückt — die Figuren wären wieder klein, ohne
-     * dass man sähe warum.
-     *
-     * `bottom` heisst: Der Sockel sitzt unten im Kasten. Damit stehen alle
-     * Figuren auf einer Linie, egal wie hoch sie sind.
-     */
-    display: inline-block;
-    flex: 0 0 auto;
-    width: 1.6em;
-    height: 1.6em;
     background-repeat: no-repeat;
     background-position: center bottom;
     background-size: contain;
 }
 
 /*
- * DIE MINDESTBREITE MUSS WEG, sonst zieht sich das ganze Brett auseinander.
+ * DIE FIGUR STEHT AUF DER KACHEL, sie sitzt nicht darin (seit v0.122, nach
+ * dem Dribbble-Vorbild).
  *
- * Ein Raster-Feld ist von sich aus mindestens so breit wie sein Inhalt
- * (`min-width: auto`), und die `1fr`-Spalten des Bretts wachsen mit. Der
- * Figuren-Kasten von oben ist breiter als ein Feld — ohne diese Zeile wurde
- * das Brett dadurch breiter als sein `max-width` und lief aus dem Bild.
+ * Sie wird aus dem Fluss genommen und mit ihrem Fuss an der Kachel
+ * festgemacht; nach oben darf sie über die Kachel hinausragen und die
+ * dahinterliegende überlappen. Genau das erzeugt den Eindruck von Höhe.
  *
- * Mit `min-width: 0` behält das Feld seine Grösse; der überstehende Rand des
- * Figuren-Kastens ist durchsichtig und ragt einfach darüber hinaus.
+ * Vier Dinge daran sind nicht beliebig:
+ *
+ *  - **`left`/`margin-left` statt `transform`.** `_zugAnimieren` schreibt
+ *    beim Ziehen ein eigenes `transform` auf die Figur. Würde die Mitte per
+ *    `transform: translateX(-50%)` gesetzt, überschriebe der Zug sie und die
+ *    Figur spränge zur Seite. `margin-left` ist die halbe Breite, von Hand.
+ *  - **`pointer-events: none`.** Die Figur überlappt die Kachel DAHINTER.
+ *    Ohne diese Zeile fingen ihre überstehenden Teile die Klicks für ein
+ *    Feld ab, das ganz woanders liegt. Ihre eigene Kachel bleibt darunter
+ *    voll anklickbar — es geht nichts verloren.
+ *  - **Die Reihenfolge stimmt von selbst.** Der Browser zeichnet die Felder
+ *    in der Reihenfolge des Quelltextes, also von hinten nach vorn. Eine
+ *    Figur aus einer vorderen Reihe deckt damit die hintere korrekt ab.
+ *  - **Der Platz oben.** Die Figuren der ersten Reihe ragen über das Brett
+ *    hinaus; ohne den zusätzlichen Rand oben würden sie abgeschnitten.
  */
-body.design-3d .feld,
-body.design-3d .vorschau-feld {
-    min-width: 0;
+body.design-3d .feld > .figur-bild,
+body.design-3d .vorschau-feld > .figur-bild {
+    position: absolute;
+    left: 50%;
+    margin-left: -1.15em;
+    bottom: 12%;
+    width: 2.3em;
+    height: 2.3em;
+    pointer-events: none;
+}
+
+body.design-3d .brett,
+body.design-3d .vorschau {
+    padding-top: calc(var(--figur-groesse, 30px) * 1.35);
 }
 
 /*
@@ -1924,13 +1920,15 @@ body.design-3d .figur-schwarz.figur-art-koenig { background-image: url("../img/f
 
 /*
  * Die kleinen Figuren ausserhalb des Bretts (Beute-Bilanz im Abschluss,
- * Werte-Liste in „Schach lernen") stehen in Textzeilen. Dort wäre der
- * 1.6em-Kasten zu gross und würde die Zeilen auseinanderdrücken.
+ * Werte-Liste in „Schach lernen") stehen in Textzeilen, nicht auf Kacheln.
+ * Sie bleiben deshalb im Fluss und bekommen nur einen passenden Kasten.
  */
 body.design-3d .bilanz-figur,
 body.design-3d .werte-figur {
-    width: 1.15em;
-    height: 1.15em;
+    display: inline-block;
+    width: 1.3em;
+    height: 1.3em;
+    vertical-align: -0.25em;
 }
 
 /* ------------------------------------------------------------------ *

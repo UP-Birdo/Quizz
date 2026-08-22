@@ -288,7 +288,7 @@ pruefe("Die zwoelf Figuren-Bilder des 3D-Looks liegen alle da (v0.121)", () => {
  * Und die Gegenrichtung: Jede Art braucht ihre Klasse, sonst greift die
  * Stildatei nicht. `_figurKlasse` ist die einzige Stelle, die sie vergibt.
  */
-pruefe("_figurKlasse vergibt fuer jede Figurart ihre Klasse (v0.121)", () => {
+pruefe("_figurKlasse vergibt Marker- und Art-Klasse (v0.121, erweitert v0.122)", () => {
     const quelle = dateisystem.readFileSync(
         pfad.join(jsOrdner, "team-schach-brett.js"), "utf8");
     const stil = dateisystem.readFileSync(
@@ -302,6 +302,19 @@ pruefe("_figurKlasse vergibt fuer jede Figurart ihre Klasse (v0.121)", () => {
         if (stil.indexOf(".figur-art-" + art) === -1) {
             throw new Error("stil.css hat keine Regel fuer .figur-art-" + art);
         }
+    }
+
+    /*
+     * Die Marker-Klasse (seit v0.122): An ihr haengen Farbe, Kasten und die
+     * Lage AUF der Kachel. Wer sie in `_figurKlasse` streicht, bekaeme wieder
+     * Schriftzeichen mit Bild-Regeln darunter — also gar nichts Sichtbares.
+     */
+    if (quelle.indexOf("figur-bild figur-art-") === -1) {
+        throw new Error("_figurKlasse vergibt die Marker-Klasse figur-bild"
+            + " nicht mehr — ohne sie greift keine Bild-Regel");
+    }
+    if (stil.indexOf(".figur-bild") === -1) {
+        throw new Error("stil.css hat keine Regel fuer .figur-bild");
     }
 });
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");

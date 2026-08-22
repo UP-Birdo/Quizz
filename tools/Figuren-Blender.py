@@ -45,12 +45,22 @@ from mathutils import Vector
 # Wohin die fertigen PNGs geschrieben werden. Wird angelegt, falls es fehlt.
 AUSGABE_ORDNER = r"c:\Users\jonas.boeckle\OneDrive - Biffar GmbH & Co. KG\Biffar - IT\JKB\dev\Apps\Quizz\img\figuren"
 
-# Bildgroesse (quadratisch) laut Liefervertrag.
-BILD_KANTE = 512
+# Bildgroesse (quadratisch).
+#
+# 512 war die urspruengliche Vorgabe. Seit v0.122 stehen die Figuren steiler
+# und fuellen ihr Bild deutlich mehr aus — bei 512 kamen die zwoelf Dateien
+# zusammen auf 1,19 MB und rissen die 1-MB-Grenze der Vorgabe. 384 bringt sie
+# auf gut zwei Drittel davon.
+#
+# Sichtbar ist der Unterschied nicht: Am groessten wird eine Figur auf einem
+# 520-Pixel-Brett, dort misst ihr Kasten rund 71 Bildpunkte. Selbst auf einem
+# Bildschirm mit dreifacher Aufloesung sind das 212 echte Punkte — 384 hat
+# also noch Luft, 512 waere nur Ballast.
+BILD_KANTE = 384
 
 # Rechenaufwand je Bild. 64 reicht bei diesem einfachen Motiv voellig.
 # Hoeher = sauberer, aber langsamer. 32 fuer schnelle Probelaeufe.
-SAMPLES = 128
+SAMPLES = 256
 
 # Auf False stellen, wenn nur die Szene gebaut werden soll (zum Anschauen),
 # ohne die zwoelf Bilder zu rendern.
@@ -78,8 +88,16 @@ LICHT_AUFHELLER = 30.0      # schwaches Gegenlicht von rechts
 LICHT_STREIFER = 55.0       # Kantenlicht von hinten oben
 LICHT_UMGEBUNG = 0.28       # gleichmaessige Grundhelligkeit (0 bis 1)
 
-# Kameraneigung in Grad ueber der Waagerechten (Vorgabe: 15 bis 25).
-KAMERA_NEIGUNG = 20.0
+# Kameraneigung in Grad ueber der Waagerechten.
+#
+# 50 Grad heisst: Man schaut deutlich von OBEN auf die Figuren und sieht den
+# Sockel als breite Ellipse — das ist es, was sie auf der Kachel STEHEN laesst
+# statt davor zu kleben (Nutzer-Entscheidung 22.08. nach dem Dribbble-Vorbild;
+# die urspruengliche Vorgabe in docs\FIGUREN-BLENDER.md nannte 15 bis 25).
+# Der Preis: Von oben verliert eine Figur ihren Umriss. Wer hier dreht, prueft
+# danach IMMER, ob Bauer, Laeufer und Dame auf 32 Pixeln noch verschieden
+# aussehen.
+KAMERA_NEIGUNG = 50.0
 
 # Bildaufteilung: Luft unter dem Sockel und Anteil, den die hoechste Figur
 # (der Koenig) senkrecht im Bild einnimmt.
@@ -89,6 +107,16 @@ HOEHEN_ANTEIL = 0.86
 # Wie fein die Figuren verschmolzen werden. Kleiner = feiner, aber langsamer.
 # 0.020 ist ein guter Kompromiss; unter 0.012 wird es zaeh.
 VOXEL_GROESSE = 0.020
+
+# Wie GEDRUNGEN die Figuren sind: 1.0 ist die schlanke Fassung aus v0.121,
+# 1.25 macht sie um ein Viertel breiter, ohne dass sie höher werden.
+#
+# Der Faktor wirkt als reine Breiten-Streckung auf die fertig verbundene
+# Figur (x und y, NIE z). Das ist der Grund, warum die Höhen-Tabelle davon
+# unberührt bleibt: Der König misst weiter 2.00, der Bauer weiter 0.55 davon
+# — sie werden nur dicker. Kugeln werden dabei zu flachen Kugeln, und genau
+# das ergibt den Knet-Eindruck des Vorbilds.
+BREITE_FAKTOR = 1.25
 
 # Wie stark die verschmolzene Form am Ende geglaettet wird ("Knet-Effekt").
 # Zu viel frisst duenne Teile wie das Koenigskreuz weg.
@@ -260,6 +288,18 @@ def figur_fertigstellen(teile, name, kerbe=None):
     obj = bpy.context.view_layer.objects.active
     obj.name = "figur_" + name
 
+    # Breiten-Streckung: x und y wachsen, z bleibt. Sie wird SOFORT fest ins
+    # Mesh gerechnet (`transform_apply`) — danach hat das Objekt wieder den
+    # Massstab 1, und alles Weitere (Voxel-Groesse, Glaettung, das Messen der
+    # Hoehen und des Bildausschnitts) rechnet in denselben Einheiten wie
+    # vorher. Ohne das Festrechnen wuerde die Voxel-Groesse in einem
+    # gestreckten Raum gelten und die Figur ungleichmaessig aufloesen.
+    if BREITE_FAKTOR != 1.0:
+        obj.scale = (BREITE_FAKTOR, BREITE_FAKTOR, 1.0)
+        nur_diese_auswaehlen([obj], obj)
+        bpy.ops.object.transform_apply(location=False, rotation=False,
+                                       scale=True)
+
     remesh = obj.modifiers.new("Verschmelzen", "REMESH")
     remesh.mode = "VOXEL"
     remesh.voxel_size = VOXEL_GROESSE
@@ -354,12 +394,15 @@ def bau_springer():
     # Kopf: eine einzige Linie vom Genick ueber den Nasenruecken bis zur
     # Nase, nach links UNTEN abfallend. Waagerecht sieht dieselbe Form aus
     # wie ein Entenschnabel — das Gefaelle macht den Pferdekopf.
+    #
+    # SEIT DER 50-GRAD-KAMERA IST DIE SCHNAUZE KURZ UND DICK (v0.122). Von
+    # schraeg oben sieht man auf ihren Ruecken statt auf ihr Profil; die lange
+    # schlanke Schnauze der 20-Grad-Fassung wirkte dabei wie ein Vogelschnabel.
     teile += kugelkette([(-0.02, 1.26, 0.175),
-                         (-0.13, 1.22, 0.190),
-                         (-0.26, 1.14, 0.165),
-                         (-0.38, 1.07, 0.140),
-                         (-0.49, 1.00, 0.115),
-                         (-0.57, 0.94, 0.090)], (1.10, 0.76, 1.00))
+                         (-0.11, 1.24, 0.195),
+                         (-0.22, 1.17, 0.180),
+                         (-0.32, 1.08, 0.155),
+                         (-0.41, 0.99, 0.120)], (1.10, 0.80, 1.00))
 
     # Maehnenkamm: durchgehende Rippe an der Halsrueckseite.
     teile += kugelkette([(0.03, 1.28, 0.090),
@@ -370,20 +413,24 @@ def bau_springer():
                          (0.22, 0.63, 0.115)], (0.90, 0.55, 1.00))
 
     for seite in (-1.0, 1.0):
-        teile.append(neu_kegel(0.075, 0.0, 0.26,
+        teile.append(neu_kegel(0.090, 0.0, 0.28,
                                (-0.02, 0.07 * seite, 1.40),
                                drehung=(0.0, math.radians(-8.0), 0.0)))  # Ohr
     return figur_fertigstellen(teile, "springer")
 
 
 def bau_laeufer():
-    """Tropfenform mit Kugelspitze und schraeger Kerbe. Zielhoehe 1.50."""
+    """Tropfenform mit Spitze und schraeger Kerbe. Zielhoehe 1.50."""
     teile = [
         bau_sockel(),
         neu_kegel(0.30, 0.155, 0.78, (0.0, 0.0, 0.53)),          # Koerper
         neu_ring(0.185, 0.05, (0.0, 0.0, 0.94)),                 # Kragen
         neu_kugel(0.245, (0.0, 0.0, 1.13), (1.0, 1.0, 1.15)),    # Kopf
-        neu_kugel(0.085, (0.0, 0.0, 1.42)),                      # Knauf
+        # SPITZE STATT KUGEL (seit v0.122): Von der 50-Grad-Kamera aus sieht
+        # eine Kugel obenauf genauso aus wie der Bauernkopf. Der Kegel laeuft
+        # nach der Glaettung rund aus, gibt dem Umriss aber eine Spitze — auf
+        # einem 32-Pixel-Feld ist das der einzige Unterschied, der bleibt.
+        neu_kegel(0.125, 0.0, 0.26, (0.0, 0.0, 1.37)),           # Spitze
     ]
     kerbe = None
     if LAEUFER_KERBE:

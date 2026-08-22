@@ -16,7 +16,7 @@ eingebaut, nicht als 3D-Modelle: Die App zeigt je Feld ein Bild.
 
 ## Der Stil — Spielzeug, nicht Turnier
 
-- **Weich und rund wie Knete oder Spielzeug:** überall großzügige
+- **Weich, rund und GEDRUNGEN wie Knete oder Spielzeug:** überall großzügige
   Rundungen, keine scharfen Kanten, keine feinen Rillen oder Ornamente.
   Lieber zu einfach als zu detailliert.
 - **Matte Oberfläche:** wie mattes Plastik oder Ton. KEIN starker Glanz,
@@ -57,11 +57,16 @@ weiße und blaue Felder, hell wie dunkel).
 - **Eine einzige Szene** für alle Renderings: Kamera und Licht werden
   eingerichtet und dann NIE mehr angefasst — nur die Figur wird
   ausgetauscht. Sonst passen die Figuren am Brett nicht zusammen.
-- **Kamera:** leicht von schräg oben, etwa **15 bis 25 Grad** gekippt
-  (man sieht die Figur fast frontal, aber mit etwas Draufsicht — wie im
-  Vorbild-Video). **Lange Brennweite (85 bis 135 mm)** oder gleich
-  orthografisch, damit hohe und niedrige Figuren gleich wenig verzerrt
-  sind.
+- **Kamera:** von schräg oben, **50 Grad** gekippt — man schaut deutlich auf
+  die Figuren herab und sieht ihren Sockel als Ellipse. **Das ist der
+  entscheidende Punkt:** Nur so wirken sie, als STÜNDEN sie auf der Kachel;
+  von der Seite kleben sie davor. (Bis v0.121 standen hier 15 bis 25 Grad —
+  geändert am 22.08. nach genauem Blick auf das Vorbild-GIF.) **Orthografisch**,
+  damit hohe und niedrige Figuren gleich wenig verzerrt sind.
+- **Der Preis des steilen Winkels:** Von oben verliert eine Figur ihren
+  Umriss. Wer daran dreht, prüft danach IMMER, ob Bauer, Läufer und Dame auf
+  32 Pixeln noch verschieden aussehen. Deshalb trägt der Läufer seit v0.122
+  eine Spitze statt einer Kugel und der Springer eine kurze, dicke Schnauze.
 - **Licht:** ein großes, weiches Hauptlicht von oben links, dazu sanfte
   Umgebungsaufhellung, damit die Schattenseite nicht absäuft. Für alle
   zwölf Bilder identisch.
@@ -79,12 +84,15 @@ weiße und blaue Felder, hell wie dunkel).
    `figur-dame-weiss.png`, `figur-dame-schwarz.png`,
    `figur-koenig-weiss.png`, `figur-koenig-schwarz.png`
 2. **PNG mit durchsichtigem Hintergrund** (RGBA), quadratisch,
-   **512 × 512 px**.
+   **384 × 384 px** (bis v0.121: 512 — die steileren Figuren füllen ihr
+   Bild stärker aus und rissen bei 512 die 1-MB-Grenze; sichtbar ist der
+   Unterschied nicht, siehe `BILD_KANTE` im Skript).
 3. **Figur mittig**, Sockel-Unterkante bei allen zwölf auf derselben Höhe
    (etwa 8 % Luft zum unteren Bildrand), oben je nach Figurhöhe mehr oder
    weniger Luft — die Höhenverhältnisse aus der Tabelle müssen IM BILD
    stimmen, weil die App alle Bilder gleich groß anzeigt.
-4. **Alle 12 zusammen möglichst unter 1 MB** (bei 512er-PNGs gut machbar;
+4. **Alle 12 zusammen möglichst unter 1 MB** (bei 384er-PNGs gut machbar —
+   Stand v0.122: 723 KB;
    notfalls mit einem PNG-Verkleinerer nachhelfen).
 5. **Ablage:** in den Ordner `img\figuren\` des Quizz-Projekts legen und
    dem Quizz-Chat Bescheid geben — er baut sie hinter dem 3D-Schalter ein.
@@ -157,3 +165,39 @@ Zwei Gründe:
   beobachtet am 22.08.: Prozess bei 0 % Auslastung, kein Bild geschrieben.
   Das Skript setzt inzwischen `cycles.device = "CPU"` selbst, und der
   Starter ruft Blender zusätzlich mit `--factory-startup` auf.
+
+## Was sich mit v0.122.0 geändert hat (22.08.2026)
+
+Anlass war das Referenz-GIF, das der Nutzer nachgereicht hat. Beim genauen
+Hinsehen — und Nachmessen — kamen drei Dinge heraus:
+
+1. **Das Brett im Vorbild ist nicht gekippt.** Die Kacheln sind oben im Bild
+   86 Punkte breit und unten 81 — bei einer Perspektive müssten die hinteren
+   deutlich schmaler sein. Der ganze 3D-Eindruck kommt aus den Kachel-Klötzen
+   und den Figuren. **Damit ist Bündel Z4 (Brett per CSS-Perspektive kippen)
+   für diesen Look nicht nötig** — und das war der riskante Teil, weil es
+   alles trifft, was flach auf dem Brett liegt.
+2. **Der Blickwinkel macht den „steht darauf"-Eindruck**, nicht die Form.
+   Deshalb 50 statt 20 Grad (Nutzer-Entscheidung: treu zum Vorbild, obwohl
+   es Erkennbarkeit kostet).
+3. **Die Figur muss über ihre Kachel hinausragen dürfen.** Im Vorbild
+   überlappt jede Figur die Kachel dahinter. In der App macht das die
+   `stil.css`: Die Figur wird aus dem Fluss genommen und mit dem Fuss an der
+   Kachel festgemacht (Abschnitt „Z3 — DIE GEMALTEN FIGUREN"). Zwei Zeilen
+   darin sind Pflicht und nicht Geschmack — `pointer-events: none` (sonst
+   fangen überstehende Teile Klicks für ein fremdes Feld ab) und die Mitte
+   per `margin-left` statt `transform` (sonst überschreibt der Zug sie).
+
+### Prüfliste — Stand nach dem Lauf vom 22.08.2026, zweite Runde
+
+- [x] Alle 12 Dateien da, Namen unverändert
+- [x] Hintergrund durchsichtig
+- [x] Auf 32 px unterscheidbar — Läufer hat dafür eine Spitze statt einer
+      Kugel bekommen, der Springer eine kürzere Schnauze
+- [x] König am höchsten, Bauer am kleinsten, Sockel bei allen gleich
+      (gemessen: 0,55 / 0,70 / 0,76 / 0,75 / 0,90 / 1,00)
+- [x] Kein Bodenschatten, kein starker Glanz
+- [x] Kamera und Licht bei allen 12 identisch
+- [x] Zusammen **723 KB** — deutlich unter der 1-MB-Grenze
+- [x] Am Brett gemessen: kein waagerechter Überlauf, nichts abgeschnitten,
+      klassische Ansicht unverändert

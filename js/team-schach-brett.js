@@ -1581,6 +1581,11 @@ Object.assign(TEAM_SCHACH, {
      * die liefert diese Funktion. Die FARBE steht schon in `figur-weiss` bzw.
      * `figur-schwarz`; hier kommt nur die ART dazu.
      *
+     * Sie liefert ZWEI Klassen: `figur-bild` sagt „hier steht ein Bild statt
+     * eines Zeichens" (daran hängen Farbe, Kasten und Lage), `figur-art-*`
+     * sagt WELCHES. Getrennt, weil die kleinen Figuren in Textzeilen zwar ein
+     * Bild bekommen, aber nicht auf einer Kachel stehen.
+     *
      * Sie liefert einen führenden Leerraum, damit sie sich an eine bestehende
      * Klassen-Zeichenkette anhängen lässt, und bei einer unbekannten Figur
      * eine LEERE Zeichenkette. Das ist die Rückfallebene: Ohne Klasse greift
@@ -1594,7 +1599,7 @@ Object.assign(TEAM_SCHACH, {
         };
         const art = arten[String(figur).toUpperCase()];
 
-        return art ? (" figur-art-" + art) : "";
+        return art ? (" figur-bild figur-art-" + art) : "";
     },
 
     /*
