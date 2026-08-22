@@ -1935,22 +1935,26 @@ Object.assign(TEAM_SCHACH, {
             const verzoegerung = Math.max(0, Math.round(
                 (strecke / Math.max(1, laenge)) * TEAM_SCHACH.NUDELHOLZ_ROLL_MS));
 
-            figurEl.style.transform = "translate("
-                + (vonZelle.offsetLeft - nachZelle.offsetLeft) + "px, "
-                + (vonZelle.offsetTop - nachZelle.offsetTop) + "px)";
+            /*
+             * EINE ANIMATION STATT EINES ÜBERGANGS (v0.117.1): Startlage,
+             * Wartezeit und Gleiten stecken in EINEM Stück, das synchron
+             * beim Aufbau gesetzt wird — `backwards` hält das erste Bild
+             * (die Figur auf ihrem alten Feld) während der Verzögerung.
+             * Beim Übergangs-Weg von vorher konnte zwischen Aufbau und
+             * Rücksetzung ein Einzelbild mit der Endstellung durchblitzen:
+             * Die Figur hüpfte kurz vor und wieder zurück.
+             */
+            figurEl.style.setProperty("--schub-von",
+                (vonZelle.offsetLeft - nachZelle.offsetLeft) + "px, "
+                + (vonZelle.offsetTop - nachZelle.offsetTop) + "px");
+            figurEl.style.animation = "nudelholz-schub "
+                + TEAM_SCHACH.ANIMATION_MS + "ms ease-out "
+                + verzoegerung + "ms backwards";
             nachZelle.classList.add("feld-zieht");
-
-            window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => {
-                    figurEl.classList.add("figur-zieht");
-                    figurEl.style.transitionDelay = verzoegerung + "ms";
-                    figurEl.style.transform = "";
-                });
-            });
 
             window.setTimeout(() => {
                 nachZelle.classList.remove("feld-zieht");
-                figurEl.style.transitionDelay = "";
+                figurEl.style.animation = "";
             }, verzoegerung + TEAM_SCHACH.ANIMATION_MS + 60);
         }
     },

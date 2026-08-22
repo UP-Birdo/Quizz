@@ -3,6 +3,14 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.117.1 — 2026-08-22
+
+**Nachbesserung: Das Hüpfen beim Nudelholz-Schub ist weg.** Die geschobenen
+Figuren blitzten für ein Einzelbild an ihrer Endposition auf und sprangen
+zurück, bevor die Walze sie erreichte. Jetzt wartet jede Figur ruhig auf
+ihrem alten Feld, bis die Walze sie berührt, und gleitet dann in einem Zug
+weiter.
+
 ## v0.117.0 — 2026-08-22
 
 **Das Nudelholz ist umgebaut: EINE Bahn, vier wählbare Richtungen — und die

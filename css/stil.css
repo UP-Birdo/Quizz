@@ -2434,6 +2434,22 @@ body.runde-offen .tab-leiste {
     bottom: -9px;
 }
 
+/*
+ * Der Schub durch die Walze (v0.117.1): Die Figur wartet auf ihrem alten
+ * Feld — `backwards` am Aufruf hält das erste Bild während der
+ * Verzögerung — und gleitet erst, wenn die Walze sie erreicht. Eine
+ * ANIMATION statt eines Übergangs: kein Zwischenbild, in dem die Figur
+ * schon am Ziel steht (so entstand das gemeldete Hüpfen).
+ */
+@keyframes nudelholz-schub {
+    from {
+        transform: translate(var(--schub-von, 0px, 0px));
+    }
+    to {
+        transform: translate(0px, 0px);
+    }
+}
+
 /* Start und Ziel setzt das Skript je Richtung (`--roll-von`/`--roll-bis`,
    seit v0.117 — vorher rollte sie fest von oben nach unten). */
 @keyframes nudelholz-rollen {
