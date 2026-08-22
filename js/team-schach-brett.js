@@ -1716,4 +1716,126 @@ Object.assign(TEAM_SCHACH, {
             TEAM_SCHACH.ANIMATION_MS + 60);
     },
 
+    /* ------------------------------------------------------------------ *
+     * Die Wirkungs-Schauspiele (seit v0.115, ROADMAP Bündel Y)
+     * ------------------------------------------------------------------ */
+
+    /*
+     * Spielt zur eingesetzten Fähigkeit ihr kleines Schauspiel auf dem
+     * Brett ab — zusätzlich zum blauen Aufleuchten der betroffenen Felder.
+     * Aufgerufen aus `_wirkungAnimieren`; dessen Merker (`wirkungBis`)
+     * sorgt schon dafür, dass jedes Schauspiel nur einmal läuft.
+     *
+     * Wer „weniger Bewegung" eingestellt hat, bekommt keines: Das Erzeugen
+     * wird HIER unterbunden — deshalb dürfen die zugehörigen CSS-Regeln
+     * ausserhalb des no-preference-Blocks stehen (ein Element, das nie
+     * entsteht, bewegt sich auch nie).
+     */
+    _wirkungSchauspiel(halter, eintrag) {
+        /* Gefragt wird nach „reduce" (Haus-Konvention, siehe das window-
+           Double der Tests): Nur die AUSDRÜCKLICHE Bitte um weniger
+           Bewegung schaltet ab. */
+        if (typeof window !== "undefined"
+            && typeof window.matchMedia === "function"
+            && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            return;
+        }
+
+        if (eintrag.wirkung === "nudelholz") {
+            TEAM_SCHACH._nudelholzRollen(halter, eintrag.felder);
+            return;
+        }
+
+        /* Je Fähigkeit eine Marke im betroffenen Feld; wer hier nicht
+           steht, behält nur das Aufleuchten von `_wirkungAnimieren`. */
+        const marken = {
+            schutzschild: "wirkung-schild",
+            fessel: "wirkung-fessel",
+            frost: "wirkung-frost"
+        };
+        const klasse = marken[eintrag.wirkung];
+        if (!klasse) {
+            return;
+        }
+
+        for (const feld of eintrag.felder) {
+            const zelle = halter.querySelector("[data-feld=\"" + feld + "\"]");
+            if (!zelle) {
+                continue;
+            }
+
+            const marke = TEAM_SCHACH._element("span", "wirkung-marke " + klasse);
+            zelle.appendChild(marke);
+            window.setTimeout(() => {
+                if (marke.parentNode) {
+                    marke.parentNode.removeChild(marke);
+                }
+            }, 950);
+
+            /* Die Fessel rüttelt zusätzlich kurz an der gefangenen Figur. */
+            if (eintrag.wirkung === "fessel") {
+                const figurEl = zelle.querySelector(".figur");
+                if (figurEl && figurEl.classList) {
+                    figurEl.classList.add("figur-ruettelt");
+                    window.setTimeout(
+                        () => figurEl.classList.remove("figur-ruettelt"), 500);
+                }
+            }
+        }
+    },
+
+    /*
+     * DAS ROLLENDE NUDELHOLZ (seit v0.115, Nutzer-Wunsch 22.08.): Eine
+     * Holzwalze erscheint über den betroffenen Spalten, rollt einmal über
+     * sie hinweg und verschwindet. Gemessen wird an den ECHTEN Zellen —
+     * damit stimmt die Lage in jeder Brettgrösse und Drehung; im
+     * Hintergrund-Tab (keine Masse) passiert schlicht nichts.
+     */
+    _nudelholzRollen(halter, felder) {
+        const brett = halter.querySelector(".brett");
+        if (!brett) {
+            return;
+        }
+
+        let links = Infinity;
+        let oben = Infinity;
+        let rechts = -Infinity;
+        let unten = -Infinity;
+        let feldHoehe = 0;
+        let gefunden = 0;
+
+        for (const feld of felder) {
+            const zelle = brett.querySelector("[data-feld=\"" + feld + "\"]");
+            if (!zelle || typeof zelle.offsetLeft !== "number"
+                || typeof zelle.offsetTop !== "number") {
+                continue;
+            }
+            gefunden++;
+            feldHoehe = zelle.offsetHeight || zelle.offsetWidth || 0;
+            links = Math.min(links, zelle.offsetLeft);
+            oben = Math.min(oben, zelle.offsetTop);
+            rechts = Math.max(rechts, zelle.offsetLeft + (zelle.offsetWidth || 0));
+            unten = Math.max(unten, zelle.offsetTop
+                + (zelle.offsetHeight || zelle.offsetWidth || 0));
+        }
+
+        if (gefunden === 0 || rechts <= links) {
+            return;
+        }
+
+        const walze = TEAM_SCHACH._element("div", "nudelholz-walze");
+        walze.style.left = links + "px";
+        walze.style.top = oben + "px";
+        walze.style.width = (rechts - links) + "px";
+        walze.style.height = Math.max(10, Math.round(feldHoehe * 0.6)) + "px";
+        walze.style.setProperty("--rollweg", (unten - oben) + "px");
+        brett.appendChild(walze);
+
+        window.setTimeout(() => {
+            if (walze.parentNode) {
+                walze.parentNode.removeChild(walze);
+            }
+        }, 1100);
+    },
+
 });

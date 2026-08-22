@@ -3847,4 +3847,74 @@ pruefe("Auch der Imposter meldet sein Fenster (v0.113)", () => {
     }
 });
 
+/* ------------------------------------------------------------------ *
+ * Die Wirkungs-Schauspiele (v0.115)
+ * ------------------------------------------------------------------ */
+
+/* Ein kleines Brett aus zwei Zellen mit echten Massen — mehr braucht das
+   Schauspiel nicht. */
+function schauspielBrett() {
+    const halter = neuesElement("div");
+    const brett = neuesElement("div");
+    brett.className = "brett";
+    halter.appendChild(brett);
+
+    for (const eintrag of [{ feld: 3, oben: 0 }, { feld: 11, oben: 40 }]) {
+        const zelle = neuesElement("button");
+        zelle.className = "feld";
+        zelle.dataset.feld = String(eintrag.feld);
+        zelle.offsetLeft = 40;
+        zelle.offsetTop = eintrag.oben;
+        zelle.offsetHeight = 40;
+        brett.appendChild(zelle);
+    }
+    return { halter: halter, brett: brett };
+}
+
+pruefe("Das Nudelholz rollt als Walze ueber die betroffenen Felder (v0.115)", () => {
+    const aufbau = schauspielBrett();
+    TEAM_SCHACH._wirkungSchauspiel(aufbau.halter,
+        { wirkung: "nudelholz", felder: [3, 11] });
+
+    const walze = aufbau.brett.kinder.find((kind) =>
+        String(kind.className).indexOf("nudelholz-walze") !== -1);
+    if (!walze) {
+        throw new Error("keine Walze auf dem Brett");
+    }
+    if (walze.style.left !== "40px" || walze.style.width !== "40px") {
+        throw new Error("die Walze liegt nicht ueber den Feldern ("
+            + walze.style.left + ", " + walze.style.width + ")");
+    }
+    if (walze.style["--rollweg"] !== "80px") {
+        throw new Error("der Rollweg deckt nicht beide Felder: "
+            + walze.style["--rollweg"]);
+    }
+});
+
+pruefe("Schutzschild und Frost bekommen ihre Marke im Feld (v0.115)", () => {
+    for (const fall of [
+        { wirkung: "schutzschild", klasse: "wirkung-schild" },
+        { wirkung: "frost", klasse: "wirkung-frost" }
+    ]) {
+        const aufbau = schauspielBrett();
+        TEAM_SCHACH._wirkungSchauspiel(aufbau.halter,
+            { wirkung: fall.wirkung, felder: [3] });
+
+        const zelle = aufbau.brett.kinder.find((kind) => kind.dataset.feld === "3");
+        const marke = (zelle.kinder || []).find((kind) =>
+            String(kind.className).indexOf(fall.klasse) !== -1);
+        if (!marke) {
+            throw new Error(fall.wirkung + " bekommt keine Marke");
+        }
+    }
+});
+
+pruefe("Das Schauspiel haengt am Wirkungs-Abspieler (v0.115)", () => {
+    /* Quelltext-Pruefung wie bei v0.52: Der Aufruf muss in
+       `_wirkungAnimieren` stehen, sonst spielt nie etwas. */
+    if (String(TEAM_SCHACH._wirkungAnimieren).indexOf("_wirkungSchauspiel") === -1) {
+        throw new Error("_wirkungAnimieren ruft das Schauspiel nicht auf");
+    }
+});
+
 zeitlimitPruefen();

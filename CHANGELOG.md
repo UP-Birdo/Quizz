@@ -3,6 +3,34 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.115.0 — 2026-08-22
+
+**Die Fähigkeiten spielen jetzt ihr eigenes kleines Schauspiel auf dem
+Brett** (Bündel Y, Runde 1 — dein Wunsch vom 22.08.).
+
+- **Das Nudelholz rollt wirklich:** Eine Holzwalze mit Griffen erscheint
+  über den betroffenen Spalten, rollt einmal sichtbar über sie hinweg und
+  verschwindet — die Streifen auf der Walze drehen dabei mit.
+
+- **Das Schutzschild glänzt auf:** Ein blauer Ring wächst um die geschützte
+  Figur und leuchtet kurz.
+
+- **Die Fessel schnappt zu** — ein dunkler Ring legt sich um die gefangene
+  Figur, und die Figur rüttelt kurz dagegen.
+
+- **Der Frost wächst:** Eis breitet sich aus der Feldmitte über die
+  eingefrorenen Felder aus und verweht.
+
+- Alle übrigen Fähigkeiten behalten vorerst das blaue Aufleuchten — die
+  weiteren Schauspiele (Mauer, Teleport, Dieb …) stehen als nächste Runden
+  im Bündel Y der `ROADMAP.md`.
+
+Jedes Gerät sieht dieselben Schauspiele — sie hängen am Zug-Verlauf, nicht
+am Auslöser. Wer „weniger Bewegung" eingestellt hat, bekommt keines. Alles
+mit Bordmitteln gebaut: Nach Prüfung der gängigen Animations-Bibliotheken
+(anime.js, GSAP, Motion) war keine nötig — Begründung in der `ROADMAP.md`,
+Bündel Y.
+
 ## v0.114.0 — 2026-08-22
 
 **Vier kleine UI-Verbesserungen aus dem Watermelon-Bündel (Etappen X2 bis

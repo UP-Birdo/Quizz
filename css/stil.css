@@ -114,6 +114,9 @@ body {
  *               Ringe (2), Pfeile der Anleitung (3), Fingerabdruck (4),
  *               Restzeit (5). Sie gehören alle zum Feld und liegen deshalb
  *               unten.
+ *   6           Das Wirkungs-Schauspiel über dem GANZEN Brett (die
+ *               Nudelholz-Walze, seit v0.115) — über jeder Feldmarke,
+ *               unter den klebenden Leisten.
  *   10          Leisten, die beim Scrollen kleben: die Standleiste über dem
  *               Brett und die Knopfleiste im Fenster. Sie müssen über JEDER
  *               Feldmarke liegen — sonst schiebt sich die Restzeit-Zahl eines
@@ -130,6 +133,7 @@ body {
 
 :root {
     --ebene-feldmarke: 5;
+    --ebene-schauspiel: 6;
     --ebene-leiste: 10;
     --ebene-schwebend: 50;
     --ebene-dialog: 100;
@@ -2257,6 +2261,166 @@ body.runde-offen .tab-leiste {
 .verpufft-schlag {
     width: 60%;
     height: 60%;
+}
+
+/* ------------------------------------------------------------------ *
+ * Die Wirkungs-Schauspiele (seit v0.115, Bündel Y) — je Fähigkeit ein
+ * kleines Bild auf dem Brett. Erzeugt in `_wirkungSchauspiel`; das
+ * Skript unterlässt das bei „weniger Bewegung", deshalb stehen die
+ * Regeln hier und nicht im no-preference-Block.
+ * ------------------------------------------------------------------ */
+
+.wirkung-marke {
+    position: absolute;
+    inset: 4%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* Das Schutzschild: ein blauer Ring, der aufwächst und kurz glänzt. */
+.wirkung-schild {
+    border: 3px solid var(--haupt);
+    box-shadow: 0 0 12px var(--haupt), inset 0 0 10px rgba(255, 255, 255, 0.5);
+    animation: schild-glanz 0.8s ease-out forwards;
+}
+
+@keyframes schild-glanz {
+    from {
+        transform: scale(0.35);
+        opacity: 0;
+    }
+    35% {
+        opacity: 1;
+    }
+    to {
+        transform: scale(1.05);
+        opacity: 0;
+    }
+}
+
+/* Die Fessel: ein dunkler, gestrichelter Ring, der zuschnappt … */
+.wirkung-fessel {
+    border: 3px dashed var(--schrift);
+    animation: fessel-zuschnappen 0.7s ease-out forwards;
+}
+
+@keyframes fessel-zuschnappen {
+    from {
+        transform: scale(1.6) rotate(20deg);
+        opacity: 0;
+    }
+    40% {
+        opacity: 1;
+    }
+    70% {
+        transform: scale(0.95) rotate(-4deg);
+    }
+    to {
+        transform: scale(1) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+/* … und die gefangene Figur rüttelt kurz. */
+.figur-ruettelt {
+    animation: figur-ruetteln 0.45s ease-in-out;
+}
+
+@keyframes figur-ruetteln {
+    0%, 100% {
+        transform: rotate(0);
+    }
+    25% {
+        transform: rotate(-8deg);
+    }
+    75% {
+        transform: rotate(8deg);
+    }
+}
+
+/* Der Frost: Eis wächst aus der Feldmitte auf und verweht. */
+.wirkung-frost {
+    inset: 0;
+    border-radius: 0;
+    background: radial-gradient(circle,
+        rgba(150, 205, 255, 0.9) 0%,
+        rgba(150, 205, 255, 0.35) 55%,
+        rgba(150, 205, 255, 0) 75%);
+    animation: frost-wachsen 0.9s ease-out forwards;
+}
+
+@keyframes frost-wachsen {
+    from {
+        transform: scale(0);
+        opacity: 0.3;
+    }
+    55% {
+        opacity: 1;
+    }
+    to {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+}
+
+/*
+ * DAS ROLLENDE NUDELHOLZ: eine Holzwalze mit Griffen, die einmal über
+ * die betroffenen Spalten rollt. Lage und Grösse setzt `_nudelholzRollen`
+ * in Pixeln an den echten Zellen; die Streifen wandern während der Fahrt
+ * nach unten — das lässt die Walze sichtbar rollen.
+ */
+.nudelholz-walze {
+    position: absolute;
+    z-index: var(--ebene-schauspiel);
+    border-radius: 999px;
+    background:
+        repeating-linear-gradient(0deg,
+            rgba(70, 40, 10, 0.18) 0 3px,
+            rgba(255, 255, 255, 0.10) 3px 6px),
+        linear-gradient(180deg, #d2ab72, #aa7f47 55%, #86622f);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    animation: nudelholz-rollen 1s ease-in-out forwards;
+}
+
+/* Die Griffe links und rechts. */
+.nudelholz-walze::before,
+.nudelholz-walze::after {
+    content: "";
+    position: absolute;
+    top: 28%;
+    height: 44%;
+    width: 10px;
+    background: #86622f;
+    border-radius: 4px;
+}
+
+.nudelholz-walze::before {
+    left: -9px;
+}
+
+.nudelholz-walze::after {
+    right: -9px;
+}
+
+@keyframes nudelholz-rollen {
+    from {
+        transform: translateY(-130%);
+        opacity: 0;
+        background-position: 0 0, 0 0;
+    }
+    12% {
+        opacity: 1;
+    }
+    88% {
+        opacity: 1;
+    }
+    to {
+        transform: translateY(var(--rollweg, 100px));
+        opacity: 0;
+        background-position: 0 42px, 0 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

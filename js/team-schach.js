@@ -612,6 +612,11 @@ const TEAM_SCHACH = {
         }
         TEAM_SCHACH.wirkungBis[partie.id] = partie.zugZaehler;
 
+        /* Zusätzlich zum Aufleuchten: das kleine Schauspiel der Fähigkeit
+           (seit v0.115, Bündel Y) — Nudelholz rollt, Schild glänzt, Frost
+           wächst. Der Merker oben sorgt dafür, dass es nur einmal spielt. */
+        TEAM_SCHACH._wirkungSchauspiel(halter, letzter);
+
         const klasse = (letzter.wirkung === "pech") ? "feld-wirkung-pech" : "feld-wirkung";
 
         for (const feld of letzter.felder) {
