@@ -1296,3 +1296,39 @@ Startbild, Verzögerung und Gleiten stecken in EINEM Stück, das synchron beim
 Aufbau gesetzt wird — es gibt schlicht keinen Zustand, in dem die Figur schon
 am Ziel steht. `_zugAnimieren` darf bei seinem Übergang bleiben: Es startet
 ohne Verzögerung im übernächsten Bild.
+
+## Ein Bild statt eines Zeichens macht drei Kästen kaputt (v0.121, beim Bauen gemessen)
+
+**Was zu sehen war:** Die gerenderten Figuren erschienen zwar, aber deutlich
+kleiner als die Schriftzeichen vorher. Beim Vergrössern des Kastens wurde
+plötzlich das ganze Brett breiter und lief aus dem Bild. Und beim Blick auf
+die Sendeliste des Deploys fehlten alle zwölf Bilder — sie wären auf der
+veröffentlichten Seite gar nicht angekommen.
+
+**Drei getrennte Ursachen, alle aus derselben Wurzel:** Ein Schriftzeichen ist
+Text und passt sich seinem Kasten an; ein Hintergrundbild braucht einen Kasten
+mit Maßen, und dieser Kasten mischt plötzlich in Layout-Rechnungen mit, die
+vorher niemanden störten.
+
+1. **`.feld` ist ein Flex-Kasten.** Ein Flex-Kind mit `width: 1.6em` in einem
+   1.47em breiten Feld wird stillschweigend zusammengedrückt (`flex-shrink`
+   steht von sich aus auf 1). Die Figur war also kleiner als angegeben, ohne
+   dass irgendwo etwas Falsches stand. Heilmittel: `flex: 0 0 auto`.
+2. **`.feld` ist zugleich ein Raster-Kind.** Ein Raster-Kind ist von sich aus
+   mindestens so breit wie sein Inhalt (`min-width: auto`), und die
+   `1fr`-Spalten des Bretts wachsen mit. Sobald die Figur breiter war als ihr
+   Feld, zog sie das ganze Brett über sein `max-width` hinaus. Heilmittel:
+   `min-width: 0` am Feld — nur im 3D-Look, wo der Überstand vorkommt.
+3. **`tools\Deploy-Quizz.ps1` lädt nur freigegebene ORDNER hoch.** `img` stand
+   nicht in der Liste. Das wäre besonders bitter geworden: Weil das
+   Schriftzeichen unter dem Bild durchsichtig geschaltet ist, wären die
+   Figuren nicht schmuckloser, sondern UNSICHTBAR gewesen — und der Fehler
+   erst auf der öffentlichen Seite aufgefallen, nicht lokal.
+
+**Die Lehre:** Wer Text durch ein Bild ersetzt, prüft drei Dinge getrennt —
+ob der Kasten seine Maße behält (Flex), ob er die Umgebung verschiebt
+(Raster), und ob die Datei überhaupt mit ausgeliefert wird. Die ersten beiden
+findet man nur durch MESSEN im Browser, nicht durch Hinsehen: Die Zahlen im
+Stylesheet stimmten die ganze Zeit. Gemessen wurde mit einer Wegwerf-Seite und
+Edge im Kopflos-Betrieb (`--headless=new --screenshot`), die Feld-, Kasten-
+und Seitenbreiten ausgibt — dasselbe Vorgehen wie bei v0.86/v0.94.

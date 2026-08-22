@@ -101,6 +101,10 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - **Verzögerte Bewegung: Animation mit backwards, nie Übergang plus
       Delay** (v0.117.1) — beim Übergangs-Muster blitzt zwischen Aufbau und
       Rücksetzung ein Einzelbild der Endlage durch; die Figuren hüpften
+    - **Ein Bild statt eines Zeichens macht drei Kästen kaputt** (v0.121) —
+      Flex drückt den Figurenkasten klein (`flex: 0 0 auto`), das Raster-Feld
+      zieht am Brett (`min-width: 0`), und der Deploy lud den Ordner `img`
+      gar nicht hoch; alles drei nur durch Messen im Browser gefunden
 
 ## entschieden.md - Entschieden - und warum
 
