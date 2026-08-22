@@ -3,6 +3,26 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.120.0 — 2026-08-22
+
+**3D-Look, Runde 2: die gewohnten Farben zurück, Hüpf-Züge und
+Schlag-Funken.** (Deine Ansage vom 22.08.)
+
+- **Die Brettfarben bleiben die gewohnten** — das Lila von gestern ist
+  wieder raus. Der 3D-Look ändert nur noch die FORM: abgerundete Kacheln
+  mit Kante und Schatten, in Blau und Weiss wie immer (und im
+  Dunkel-Modus entsprechend).
+
+- **Die Figuren hüpfen** im 3D-Look von Kachel zu Kachel — mit kleinem
+  Ducken und Strecken wie im Vorbild — statt flach zu gleiten. Und ein
+  Schlag platzt als Funkenkranz auf.
+
+- **Ziel- und Schlagfelder leuchten** im 3D-Look als Ring auf der Kachel.
+
+- **Behoben:** Die Zugbewegung startete im 3D-Look ein paar Pixel neben der
+  Kachel (der neue Kachel-Abstand fehlte in der Rechnung). Die Bewegung
+  misst jetzt die echten Felder — in jeder Ansicht und Brett-Drehung.
+
 ## v0.119.0 — 2026-08-22
 
 **Neuer Tab „Einstellungen" — mit dem Schalter für den 3D-Look.** (Dein

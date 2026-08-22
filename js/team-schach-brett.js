@@ -1701,17 +1701,32 @@ Object.assign(TEAM_SCHACH, {
             return;
         }
 
-        const breite = SCHACH.breiteVon(partie.stand);
+        /*
+         * SEIT v0.120 MISST DIE BEWEGUNG DIE ECHTEN ZELLEN (wie die
+         * Nudelholz-Walze): Damit stimmt der Startpunkt auch mit dem
+         * Kachel-Abstand des 3D-Looks. Die Dreh-Umrechnung bleibt als
+         * Rückfallebene, falls das Startfeld gerade nicht im Bild steht.
+         */
+        const vonZelle = halter.querySelector("[data-feld=\"" + letzter.von + "\"]");
 
-        /* Der Weg auf dem BRETT — und danach umgerechnet auf die Lage, in der
-           dieses Gerät das Brett sieht (seit v0.72 vier statt zwei). */
-        const weg = TEAM_SCHACH._wegZuAnzeige(
-            TEAM_SCHACH._drehungVon(partie, SCHACH_RUNDE.teamVon(partie, person.id)),
-            SCHACH.reiheVon(letzter.von, breite) - SCHACH.reiheVon(letzter.nach, breite),
-            SCHACH.spalteVon(letzter.von, breite) - SCHACH.spalteVon(letzter.nach, breite));
+        if (vonZelle && typeof vonZelle.offsetLeft === "number"
+            && typeof zelle.offsetLeft === "number") {
+            figurEl.style.transform = "translate("
+                + (vonZelle.offsetLeft - zelle.offsetLeft) + "px, "
+                + (vonZelle.offsetTop - zelle.offsetTop) + "px)";
+        } else {
+            const breite = SCHACH.breiteVon(partie.stand);
 
-        figurEl.style.transform = "translate(" + (weg.ds * groesse) + "px, "
-            + (weg.dr * groesse) + "px)";
+            /* Der Weg auf dem BRETT — umgerechnet auf die Lage, in der dieses
+               Gerät das Brett sieht (seit v0.72 vier statt zwei). */
+            const weg = TEAM_SCHACH._wegZuAnzeige(
+                TEAM_SCHACH._drehungVon(partie, SCHACH_RUNDE.teamVon(partie, person.id)),
+                SCHACH.reiheVon(letzter.von, breite) - SCHACH.reiheVon(letzter.nach, breite),
+                SCHACH.spalteVon(letzter.von, breite) - SCHACH.spalteVon(letzter.nach, breite));
+
+            figurEl.style.transform = "translate(" + (weg.ds * groesse) + "px, "
+                + (weg.dr * groesse) + "px)";
+        }
         /* Die wandernde Figur liegt über ihren Nachbarfeldern. */
         zelle.classList.add("feld-zieht");
 

@@ -1017,6 +1017,12 @@ body.runde-offen .tab-leiste {
 :root {
     --feld-hell: #ffffff;
     --feld-dunkel: #4a7fb5;
+
+    /* Die Kachel-Kanten des 3D-Looks (v0.120): abgedunkelte Geschwister
+       der beiden Feldfarben — die Farben selbst bleiben die gewohnten. */
+    --feld-kante-hell: #c4cfda;
+    --feld-kante-dunkel: #35618c;
+
     --feld-gewaehlt: #f2d675;
     --figur-weiss: #ffffff;
     --figur-schwarz: #16181c;
@@ -1071,6 +1077,8 @@ body.runde-offen .tab-leiste {
     :root {
         --feld-hell: #cfdcea;
         --feld-dunkel: #35608f;
+        --feld-kante-hell: #97a9bc;
+        --feld-kante-dunkel: #223f5f;
         --feld-gewaehlt: #d9b64a;
         --figur-weiss: #ffffff;
         --figur-schwarz: #14161a;
@@ -1724,12 +1732,12 @@ body.runde-offen .tab-leiste {
  * docken an DERSELBEN Klasse an — ROADMAP, Bündel Z.
  * ------------------------------------------------------------------ */
 
-body.design-3d {
-    --feld-hell: #a7b2e8;
-    --feld-dunkel: #9a63d8;
-    --feld-kante-hell: #7f8ac2;
-    --feld-kante-dunkel: #7443ae;
-}
+/*
+ * DIE FARBEN BLEIBEN DIE GEWOHNTEN (Nutzer-Ansage 22.08., zweite Runde —
+ * die Pastell-Lila-Palette von v0.119 ist wieder raus): Der 3D-Look ändert
+ * nur die FORM der Kacheln. Die Kantenfarben sind abgedunkelte Geschwister
+ * der Feldfarben und stehen bei ihnen im :root (hell wie dunkel).
+ */
 
 /* Das Brett verliert Rahmen und Fläche — die Kacheln stehen frei wie
    kleine Klötze; unten Platz für ihre Kanten. */
@@ -1746,13 +1754,30 @@ body.design-3d .vorschau-feld {
     border-radius: 12%;
 }
 
-/* Die „Dicke" der Kachel: eine harte Kante unten plus weicher Schatten. */
+/* Die „Dicke" der Kachel: eine harte Kante unten plus weicher Schatten.
+   Als Variable, damit Ziel- und Schlag-Ringe sie ERGÄNZEN können, statt
+   sie zu überschreiben. */
 body.design-3d .feld-hell {
-    box-shadow: 0 5px 0 var(--feld-kante-hell), 0 8px 8px rgba(40, 40, 90, 0.25);
+    --kachel-schatten: 0 5px 0 var(--feld-kante-hell),
+        0 8px 8px rgba(20, 35, 55, 0.28);
+    box-shadow: var(--kachel-schatten);
 }
 
 body.design-3d .feld-dunkel {
-    box-shadow: 0 5px 0 var(--feld-kante-dunkel), 0 8px 8px rgba(40, 40, 90, 0.25);
+    --kachel-schatten: 0 5px 0 var(--feld-kante-dunkel),
+        0 8px 8px rgba(20, 35, 55, 0.28);
+    box-shadow: var(--kachel-schatten);
+}
+
+/* Ziel und Schlag leuchten als Ring AUF der Kachel — wie im Vorbild die
+   umrandeten Felder. Der Punkt bzw. Ring der klassischen Ansicht bleibt
+   zusätzlich stehen. */
+body.design-3d .feld-ziel {
+    box-shadow: var(--kachel-schatten), inset 0 0 0 3px var(--ziel-rand);
+}
+
+body.design-3d .feld-schlag {
+    box-shadow: var(--kachel-schatten), inset 0 0 0 3px #e05a52;
 }
 
 /* Auch die Beispielbretter der Anleitungen tragen den Look. */
@@ -1761,6 +1786,50 @@ body.design-3d .vorschau {
     border-color: transparent;
     background: transparent;
     overflow: visible;
+}
+
+/*
+ * Z2 — BEWEGUNG IM 3D-LOOK (seit v0.120): Die ziehende Figur hüpft mit
+ * Stauchen und Strecken, statt nur zu gleiten. `scale` und `translate`
+ * sind EIGENE Eigenschaften und mischen sich nicht in den `transform`-
+ * Übergang des Gleitens — beides läuft gleichzeitig.
+ */
+body.design-3d .figur-zieht {
+    animation: figur-hopser 260ms ease-out;
+}
+
+@keyframes figur-hopser {
+    0% {
+        scale: 1.05 0.75;
+        translate: 0 6%;
+    }
+    45% {
+        scale: 0.92 1.12;
+        translate: 0 -14%;
+    }
+    100% {
+        scale: 1 1;
+        translate: 0 0;
+    }
+}
+
+/* Und der Schlag platzt als gestrichelter Funkenkranz auf, statt nur zu
+   verpuffen. */
+body.design-3d .verpufft-schlag {
+    border-style: dashed;
+    border-width: 3px;
+    animation: verpuffen-funken 480ms ease-out;
+}
+
+@keyframes verpuffen-funken {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.9) rotate(60deg);
+    }
 }
 
 /* ------------------------------------------------------------------ *
