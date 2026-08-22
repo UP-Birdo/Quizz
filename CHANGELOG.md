@@ -3,6 +3,23 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.119.0 — 2026-08-22
+
+**Neuer Tab „Einstellungen" — mit dem Schalter für den 3D-Look.** (Dein
+Wunsch vom 22.08.)
+
+- **Der Tab:** Rechts neben der Rangliste gibt es jetzt „Einstellungen" mit
+  dem Bereich „Darstellung". Alles darin gilt nur für DEIN Gerät — es wird
+  nichts in die gemeinsame Datenbank geschrieben.
+
+- **Der Schalter „3D-Look (Vorschau)":** eingeschaltet wird das Schachbrett
+  zu Pastell-Kacheln mit Tiefe — abgerundete Klötze in Lila und Lavendel
+  mit sichtbarer Kante, wie in dem 3D-Spiel, das wir uns angesehen haben.
+  Auch die Beispielbretter der Anleitungen ziehen mit. Das ist die ERSTE
+  Ausbaustufe; Spielzeug-Figuren und die leichte Schräg-Ansicht folgen als
+  eigene Runden und erscheinen dann automatisch hinter demselben Schalter.
+  Ausgeschaltet bleibt alles exakt wie bisher.
+
 ## v0.118.0 — 2026-08-22
 
 **Bessere Anleitungen: Lootboxen bei Enttarnen und Verstecken, die Hand auf

@@ -137,6 +137,12 @@ const APP = {
         TABS.registrieren(TEAM_SCHACH);
         TABS.registrieren(IMPOSTER);
         TABS.registrieren(RANGLISTE);
+        TABS.registrieren(EINSTELLUNGEN);
+
+        /* Die gewählte Darstellung VOR dem ersten Zeichnen anwenden — sonst
+           blitzt kurz das falsche Design auf (seit v0.119). */
+        EINSTELLUNGEN.laden();
+
         TABS.starten(
             document.getElementById("tab-leiste"),
             document.getElementById("tab-inhalt")

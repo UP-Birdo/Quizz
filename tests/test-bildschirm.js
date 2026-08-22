@@ -355,7 +355,8 @@ umgebung.TABS = {
 const bausteinNamen = ["MODELL", "SCHACH_VARIANTEN", "SCHACH", "SCHACH_RUNDE",
     "SCHACH_TAFEL", "SCHACH_VORSCHAU", "SCHACH_GRUNDLAGEN", "TEAM_SCHACH",
     "IMPOSTER_WOERTER",
-    "IMPOSTER_RUNDE", "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "SpeicherGemeinsam",
+    "IMPOSTER_RUNDE", "IMPOSTER_TAFEL", "IMPOSTER", "RANGLISTE", "EINSTELLUNGEN",
+    "SpeicherGemeinsam",
     /* Seit v0.76 auch der Abgleich: Sein Rennen mit der regelmaessigen Abfrage
        war der „Doppelzug-Fehler", und ohne Test kaeme es unbemerkt zurueck. */
     "Abgleich"];
@@ -370,7 +371,7 @@ const dateien = ["konfig.js", "modell.js", "speicher.js", "abgleich.js",
     "team-schach-uebersicht.js", "team-schach-brett.js", "team-schach-auswertung.js",
     "team-schach-grundlagen.js",
     "imposter-woerter.js", "imposter-runde.js", "imposter-tafel.js", "imposter.js",
-    "rangliste.js"];
+    "rangliste.js", "einstellungen.js"];
 
 const quelltext = dateien
     .map((name) => dateisystem.readFileSync(pfad.join(jsOrdner, name), "utf8"))
@@ -3993,6 +3994,55 @@ pruefe("Konfetti regnet zum Sieg genau einmal je Partie (v0.116)", () => {
         String(kind.className).indexOf("konfetti-regen") !== -1);
     if (nochmal.length !== 1) {
         throw new Error("das Konfetti regnet bei jedem Neuzeichnen erneut");
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Der Einstellungen-Tab (v0.119)
+ * ------------------------------------------------------------------ */
+
+pruefe("Der Einstellungen-Tab schaltet das Brett-Design um (v0.119)", () => {
+    const EINSTELLUNGEN = umgebung.EINSTELLUNGEN;
+    if (!EINSTELLUNGEN || EINSTELLUNGEN.id !== "einstellungen") {
+        throw new Error("der Einstellungen-Baustein fehlt");
+    }
+
+    EINSTELLUNGEN.aufbauen(neuesElement("div"));
+
+    const suchen = (element, klasse) => {
+        for (const kind of element.kinder || []) {
+            if (String(kind.className || "").indexOf(klasse) !== -1) {
+                return kind;
+            }
+            const tiefer = suchen(kind, klasse);
+            if (tiefer) {
+                return tiefer;
+            }
+        }
+        return null;
+    };
+
+    const kasten = suchen(EINSTELLUNGEN.wurzelEl, "schalter-kasten");
+    if (!kasten) {
+        throw new Error("kein Kipp-Schalter im Einstellungen-Tab");
+    }
+
+    kasten.checked = true;
+    kasten.ausloesen("change");
+    if (EINSTELLUNGEN.design !== "3d") {
+        throw new Error("an muesste 3D-Look heissen, ist: " + EINSTELLUNGEN.design);
+    }
+
+    kasten.checked = false;
+    kasten.ausloesen("change");
+    if (EINSTELLUNGEN.design !== "klassisch") {
+        throw new Error("aus muesste klassisch heissen, ist: " + EINSTELLUNGEN.design);
+    }
+
+    /* Nur gueltige Werte — Unsinn faellt auf die Vorgabe zurueck. */
+    EINSTELLUNGEN.designSetzen("unsinn");
+    if (EINSTELLUNGEN.design !== "klassisch") {
+        throw new Error("Unsinn wird nicht abgefangen: " + EINSTELLUNGEN.design);
     }
 });
 

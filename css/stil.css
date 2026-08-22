@@ -1718,6 +1718,52 @@ body.runde-offen .tab-leiste {
 }
 
 /* ------------------------------------------------------------------ *
+ * DER 3D-LOOK (Vorschau, seit v0.119) — Stufe 1: Pastell-Kacheln mit
+ * Tiefe. Hängt an `body.design-3d` (Tab Einstellungen, nur dieses
+ * Gerät); die weiteren Stufen (Spielzeug-Figuren, Schräg-Ansicht)
+ * docken an DERSELBEN Klasse an — ROADMAP, Bündel Z.
+ * ------------------------------------------------------------------ */
+
+body.design-3d {
+    --feld-hell: #a7b2e8;
+    --feld-dunkel: #9a63d8;
+    --feld-kante-hell: #7f8ac2;
+    --feld-kante-dunkel: #7443ae;
+}
+
+/* Das Brett verliert Rahmen und Fläche — die Kacheln stehen frei wie
+   kleine Klötze; unten Platz für ihre Kanten. */
+body.design-3d .brett {
+    border-color: transparent;
+    background: transparent;
+    gap: 5px;
+    padding: 2px 2px 8px 2px;
+    overflow: visible;
+}
+
+body.design-3d .feld,
+body.design-3d .vorschau-feld {
+    border-radius: 12%;
+}
+
+/* Die „Dicke" der Kachel: eine harte Kante unten plus weicher Schatten. */
+body.design-3d .feld-hell {
+    box-shadow: 0 5px 0 var(--feld-kante-hell), 0 8px 8px rgba(40, 40, 90, 0.25);
+}
+
+body.design-3d .feld-dunkel {
+    box-shadow: 0 5px 0 var(--feld-kante-dunkel), 0 8px 8px rgba(40, 40, 90, 0.25);
+}
+
+/* Auch die Beispielbretter der Anleitungen tragen den Look. */
+body.design-3d .vorschau {
+    gap: 4px;
+    border-color: transparent;
+    background: transparent;
+    overflow: visible;
+}
+
+/* ------------------------------------------------------------------ *
  * Die Spur des letzten Zuges (seit v3.6)
  *
  * Bis v3.5 lag hier ein gezeichneter Pfeil über dem Brett — mit Maske, damit
