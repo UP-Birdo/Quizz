@@ -3846,6 +3846,19 @@ body.dialog-offen {
         transform: scale(0.96);
     }
 
+    /* Der Knopf im „Wirklich?"-Zustand (`DIALOG.zweiSchritt`, seit v0.112)
+       ploppt kurz auf — man sieht, dass sich die Frage in den Knopf gelegt
+       hat und der nächste Druck zählt. */
+    .knopf-wirklich {
+        animation: wirklich-auf 0.15s ease-out;
+    }
+
+    @keyframes wirklich-auf {
+        from {
+            transform: scale(0.9);
+        }
+    }
+
     /* Die Spielart-Kacheln heben sich unter dem Zeiger leicht an. */
     .spielart-kachel {
         transition: transform 0.15s ease, border-color 0.15s ease,

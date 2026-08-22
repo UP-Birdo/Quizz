@@ -922,7 +922,8 @@ const TEAM_SCHACH = {
             leiste.appendChild(TEAM_SCHACH._knopf("Neu aufstellen", "knopf-haupt",
                 () => TEAM_SCHACH.neuAufstellen(partie)));
         } else if (partie.laeuft && meinTeam) {
-            leiste.appendChild(TEAM_SCHACH._knopf("Aufgeben", "knopf-gefahr knopf-klein",
+            leiste.appendChild(DIALOG.zweiSchritt(
+                TEAM_SCHACH._knopf("Aufgeben", "knopf-gefahr knopf-klein", null),
                 () => TEAM_SCHACH.aufgeben(partie, meinTeam)));
         }
 
@@ -1709,16 +1710,9 @@ const TEAM_SCHACH = {
             return;
         }
 
-        const ja = await DIALOG.frage(
-            "Partie löschen?",
-            "Die Partie " + partie.titel + " wird für alle entfernt. Das lässt sich "
-                + "nicht rückgängig machen.",
-            "Löschen",
-            true
-        );
-        if (!ja) {
-            return;
-        }
+        /* Die „Wirklich?"-Frage stellt seit v0.112 der Knopf selbst
+           (`DIALOG.zweiSchritt` in der Übersicht) — hier bleibt nur noch
+           die Passwort-Schranke oben. */
 
         const abgleich = TEAM_SCHACH.abgleich;
         let tafel = abgleich.daten;
@@ -2196,15 +2190,8 @@ const TEAM_SCHACH = {
     },
 
     async aufgeben(partie, farbe) {
-        const ja = await DIALOG.frage(
-            "Aufgeben?",
-            "Die Partie ist damit vorbei und die andere Seite gewinnt.",
-            "Aufgeben",
-            true
-        );
-        if (!ja) {
-            return;
-        }
+        /* Die „Wirklich?"-Frage stellt seit v0.112 der Knopf selbst
+           (`DIALOG.zweiSchritt` an der Knopfleiste der Partie). */
         await TEAM_SCHACH._sendenMitPruefung(
             SCHACH_RUNDE.aufgeben(partie, farbe),
             partie.zugZaehler

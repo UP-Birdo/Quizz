@@ -825,7 +825,8 @@ const WUERFEL_QUIZZ = {
             () => WUERFEL_QUIZZ.neueRunde()
         ));
 
-        leiste.appendChild(WUERFEL_QUIZZ._knopf("Ich bin raus", "knopf-still knopf-klein",
+        leiste.appendChild(DIALOG.zweiSchritt(
+            WUERFEL_QUIZZ._knopf("Ich bin raus", "knopf-still knopf-klein", null),
             () => WUERFEL_QUIZZ.austreten()));
 
         leiste.appendChild(WUERFEL_QUIZZ._knopf(
@@ -867,24 +868,15 @@ const WUERFEL_QUIZZ = {
 
     /* Knopf zum Entfernen eines Spielers; nur in der Verwaltung sichtbar. */
     _entfernenKnopfBauen(ziel) {
-        return WUERFEL_QUIZZ._knopf(
-            "Spieler entfernen",
-            "knopf-gefahr knopf-klein",
+        return DIALOG.zweiSchritt(
+            WUERFEL_QUIZZ._knopf("Spieler entfernen", "knopf-gefahr knopf-klein", null),
             () => WUERFEL_QUIZZ.spielerEntfernen(ziel)
         );
     },
 
     async spielerEntfernen(ziel) {
-        const ja = await DIALOG.frage(
-            "Spieler entfernen?",
-            ziel.name + " wird aus der Runde entfernt, mit Würfeln und Vermutungen. "
-                + "Die Person kann sich danach neu anmelden — auch mit neuer PIN.",
-            "Entfernen",
-            true
-        );
-        if (!ja) {
-            return;
-        }
+        /* Die „Wirklich?"-Frage stellt seit v0.112 der Knopf selbst
+           (`DIALOG.zweiSchritt` in `_entfernenKnopfBauen`). */
 
         /* Betrifft absichtlich einen fremden Eintrag: ohne Zusammenführung. */
         WUERFEL_QUIZZ.abgleich.aendern(
@@ -1163,17 +1155,8 @@ const WUERFEL_QUIZZ = {
     },
 
     async austreten() {
-        const ja = await DIALOG.frage(
-            "Aus der Runde austreten?",
-            "Du wirst aus der Liste entfernt, mit deinen Würfeln und Vermutungen. "
-                + "Du kannst dich jederzeit neu anmelden.",
-            "Austreten",
-            true
-        );
-        if (!ja) {
-            return;
-        }
-
+        /* Die „Wirklich?"-Frage stellt seit v0.112 der Knopf selbst
+           (`DIALOG.zweiSchritt` an der Knopfleiste). */
         const id = WUERFEL_QUIZZ.ichId;
         ICH.wurfVergessen(id);
         ICH.personVergessen();

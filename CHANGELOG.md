@@ -3,6 +3,23 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.112.0 — 2026-08-22
+
+**Löschen fragt jetzt direkt im Knopf nach — „Wirklich?" statt Popup.**
+(Watermelon-Etappe X6, deine Freigabe vom 22.08.)
+
+- **Fünf kleine, zerstörende Aktionen** stellen ihre Rückfrage nicht mehr als
+  eigenes Fenster, sondern im Knopf selbst: Der erste Druck färbt ihn rot und
+  er zeigt „Wirklich?" — erst der zweite Druck führt aus. Wer nicht erneut
+  drückt, bekommt den Knopf nach vier Sekunden unverändert zurück. Die
+  Stellen: **Partie löschen** und **Raum löschen** (beide verlangen davor
+  weiterhin das Verwaltungs-Passwort), **Spieler entfernen** (Verwaltung),
+  **Ich bin raus** und **Aufgeben**.
+
+- **Alle erklärenden Rückfragen bleiben Fenster** — Würfel ändern, Aufdecken,
+  Neue Runde, Fähigkeit einsetzen, Händler und Dieb sagen ja etwas, das man
+  vor dem Bestätigen lesen soll. Ein Knopf kann das nicht.
+
 ## v0.111.0 — 2026-08-22
 
 **Die Spiele-Tabs oben tragen jetzt dieselbe gleitende Pille wie die

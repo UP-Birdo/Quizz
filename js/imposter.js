@@ -265,7 +265,8 @@ const IMPOSTER = {
         const leiste = IMPOSTER._element("div", "karte-fuss");
         leiste.appendChild(IMPOSTER._knopf("Öffnen", "knopf-still knopf-klein",
             () => IMPOSTER.raumOeffnen(raum.id)));
-        leiste.appendChild(IMPOSTER._knopf("Löschen", "knopf-gefahr knopf-klein",
+        leiste.appendChild(DIALOG.zweiSchritt(
+            IMPOSTER._knopf("Löschen", "knopf-gefahr knopf-klein", null),
             () => IMPOSTER.raumLoeschen(raum)));
         karte.appendChild(leiste);
 
@@ -1014,17 +1015,9 @@ const IMPOSTER = {
             return;
         }
 
-        const ja = await DIALOG.frage(
-            "Raum löschen?",
-            "Der Raum " + raum.titel + " wird für alle entfernt. Das lässt sich "
-                + "nicht rückgängig machen. Punkte aus schon aufgelösten Runden "
-                + "gehen damit auch aus der Rangliste.",
-            "Löschen",
-            true
-        );
-        if (!ja) {
-            return;
-        }
+        /* Die „Wirklich?"-Frage stellt seit v0.112 der Knopf selbst
+           (`DIALOG.zweiSchritt` in der Übersicht) — hier bleibt nur noch
+           die Passwort-Schranke oben. */
 
         const geschrieben = await IMPOSTER._sendenMitLaden(
             (tafel) => IMPOSTER_TAFEL.raumEntfernen(tafel, raum.id));

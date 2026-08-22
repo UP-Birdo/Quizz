@@ -60,6 +60,51 @@ const DIALOG = {
     },
 
     /*
+     * DIE ZWEI-SCHRITT-BESTÄTIGUNG AM KNOPF SELBST (seit v0.112, Nutzer-
+     * Entscheidung 22.08., ROADMAP Bündel X6): Der erste Druck stellt die
+     * Frage IM Knopf — er wird rot und zeigt „Wirklich?" —, erst der zweite
+     * Druck führt aus. Wer nicht erneut drückt, bekommt den Knopf nach vier
+     * Sekunden unverändert zurück.
+     *
+     * Sie ersetzt den Rückfrage-Dialog NUR bei kleinen zerstörenden
+     * Aktionen, deren Folge sich von selbst versteht (Löschen, Austreten,
+     * Aufgeben). Alles, was eine echte Erklärung braucht, bleibt bei
+     * `DIALOG.frage` — der Knopf kann keinen Erklärtext tragen.
+     *
+     * Aufruf beim Bauen des Knopfs; der Knopf kommt zurück, damit der
+     * Aufruf direkt im `appendChild` stehen kann:
+     *     leiste.appendChild(DIALOG.zweiSchritt(
+     *         X._knopf("Löschen", "knopf-gefahr", null),
+     *         () => X.loeschen(ding)));
+     */
+    zweiSchritt(knopf, aktion, beschriftung) {
+        const ruhe = { text: knopf.textContent, klasse: knopf.className };
+        let zeiger = null;
+
+        const zurueck = () => {
+            if (zeiger !== null) {
+                clearTimeout(zeiger);
+                zeiger = null;
+            }
+            knopf.textContent = ruhe.text;
+            knopf.className = ruhe.klasse;
+        };
+
+        knopf.addEventListener("click", () => {
+            if (zeiger === null) {
+                knopf.textContent = beschriftung || "Wirklich?";
+                knopf.className = ruhe.klasse + " knopf-gefahr knopf-wirklich";
+                zeiger = setTimeout(zurueck, 4000);
+                return;
+            }
+            zurueck();
+            aktion();
+        });
+
+        return knopf;
+    },
+
+    /*
      * Abfrage eines kurzen Textes (z. B. des eigenen Namens).
      * Liefert den eingegebenen Text oder null bei Abbruch.
      * Mit `abbrechbar = false` gibt es keinen Abbrechen-Knopf — für die Frage

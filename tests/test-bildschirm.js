@@ -317,7 +317,16 @@ umgebung.DIALOG = {
     hinweis: async () => true,
     frage: async () => true,
     eingabe: async () => null,
-    liste: async () => null
+    liste: async () => null,
+
+    /* Wie `frage: () => true`: Die Zwei-Schritt-Bestätigung (v0.112) sagt im
+       Test sofort zu — ein Klick führt aus. Die echte Mechanik (erster Druck
+       fragt, zweiter führt aus) prüft ein eigener Test weiter unten gegen
+       das ECHTE dialog.js. */
+    zweiSchritt(knopf, aktion) {
+        knopf.addEventListener("click", aktion);
+        return knopf;
+    }
 };
 
 /*
@@ -3725,5 +3734,55 @@ async function zeitlimitPruefen() {
     console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
     process.exit(anzahlFehler === 0 ? 0 : 1);
 }
+
+/* ------------------------------------------------------------------ *
+ * Die Zwei-Schritt-Bestätigung am Knopf (v0.112)
+ *
+ * Geprüft wird die ECHTE Funktion aus js\dialog.js — sie läuft dafür in
+ * einem eigenen Kontext, denn im Haupt-Kontext sind die Dialoge bewusst
+ * durch Stellvertreter ersetzt (siehe oben).
+ * ------------------------------------------------------------------ */
+
+pruefe("Zwei-Schritt: erster Druck fragt nur, zweiter führt aus (v0.112)", () => {
+    const dialogUmgebung = { setTimeout: setTimeout, clearTimeout: clearTimeout };
+    vm.createContext(dialogUmgebung);
+    vm.runInContext(
+        dateisystem.readFileSync(pfad.join(jsOrdner, "dialog.js"), "utf8")
+            + "\nglobalThis.DIALOG = DIALOG;",
+        dialogUmgebung,
+        { filename: "dialog.js" }
+    );
+
+    let ausgefuehrt = 0;
+    const knopf = neuesElement("button");
+    knopf.textContent = "Löschen";
+    knopf.className = "knopf knopf-gefahr knopf-klein";
+
+    const zurueckgegeben = dialogUmgebung.DIALOG.zweiSchritt(
+        knopf, () => { ausgefuehrt += 1; });
+    if (zurueckgegeben !== knopf) {
+        throw new Error("zweiSchritt gibt den Knopf nicht zurueck");
+    }
+
+    knopf.ausloesen("click");
+    if (ausgefuehrt !== 0) {
+        throw new Error("der erste Druck fuehrt schon aus");
+    }
+    if (knopf.textContent !== "Wirklich?") {
+        throw new Error("der Knopf stellt die Frage nicht selbst");
+    }
+    if (knopf.className.indexOf("knopf-wirklich") === -1) {
+        throw new Error("der Frage-Zustand traegt seine Klasse nicht");
+    }
+
+    knopf.ausloesen("click");
+    if (ausgefuehrt !== 1) {
+        throw new Error("der zweite Druck fuehrt nicht aus");
+    }
+    if (knopf.textContent !== "Löschen"
+            || knopf.className !== "knopf knopf-gefahr knopf-klein") {
+        throw new Error("der Knopf kehrt nach dem zweiten Druck nicht zurueck");
+    }
+});
 
 zeitlimitPruefen();

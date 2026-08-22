@@ -1159,7 +1159,8 @@ Object.assign(TEAM_SCHACH, {
         const leiste = TEAM_SCHACH._element("div", "karte-fuss");
         leiste.appendChild(TEAM_SCHACH._knopf("Öffnen", "knopf-still knopf-klein",
             () => TEAM_SCHACH.partieOeffnen(partie.id)));
-        leiste.appendChild(TEAM_SCHACH._knopf("Löschen", "knopf-gefahr knopf-klein",
+        leiste.appendChild(DIALOG.zweiSchritt(
+            TEAM_SCHACH._knopf("Löschen", "knopf-gefahr knopf-klein", null),
             () => TEAM_SCHACH.partieLoeschen(partie)));
         karte.appendChild(leiste);
 
