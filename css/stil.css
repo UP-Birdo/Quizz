@@ -1832,6 +1832,107 @@ body.design-3d .verpufft-schlag {
     }
 }
 
+
+/*
+ * Z3 — DIE GEMALTEN FIGUREN (seit v0.121): Im 3D-Look zeigt jede Figur ihr
+ * in Blender gerendertes Bild aus `img\figuren\` statt des Schriftzeichens.
+ * Die Bilder erzeugt `tools\Figuren-Blender.py`; gestartet wird es per
+ * Doppelklick auf `tools\Figuren rendern.cmd` (NICHT aus dem Blender-Fenster
+ * — Begründung in `docs\FIGUREN-BLENDER.md`).
+ *
+ * DAS SCHRIFTZEICHEN BLEIBT STEHEN und wird nur durchsichtig geschaltet.
+ * Drei Gründe: Es hält weiterhin die Grösse (die ganze Rechnung um
+ * `--figur-groesse` und `FIGUR_ANTEIL` bleibt unverändert gültig), es bleibt
+ * für Vorlese-Programme lesbar, und es ist die Rückfallebene. Fällt eine
+ * Figur durch — unbekannte Art, fehlendes Bild —, greift keine der Regeln
+ * unten und das Zeichen ist einfach wieder da. Die Rückfallebene ist nicht
+ * gebaut, sondern übrig.
+ *
+ * Die Klasse `figur-art-*` kommt aus `TEAM_SCHACH._figurKlasse`. Sie steht
+ * bewusst NICHT im klassischen Look zur Debatte: Alle Regeln hier hängen an
+ * `body.design-3d`, das gewohnte Brett bleibt Zeichen-Brett.
+ */
+body.design-3d .figur-art-bauer,
+body.design-3d .figur-art-springer,
+body.design-3d .figur-art-laeufer,
+body.design-3d .figur-art-turm,
+body.design-3d .figur-art-dame,
+body.design-3d .figur-art-koenig {
+    color: transparent;
+    text-shadow: none;
+    /*
+     * Ein eigener, quadratischer Kasten. Er ist GRÖSSER als das Feld, und das
+     * ist Absicht: Im Bild steht die Figur mittig mit viel Luft an den Seiten
+     * — der Sockel misst nur gut ein Drittel der Bildbreite. Was über das Feld
+     * hinausragt, ist also durchsichtig; sichtbar bleibt die Figur.
+     *
+     * 1.6em heisst am Ende: Der König steht fast so hoch wie ein Feld breit
+     * ist, der Bauer halb so hoch. Die Verhältnisse aus der Vorgabe
+     * (`docs\FIGUREN-BLENDER.md`) stecken in den Bildern selbst, nicht hier.
+     *
+     * `flex: 0 0 auto` ist PFLICHT, kein Zierat: Das Feld ist ein Flex-Kasten,
+     * und ein Flex-Kind, das breiter ist als sein Platz, wird sonst
+     * stillschweigend zusammengedrückt — die Figuren wären wieder klein, ohne
+     * dass man sähe warum.
+     *
+     * `bottom` heisst: Der Sockel sitzt unten im Kasten. Damit stehen alle
+     * Figuren auf einer Linie, egal wie hoch sie sind.
+     */
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 1.6em;
+    height: 1.6em;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    background-size: contain;
+}
+
+/*
+ * DIE MINDESTBREITE MUSS WEG, sonst zieht sich das ganze Brett auseinander.
+ *
+ * Ein Raster-Feld ist von sich aus mindestens so breit wie sein Inhalt
+ * (`min-width: auto`), und die `1fr`-Spalten des Bretts wachsen mit. Der
+ * Figuren-Kasten von oben ist breiter als ein Feld — ohne diese Zeile wurde
+ * das Brett dadurch breiter als sein `max-width` und lief aus dem Bild.
+ *
+ * Mit `min-width: 0` behält das Feld seine Grösse; der überstehende Rand des
+ * Figuren-Kastens ist durchsichtig und ragt einfach darüber hinaus.
+ */
+body.design-3d .feld,
+body.design-3d .vorschau-feld {
+    min-width: 0;
+}
+
+/*
+ * Die zwölf Bilder. Farbe und Art stehen in zwei getrennten Klassen, deshalb
+ * sind es zwölf Zeilen und keine sechs. Die Namen sind der Paket-Vertrag aus
+ * `docs\FIGUREN-BLENDER.md` — wer eine Datei umbenennt, benennt sie hier mit.
+ */
+body.design-3d .figur-weiss.figur-art-bauer { background-image: url("../img/figuren/figur-bauer-weiss.png"); }
+body.design-3d .figur-weiss.figur-art-springer { background-image: url("../img/figuren/figur-springer-weiss.png"); }
+body.design-3d .figur-weiss.figur-art-laeufer { background-image: url("../img/figuren/figur-laeufer-weiss.png"); }
+body.design-3d .figur-weiss.figur-art-turm { background-image: url("../img/figuren/figur-turm-weiss.png"); }
+body.design-3d .figur-weiss.figur-art-dame { background-image: url("../img/figuren/figur-dame-weiss.png"); }
+body.design-3d .figur-weiss.figur-art-koenig { background-image: url("../img/figuren/figur-koenig-weiss.png"); }
+
+body.design-3d .figur-schwarz.figur-art-bauer { background-image: url("../img/figuren/figur-bauer-schwarz.png"); }
+body.design-3d .figur-schwarz.figur-art-springer { background-image: url("../img/figuren/figur-springer-schwarz.png"); }
+body.design-3d .figur-schwarz.figur-art-laeufer { background-image: url("../img/figuren/figur-laeufer-schwarz.png"); }
+body.design-3d .figur-schwarz.figur-art-turm { background-image: url("../img/figuren/figur-turm-schwarz.png"); }
+body.design-3d .figur-schwarz.figur-art-dame { background-image: url("../img/figuren/figur-dame-schwarz.png"); }
+body.design-3d .figur-schwarz.figur-art-koenig { background-image: url("../img/figuren/figur-koenig-schwarz.png"); }
+
+/*
+ * Die kleinen Figuren ausserhalb des Bretts (Beute-Bilanz im Abschluss,
+ * Werte-Liste in „Schach lernen") stehen in Textzeilen. Dort wäre der
+ * 1.6em-Kasten zu gross und würde die Zeilen auseinanderdrücken.
+ */
+body.design-3d .bilanz-figur,
+body.design-3d .werte-figur {
+    width: 1.15em;
+    height: 1.15em;
+}
+
 /* ------------------------------------------------------------------ *
  * Die Spur des letzten Zuges (seit v3.6)
  *

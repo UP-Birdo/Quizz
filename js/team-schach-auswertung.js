@@ -1137,7 +1137,8 @@ Object.assign(TEAM_SCHACH, {
                     : figur;
 
                 zelle.appendChild(TEAM_SCHACH._element("span",
-                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz"),
+                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz")
+                    + TEAM_SCHACH._figurKlasse(gezeigt),
                     TEAM_SCHACH._figurZeichen(gezeigt)));
 
             } else if (schritt.graeber) {
@@ -1163,7 +1164,8 @@ Object.assign(TEAM_SCHACH, {
 
                 if (grab) {
                     zelle.appendChild(TEAM_SCHACH._element("span",
-                        "figur figur-schemen figur-weiss",
+                        "figur figur-schemen figur-weiss"
+                        + TEAM_SCHACH._figurKlasse(grab),
                         TEAM_SCHACH._figurZeichen(grab)));
                     zelle.title = "Hier fiel " + SCHACH.artName(grab);
                 }
@@ -1538,7 +1540,8 @@ Object.assign(TEAM_SCHACH, {
                 /* Geschlagen wurden Figuren der Gegenfarbe. */
                 const figur = (farbe === "weiss") ? art.toLowerCase() : art;
                 beute.appendChild(TEAM_SCHACH._element("span",
-                    "figur bilanz-figur " + ((farbe === "weiss") ? "figur-schwarz" : "figur-weiss"),
+                    "figur bilanz-figur " + ((farbe === "weiss") ? "figur-schwarz" : "figur-weiss")
+                    + TEAM_SCHACH._figurKlasse(figur),
                     TEAM_SCHACH._figurZeichen(figur)));
             }
 

@@ -251,5 +251,58 @@ pruefe("Der sichtbare Name ist und bleibt Quizz (v0.90)", () => {
     }
 });
 
+
+/*
+ * DIE ZWÖLF FIGUREN-BILDER DES 3D-LOOKS (seit v0.121).
+ *
+ * Die Bilder liegen als Dateien im Projekt und werden allein über die
+ * Stildatei eingebunden — kein Programmcode fasst sie an. Damit gibt es
+ * genau eine Art, sie zu verlieren: eine Datei umbenennen oder loeschen und
+ * die Stildatei vergessen. Sichtbar wuerde das erst am Brett, und auch dort
+ * nur im 3D-Look; die Figur faellt still auf ihr Schriftzeichen zurueck.
+ *
+ * Dieser Test schliesst die Luecke: Er liest die Verweise aus der ECHTEN
+ * Stildatei und sieht nach, ob jede Datei da ist.
+ */
+pruefe("Die zwoelf Figuren-Bilder des 3D-Looks liegen alle da (v0.121)", () => {
+    const stil = dateisystem.readFileSync(
+        pfad.join(projekt, "css", "stil.css"), "utf8");
+    const verweise = stil.match(/url\("\.\.\/img\/figuren\/[^"]+"\)/g) || [];
+
+    if (verweise.length !== 12) {
+        throw new Error("stil.css nennt " + verweise.length
+            + " Figuren-Bilder, erwartet sind 12"
+            + " (6 Arten mal 2 Farben, Paket-Vertrag in"
+            + " docs/FIGUREN-BLENDER.md)");
+    }
+
+    for (const verweis of verweise) {
+        const datei = verweis.slice("url(\"../".length, -2);
+        if (!dateisystem.existsSync(pfad.join(projekt, datei))) {
+            throw new Error(datei + " wird in stil.css genannt, fehlt aber");
+        }
+    }
+});
+
+/*
+ * Und die Gegenrichtung: Jede Art braucht ihre Klasse, sonst greift die
+ * Stildatei nicht. `_figurKlasse` ist die einzige Stelle, die sie vergibt.
+ */
+pruefe("_figurKlasse vergibt fuer jede Figurart ihre Klasse (v0.121)", () => {
+    const quelle = dateisystem.readFileSync(
+        pfad.join(jsOrdner, "team-schach-brett.js"), "utf8");
+    const stil = dateisystem.readFileSync(
+        pfad.join(projekt, "css", "stil.css"), "utf8");
+
+    for (const art of ["bauer", "springer", "laeufer", "turm", "dame", "koenig"]) {
+        if (quelle.indexOf("\"" + art + "\"") === -1) {
+            throw new Error("team-schach-brett.js kennt die Art " + art
+                + " nicht — _figurKlasse muss sie vergeben");
+        }
+        if (stil.indexOf(".figur-art-" + art) === -1) {
+            throw new Error("stil.css hat keine Regel fuer .figur-art-" + art);
+        }
+    }
+});
 console.log(anzahlOk + " ok, " + anzahlFehler + " Fehler");
 process.exit(anzahlFehler === 0 ? 0 : 1);

@@ -115,7 +115,8 @@ Object.assign(TEAM_SCHACH, {
         for (const eintrag of SCHACH_GRUNDLAGEN.werte()) {
             const zeile = TEAM_SCHACH._element("div", "werte-zeile");
 
-            zeile.appendChild(TEAM_SCHACH._element("span", "figur figur-weiss werte-figur",
+            zeile.appendChild(TEAM_SCHACH._element("span", "figur figur-weiss werte-figur"
+                + TEAM_SCHACH._figurKlasse(eintrag.art),
                 TEAM_SCHACH._figurZeichen(eintrag.art)));
 
             const text = TEAM_SCHACH._element("div", "werte-text");

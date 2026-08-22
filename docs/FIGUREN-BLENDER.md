@@ -98,3 +98,62 @@ weiße und blaue Felder, hell wie dunkel).
 - [ ] König sichtbar am höchsten, Bauer am kleinsten, Sockel gleich groß?
 - [ ] Kein Bodenschatten, kein Glanz-Gewitter?
 - [ ] Kamera und Licht bei allen 12 identisch?
+
+## Wie sie tatsächlich gebaut wurden (22.08.2026)
+
+Nicht von Hand modelliert, sondern von einem Skript erzeugt:
+**`tools\Figuren-Blender.py`**. Es baut in einem Lauf die ganze Szene
+(Kamera, Licht, beide Materialien), setzt die sechs Figuren aus
+Grundkörpern zusammen und rendert alle zwölf PNGs.
+
+Der Grund für den Skript-Weg steht in den Anforderungen oben: „EINE Szene
+für alle 12" und „die Höhenverhältnisse müssen IM BILD stimmen". Beides
+von Hand über zwölf Renderings gleich zu halten ist die eigentliche
+Schwierigkeit — ein Skript hält es geschenkt. Zwei Punkte daraus sind
+festgelegt und sollten so bleiben:
+
+- **Die Kamera ist orthografisch, nicht perspektivisch.** Damit gibt es
+  keine Verzerrung, und `kamera_ausrichten()` kann den Bildausschnitt
+  aus den echten Figuren ausrechnen: Sockel-Unterkante bei exakt 8 %,
+  Königsspitze bei exakt 94 %.
+- **`view_transform` steht auf `Standard`.** Blenders Voreinstellung
+  (AgX) färbt Farben um; das warme Creme käme als müdes Grau heraus.
+
+Bewusste Abweichung von der Vorgabe: **keine.** Die schräge Kerbe am
+Läufer ist gebaut (`LAEUFER_KERBE`), auf 40 Pixeln aber praktisch
+unsichtbar — dort trägt die Tropfenform mit Knauf die Erkennung.
+
+Wer eine Figur ändern will, ändert die Zahlen in ihrer `bau_*`-Funktion
+und lässt es neu laufen.
+
+### Prüfliste — Stand nach dem Lauf vom 22.08.2026
+
+- [x] Alle 12 Dateien da, Namen exakt wie oben
+- [x] Hintergrund durchsichtig (Eckpixel Alpha 0 gemessen)
+- [x] Auf 34 px verkleinert unterscheidbar (Bauer / Läufer / Dame geprüft)
+- [x] König am höchsten, Bauer am kleinsten, Sockel bei allen gleich
+      (Höhen im Lauf gemessen: 0,55 / 0,70 / 0,74 / 0,75 / 0,90 / 1,00)
+- [x] Kein Bodenschatten, kein starker Glanz
+- [x] Kamera und Licht bei allen 12 identisch (eine Szene, nur die Figur
+      wird getauscht)
+- [x] Zusammen 951 KB — unter der 1-MB-Grenze, aber knapp: Wer die
+      Bilder neu rendert, sieht nach.
+
+### Gestartet wird es NICHT aus dem Blender-Fenster
+
+Zum Rendern: **`tools\Figuren rendern.cmd`** doppelklicken. Es startet
+Blender ohne Fenster, zeigt den Fortschritt und ist nach rund 26 Sekunden
+fertig.
+
+Der Weg über das Blender-Fenster (`Scripting` → `Run Script`) ist nur zum
+Anschauen und Schrauben gedacht, und dann mit **`RENDERN = False`**.
+Zwei Gründe:
+
+- Mit `RENDERN = True` blockiert das Rendern die Oberfläche. Blender meldet
+  „Keine Rückmeldung", und man sieht bis zum Ende nicht, ob überhaupt noch
+  etwas passiert.
+- Im Fenster gelten die eigenen Blender-Einstellungen. Steht dort das
+  Rendern über die Grafikkarte, bleibt der Lauf auf diesem Rechner hängen —
+  beobachtet am 22.08.: Prozess bei 0 % Auslastung, kein Bild geschrieben.
+  Das Skript setzt inzwischen `cycles.device = "CPU"` selbst, und der
+  Starter ruft Blender zusätzlich mit `--factory-startup` auf.

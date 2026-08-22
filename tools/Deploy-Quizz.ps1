@@ -62,7 +62,13 @@ $freigegebeneDateien = @("index.html", "README.md", "CHANGELOG.md",
                          "manifest.webmanifest", "icon.svg")
 # ".github" gehoert dazu: Dort liegt die Formular-Vorlage fuer den
 # Wunsch-Knopf. Ohne sie oeffnet GitHub ein leeres Formular statt der Vorlage.
-$freigegebeneOrdner  = @("css", "js", "icons", "docs", "tests", "tools", ".github")
+#
+# "img" gehoert seit v0.121 dazu: Dort liegen die gerenderten Schachfiguren
+# des 3D-Looks. Ohne den Ordner laedt die Stildatei zwoelf Bilder, die es auf
+# dem Server nicht gibt - und weil das Schriftzeichen darunter durchsichtig
+# geschaltet ist, waeren die Figuren dann UNSICHTBAR statt nur schmuckloser.
+$freigegebeneOrdner  = @("css", "js", "icons", "img", "docs", "tests",
+                         "tools", ".github")
 $gesperrteDateien    = @("TODO.md", "ROADMAP.md", "CLAUDE.md", "github-token.dat")
 
 # Diese Endungen sind KEIN Text. Sie muessen als eigener Datenklumpen (Blob)

@@ -299,7 +299,8 @@ Object.assign(TEAM_SCHACH, {
                 const zeichen = TEAM_SCHACH._element("span",
                     "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz")
                     + (getruebt ? " figur-getruebt" : "")
-                    + ((anders.figurenNeu.indexOf(feld) !== -1) ? " figur-erscheint" : ""),
+                    + ((anders.figurenNeu.indexOf(feld) !== -1) ? " figur-erscheint" : "")
+                    + TEAM_SCHACH._figurKlasse(gezeigt),
                     TEAM_SCHACH._figurZeichen(gezeigt));
                 zelle.appendChild(zeichen);
             }
@@ -549,7 +550,8 @@ Object.assign(TEAM_SCHACH, {
                 if (grab) {
                     const schemen = TEAM_SCHACH._element("span",
                         "figur figur-schemen "
-                        + ((meinTeam === "weiss") ? "figur-weiss" : "figur-schwarz"),
+                        + ((meinTeam === "weiss") ? "figur-weiss" : "figur-schwarz")
+                        + TEAM_SCHACH._figurKlasse(grab),
                         TEAM_SCHACH._figurZeichen(
                             (meinTeam === "weiss") ? grab : grab.toLowerCase()));
                     zelle.appendChild(schemen);
@@ -1568,6 +1570,31 @@ Object.assign(TEAM_SCHACH, {
             "l": "♝", "s": "♞", "b": "♟"
         };
         return (zeichen[figur] || "") + "︎";
+    },
+
+    /*
+     * DIE ART ALS KLASSE — die Brücke zu den gemalten Figuren (seit v0.121).
+     *
+     * Im 3D-Look zeigt die App statt der Schriftzeichen die in Blender
+     * gerenderten Bilder aus `img\figuren\`. CSS kann aber nicht sehen,
+     * WELCHES Zeichen in einem Element steht — es braucht eine Klasse. Genau
+     * die liefert diese Funktion. Die FARBE steht schon in `figur-weiss` bzw.
+     * `figur-schwarz`; hier kommt nur die ART dazu.
+     *
+     * Sie liefert einen führenden Leerraum, damit sie sich an eine bestehende
+     * Klassen-Zeichenkette anhängen lässt, und bei einer unbekannten Figur
+     * eine LEERE Zeichenkette. Das ist die Rückfallebene: Ohne Klasse greift
+     * im 3D-Look keine der Bild-Regeln, und das Schriftzeichen bleibt sichtbar.
+     * Die Rückfallebene ist also nicht gebaut, sondern übrig.
+     */
+    _figurKlasse(figur) {
+        const arten = {
+            "K": "koenig", "D": "dame", "T": "turm",
+            "L": "laeufer", "S": "springer", "B": "bauer"
+        };
+        const art = arten[String(figur).toUpperCase()];
+
+        return art ? (" figur-art-" + art) : "";
     },
 
     /*

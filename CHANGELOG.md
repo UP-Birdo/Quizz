@@ -3,6 +3,30 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.121.0 — 2026-08-22
+
+**Der 3D-Look bekommt seine Spielzeug-Figuren.** Statt der
+Schach-Schriftzeichen stehen jetzt gerenderte Figuren auf dem Brett —
+matt, rund, jede mit ihrem eigenen Umriss.
+
+- **Zwölf gerenderte Figuren** (sechs Arten in Creme und Anthrazit) statt
+  der Schriftzeichen, überall wo Figuren vorkommen: auf dem Brett, in den
+  Beispielbrettern der Spielart-Auswahl, in den Bildanleitungen, in der
+  Beute-Bilanz am Ende einer Partie und in der Werte-Liste von
+  „Schach lernen".
+- **Nur im 3D-Look.** Der Kipp-Schalter im Tab Einstellungen entscheidet
+  wie bisher; das klassische Brett zeigt unverändert die Schriftzeichen.
+  Auch innerhalb des 3D-Looks bleiben die Zeichen die Rückfallebene: Wo
+  kein Bild passt, ist einfach wieder das Zeichen da.
+- **Die Figuren stehen auf einer Linie.** Alle zwölf Bilder haben denselben
+  Sockel an derselben Stelle, deshalb steht der Bauer neben dem König so,
+  wie er soll — und der König ist sichtbar der höchste.
+- Für Neugierige: Die Bilder sind in Blender entstanden, erzeugt von
+  `tools\Figuren-Blender.py`. Wer eine Figur anders haben will, ändert
+  dort Zahlen und startet `tools\Figuren rendern.cmd` — nach einer halben
+  Minute liegen alle zwölf neu da. Der Stil-Vertrag steht in
+  `docs\FIGUREN-BLENDER.md`.
+
 ## v0.120.0 — 2026-08-22
 
 **3D-Look, Runde 2: die gewohnten Farben zurück, Hüpf-Züge und

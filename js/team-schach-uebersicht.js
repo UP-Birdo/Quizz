@@ -958,7 +958,8 @@ Object.assign(TEAM_SCHACH, {
             const figur = stellung[feld];
             if (figur !== ".") {
                 zelle.appendChild(TEAM_SCHACH._element("span",
-                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz"),
+                    "figur " + (SCHACH.farbeVon(figur) === "weiss" ? "figur-weiss" : "figur-schwarz")
+                    + TEAM_SCHACH._figurKlasse(figur),
                     TEAM_SCHACH._figurZeichen(figur)));
             }
 
