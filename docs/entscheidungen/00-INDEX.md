@@ -98,6 +98,9 @@ wird. Die Liste dessen, was noch kommt, steht in [../ROADMAP.md](../ROADMAP.md).
     - **Die naheliegende Liste war keine Uhr** (v0.104) — `KREUZ.seiten` ist
       nach Gegenüber sortiert und taugt nicht als Uhrzeigersinn; die
       Diagonalen des Kreuzes verteilten sich dadurch 35 zu 33
+    - **Verzögerte Bewegung: Animation mit backwards, nie Übergang plus
+      Delay** (v0.117.1) — beim Übergangs-Muster blitzt zwischen Aufbau und
+      Rücksetzung ein Einzelbild der Endlage durch; die Figuren hüpften
 
 ## entschieden.md - Entschieden - und warum
 

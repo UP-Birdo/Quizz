@@ -1275,3 +1275,24 @@ Reihenfolge braucht, die eine BEDEUTUNG trägt (hier: die Drehung des Bretts),
 schreibt sie dort hin, wo sie gebraucht wird, statt eine Liste
 weiterzuverwenden, die für einen anderen Zweck sortiert ist. Ein Test zählt
 jetzt die Felder aller vier Kreuz-Seiten und vergleicht sie miteinander.
+
+## Verzögerte Bewegung: Animation mit backwards, nie Übergang plus Delay (v0.117.1)
+
+**Gemeldet:** Beim Nudelholz-Schub hüpften die geschobenen Figuren für ein
+Einzelbild an ihre Endposition und wieder zurück, bevor die Walze sie
+erreichte.
+
+**Ursache:** Der Schub war als ÜBERGANG gebaut (Muster von `_zugAnimieren`,
+plus `transitionDelay`): Figur per `transform` aufs alte Feld zurücksetzen,
+zwei `requestAnimationFrame` später die Klasse mit dem Übergang anhängen und
+den `transform` löschen. Zwischen dem Aufbau des Bretts (Figuren stehen im
+DOM bereits am ZIEL) und dem Wirksamwerden der Rücksetzung kann der Browser
+ein Einzelbild mit der Endlage zeichnen — bei einer einzelnen, sofort
+startenden Bewegung fällt das nicht auf, mit Verzögerung sieht man es.
+
+**Die Lehre:** Wer eine Bewegung mit WARTEZEIT baut, nimmt eine CSS-ANIMATION
+mit `backwards`-Füllung (`nudelholz-schub`, Startlage in `--schub-von`):
+Startbild, Verzögerung und Gleiten stecken in EINEM Stück, das synchron beim
+Aufbau gesetzt wird — es gibt schlicht keinen Zustand, in dem die Figur schon
+am Ziel steht. `_zugAnimieren` darf bei seinem Übergang bleiben: Es startet
+ohne Verzögerung im übernächsten Bild.
