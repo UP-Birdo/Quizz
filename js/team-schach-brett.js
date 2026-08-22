@@ -761,6 +761,18 @@ Object.assign(TEAM_SCHACH, {
                 () => TEAM_SCHACH.schaltenTausch(partie)));
         }
 
+        /*
+         * UND FÜR DAS NUDELHOLZ (seit v0.117): vier Ränder, ein Knopf, der
+         * reihum zählt — wie beim Platztausch nennt er den IST-Zustand, die
+         * markierten Randfelder zeigen den Rest.
+         */
+        if (TEAM_SCHACH.zielFaehigkeit === "nudelholz") {
+            leiste.appendChild(TEAM_SCHACH._knopf(
+                "Rollt " + TEAM_SCHACH.NUDELHOLZ_KANTEN_TEXT[TEAM_SCHACH.nudelholzKante],
+                "knopf-still",
+                () => TEAM_SCHACH.drehenNudelholz(partie)));
+        }
+
         leiste.appendChild(TEAM_SCHACH._knopf("Abbrechen", "knopf-still",
             () => TEAM_SCHACH.zielVerwerfen()));
 
@@ -1742,7 +1754,7 @@ Object.assign(TEAM_SCHACH, {
         }
 
         if (eintrag.wirkung === "nudelholz") {
-            TEAM_SCHACH._nudelholzRollen(halter, eintrag.felder);
+            TEAM_SCHACH._nudelholzRollen(halter, eintrag);
             return;
         }
 
@@ -1784,14 +1796,24 @@ Object.assign(TEAM_SCHACH, {
         }
     },
 
+    /* So lange braucht die Walze über die ganze Bahn — die Figuren rücken
+       erst, wenn sie sie erreicht (siehe unten). */
+    NUDELHOLZ_ROLL_MS: 900,
+
     /*
-     * DAS ROLLENDE NUDELHOLZ (seit v0.115, Nutzer-Wunsch 22.08.): Eine
-     * Holzwalze erscheint über den betroffenen Spalten, rollt einmal über
-     * sie hinweg und verschwindet. Gemessen wird an den ECHTEN Zellen —
-     * damit stimmt die Lage in jeder Brettgrösse und Drehung; im
-     * Hintergrund-Tab (keine Masse) passiert schlicht nichts.
+     * DAS ROLLENDE NUDELHOLZ (seit v0.115, Nutzer-Wunsch 22.08.; seit
+     * v0.117 mit freier Richtung): Eine Holzwalze erscheint am Start-Rand
+     * der Bahn, rollt einmal über sie hinweg und verschwindet — und jede
+     * geschobene Figur rückt erst, wenn die Walze sie BERÜHRT (gestaffelte
+     * Verzögerung entlang des Rollwegs).
+     *
+     * Gemessen wird an den ECHTEN Zellen — damit stimmt die Lage in jeder
+     * Brettgrösse und Drehung. Auch die BILDSCHIRM-Richtung kommt aus den
+     * Zellen: Der erste Weg der geschobenen Figuren sagt, wohin auf dem
+     * Schirm gerollt wird — das Brett kann ja gedreht sein (vier Lagen
+     * seit v0.72). Im Hintergrund-Tab (keine Masse) passiert nichts.
      */
-    _nudelholzRollen(halter, felder) {
+    _nudelholzRollen(halter, eintrag) {
         /* Am echten Brett kommt der Halter herein und das Brett liegt darin;
            in der Bildanleitung (seit v0.116) IST der Halter das Brett. */
         const istBrett = String(halter.className || "").split(" ")
@@ -1801,12 +1823,16 @@ Object.assign(TEAM_SCHACH, {
             return;
         }
 
+        const felder = eintrag.felder || [];
+        const wege = eintrag.wege || [];
+
         let links = Infinity;
         let oben = Infinity;
         let rechts = -Infinity;
         let unten = -Infinity;
-        let feldHoehe = 0;
+        let feldMass = 0;
         let gefunden = 0;
+        const zellen = {};
 
         for (const feld of felder) {
             const zelle = brett.querySelector("[data-feld=\"" + feld + "\"]");
@@ -1814,8 +1840,9 @@ Object.assign(TEAM_SCHACH, {
                 || typeof zelle.offsetTop !== "number") {
                 continue;
             }
+            zellen[feld] = zelle;
             gefunden++;
-            feldHoehe = zelle.offsetHeight || zelle.offsetWidth || 0;
+            feldMass = zelle.offsetHeight || zelle.offsetWidth || 0;
             links = Math.min(links, zelle.offsetLeft);
             oben = Math.min(oben, zelle.offsetTop);
             rechts = Math.max(rechts, zelle.offsetLeft + (zelle.offsetWidth || 0));
@@ -1823,23 +1850,109 @@ Object.assign(TEAM_SCHACH, {
                 + (zelle.offsetHeight || zelle.offsetWidth || 0));
         }
 
-        if (gefunden === 0 || rechts <= links) {
+        if (gefunden === 0 || rechts <= links || unten <= oben) {
             return;
         }
 
-        const walze = TEAM_SCHACH._element("div", "nudelholz-walze");
+        /* Die Bildschirm-Richtung aus dem ersten Weg. Ohne Weg gibt es
+           nichts zu rollen — die Wirkung entsteht nur, wenn etwas rückt. */
+        let dx = 0;
+        let dy = 0;
+        if (wege.length > 0 && zellen[wege[0].von]) {
+            const nachZelle = zellen[wege[0].nach]
+                || brett.querySelector("[data-feld=\"" + wege[0].nach + "\"]");
+            if (nachZelle) {
+                dx = Math.sign((nachZelle.offsetLeft || 0)
+                    - (zellen[wege[0].von].offsetLeft || 0));
+                dy = Math.sign((nachZelle.offsetTop || 0)
+                    - (zellen[wege[0].von].offsetTop || 0));
+            }
+        }
+        if (dx === 0 && dy === 0) {
+            /* Vorgabe: von unten nach oben (Nutzer-Wunsch 22.08.). */
+            dy = -1;
+        }
+        const senkrecht = (dy !== 0);
+
+        const walzeDicke = Math.max(10, Math.round(feldMass * 0.6));
+        const walze = TEAM_SCHACH._element("div",
+            "nudelholz-walze" + (senkrecht ? "" : " nudelholz-walze-quer"));
+
         walze.style.left = links + "px";
         walze.style.top = oben + "px";
-        walze.style.width = (rechts - links) + "px";
-        walze.style.height = Math.max(10, Math.round(feldHoehe * 0.6)) + "px";
-        walze.style.setProperty("--rollweg", (unten - oben) + "px");
-        brett.appendChild(walze);
+        if (senkrecht) {
+            walze.style.width = (rechts - links) + "px";
+            walze.style.height = walzeDicke + "px";
+            const bahn = unten - oben;
+            walze.style.setProperty("--roll-von", (dy === -1)
+                ? "0px, " + bahn + "px" : "0px, " + (-walzeDicke) + "px");
+            walze.style.setProperty("--roll-bis", (dy === -1)
+                ? "0px, " + (-walzeDicke) + "px" : "0px, " + bahn + "px");
+        } else {
+            walze.style.width = walzeDicke + "px";
+            walze.style.height = (unten - oben) + "px";
+            const bahn = rechts - links;
+            walze.style.setProperty("--roll-von", (dx === -1)
+                ? bahn + "px, 0px" : (-walzeDicke) + "px, 0px");
+            walze.style.setProperty("--roll-bis", (dx === -1)
+                ? (-walzeDicke) + "px, 0px" : bahn + "px, 0px");
+        }
 
+        brett.appendChild(walze);
         window.setTimeout(() => {
             if (walze.parentNode) {
                 walze.parentNode.removeChild(walze);
             }
-        }, 1100);
+        }, TEAM_SCHACH.NUDELHOLZ_ROLL_MS + 200);
+
+        /*
+         * JEDE FIGUR RÜCKT ERST, WENN DIE WALZE SIE ERREICHT (v0.117):
+         * dasselbe Vorgehen wie `_zugAnimieren` — Figur zurück aufs alte
+         * Feld setzen, im nächsten Bild gleiten lassen —, nur mit einer
+         * Verzögerung, die dem Abstand vom Start-Rand entspricht.
+         */
+        const laenge = senkrecht ? (unten - oben) : (rechts - links);
+
+        for (const weg of wege) {
+            const vonZelle = zellen[weg.von];
+            const nachZelle = zellen[weg.nach]
+                || brett.querySelector("[data-feld=\"" + weg.nach + "\"]");
+            const figurEl = nachZelle ? nachZelle.querySelector(".figur") : null;
+            if (!vonZelle || !nachZelle || !figurEl) {
+                continue;
+            }
+
+            let strecke;
+            if (senkrecht) {
+                strecke = (dy === 1)
+                    ? (vonZelle.offsetTop - oben)
+                    : (unten - (vonZelle.offsetTop + feldMass));
+            } else {
+                strecke = (dx === 1)
+                    ? (vonZelle.offsetLeft - links)
+                    : (rechts - (vonZelle.offsetLeft + feldMass));
+            }
+            const verzoegerung = Math.max(0, Math.round(
+                (strecke / Math.max(1, laenge)) * TEAM_SCHACH.NUDELHOLZ_ROLL_MS));
+
+            figurEl.style.transform = "translate("
+                + (vonZelle.offsetLeft - nachZelle.offsetLeft) + "px, "
+                + (vonZelle.offsetTop - nachZelle.offsetTop) + "px)";
+            nachZelle.classList.add("feld-zieht");
+
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    figurEl.classList.add("figur-zieht");
+                    figurEl.style.transitionDelay = verzoegerung + "ms";
+                    figurEl.style.transform = "";
+                });
+            });
+
+            window.setTimeout(() => {
+                nachZelle.classList.remove("feld-zieht");
+                figurEl.style.transitionDelay = "";
+            }, verzoegerung + TEAM_SCHACH.ANIMATION_MS + 60);
+        }
     },
 
 });

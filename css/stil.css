@@ -2381,7 +2381,10 @@ body.runde-offen .tab-leiste {
         linear-gradient(180deg, #d2ab72, #aa7f47 55%, #86622f);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
     pointer-events: none;
-    animation: nudelholz-rollen 1s ease-in-out forwards;
+
+    /* Dieselbe Dauer wie TEAM_SCHACH.NUDELHOLZ_ROLL_MS — daran hängen die
+       Verzögerungen der geschobenen Figuren. */
+    animation: nudelholz-rollen 0.9s ease-in-out forwards;
 }
 
 /* Die Griffe links und rechts. */
@@ -2404,11 +2407,39 @@ body.runde-offen .tab-leiste {
     right: -9px;
 }
 
+/* Die QUER liegende Walze (seit v0.117): Sie rollt waagerecht über eine
+   Reihe — Holz und Streifen sind gedreht, die Griffe sitzen oben und
+   unten. */
+.nudelholz-walze-quer {
+    background:
+        repeating-linear-gradient(90deg,
+            rgba(70, 40, 10, 0.18) 0 3px,
+            rgba(255, 255, 255, 0.10) 3px 6px),
+        linear-gradient(90deg, #d2ab72, #aa7f47 55%, #86622f);
+}
+
+.nudelholz-walze-quer::before,
+.nudelholz-walze-quer::after {
+    top: auto;
+    left: 28%;
+    width: 44%;
+    height: 10px;
+}
+
+.nudelholz-walze-quer::before {
+    top: -9px;
+}
+
+.nudelholz-walze-quer::after {
+    bottom: -9px;
+}
+
+/* Start und Ziel setzt das Skript je Richtung (`--roll-von`/`--roll-bis`,
+   seit v0.117 — vorher rollte sie fest von oben nach unten). */
 @keyframes nudelholz-rollen {
     from {
-        transform: translateY(-130%);
+        transform: translate(var(--roll-von, 0px, 0px));
         opacity: 0;
-        background-position: 0 0, 0 0;
     }
     12% {
         opacity: 1;
@@ -2417,9 +2448,8 @@ body.runde-offen .tab-leiste {
         opacity: 1;
     }
     to {
-        transform: translateY(var(--rollweg, 100px));
+        transform: translate(var(--roll-bis, 0px, 0px));
         opacity: 0;
-        background-position: 0 42px, 0 0;
     }
 }
 

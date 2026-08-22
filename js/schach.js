@@ -3238,80 +3238,92 @@ const SCHACH = {
     },
 
     /*
-     * Nudelholz: Zwei benachbarte Spalten werden um ein Feld verschoben.
-     * `richtung` ist -1 (nach oben) oder +1 (nach unten). Wo kein Platz ist,
-     * bleibt die Figur stehen.
+     * Nudelholz: EINE Bahn — eine Spalte oder eine Reihe — wird um ein Feld
+     * verschoben. `kante` sagt, von welchem Rand das Holz rollt ("unten",
+     * "oben", "links", "rechts" — Brett-Koordinaten, Reihe 0 ist oben);
+     * `feld` ist das angetippte Randfeld und bestimmt die Bahn. Wo kein
+     * Platz ist, bleibt die Figur stehen.
      *
-     * SEIT v0.77 ROLLEN AUCH KÖNIGE MIT (Nutzer-Entscheidung 18.08., „das
-     * Nudelholz soll alle Figuren bewegen").
+     * SEIT v0.117 EINE BAHN MIT FREIER RICHTUNG (Nutzer-Entscheidung 22.08.,
+     * vorher: zwei Spalten, immer von der eigenen Seite weg). Die Richtung
+     * reist als Zusatzwahl `wahl` durch `faehigkeitEinsetzen` — derselbe Weg
+     * wie die Mauer-Richtung.
      *
-     * Bis v0.76 blieben sie stehen. Das war nicht nur eine Ausnahme für den
-     * König selbst: Sein Feld blieb besetzt, und damit hielt er die ganze
-     * Spalte hinter sich auf — in einer Stellung mit zwei Figuren hinter einem
-     * König bewegte sich gar nichts. Genau das war die Meldung.
-     *
-     * Sich selbst ins Schach schieben kann damit trotzdem niemand: Seit v3.6
+     * SEIT v0.77 ROLLEN AUCH KÖNIGE MIT (Nutzer-Entscheidung 18.08.).
+     * Sich selbst ins Schach schieben kann trotzdem niemand: Seit v3.6
      * weist `SCHACH_RUNDE.faehigkeitEinsetzen` jede Fähigkeit ab, die den
-     * eigenen König im Schach zurücklässt — dieselbe Prüfung, die auch das
-     * Erdbeben und den Bauernschub abdeckt. Sie steht dort und nicht hier,
-     * weil `nudelholz` nur die Stellung rechnet und den Zugzusammenhang gar
-     * nicht kennt.
-     *
-     * DIE ANDEREN REIHEN-FÄHIGKEITEN BLEIBEN, WIE SIE SIND. Erdbeben und
-     * Bauernschub verschonen ihre Könige weiter (siehe dort) — der Wunsch galt
-     * dem Nudelholz, und beim Bauernschub wäre ein rollender König ohnehin
-     * sinnwidrig: Er schiebt Bauern.
+     * eigenen König im Schach zurücklässt. Die Prüfung steht dort, weil
+     * `nudelholz` nur die Stellung rechnet.
      */
-    nudelholz(stand, spalte, richtung) {
+    NUDELHOLZ_KANTEN: {
+        unten: { dr: -1, ds: 0 },
+        oben: { dr: 1, ds: 0 },
+        links: { dr: 0, ds: 1 },
+        rechts: { dr: 0, ds: -1 }
+    },
+
+    nudelholz(stand, feld, kante) {
+        const zug = SCHACH.NUDELHOLZ_KANTEN[kante];
+        if (!zug) {
+            return null;
+        }
+
         const breite = SCHACH.breiteVon(stand);
         const hoehe = SCHACH.hoeheVon(stand);
-        const spalten = [spalte, spalte + 1].filter((wert) => wert >= 0 && wert < breite);
+        const senkrecht = (zug.dr !== 0);
+        const spalte = SCHACH.spalteVon(feld, breite);
+        const reihe = SCHACH.reiheVon(feld, breite);
 
         let brett = stand.brett;
         const felder = [];
         const wege = [];
 
         /* In Laufrichtung von vorn abarbeiten, damit eine Figur Platz macht,
-           bevor die nächste nachrückt. */
-        const reihen = [];
-        for (let reihe = 0; reihe < hoehe; reihe++) {
-            reihen.push(reihe);
+           bevor die nächste nachrückt: Begonnen wird am Rand, ZU dem die
+           Figuren rollen. */
+        const laenge = senkrecht ? hoehe : breite;
+        const stellen = [];
+        for (let lauf = 0; lauf < laenge; lauf++) {
+            stellen.push(lauf);
         }
-        if (richtung === 1) {
-            reihen.reverse();
+        if ((senkrecht ? zug.dr : zug.ds) === 1) {
+            stellen.reverse();
         }
 
-        for (const reihe of reihen) {
-            for (const lauf of spalten) {
-                const von = SCHACH._feld(stand, reihe, lauf);
-                const figur = brett[von];
+        for (const lauf of stellen) {
+            const r = senkrecht ? lauf : reihe;
+            const s = senkrecht ? spalte : lauf;
 
-                /* Seit v0.77 ohne Königs-Ausnahme — siehe oben. */
-                if (figur === ".") {
-                    continue;
-                }
-                if (!SCHACH._imBrett(stand, reihe + richtung, lauf)) {
-                    continue;
-                }
-
-                /*
-                 * Frei heisst LEER UND NICHT GESPERRT (seit v0.59 auch das
-                 * Zweite). Bis dahin fragte das Nudelholz nur, ob dort eine
-                 * Figur steht — es schob Figuren also auf Mauern und in Risse
-                 * hinein, wo sie danach auf einem Feld standen, das es für die
-                 * Regeln gar nicht mehr gibt. Das Erdbeben fragt an derselben
-                 * Stelle seit v0.54 richtig; das Nudelholz war übersehen worden.
-                 */
-                const ziel = SCHACH._feld(stand, reihe + richtung, lauf);
-                if (brett[ziel] !== "." || SCHACH.gesperrt(stand, ziel)) {
-                    continue;
-                }
-
-                brett = SCHACH._brettMit(brett, von, ".");
-                brett = SCHACH._brettMit(brett, ziel, figur);
-                felder.push(von, ziel);
-                wege.push({ von: von, nach: ziel });
+            if (!SCHACH._imBrett(stand, r, s)) {
+                continue;
             }
+
+            const von = SCHACH._feld(stand, r, s);
+            const figur = brett[von];
+
+            /* Seit v0.77 ohne Königs-Ausnahme — siehe oben. */
+            if (figur === ".") {
+                continue;
+            }
+            if (!SCHACH._imBrett(stand, r + zug.dr, s + zug.ds)) {
+                continue;
+            }
+
+            /*
+             * Frei heisst LEER UND NICHT GESPERRT (seit v0.59 auch das
+             * Zweite) — sonst schöbe das Holz Figuren auf Mauern und in
+             * Risse, wo sie auf einem Feld stünden, das es für die Regeln
+             * gar nicht mehr gibt.
+             */
+            const ziel = SCHACH._feld(stand, r + zug.dr, s + zug.ds);
+            if (brett[ziel] !== "." || SCHACH.gesperrt(stand, ziel)) {
+                continue;
+            }
+
+            brett = SCHACH._brettMit(brett, von, ".");
+            brett = SCHACH._brettMit(brett, ziel, figur);
+            felder.push(von, ziel);
+            wege.push({ von: von, nach: ziel });
         }
 
         if (felder.length === 0) {
@@ -3323,9 +3335,15 @@ const SCHACH = {
             stand: neu,
             felder: felder,
             wege: wege,
-            text: "Spalten " + SCHACH.SPALTEN[spalten[0]]
-                + (spalten.length > 1 ? " und " + SCHACH.SPALTEN[spalten[1]] : "")
-                + ((richtung === -1) ? " nach oben" : " nach unten")
+
+            /* Von welchem Rand gerollt wurde — die Anzeige spielt daraus
+               ihr Schauspiel in der richtigen Richtung. */
+            richtung: kante,
+
+            text: (senkrecht
+                ? ("Spalte " + SCHACH.SPALTEN[spalte])
+                : ("Reihe " + (hoehe - reihe)))
+                + " von " + kante
         };
     },
 

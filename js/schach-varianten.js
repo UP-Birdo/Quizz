@@ -943,12 +943,12 @@ const SCHACH_VARIANTEN = {
             titel: "Nudelholz",
             stufe: "blau",
             art: "ziel",
-            zielArt: "spalte",
+            zielArt: "rand",
             beendetZug: true,
-            beschreibung: "Rollt über zwei Spalten und schiebt alle Figuren darin ein "
-                + "Feld von dir weg — eigene wie fremde, Könige eingeschlossen. "
-                + "Angetippt wird ein Feld deiner Grundreihe; wo kein Platz ist, "
-                + "bleibt die Figur stehen."
+            beschreibung: "Rollt über EINE Spalte oder Reihe und schiebt alle "
+                + "Figuren darin ein Feld weiter — eigene wie fremde, Könige "
+                + "eingeschlossen. Den Rand, von dem es rollt, drehst du mit "
+                + "einem Knopf; wo kein Platz ist, bleibt die Figur stehen."
         },
 
         /*

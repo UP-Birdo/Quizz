@@ -867,7 +867,7 @@ drehte sich die Ansicht in dem Moment, in dem der letzte Bauer einer Seite
 fällt. Gespeichert wird nichts davon im gemeinsamen Stand: Jedes Gerät zeichnet
 sein eigenes Brett.
 
-### Was „vorn" heisst — das Nudelholz (seit v0.46)
+### Was „vorn" heisst — das Nudelholz (seit v0.46, umgebaut v0.117)
 
 Das Brett wird für Schwarz **gedreht** gezeichnet. Eine Fähigkeit, deren
 Richtung sich nach oben oder unten am Brett richtet, bedeutet damit für beide
@@ -875,10 +875,17 @@ Seiten etwas anderes — und genau das war beim Nudelholz der Fehler: Bis v0.45
 bestimmte der angetippte Rand die Richtung, für Schwarz stand alles auf dem
 Kopf.
 
-Seither gilt: **Angetippt wird die EIGENE Grundreihe** (auf dem Bildschirm
-immer unten), und geschoben wird von dort weg — für Weiss also aufwärts, für
-Schwarz abwärts, für beide „nach vorn". Wer eine Fähigkeit mit Richtung baut,
-rechnet sie aus der FARBE, nie aus der Reihe am Brett.
+**Seit v0.117 rollt genau EINE Bahn (Spalte oder Reihe), und der Rand ist
+wählbar** (Nutzer-Entscheidung 22.08.): Ein Knopf am Brett zählt reihum durch
+die vier Ränder (`TEAM_SCHACH.nudelholzKante`, Reihe wie bei Mauer und
+Platztausch); die Wahl reist als Zusatzwahl `wahl` durch
+`faehigkeitEinsetzen`, und der Verlaufs-Eintrag merkt sie sich als
+`richtung` — daraus rollt die Anzeige ihr Schauspiel richtig herum, und die
+geschobenen Figuren rücken erst, wenn die Walze sie erreicht
+(`_nudelholzRollen`). **Ohne Wahl gilt die eigene Seite** (Weiss unten,
+Schwarz oben) — es rollt dann wie seit v0.46 „nach vorn". Wer eine Fähigkeit
+mit Richtungs-VORGABE baut, rechnet sie weiterhin aus der FARBE, nie aus der
+Reihe am Brett.
 
 
 **Es rollt wirklich alles — auch Könige** (seit v0.77). Bis v0.76 blieben sie

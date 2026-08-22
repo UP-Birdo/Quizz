@@ -3885,9 +3885,34 @@ pruefe("Das Nudelholz rollt als Walze ueber die betroffenen Felder (v0.115)", ()
         throw new Error("die Walze liegt nicht ueber den Feldern ("
             + walze.style.left + ", " + walze.style.width + ")");
     }
-    if (walze.style["--rollweg"] !== "80px") {
-        throw new Error("der Rollweg deckt nicht beide Felder: "
-            + walze.style["--rollweg"]);
+
+    /* Ohne Wege gilt die Vorgabe: von unten nach oben (v0.117). */
+    if (walze.style["--roll-von"] !== "0px, 80px"
+            || walze.style["--roll-bis"] !== "0px, -24px") {
+        throw new Error("die Walze rollt nicht von unten nach oben: "
+            + walze.style["--roll-von"] + " / " + walze.style["--roll-bis"]);
+    }
+});
+
+pruefe("Die Walze folgt der Richtung der geschobenen Figuren (v0.117)", () => {
+    /* Ein Weg von Feld 3 (oben) nach Feld 11 (unten) heisst: Es rollt auf
+       dem Schirm nach unten — die Walze startet dann oben. */
+    const aufbau = schauspielBrett();
+    TEAM_SCHACH._wirkungSchauspiel(aufbau.halter, {
+        wirkung: "nudelholz",
+        felder: [3, 11],
+        wege: [{ von: 3, nach: 11 }]
+    });
+
+    const walze = aufbau.brett.kinder.find((kind) =>
+        String(kind.className).indexOf("nudelholz-walze") !== -1);
+    if (!walze) {
+        throw new Error("keine Walze auf dem Brett");
+    }
+    if (walze.style["--roll-von"] !== "0px, -24px"
+            || walze.style["--roll-bis"] !== "0px, 80px") {
+        throw new Error("die Walze startet nicht am Start-Rand: "
+            + walze.style["--roll-von"] + " / " + walze.style["--roll-bis"]);
     }
 });
 

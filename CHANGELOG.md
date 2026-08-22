@@ -3,6 +3,29 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.117.0 — 2026-08-22
+
+**Das Nudelholz ist umgebaut: EINE Bahn, vier wählbare Richtungen — und die
+Figuren rücken erst, wenn die Walze sie berührt.** (Deine Ansage vom 22.08.;
+damit ist auch der Eingangskorb-Punkt „Nudelholz nur noch eine Spalte mit
+Richtungswahl" gebaut.)
+
+- **Nur noch eine Spalte oder Reihe:** Das Nudelholz rollt über genau EINE
+  Bahn statt über zwei Spalten.
+
+- **Der Rand ist wählbar:** Ein Knopf am Brett („Rollt von unten") zählt
+  reihum durch die vier Ränder — von unten, links, oben oder rechts. Die
+  markierten Randfelder wandern sofort mit, dort setzt das Holz an.
+  Ohne Drehen gilt wie bisher: Es rollt von deiner Seite weg.
+
+- **Die Walze rollt aus der gewählten Richtung** — standardmäßig von unten
+  nach oben —, und **jede Figur in der Bahn rückt erst in dem Moment
+  weiter, in dem die Walze sie erreicht.** Auch in der Anleitung.
+
+- Geblieben ist alles Übrige: Es schiebt nur (schlägt nie), Könige rollen
+  mit, niemand wird auf Mauern oder in Risse geschoben, und den eigenen
+  König darf man nicht ins Schach rollen.
+
 ## v0.116.0 — 2026-08-22
 
 **Die Schauspiele spielen jetzt auch in den Anleitungen, eine tippende Hand

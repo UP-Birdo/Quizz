@@ -221,6 +221,14 @@ const TEAM_SCHACH = {
     mauerRichtung: "waagerecht",
 
     /*
+     * Von welchem Rand das Nudelholz rollt (seit v0.117) — "unten", "oben",
+     * "links" oder "rechts" in Brett-Koordinaten. Beim Start der Zielwahl
+     * wird die EIGENE Seite vorgegeben (rollt von einem weg, wie früher);
+     * der Knopf am Brett dreht reihum weiter.
+     */
+    nudelholzKante: "unten",
+
+    /*
      * Die Richtung des Platztauschs (seit v0.101, Wunsch W7) — eine der vier
      * aus `SCHACH.TAUSCH_RICHTUNGEN`, gemessen an der eigenen Marschrichtung.
      * „vor" ist die Vorgabe und damit der Tausch, den es bis v0.100 als
@@ -1124,6 +1132,9 @@ const TEAM_SCHACH = {
         if (gemeint === "platztausch") {
             return TEAM_SCHACH.tauschRichtung;
         }
+        if (gemeint === "nudelholz") {
+            return TEAM_SCHACH.nudelholzKante;
+        }
         return TEAM_SCHACH.mauerRichtung;
     },
 
@@ -1192,6 +1203,39 @@ const TEAM_SCHACH = {
         TEAM_SCHACH.zielUmriss = [];
         TEAM_SCHACH.zielFelder = SCHACH_RUNDE.zielFelder(
             partie, person.id, "mauer", TEAM_SCHACH.mauerRichtung);
+
+        TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
+    },
+
+    /*
+     * DEN NUDELHOLZ-RAND WEITERSCHALTEN (seit v0.117, Nutzer-Entscheidung
+     * 22.08.): EIN Knopf zählt reihum durch die vier Ränder — dasselbe
+     * Muster wie der Dreh-Knopf der Mauer und des Platztauschs. Die
+     * markierten Randfelder zeigen sofort, wo das Holz ansetzen würde.
+     */
+    NUDELHOLZ_REIHE: ["unten", "links", "oben", "rechts"],
+
+    NUDELHOLZ_KANTEN_TEXT: {
+        unten: "von unten",
+        oben: "von oben",
+        links: "von links",
+        rechts: "von rechts"
+    },
+
+    drehenNudelholz(partie) {
+        const person = TEAM_SCHACH._ich();
+        if (!person || TEAM_SCHACH.zielFaehigkeit !== "nudelholz") {
+            return;
+        }
+
+        const reihe = TEAM_SCHACH.NUDELHOLZ_REIHE;
+        const stelle = reihe.indexOf(TEAM_SCHACH.nudelholzKante);
+        TEAM_SCHACH.nudelholzKante = reihe[(stelle + 1) % reihe.length];
+
+        TEAM_SCHACH.zielVorschau = -1;
+        TEAM_SCHACH.zielUmriss = [];
+        TEAM_SCHACH.zielFelder = SCHACH_RUNDE.zielFelder(
+            partie, person.id, "nudelholz", TEAM_SCHACH.nudelholzKante);
 
         TEAM_SCHACH.zeichnen(TEAM_SCHACH.abgleich.daten);
     },
@@ -1939,6 +1983,15 @@ const TEAM_SCHACH = {
          */
         let felder = null;
         if (beschreibung.art === "ziel") {
+            /* Das Nudelholz beginnt immer an der EIGENEN Seite (v0.117) —
+               von dort rollt es von einem weg, wie man es kennt. Gedreht
+               wird danach mit dem Knopf am Brett. */
+            if (art === "nudelholz") {
+                TEAM_SCHACH.nudelholzKante =
+                    (SCHACH_RUNDE.teamVon(partie, person.id) === SCHACH.WEISS)
+                        ? "unten" : "oben";
+            }
+
             felder = SCHACH_RUNDE.zielFelder(partie, person.id, art,
                 TEAM_SCHACH._zusatzWahl(art));
 

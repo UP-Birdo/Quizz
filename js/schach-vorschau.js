@@ -361,13 +361,12 @@ const SCHACH_VORSCHAU = {
                Zug, danach ist der Gegner dran — ein eigener Zug im Anschluss
                wäre eine Lüge im Bild. Bis v0.79 zeigte das dritte Bild genau
                das, was die Fähigkeit jetzt nicht mehr hergibt. */
-            vorher: "Angetippt wird ein Feld deiner eigenen Grundreihe — unten "
-                + "am "
-                + "Brett. Gerollt werden die beiden Spalten darüber, über die "
-                + "ganze Höhe.",
-            nachher: "Jede Figur in diesen beiden Spalten rückt ein Feld von "
-                + "dir weg — die eigenen wie die fremden. Das Nudelholz IST "
-                + "dein Zug."
+            vorher: "Angetippt wird ein Randfeld — von dort rollt das Holz "
+                + "über die ganze Bahn. Mit dem Knopf am Brett drehst du, von "
+                + "welchem Rand es kommt.",
+            nachher: "Jede Figur in dieser Spalte rückt ein Feld weiter, "
+                + "sobald die Walze sie erreicht — die eigenen wie die "
+                + "fremden. Das Nudelholz IST dein Zug."
         },
 
         /*

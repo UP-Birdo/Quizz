@@ -2231,6 +2231,10 @@ const SCHACH_RUNDE = {
         let wege = [];
         let zusatzText = "";
 
+        /* Von welchem Rand eine Bahn-Wirkung rollte (nur Nudelholz, seit
+           v0.117) — die Anzeige spielt daraus ihr Schauspiel richtig herum. */
+        let richtung = "";
+
         if (beschreibung.art === "zugmuster") {
             neu.stand.zusatzFarbe = farbe;
             neu.stand.zusatzMuster = beschreibung.muster;
@@ -2285,6 +2289,7 @@ const SCHACH_RUNDE = {
             neu.stand = wirkung.stand;
             betroffen = wirkung.felder;
             wege = wirkung.wege || [];
+            richtung = wirkung.richtung || "";
             zusatzText = wirkung.text ? (": " + wirkung.text) : "";
 
         } else if (beschreibung.art === "handel") {
@@ -2462,7 +2467,8 @@ const SCHACH_RUNDE = {
             nach: -1,
             wirkung: art,
             felder: betroffen,
-            wege: wege
+            wege: wege,
+            richtung: richtung
         });
         SCHACH_RUNDE._verlaufKuerzen(neu);
 
@@ -3443,29 +3449,35 @@ const SCHACH_RUNDE = {
 
         if (art === "nudelholz") {
             /*
-             * ES ROLLT IMMER VON DIR WEG (seit v0.46).
+             * EINE BAHN, RICHTUNG FREI (seit v0.117, Nutzer-Entscheidung
+             * 22.08. — vorher: zwei Spalten, immer von der eigenen Seite
+             * weg). Die Richtung reist wie bei der Mauer als Zusatzwahl
+             * `wahl` herein: der Rand, VON dem gerollt wird ("unten",
+             * "oben", "links", "rechts", Brett-Koordinaten). Ohne Wahl gilt
+             * die eigene Seite — für Weiss unten, für Schwarz oben; so
+             * rollt es wie früher von einem weg.
              *
-             * Angetippt wird ein Feld der EIGENEN Grundreihe — auf dem
-             * Bildschirm also die unterste Reihe, denn das Brett wird für
-             * Schwarz gedreht. Von dort schieben sich die Figuren nach vorn,
-             * aus der Sicht des Spielers nach oben.
-             *
-             * Bis v0.45 bestimmte der Rand die Richtung: oben angetippt hiess
-             * nach oben, unten angetippt nach unten. Für Schwarz stand damit
-             * beides auf dem Kopf — man tippte unten und die Figuren kamen auf
-             * einen zu.
+             * Antippbar sind die Felder des gewählten RANDES — dort setzt
+             * das Holz an und bestimmt so die Spalte oder Reihe.
              */
-            const breite = SCHACH.breiteVon(runde.stand);
-            const reihe = SCHACH.reiheVon(feld, breite);
-            const eigeneReihe = (farbe === SCHACH.WEISS)
-                ? SCHACH.hoeheVon(runde.stand) - 1
-                : 0;
+            const kante = SCHACH.NUDELHOLZ_KANTEN[wahl]
+                ? wahl
+                : ((farbe === SCHACH.WEISS) ? "unten" : "oben");
 
-            if (reihe !== eigeneReihe) {
+            const breite = SCHACH.breiteVon(runde.stand);
+            const hoehe = SCHACH.hoeheVon(runde.stand);
+            const reihe = SCHACH.reiheVon(feld, breite);
+            const spalte = SCHACH.spalteVon(feld, breite);
+
+            const amRand = (kante === "unten" && reihe === hoehe - 1)
+                || (kante === "oben" && reihe === 0)
+                || (kante === "links" && spalte === 0)
+                || (kante === "rechts" && spalte === breite - 1);
+
+            if (!amRand) {
                 return null;
             }
-            return SCHACH.nudelholz(runde.stand, SCHACH.spalteVon(feld, breite),
-                (farbe === SCHACH.WEISS) ? -1 : 1);
+            return SCHACH.nudelholz(runde.stand, feld, kante);
         }
 
         /*

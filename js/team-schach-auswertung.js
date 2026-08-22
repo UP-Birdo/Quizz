@@ -1272,7 +1272,8 @@ Object.assign(TEAM_SCHACH, {
         if (schritt.schauspiel) {
             window.setTimeout(() => TEAM_SCHACH._wirkungSchauspiel(brett, {
                 wirkung: schritt.schauspiel,
-                felder: schritt.marken
+                felder: schritt.marken,
+                wege: schritt.wege
             }), 80);
         }
 

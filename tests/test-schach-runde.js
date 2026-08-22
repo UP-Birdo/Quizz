@@ -6010,7 +6010,7 @@ pruefe("Nudelholz schiebt niemanden auf ein gesperrtes Feld (v0.59)", () => {
         risse: [SCHACH.feldNummer("a3")]
     });
 
-    const wirkung = SCHACH.nudelholz(runde.stand, 0, -1);
+    const wirkung = SCHACH.nudelholz(runde.stand, SCHACH.feldNummer("a1"), "unten");
     const bauerSteht = (stand, name) =>
         SCHACH.figurAuf(stand, SCHACH.feldNummer(name));
 
@@ -6022,13 +6022,11 @@ pruefe("Nudelholz schiebt niemanden auf ein gesperrtes Feld (v0.59)", () => {
     }
 });
 
-pruefe("Nudelholz: auch das aeusserste Feld der Grundreihe geht", () => {
+pruefe("Nudelholz: EINE Bahn, auch am aeussersten Rand (v0.117)", () => {
     /*
-     * NACHGEMESSEN AM 08.08. (Eingangskorb G3): Die Frage war, ob man das
-     * Nudelholz ganz am Rand ueberhaupt druecken kann. Man kann — die
-     * Spalte ausserhalb des Bretts faellt einfach weg, und es rollt die eine
-     * verbliebene. Dieser Test haelt es fest, damit die Frage nicht
-     * wiederkommt.
+     * SEIT v0.117 ROLLT GENAU EINE SPALTE ODER REIHE (Nutzer-Entscheidung
+     * 22.08., vorher zwei Spalten). Angeboten werden die Felder des
+     * gewaehlten Randes — ohne Wahl die eigene Seite.
      */
     const runde = faehigkeitenPartie();
     const breite = SCHACH.breiteVon(runde.stand);
@@ -6041,22 +6039,24 @@ pruefe("Nudelholz: auch das aeusserste Feld der Grundreihe geht", () => {
     wahr(felder.indexOf(rechts) !== -1, "das Feld ganz rechts wird angeboten");
     wahr(felder.indexOf(links) !== -1, "das Feld ganz links auch");
 
-    /* Ganz aussen rollt nur EINE Spalte — die zweite liegt nicht mehr im
-       Brett. Weiter innen sind es zwei. Gezaehlt werden die beruehrten
-       SPALTEN, nicht die Wege: In einer Spalte ruecken mehrere Figuren. */
+    /* Gezaehlt werden die beruehrten SPALTEN: Es ist immer genau eine. */
     const spaltenVon = (wirkung) => wirkung.felder
         .map((feld) => SCHACH.spalteVon(feld, breite))
         .filter((spalte, stelle, alle) => alle.indexOf(spalte) === stelle)
         .sort((a, b) => a - b);
 
-    const amRand = SCHACH.nudelholz(runde.stand, breite - 1, -1);
+    const amRand = SCHACH.nudelholz(runde.stand, rechts, "unten");
     wahr(amRand !== null, "am Rand passiert etwas");
     gleich(spaltenVon(amRand).join(","), String(breite - 1),
-        "ganz aussen rollt nur die letzte Spalte");
+        "ganz aussen rollt genau die letzte Spalte");
 
-    const innen = SCHACH.nudelholz(runde.stand, breite - 3, -1);
-    gleich(spaltenVon(innen).join(","), (breite - 3) + "," + (breite - 2),
-        "weiter innen sind es zwei");
+    const innen = SCHACH.nudelholz(runde.stand,
+        SCHACH._feld(runde.stand, hoehe - 1, breite - 3), "unten");
+    gleich(spaltenVon(innen).join(","), String(breite - 3),
+        "auch weiter innen bleibt es EINE Spalte");
+
+    /* Und die Wirkung merkt sich ihren Rand — daraus rollt die Anzeige. */
+    gleich(amRand.richtung, "unten", "die Wirkung nennt ihren Rand");
 });
 
 pruefe("Spiegel: eine Figur wird auf ein freies Nachbarfeld verdoppelt", () => {
@@ -6074,7 +6074,7 @@ pruefe("Spiegel: eine Figur wird auf ein freies Nachbarfeld verdoppelt", () => {
         "ohne freies Nachbarfeld geht es nicht");
 });
 
-pruefe("Nudelholz: zwei Spalten rollen von der eigenen Seite weg", () => {
+pruefe("Nudelholz: EINE Spalte rollt, der Rand ist waehlbar (v0.117)", () => {
     let runde = faehigkeitenPartie();
     runde.stand = SCHACH.standNormalisieren({
         variante: "faehigkeiten",
@@ -6091,28 +6091,30 @@ pruefe("Nudelholz: zwei Spalten rollen von der eigenen Seite weg", () => {
     });
 
     /*
-     * SEIT v0.46 IMMER NACH VORN: Weiss tippt seine eigene Grundreihe an
-     * (Reihe 1, auf dem Bildschirm unten), und die Figuren rollen von ihm weg
-     * — aus seiner Sicht nach oben. Vorher bestimmte der Rand die Richtung,
-     * und fuer Schwarz stand alles auf dem Kopf.
+     * OHNE WAHL ROLLT ES VON DER EIGENEN SEITE (seit v0.117; vorher rollten
+     * zwei Spalten): Weiss tippt ein Feld seines unteren Randes an, und nur
+     * DIESE Spalte rollt von ihm weg.
      */
     const hoch = einsetzen(runde, "nudelholz", SCHACH.feldNummer("a1"));
     wahr(hoch !== null, "eingesetzt");
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("a6")), "b", "a5 nach a6");
-    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("b6")), "b", "b5 nach b6");
+    gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("b5")), "b",
+        "die Nachbarspalte bleibt stehen — es rollt nur EINE");
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("a5")), ".", "a5 ist leer");
-    gleich(hoch.verlauf[hoch.verlauf.length - 1].wege.length, 2, "zwei Wege im Verlauf");
+    gleich(hoch.verlauf[hoch.verlauf.length - 1].wege.length, 1, "ein Weg im Verlauf");
+    gleich(hoch.verlauf[hoch.verlauf.length - 1].richtung, "unten",
+        "der Verlauf kennt den Rand");
 
-    /* Die gegnerische Grundreihe ist nicht die eigene. */
+    /* Der gegnerische Rand gehoert ohne Wahl nicht dazu. */
     gleich(einsetzen(runde, "nudelholz", SCHACH.feldNummer("a8")), null,
-        "nur die eigene Grundreihe");
+        "ohne Wahl nur der eigene Rand");
 
     /* Mitten auf dem Brett schon gar nicht. */
     gleich(einsetzen(runde, "nudelholz", SCHACH.feldNummer("d4")), null,
-        "nur am eigenen Rand");
+        "nur am Rand");
 
-    /* Schwarz tippt seine eigene Grundreihe an — und schiebt in die andere
-       Richtung, aus SEINER Sicht ebenfalls nach oben. */
+    /* Schwarz tippt ohne Wahl seinen oberen Rand an — und schiebt in die
+       andere Richtung, aus SEINER Sicht ebenfalls von sich weg. */
     let fuerSchwarz = SCHACH_RUNDE.kopieren(runde);
     fuerSchwarz.stand.amZug = "schwarz";
     fuerSchwarz.faehigkeiten.schwarz.push("nudelholz");
@@ -6123,11 +6125,33 @@ pruefe("Nudelholz: zwei Spalten rollen von der eigenen Seite weg", () => {
     wahr(runter !== null, "Schwarz kann es einsetzen");
     gleich(SCHACH.figurAuf(runter.stand, SCHACH.feldNummer("a4")), "b", "a5 nach a4");
 
-    /* Der Koenig auf e8 liegt gar nicht in den gerollten Spalten (a und b) —
-       er steht also weiterhin da. Dass Koenige seit v0.77 SEHR WOHL mitrollen,
-       wenn sie in der Spalte stehen, pruefen die zwei Tests weiter unten. */
+    /*
+     * MIT WAHL ROLLT ES VON JEDEM RAND (v0.117): "links" heisst, das Holz
+     * setzt am linken Rand an und schiebt die REIHE nach rechts — zuerst
+     * macht der vordere Bauer Platz, dann rueckt der hintere nach.
+     */
+    let mitWahl = SCHACH_RUNDE.kopieren(runde);
+    mitWahl.faehigkeiten.weiss.push("nudelholz");
+    const quer = SCHACH_RUNDE.faehigkeitEinsetzen(mitWahl, "id-anna",
+        "nudelholz", SCHACH.feldNummer("a5"), "Anna", 3000, undefined, "links");
+
+    wahr(quer !== null, "mit Richtungswahl eingesetzt");
+    gleich(SCHACH.figurAuf(quer.stand, SCHACH.feldNummer("c5")), "b", "b5 nach c5");
+    gleich(SCHACH.figurAuf(quer.stand, SCHACH.feldNummer("b5")), "b", "a5 nach b5");
+    gleich(SCHACH.figurAuf(quer.stand, SCHACH.feldNummer("a5")), ".", "a5 ist leer");
+    gleich(quer.verlauf[quer.verlauf.length - 1].richtung, "links",
+        "der Verlauf kennt auch diesen Rand");
+
+    /* Mit Wahl "links" zaehlt nur der LINKE Rand als Ansatz. */
+    gleich(SCHACH_RUNDE.faehigkeitEinsetzen(mitWahl, "id-anna",
+        "nudelholz", SCHACH.feldNummer("b5"), "Anna", 3000, undefined, "links"),
+        null, "mitten in der Reihe setzt nichts an");
+
+    /* Der Koenig auf e8 liegt nicht in der gerollten Spalte a —
+       er steht also weiterhin da. Dass Koenige seit v0.77 SEHR WOHL
+       mitrollen, wenn sie in der Bahn stehen, pruefen die Tests unten. */
     gleich(SCHACH.figurAuf(hoch.stand, SCHACH.feldNummer("e8")), "k",
-        "der Koenig ausserhalb der Spalten blieb");
+        "der Koenig ausserhalb der Spalte blieb");
 });
 
 pruefe("Nudelholz: Koenige rollen mit (v0.77)", () => {
@@ -6154,7 +6178,7 @@ pruefe("Nudelholz: Koenige rollen mit (v0.77)", () => {
         rochade: ""
     });
 
-    const wirkung = SCHACH.nudelholz(runde.stand, 0, -1);
+    const wirkung = SCHACH.nudelholz(runde.stand, SCHACH.feldNummer("a1"), "unten");
     wahr(wirkung !== null, "es passiert etwas — bis v0.76 blockierte der Koenig alles");
 
     const auf = (name) => SCHACH.figurAuf(wirkung.stand, SCHACH.feldNummer(name));
@@ -6201,7 +6225,7 @@ pruefe("Nudelholz: den EIGENEN Koenig schiebt man nicht ins Schach (v0.77)", () 
 
     /* Die reine Rechnung schiebt ihn sehr wohl — sie kennt den Zugzusammenhang
        nicht. */
-    const roh = SCHACH.nudelholz(runde.stand, 0, -1);
+    const roh = SCHACH.nudelholz(runde.stand, SCHACH.feldNummer("a1"), "unten");
     wahr(roh !== null, "die Rechnung selbst schiebt");
     gleich(SCHACH.figurAuf(roh.stand, SCHACH.feldNummer("a3")), "K",
         "der Koenig stuende auf a3");
@@ -6244,7 +6268,7 @@ pruefe("Nudelholz schlaegt nicht — es schiebt nur (v0.77)", () => {
     });
 
     const zaehlen = (brett) => brett.split("").filter((zeichen) => zeichen !== ".").length;
-    const wirkung = SCHACH.nudelholz(stand, 0, -1);
+    const wirkung = SCHACH.nudelholz(stand, SCHACH.feldNummer("a1"), "unten");
 
     wahr(wirkung !== null, "es passiert etwas");
     gleich(zaehlen(wirkung.stand.brett), zaehlen(stand.brett),
@@ -6269,7 +6293,7 @@ pruefe("Nudelholz schlaegt nicht — es schiebt nur (v0.77)", () => {
         amZug: "weiss",
         rochade: ""
     });
-    gleich(SCHACH.nudelholz(dicht, 0, -1), null,
+    gleich(SCHACH.nudelholz(dicht, SCHACH.feldNummer("a1"), "unten"), null,
         "bis zum Rand zugestellt bewegt sich nichts — geschlagen wird erst recht nicht");
 });
 
