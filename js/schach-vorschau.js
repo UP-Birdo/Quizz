@@ -1405,6 +1405,12 @@ const SCHACH_VORSCHAU = {
             marken: bilder.nachher.marken,
             ziele: bilder.nachher.ziele,
             wege: bilder.nachher.wege,
+
+            /* Im Wirkungs-Bild spielt das Schauspiel der Fähigkeit — dasselbe
+               wie am echten Brett (seit v0.116). Arten ohne Schauspiel
+               ignorieren die Angabe. */
+            schauspiel: art,
+
             text: bilder.nachher.text
         }));
 
@@ -1628,6 +1634,12 @@ const SCHACH_VORSCHAU = {
              */
             knopf: roh.knopf || "",
             knopfTipp: !!roh.knopfTipp,
+
+            /* Welches Wirkungs-Schauspiel dieses Bild abspielt (seit v0.116)
+               — die Fähigkeits-Kennung, oder leer. Gespielt wird dasselbe
+               Schauspiel wie am echten Brett (`_wirkungSchauspiel`). */
+            schauspiel: roh.schauspiel || "",
+
             text: roh.text || ""
         };
     },

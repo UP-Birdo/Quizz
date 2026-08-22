@@ -1792,7 +1792,11 @@ Object.assign(TEAM_SCHACH, {
      * Hintergrund-Tab (keine Masse) passiert schlicht nichts.
      */
     _nudelholzRollen(halter, felder) {
-        const brett = halter.querySelector(".brett");
+        /* Am echten Brett kommt der Halter herein und das Brett liegt darin;
+           in der Bildanleitung (seit v0.116) IST der Halter das Brett. */
+        const istBrett = String(halter.className || "").split(" ")
+            .some((name) => name === "brett" || name === "anleitung-brett");
+        const brett = istBrett ? halter : halter.querySelector(".brett");
         if (!brett) {
             return;
         }

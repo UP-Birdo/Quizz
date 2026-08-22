@@ -3,6 +3,30 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.116.0 — 2026-08-22
+
+**Die Schauspiele spielen jetzt auch in den Anleitungen, eine tippende Hand
+ersetzt den Fingerabdruck — und zum Sieg regnet Konfetti.** (Dein Wunsch vom
+22.08.)
+
+- **Anleitungen zeigen die echten Schauspiele:** Im Wirkungs-Bild jeder
+  Fähigkeits-Anleitung spielt dieselbe Animation wie am echten Brett — das
+  Nudelholz rollt also auch in seiner Anleitung, das Schild glänzt, die
+  Fessel schnappt zu, der Frost wächst. Kommende Schauspiele erscheinen
+  automatisch auch dort.
+
+- **Eine tippende Hand statt des Fingerabdrucks:** Wo die Anleitung bisher
+  einen Fingerabdruck zeigte, liegt jetzt eine gezeichnete Hand mit
+  ausgestrecktem Zeigefinger über dem Feld — und sie tippt sichtbar im
+  Takt. So sieht man nicht nur WO, sondern auch WAS zu tun ist: tippen.
+
+- **Konfetti zum Sieg:** Steht „Gewonnen" auf dem Schirm, regnen einmal
+  bunte Konfetti-Stücke über die Fläche — nur beim ersten Mal je Partie,
+  nicht bei jedem Neuzeichnen.
+
+Alles weiter mit Bordmitteln, und bei „weniger Bewegung" entfällt alles
+Bewegte wie immer.
+
 ## v0.115.0 — 2026-08-22
 
 **Die Fähigkeiten spielen jetzt ihr eigenes kleines Schauspiel auf dem

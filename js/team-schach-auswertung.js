@@ -31,6 +31,50 @@ Object.assign(TEAM_SCHACH, {
      * OK-Knopf würde ihn wegwischen.
      * ---------------------------------------------------------------- */
 
+    /* Je Partie regnet das Konfetti nur EINMAL — die regelmässige Abfrage
+       zeichnet den Abschluss sonst alle paar Sekunden neu. Kein Spielstand,
+       nur Anzeige-Gedächtnis (wie `animiertBis`). */
+    _konfettiGespielt: {},
+
+    /*
+     * DER KONFETTIREGEN ZUM SIEG (seit v0.116): zwei Dutzend fallende,
+     * trudelnde Farbstücke über der Gewonnen-Fläche. Ohne Zufall — Lage und
+     * Verzögerung sind aus der Stücknummer gerechnet, damit kein
+     * `Math.random` in den Bildschirm-Code einzieht. Bei „weniger Bewegung"
+     * entsteht der Regen gar nicht erst (dasselbe Muster wie die
+     * Wirkungs-Schauspiele, deshalb steht das CSS ausserhalb des
+     * no-preference-Blocks).
+     */
+    _konfettiStreuen(flaeche, partieId) {
+        if (TEAM_SCHACH._konfettiGespielt[partieId]) {
+            return;
+        }
+        if (typeof window !== "undefined"
+            && typeof window.matchMedia === "function"
+            && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            return;
+        }
+        TEAM_SCHACH._konfettiGespielt[partieId] = true;
+
+        const regen = TEAM_SCHACH._element("div", "konfetti-regen");
+        regen.setAttribute("aria-hidden", "true");
+
+        for (let stueck = 0; stueck < 24; stueck++) {
+            const teil = TEAM_SCHACH._element("span",
+                "konfetti-stueck konfetti-" + (stueck % 6));
+            teil.style.left = ((stueck * 37 + 11) % 100) + "%";
+            teil.style.animationDelay = ((stueck * 53) % 900) + "ms";
+            regen.appendChild(teil);
+        }
+
+        flaeche.appendChild(regen);
+        window.setTimeout(() => {
+            if (regen.parentNode) {
+                regen.parentNode.removeChild(regen);
+            }
+        }, 3600);
+    },
+
     _abschlussZeichnen(wurzel, partie, person) {
         if (TEAM_SCHACH.abschluss.schritt === 2) {
             TEAM_SCHACH._punktestandZeichnen(wurzel, partie, person);
@@ -51,6 +95,11 @@ Object.assign(TEAM_SCHACH, {
         flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-marke", partie.titel));
         flaeche.appendChild(TEAM_SCHACH._element("h2", "abschluss-titel",
             remis ? "Unentschieden" : (gewonnen ? "Gewonnen" : "Verloren")));
+
+        /* Zum Sieg regnet einmal Konfetti (seit v0.116). */
+        if (gewonnen) {
+            TEAM_SCHACH._konfettiStreuen(flaeche, partie.id);
+        }
 
         const lage = SCHACH.lage(partie.stand);
         flaeche.appendChild(TEAM_SCHACH._element("p", "abschluss-text",
@@ -1076,6 +1125,10 @@ Object.assign(TEAM_SCHACH, {
             const zelle = TEAM_SCHACH._element("div",
                 "vorschau-feld " + (((reihe + spalte) % 2 === 0) ? "feld-hell" : "feld-dunkel"));
 
+            /* Damit die Wirkungs-Schauspiele (v0.116) ihre Felder finden —
+               dieselbe Adresse wie am echten Brett. */
+            zelle.dataset.feld = String(feld);
+
             const figur = SCHACH.figurAuf(stand, feld);
             if (figur !== ".") {
                 const getruebt = glas && SCHACH.farbeVon(figur) !== SCHACH_VORSCHAU.FARBE;
@@ -1210,6 +1263,20 @@ Object.assign(TEAM_SCHACH, {
         }
 
         /*
+         * Das Wirkungs-Schauspiel spielt auch im Beispiel (seit v0.116) —
+         * dieselbe Funktion wie am echten Brett. Kurz warten, bis das Bild
+         * im Bildschirm hängt: Vorher hat die Nudelholz-Walze keine Masse.
+         * In den Tests feuert der Zeitgeber nie — dort wird das Schauspiel
+         * einzeln geprüft.
+         */
+        if (schritt.schauspiel) {
+            window.setTimeout(() => TEAM_SCHACH._wirkungSchauspiel(brett, {
+                wirkung: schritt.schauspiel,
+                felder: schritt.marken
+            }), 80);
+        }
+
+        /*
          * DER GRIFF AN DEN VORRAT (seit v0.50). Getippt wird in diesem Bild
          * nicht aufs Brett, sondern auf die Fähigkeit — also wird sie gezeigt,
          * mit dem Fingerabdruck darauf. Dasselbe Zeichen wie auf dem Brett,
@@ -1284,51 +1351,48 @@ Object.assign(TEAM_SCHACH, {
     },
 
     /*
-     * Der Fingerabdruck — er sagt: Hier tippst du hin.
+     * DIE TIPPENDE HAND — sie sagt: Hier tippst du hin. Seit v0.116 ersetzt
+     * sie auf Nutzer-Wunsch (22.08.) den Fingerabdruck von v0.45: eine Hand
+     * mit ausgestrecktem Zeigefinger, darüber zwei Funken für den Tipper;
+     * im Takt der Anleitung tippt sie sichtbar nach unten (CSS).
      *
      * GEZEICHNET, NICHT EINGEFÜGT. Dieselbe Entscheidung wie beim Würfel
      * (siehe `docs\entscheidungen\entschieden.md`, „Warum der Würfel gezeichnet
      * und nicht eingefügt ist"): Eine Bilddatei wäre ein weiterer Bestandteil,
      * der beim Ausliefern mitmuss, in jeder Grösse neu gebraucht wird und die
-     * Farbe nicht mitdreht. Als Pfade folgt das Zeichen den Farbvariablen und
-     * bleibt auf jedem Bildschirm scharf.
-     *
-     * Die Form ist die des vom Nutzer gewünschten Zeichens (v0.45): sechs
-     * ineinanderliegende Papillarlinien um einen Kern, unten offen, dazu zwei
-     * abgebrochene Linien an den Seiten — daran erkennt man einen
-     * Fingerabdruck auch bei zwanzig Pixeln Kantenlänge.
+     * Farbe nicht mitdreht. Als Pfade bleibt das Zeichen überall scharf.
      */
-    /*
-     * Alle Linien laufen um denselben Mittelpunkt (12 | 14). Der Radius nimmt
-     * nach innen ab, und die Enden rutschen nach unten — dadurch werden die
-     * inneren Linien schmaler und länger, wie beim echten Abdruck. Wer eine
-     * Linie ändert, rechnet ihre Enden aus Mittelpunkt und Radius aus, sonst
-     * verrutscht der Bogen.
-     */
-    FINGER_LINIEN: [
-        /* Aussen: weite Bögen, oben geschlossen, unten offen. */
-        "M 2.55 12.5 A 9.5 9.5 0 0 1 21.45 12.5",
-        "M 4.86 15 A 7.3 7.3 0 1 1 19.14 15",
-        "M 7.88 17.5 A 5.1 5.1 0 1 1 16.12 17.5",
-        /* Der Kern: eine enge Schleife, die unten weit herunterläuft. */
-        "M 10.45 18.5 A 2.9 2.9 0 1 1 13.55 18.5",
-        /* Zwei abgebrochene Linien, wie sie auf jedem Abdruck vorkommen. */
-        "M 21 16.4 A 9.5 9.5 0 0 1 19.4 19.4",
-        "M 3 16.4 A 9.5 9.5 0 0 0 4.6 19.4"
+    /* Die Handfläche: Zeigefinger hoch (Kuppe bei 10,7 | 4), rechts daneben
+       die eingeklappten Finger, links der Daumenansatz. Eine geschlossene
+       Fläche — so trägt sie Füllung UND Umriss. */
+    HAND_FLAECHE: "M 9.1 13.6 L 9.1 5.7 A 1.6 1.6 0 0 1 12.3 5.7 L 12.3 10.4 "
+        + "L 16.5 11.3 A 2.7 2.7 0 0 1 18.6 14.1 L 17.9 17.7 "
+        + "A 3.5 3.5 0 0 1 14.5 20.5 L 12.2 20.5 A 4 4 0 0 1 9.1 19 "
+        + "L 6.2 15.4 A 1.5 1.5 0 0 1 8.4 13.4 Z",
+
+    /* Zwei Funken-Bögen über der Fingerkuppe: der Tipper. */
+    HAND_FUNKEN: [
+        "M 5.6 4.2 A 5.8 5.8 0 0 1 15.8 4.2",
+        "M 7.6 2.9 A 3.5 3.5 0 0 1 13.8 2.9"
     ],
 
     _fingerBauen() {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("class", "anleitung-finger");
+        svg.setAttribute("class", "anleitung-finger anleitung-hand");
         svg.setAttribute("viewBox", "0 0 24 24");
         svg.setAttribute("aria-hidden", "true");
 
-        for (const linie of TEAM_SCHACH.FINGER_LINIEN) {
+        for (const linie of TEAM_SCHACH.HAND_FUNKEN) {
             const pfad = document.createElementNS("http://www.w3.org/2000/svg", "path");
             pfad.setAttribute("d", linie);
-            pfad.setAttribute("class", "anleitung-finger-bogen");
+            pfad.setAttribute("class", "anleitung-hand-funken");
             svg.appendChild(pfad);
         }
+
+        const hand = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hand.setAttribute("d", TEAM_SCHACH.HAND_FLAECHE);
+        hand.setAttribute("class", "anleitung-hand-flaeche");
+        svg.appendChild(hand);
 
         return svg;
     },

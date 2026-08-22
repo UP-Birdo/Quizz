@@ -3917,4 +3917,58 @@ pruefe("Das Schauspiel haengt am Wirkungs-Abspieler (v0.115)", () => {
     }
 });
 
+/* ------------------------------------------------------------------ *
+ * Anleitung, Hand und Konfetti (v0.116)
+ * ------------------------------------------------------------------ */
+
+pruefe("Das Wirkungs-Bild der Anleitung traegt sein Schauspiel (v0.116)", () => {
+    const schritte = umgebung.SCHACH_VORSCHAU.schritte("nudelholz");
+    if (!schritte) {
+        throw new Error("keine Anleitung fuer das Nudelholz");
+    }
+    const mitSchauspiel = schritte.filter(
+        (schritt) => schritt.schauspiel === "nudelholz");
+    if (mitSchauspiel.length !== 1) {
+        throw new Error("das Schauspiel steht in " + mitSchauspiel.length
+            + " Bildern statt in genau einem");
+    }
+    if (mitSchauspiel[0].tipp !== -1) {
+        throw new Error("das Schauspiel liegt auf einem Tipp-Bild statt auf der Wirkung");
+    }
+});
+
+pruefe("Die tippende Hand ersetzt den Fingerabdruck (v0.116)", () => {
+    const hand = TEAM_SCHACH._fingerBauen();
+    if (String(hand.attribute["class"] || "").indexOf("anleitung-hand") === -1) {
+        throw new Error("die Hand traegt ihre Klasse nicht");
+    }
+    const flaeche = (hand.kinder || []).filter((kind) =>
+        String(kind.attribute && kind.attribute["class"] || "")
+            .indexOf("anleitung-hand-flaeche") !== -1);
+    if (flaeche.length !== 1) {
+        throw new Error("die Handflaeche fehlt");
+    }
+});
+
+pruefe("Konfetti regnet zum Sieg genau einmal je Partie (v0.116)", () => {
+    const flaeche = neuesElement("div");
+    TEAM_SCHACH._konfettiStreuen(flaeche, "partie-konfetti-test");
+
+    const regen = flaeche.kinder.filter((kind) =>
+        String(kind.className).indexOf("konfetti-regen") !== -1);
+    if (regen.length !== 1) {
+        throw new Error("kein Konfettiregen");
+    }
+    if (regen[0].kinder.length !== 24) {
+        throw new Error("es fallen " + regen[0].kinder.length + " statt 24 Stuecke");
+    }
+
+    TEAM_SCHACH._konfettiStreuen(flaeche, "partie-konfetti-test");
+    const nochmal = flaeche.kinder.filter((kind) =>
+        String(kind.className).indexOf("konfetti-regen") !== -1);
+    if (nochmal.length !== 1) {
+        throw new Error("das Konfetti regnet bei jedem Neuzeichnen erneut");
+    }
+});
+
 zeitlimitPruefen();

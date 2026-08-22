@@ -2604,6 +2604,10 @@ body.runde-offen .tab-leiste {
     min-height: 60vh;
     padding: 28px 20px;
     border-radius: var(--radius);
+
+    /* Bezugsrahmen für den Konfettiregen (seit v0.116). */
+    position: relative;
+    overflow: hidden;
     text-align: center;
 }
 
@@ -3335,13 +3339,69 @@ body.runde-offen .tab-leiste {
     filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
 }
 
-/* Die Strichstärke gehört zur Form: Wird sie dicker, wachsen die Linien
-   zusammen und aus dem Abdruck wird ein Fleck. */
-.anleitung-finger-bogen {
+/*
+ * DIE TIPPENDE HAND (seit v0.116, sie ersetzt den Fingerabdruck von v0.45):
+ * weisse Fläche mit dunklem Umriss — so bleibt sie auf hellen wie dunklen
+ * Feldern lesbar, in beiden Farbwelten.
+ */
+.anleitung-hand-flaeche {
+    fill: #ffffff;
+    stroke: #1c1f23;
+    stroke-width: 1.1;
+    stroke-linejoin: round;
+}
+
+/* Die zwei Funken über der Fingerkuppe: der Tipper. */
+.anleitung-hand-funken {
     fill: none;
     stroke: var(--ziel-rand);
-    stroke-width: 1.3;
+    stroke-width: 1.4;
     stroke-linecap: round;
+}
+
+/* ------------------------------------------------------------------ *
+ * Der Konfettiregen zum Sieg (seit v0.116). Erzeugt in
+ * `_konfettiStreuen`; das Skript unterlässt das bei „weniger Bewegung",
+ * deshalb stehen die Regeln ausserhalb des no-preference-Blocks.
+ * ------------------------------------------------------------------ */
+
+.konfetti-regen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.konfetti-stueck {
+    position: absolute;
+    top: -14px;
+    width: 8px;
+    height: 12px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: konfetti-fallen 2.6s ease-in forwards;
+}
+
+/* Sechs feste Farben — die Rot-, Blau-, Gelb- und Grüntöne des Hauses. */
+.konfetti-0 { background: #e05a52; }
+.konfetti-1 { background: #1f5fa8; }
+.konfetti-2 { background: #e0b458; }
+.konfetti-3 { background: #4cb87a; }
+.konfetti-4 { background: #9a6fd0; }
+.konfetti-5 { background: #4a8fd6; }
+
+@keyframes konfetti-fallen {
+    0% {
+        opacity: 0;
+        transform: translateY(0) rotate(0);
+    }
+    8% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(70vh) rotate(540deg);
+    }
 }
 
 /*
@@ -4147,6 +4207,25 @@ body.dialog-offen {
     /* Die schwebende Beschriftung wandert weich nach oben. */
     .dialog-feld-marke {
         transition: top 0.15s ease, font-size 0.15s ease, color 0.15s ease;
+    }
+
+    /*
+     * Die tippende Hand der Bildanleitung tippt sichtbar (seit v0.116).
+     * Nur in der Bibliothek — die ist eine STATISCHE Ansicht, die
+     * regelmässige Abfrage zeichnet sie nicht neu (Bewegungs-Regel 3).
+     */
+    .anleitung-hand {
+        transform-origin: 50% 65%;
+        animation: hand-tippen 1.6s ease-in-out infinite;
+    }
+
+    @keyframes hand-tippen {
+        0%, 24%, 100% {
+            transform: translateY(-6%) scale(1);
+        }
+        12% {
+            transform: translateY(3%) scale(0.92);
+        }
     }
 
     @keyframes bereich-auf {
