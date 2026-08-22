@@ -1074,6 +1074,52 @@ pruefe("Item-Vorrat: drei Mengen in einer Reihe, die eigene Wahl im Popup (v0.10
     }
 });
 
+pruefe("Jeder aktive Reihen-Knopf traegt seine Pille (v0.109)", () => {
+    /*
+     * SEIT v0.109 IST DER AKTIVE KNOPF SELBST DURCHSICHTIG — seine Farbe
+     * liefert ein Kind-Element (`.reihen-pille`), damit beim weichen
+     * Neuzeichnen nur die FLAECHE wandert und nicht die Beschriftung.
+     * Fehlt die Pille, ist der gewaehlte Knopf am Bildschirm UNSICHTBAR
+     * markiert. Geprueft werden alle vier Reihen plus der Knopf der eigenen
+     * Wahl; die Armee-Reihe muss ausserdem eine KARTE sein — der
+     * Unterpunkt-Strich hing dort im Leeren (Nutzer-Meldung 22.08.).
+     */
+    const gemerkterVorrat = TEAM_SCHACH.neueRegeln.itemVorrat;
+    const gemerkteAuswahl = TEAM_SCHACH.neueRegeln.itemAuswahl;
+
+    const pilleDrin = (wurzel, name, wo) => {
+        if (!wurzel.querySelector(".reihen-pille-" + name)) {
+            throw new Error(wo + ": die Pille reihen-pille-" + name + " fehlt");
+        }
+    };
+
+    try {
+        const armee = TEAM_SCHACH._armeeStaerkeLeisteBauen();
+        pilleDrin(armee, "armee", "Figurenzahl");
+        if (armee.className.indexOf("karte") === -1
+            || armee.className.indexOf("schalter-unterpunkt") !== -1) {
+            throw new Error("die Figurenzahl-Reihe muss eine Karte ohne "
+                + "Unterpunkt-Strich sein (war: " + armee.className + ")");
+        }
+
+        pilleDrin(TEAM_SCHACH._formLeisteBauen(), "form", "Brettform");
+        pilleDrin(TEAM_SCHACH._mengenLeisteBauen(), "mengen", "Lootbox-Menge");
+
+        TEAM_SCHACH.neueRegeln.itemVorrat = "alle";
+        pilleDrin(TEAM_SCHACH._vorratLeisteBauen(), "vorrat", "Item-Vorrat");
+
+        /* Und auf dem Knopf der eigenen Wahl, wenn SIE gewaehlt ist. */
+        TEAM_SCHACH.neueRegeln.itemVorrat = "auswahl";
+        TEAM_SCHACH.neueRegeln.itemAuswahl = ["mauer"];
+        const zeile = TEAM_SCHACH._vorratLeisteBauen();
+        const eigene = zeile.querySelector(".vorrat-eigene");
+        pilleDrin(eigene, "vorrat", "Selbst gewaehlt");
+    } finally {
+        TEAM_SCHACH.neueRegeln.itemVorrat = gemerkterVorrat;
+        TEAM_SCHACH.neueRegeln.itemAuswahl = gemerkteAuswahl;
+    }
+});
+
 pruefe("Weiches Zeichnen faellt ohne Browser-Hilfe auf hartes zurueck (v0.107)", () => {
     /*
      * `weichZeichnen` benutzt `document.startViewTransition` — eine

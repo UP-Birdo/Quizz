@@ -101,6 +101,10 @@ Object.assign(TEAM_SCHACH, {
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+
+            if (aktiv) {
+                knopf.appendChild(TEAM_SCHACH._aktivPille("form"));
+            }
             leiste.appendChild(knopf);
         }
 
@@ -340,6 +344,10 @@ Object.assign(TEAM_SCHACH, {
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+
+            if (aktiv) {
+                knopf.appendChild(TEAM_SCHACH._aktivPille("mengen"));
+            }
             leiste.appendChild(knopf);
         }
 
@@ -403,10 +411,15 @@ Object.assign(TEAM_SCHACH, {
         return knopf;
     },
 
-    _leistenKopfBauen(titel, stufen, nachsatz) {
+    /* `alsUeberschrift` (seit v0.109): Steht die Reihe in einer eigenen
+       Karte, trägt der Kopf ein h3 wie die Nachbar-Karten — als Unterpunkt
+       im Einstellungs-Kasten bleibt es der kleinere Titel. */
+    _leistenKopfBauen(titel, stufen, nachsatz, alsUeberschrift) {
         const kopf = TEAM_SCHACH._element("div", "leisten-kopf");
 
-        kopf.appendChild(TEAM_SCHACH._element("span", "schalter-titel", titel));
+        kopf.appendChild(alsUeberschrift
+            ? TEAM_SCHACH._element("h3", "", titel)
+            : TEAM_SCHACH._element("span", "schalter-titel", titel));
 
         const zeilen = stufen
             .filter((stufe) => !!stufe.hinweis)
@@ -496,6 +509,10 @@ Object.assign(TEAM_SCHACH, {
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+
+            if (aktiv) {
+                knopf.appendChild(TEAM_SCHACH._aktivPille("vorrat"));
+            }
             leiste.appendChild(knopf);
         }
 
@@ -538,6 +555,13 @@ Object.assign(TEAM_SCHACH, {
             });
 
         knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+
+        /* Auch hier wandert nur die farbige Fläche (siehe `_aktivPille`) —
+           derselbe Name wie in der Mengen-Reihe darüber, denn aktiv ist
+           immer nur EINER von beiden. */
+        if (aktiv) {
+            knopf.appendChild(TEAM_SCHACH._aktivPille("vorrat"));
+        }
 
         return knopf;
     },
@@ -648,18 +672,20 @@ Object.assign(TEAM_SCHACH, {
 
     _armeeStaerkeLeisteBauen() {
         /*
-         * EIGENE KLASSEN (`armee-zeile`/`armee-leiste`), nicht die der
-         * Lootbox-Mengen: Diese Reihe steht IMMER da, die Mengen-Reihe nur
-         * unter dem Haken „Lootboxen". Mit denselben Klassen hielte ein Test
-         * die eine für die andere — und im CSS wäre nicht mehr trennbar, was
-         * wovon gilt. Das Aussehen erben sie gemeinsam (`stil.css`).
+         * EINE EIGENE KARTE (seit v0.109) wie „Einstellungen" und „Welche
+         * Brettform?". Bis v0.108 trug die Reihe die Unterpunkt-Klasse samt
+         * Einrück-Strich — der zeigt aber eine Zugehörigkeit an, und diese
+         * Reihe gehört zu keinem Haken: Der Strich hing im Leeren
+         * (Nutzer-Meldung 22.08.). Eigene Klassen (`armee-*`), nicht die der
+         * Lootbox-Mengen — mit denselben hielte ein Test die eine Reihe für
+         * die andere.
          */
-        const zeile = TEAM_SCHACH._element("div", "schalter-unterpunkt armee-zeile");
+        const karte = TEAM_SCHACH._element("section", "karte armee-karte");
 
-        zeile.appendChild(TEAM_SCHACH._leistenKopfBauen("Wie viele Figuren je Seite?",
+        karte.appendChild(TEAM_SCHACH._leistenKopfBauen("Wie viele Figuren je Seite?",
             SCHACH_VARIANTEN.ARMEE_STAERKEN,
             "Ohne den Haken „Zufallsarmee“ bleibt die Aufstellung der Spielart "
-            + "stehen, nur eben schmaler oder tiefer."));
+            + "stehen, nur eben schmaler oder tiefer.", true));
 
         const leiste = TEAM_SCHACH._element("div", "armee-leiste");
 
@@ -674,12 +700,36 @@ Object.assign(TEAM_SCHACH, {
                 });
 
             knopf.setAttribute("aria-pressed", aktiv ? "true" : "false");
+
+            if (aktiv) {
+                knopf.appendChild(TEAM_SCHACH._aktivPille("armee"));
+            }
+
             leiste.appendChild(knopf);
         }
 
-        zeile.appendChild(leiste);
+        karte.appendChild(leiste);
 
-        return zeile;
+        return karte;
+    },
+
+    /*
+     * DIE FARBIGE FLÄCHE DES AKTIVEN KNOPFS IST EIN EIGENES ELEMENT (seit
+     * v0.109). Beim weichen Neuzeichnen wandert nur SIE zum neuen Knopf — der
+     * Text bleibt stehen. Bis v0.108 trug der Knopf selbst den
+     * `view-transition-name`: Dann wanderte er MITSAMT Beschriftung, und
+     * „wenig" verschmierte sichtbar zu „normal" (Nutzer-Meldung 22.08.).
+     *
+     * Die Pille liegt hinter dem Text (`z-index: -1`) und trägt je Reihe
+     * ihren eigenen Namen (`stil.css`). Ohne View-Transitions ist sie einfach
+     * der Hintergrund — die Optik ist dieselbe.
+     */
+    _aktivPille(reihe) {
+        const pille = TEAM_SCHACH._element("span",
+            "reihen-pille reihen-pille-" + reihe);
+
+        pille.setAttribute("aria-hidden", "true");
+        return pille;
     },
 
     _spielartKachelBauen(variante) {

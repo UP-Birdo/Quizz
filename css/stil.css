@@ -491,12 +491,6 @@ body {
     min-width: 90px;
 }
 
-.form-knopf-aktiv {
-    background: var(--haupt);
-    color: #fff;
-    border-color: var(--haupt);
-}
-
 /*
  * Die Rückschau (seit v0.61) — bewusst neutral: Ob es ein Sieg war, sagt das
  * NÄCHSTE Bild. Hier geht es um den Hergang, und eine grüne oder rote Fläche
@@ -1417,12 +1411,29 @@ body {
  * Schieberegler von v0.60 samt seiner `.regler`-Klassen.
  */
 .mengen-zeile,
-.vorrat-zeile,
-.armee-zeile {
+.vorrat-zeile {
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: 8px 0;
+}
+
+/*
+ * DIE FIGURENZAHL IST EINE EIGENE KARTE (seit v0.109). Bis v0.108 trug die
+ * Reihe die Unterpunkt-Klasse samt Einrück-Strich — der Strich gehört aber zu
+ * Unterpunkten UNTER einem Haken, und diese Reihe steht allein ganz oben:
+ * Dort hing er im Leeren (Nutzer-Meldung 22.08.). Jetzt sieht sie aus wie
+ * ihre Nachbarn „Einstellungen" und „Welche Brettform?".
+ */
+.armee-karte {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.armee-karte h3,
+.leisten-kopf h3 {
+    margin: 0;
 }
 
 /*
@@ -1470,12 +1481,60 @@ body {
     margin-top: 6px;
 }
 
+/*
+ * DIE FARBE DES AKTIVEN KNOPFS LIEFERT SEINE PILLE (seit v0.109) — ein
+ * absolut liegendes Kind hinter dem Text (`_aktivPille`). Nur so kann beim
+ * weichen Neuzeichnen die FLÄCHE zum neuen Knopf wandern, während der Text
+ * stehen bleibt; bis v0.108 wanderte der ganze Knopf und die Beschriftung
+ * verschmierte. Der Knopf selbst wird durchsichtig.
+ */
 .mengen-knopf-aktiv,
 .vorrat-knopf-aktiv,
-.armee-knopf-aktiv {
+.armee-knopf-aktiv,
+.form-knopf-aktiv {
+    background: transparent;
+    color: var(--haupt-schrift);
+    border-color: transparent;
+}
+
+.mengen-knopf,
+.vorrat-knopf,
+.armee-knopf,
+.form-knopf,
+.vorrat-eigene {
+    position: relative;
+
+    /* Eigener Stapel-Raum: So liegt die Pille mit `z-index: -1` HINTER dem
+       Text, aber nicht hinter dem Knopf. */
+    isolation: isolate;
+}
+
+.reihen-pille {
+    position: absolute;
+    inset: -1px;
+
+    /* Ein Pixel mehr als der Knopf darunter — die Pille liegt ja auch ein
+       Pixel weiter aussen, sonst blitzten die Ecken durch. */
+    border-radius: 7px;
     background: var(--haupt);
-    color: #fff;
-    border-color: var(--haupt);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.reihen-pille-armee {
+    view-transition-name: armee-aktiv;
+}
+
+.reihen-pille-mengen {
+    view-transition-name: mengen-aktiv;
+}
+
+.reihen-pille-vorrat {
+    view-transition-name: vorrat-aktiv;
+}
+
+.reihen-pille-form {
+    view-transition-name: form-aktiv;
 }
 
 /*
@@ -3684,33 +3743,27 @@ body.dialog-offen {
  * ------------------------------------------------------------------ */
 
 /*
- * DIE AKTIVEN KNÖPFE DER VIER REIHEN TRAGEN EINEN NAMEN für die
- * View-Transition: Beim weichen Neuzeichnen wandert die Markierung
- * dadurch sichtbar vom alten zum neuen Knopf, statt hart umzuspringen.
- * Je Reihe ist höchstens EIN Knopf aktiv — die Namen bleiben eindeutig,
- * sonst bräche der Browser den Übergang ab.
+ * Die Namen der wandernden Flächen stehen seit v0.109 an den PILLEN
+ * (siehe `.reihen-pille` bei den Knopfreihen) — der Knopf selbst wandert
+ * nicht mehr, sonst verschmierte seine Beschriftung.
  */
-.armee-knopf-aktiv {
-    view-transition-name: armee-aktiv;
-}
-
-.mengen-knopf-aktiv {
-    view-transition-name: mengen-aktiv;
-}
-
-.vorrat-knopf-aktiv {
-    view-transition-name: vorrat-aktiv;
-}
-
-.form-knopf-aktiv {
-    view-transition-name: form-aktiv;
-}
 
 @media (prefers-reduced-motion: no-preference) {
 
     /* Die gleitende Markierung braucht nur ihren Takt. */
     ::view-transition-group(*) {
         animation-duration: 0.22s;
+    }
+
+    /*
+     * DIE SEITE SELBST BLENDET NICHT (seit v0.109). Ohne diese Regel legt
+     * der Browser bei jedem weichen Neuzeichnen eine Ueberblendung ueber den
+     * GANZEN Bildschirm — jeder Text flackerte einmal durch. Jetzt wechselt
+     * alles Unbenannte sofort, und nur die Pillen wandern.
+     */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
     }
 
     /* Der Strich unter den Tabs gleitet zum neuen Tab (`tabs.js`). */

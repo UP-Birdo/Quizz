@@ -3,6 +3,27 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.109.0 — 2026-08-22
+
+**Zwei Nachbesserungen an der neuen Optik (deine Meldungen von heute).**
+
+- **Der Strich links neben „Wie viele Figuren je Seite?" ist weg.** Er war der
+  Einrück-Strich für Unterpunkte, die zu einem Haken gehören — diese Reihe
+  gehört aber zu keinem und steht allein ganz oben. Jetzt ist sie eine eigene
+  Karte mit Überschrift, wie „Einstellungen" und „Welche Brettform?" darunter.
+
+- **Das Umstellen zwischen wenig / normal / viel sieht jetzt richtig aus.**
+  Bisher wanderte beim Umschalten der ganze Knopf mitsamt Beschriftung — der
+  Text verschmierte sichtbar von „wenig" nach „normal". Jetzt wandert nur noch
+  die blaue Fläche unter dem Text zum gedrückten Knopf; die Beschriftungen
+  bleiben stehen. Ausserdem blendet nicht mehr der ganze Bildschirm bei jedem
+  Knopfdruck über — alles Übrige wechselt sofort, nur die Markierung gleitet.
+  Beides gilt für alle vier Knopfreihen (Figurenzahl, Lootbox-Menge, Items,
+  Brettform).
+
+Tests: 1531 Prüfungen, 0 Fehler.
+
+
 ## v0.108.0 — 2026-08-22
 
 **Aufgeräumte Bedienelemente — zweiter Teil der UI-Runde.**
