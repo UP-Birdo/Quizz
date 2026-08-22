@@ -2,7 +2,10 @@
 <html lang="de">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- `viewport-fit=cover` lässt die Seite bis unter den iPhone-Balken
+         reichen — das Dock hält sich den Streifen selbst frei
+         (`env(safe-area-inset-bottom)` in der Stildatei, seit v0.113). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Quizz</title>
 
     <!-- Zeichen der App. Das SVG nehmen moderne Browser, das PNG die älteren;

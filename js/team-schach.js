@@ -393,6 +393,11 @@ const TEAM_SCHACH = {
             return;
         }
 
+        /* Nur die offene Partie ist ein eigenes Fenster ohne Tab-Leiste
+           (seit v0.113) — der Zweig ganz unten meldet sich zurück. Alle
+           anderen Ansichten zeigen die Leiste. */
+        TABS.rundeSetzen("team-schach", false);
+
         /* Die Bibliothek steht schon — sie hängt an keinem Spielstand (siehe
            `infoGezeichnet`). Für die Schachregel-Anleitung gilt dasselbe. */
         if (TEAM_SCHACH.infoOffen && TEAM_SCHACH.infoGezeichnet) {
@@ -518,6 +523,9 @@ const TEAM_SCHACH = {
             : null;
 
         if (offene) {
+            /* Die offene Partie ist ein Fenster: Tab-Leiste weg (v0.113). */
+            TABS.rundeSetzen("team-schach", true);
+
             /* Die stille Zeitmessung läuft nur, solange eine Partie offen ist
                (v0.93) — siehe `_zeitMessungStarten`. */
             TEAM_SCHACH._zeitMessungStarten(offene.id);

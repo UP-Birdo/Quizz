@@ -330,6 +330,19 @@ umgebung.DIALOG = {
 };
 
 /*
+ * Die Tab-Leiste als Stellvertreter: `rundeSetzen` (v0.113) merkt sich nur
+ * die letzte Meldung — ein Test unten prüft, dass die offene Partie sich
+ * als Fenster meldet und die Übersicht sich zurückmeldet.
+ */
+umgebung.TABS = {
+    aktiveId: "",
+    zuletzt: null,
+    rundeSetzen(tabId, offen) {
+        umgebung.TABS.zuletzt = { tabId: tabId, offen: offen === true };
+    }
+};
+
+/*
  * Alle Dateien in EINEM Lauf übersetzen: Ein `const` auf oberster Ebene gehört
  * zum Bereich des jeweiligen Skripts, nicht zum globalen Objekt. Getrennte
  * Läufe sähen sich also gegenseitig nicht — mehrere script-Blöcke im Browser
@@ -3782,6 +3795,52 @@ pruefe("Zwei-Schritt: erster Druck fragt nur, zweiter führt aus (v0.112)", () =
     if (knopf.textContent !== "Löschen"
             || knopf.className !== "knopf knopf-gefahr knopf-klein") {
         throw new Error("der Knopf kehrt nach dem zweiten Druck nicht zurueck");
+    }
+});
+
+/* ------------------------------------------------------------------ *
+ * Eine offene Runde ist ein eigenes Fenster (v0.113)
+ * ------------------------------------------------------------------ */
+
+pruefe("Die offene Partie meldet sich als Fenster, die Uebersicht zurueck (v0.113)", () => {
+    TEAM_SCHACH.infoOffen = false;
+    TEAM_SCHACH.grundlagenOffen = false;
+    TEAM_SCHACH.auswahlOffen = false;
+    TEAM_SCHACH.abschluss = null;
+
+    /* Herumliegende Abschluesse abhaken, sonst draengt sich der Punktestand
+       vor die Partie (siehe `zeichnen`). */
+    const liste = SCHACH_TAFEL.liste(TEAM_SCHACH.abgleich.daten);
+    for (const partie of liste) {
+        if (partie.ergebnis) {
+            umgebung.ICH.abschlussMerken(partie.id);
+        }
+    }
+    if (liste.length === 0) {
+        throw new Error("keine Partie zum Oeffnen da");
+    }
+
+    TEAM_SCHACH.partieOeffnen(liste[0].id);
+    if (!umgebung.TABS.zuletzt
+            || umgebung.TABS.zuletzt.tabId !== "team-schach"
+            || umgebung.TABS.zuletzt.offen !== true) {
+        throw new Error("die offene Partie meldet kein Fenster");
+    }
+
+    TEAM_SCHACH.uebersichtOeffnen();
+    if (umgebung.TABS.zuletzt.offen !== false) {
+        throw new Error("die Uebersicht nimmt das Fenster nicht zurueck");
+    }
+});
+
+pruefe("Auch der Imposter meldet sein Fenster (v0.113)", () => {
+    /* Der Imposter-Bildschirm hat in diesem Test keine Wurzel — geprueft
+       wird an der echten Funktion, dass beide Meldungen darin stehen
+       (dasselbe Muster wie die Anmelde-Pruefung zu v0.52). */
+    const quelltext = String(IMPOSTER.zeichnen);
+    if (quelltext.indexOf("rundeSetzen(\"imposter\", false)") === -1
+            || quelltext.indexOf("rundeSetzen(\"imposter\", true)") === -1) {
+        throw new Error("imposter.js meldet sein Fenster nicht");
     }
 });
 

@@ -3,6 +3,23 @@
 Neueste Version oben. Die Version steht in `js/konfig.js` (`APP_VERSION`) und
 wird im Kopf der Seite angezeigt.
 
+## v0.113.0 — 2026-08-22
+
+**Am Handy sitzen die Tabs jetzt unten — und eine offene Runde ist ein
+eigenes Fenster.** (Watermelon-Etappe X7, deine Freigabe vom 22.08.)
+
+- **Dock statt Kopfzeile:** Auf schmalen Geräten klebt die Tab-Leiste am
+  unteren Rand, wo der Daumen ist — wie bei den Apps auf dem iPhone. Die
+  vier Tabs teilen sich die Breite, die blaue Pille gleitet wie gehabt.
+  Der Streifen des iPhone-Wischbalkens bleibt frei. Am grossen Bildschirm
+  bleibt alles oben.
+
+- **Eine offene Runde ist ein Fenster:** Sobald du eine Schach-Partie oder
+  einen Imposter-Raum öffnest, verschwinden Tab-Leiste und (am Handy) die
+  Kopfzeile — der ganze Schirm gehört dem laufenden Spiel. Zurück geht es
+  wie bisher über den Zurück-Knopf der Runde; danach ist die Leiste wieder
+  da. Übersicht, Bibliothek und Anleitungen zeigen die Leiste weiterhin.
+
 ## v0.112.0 — 2026-08-22
 
 **Löschen fragt jetzt direkt im Knopf nach — „Wirklich?" statt Popup.**

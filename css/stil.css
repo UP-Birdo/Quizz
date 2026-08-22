@@ -307,6 +307,16 @@ body {
     margin: 0 auto;
 }
 
+/*
+ * EINE OFFENE RUNDE IST EIN EIGENES FENSTER (seit v0.113, Nutzer-Ansage
+ * 22.08.): Solange eine Partie oder ein Imposter-Raum offen ist, gibt es
+ * keine Tab-Leiste — man ist IM Spiel und verlässt es über dessen
+ * Zurück-Knopf. Die Klasse setzt `TABS.rundeSetzen`.
+ */
+body.runde-offen .tab-leiste {
+    display: none;
+}
+
 /* ------------------------------------------------------------------ *
  * Phasenleiste
  * ------------------------------------------------------------------ */
@@ -3589,8 +3599,52 @@ body.dialog-offen {
  * ------------------------------------------------------------------ */
 
 @media (max-width: 600px) {
+
+    /*
+     * DIE TAB-LEISTE IST AM HANDY EIN DOCK (seit v0.113, Nutzer-Ansage
+     * 22.08.): Sie klebt am unteren Rand — dort, wo der Daumen ist —, und
+     * die Tabs teilen sich die Breite zu gleichen Teilen. Die gleitende
+     * Pille funktioniert unverändert, sie misst ja die echte Lage.
+     * `env(safe-area-inset-bottom)` hält den Streifen des iPhone-Balkens
+     * frei; dafür steht `viewport-fit=cover` in der index.html.
+     */
+    .tab-leiste {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: var(--ebene-schwebend);
+        border-bottom: none;
+        border-top: 1px solid var(--rahmen);
+        padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px;
+        gap: 4px;
+        flex-wrap: nowrap;
+    }
+
+    .tab-knopf {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 10px 4px;
+        font-size: 0.85rem;
+        line-height: 1.2;
+        text-align: center;
+    }
+
     .tab-inhalt {
         padding: 12px;
+
+        /* Der Inhalt läuft nicht unter dem Dock hindurch. */
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Im Runden-Fenster gibt es kein Dock und keinen Kopf — der ganze
+       Schirm gehört dem laufenden Spiel. */
+    body.runde-offen .kopf {
+        display: none;
+    }
+
+    body.runde-offen .tab-inhalt {
+        padding-bottom: 12px;
     }
 
     .kopf {

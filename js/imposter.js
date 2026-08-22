@@ -105,6 +105,10 @@ const IMPOSTER = {
             return;
         }
 
+        /* Nur der offene Raum ist ein eigenes Fenster ohne Tab-Leiste
+           (seit v0.113) — der Zweig unten meldet sich zurück. */
+        TABS.rundeSetzen("imposter", false);
+
         wurzel.innerHTML = "";
 
         const person = IMPOSTER._ich();
@@ -135,6 +139,9 @@ const IMPOSTER = {
             IMPOSTER._uebersichtZeichnen(wurzel, tafel, person);
             return;
         }
+
+        /* Der offene Raum ist ein Fenster: Tab-Leiste weg (v0.113). */
+        TABS.rundeSetzen("imposter", true);
 
         wurzel.appendChild(IMPOSTER._raumKopfBauen(raum));
 

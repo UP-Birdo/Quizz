@@ -97,6 +97,43 @@ const TABS = {
         TABS.markerEl.style.height = (aktiv.offsetHeight - 12) + "px";
     },
 
+    /* Merkt sich, ob gerade eine Runde als eigenes Fenster läuft. */
+    _rundeOffen: false,
+
+    /*
+     * EINE OFFENE RUNDE IST EIN EIGENES FENSTER (seit v0.113, Nutzer-Ansage
+     * 22.08.): Solange eine Partie oder ein Raum offen ist, verschwindet die
+     * Tab-Leiste — man ist IM Spiel und verlässt es über dessen eigenen
+     * Zurück-Knopf, nicht über die Tabs. Die Spiele melden ihren Zustand
+     * bei jedem Zeichnen; gezählt wird nur der sichtbare Tab, denn die
+     * regelmässige Abfrage zeichnet auch verdeckte Tabs.
+     *
+     * Die Klasse sitzt am body, das Ausblenden macht die Stildatei
+     * (`body.runde-offen .tab-leiste`).
+     */
+    rundeSetzen(tabId, offen) {
+        if (TABS.aktiveId !== tabId) {
+            return;
+        }
+        if (typeof document === "undefined" || !document.body
+                || !document.body.classList) {
+            return;
+        }
+
+        const soll = (offen === true);
+        if (TABS._rundeOffen === soll) {
+            return;
+        }
+        TABS._rundeOffen = soll;
+        document.body.classList.toggle("runde-offen", soll);
+
+        /* Kommt die Leiste zurück, steht die Pille noch auf den Massen von
+           vorher — nachmessen, ohne Gleiten. */
+        if (!soll) {
+            TABS._markerSetzen(false);
+        }
+    },
+
     wechseln(id) {
         const tab = TABS.liste.find((eintrag) => eintrag.id === id);
         if (!tab) {
